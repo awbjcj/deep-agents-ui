@@ -115,6 +115,7 @@ interface ThreadListProps {
   onMutateReady?: (mutate: () => void) => void;
   onClose?: () => void;
   onInterruptCountChange?: (count: number) => void;
+  userId?: string;
 }
 
 export function ThreadList({
@@ -122,6 +123,7 @@ export function ThreadList({
   onMutateReady,
   onClose,
   onInterruptCountChange,
+  userId,
 }: ThreadListProps) {
   const [currentThreadId] = useQueryState("threadId");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -129,6 +131,7 @@ export function ThreadList({
   const threads = useThreads({
     status: statusFilter === "all" ? undefined : statusFilter,
     limit: 20,
+    userId,
   });
 
   const flattened = useMemo(() => {

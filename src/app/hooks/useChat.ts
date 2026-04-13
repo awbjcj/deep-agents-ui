@@ -29,10 +29,12 @@ export function useChat({
   activeAssistant,
   onHistoryRevalidate,
   thread,
+  userId,
 }: {
   activeAssistant: Assistant | null;
   onHistoryRevalidate?: () => void;
   thread?: UseStreamThread<StateType>;
+  userId?: string;
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
@@ -51,6 +53,8 @@ export function useChat({
     onError: onHistoryRevalidate,
     onCreated: onHistoryRevalidate,
     experimental_thread: thread,
+    // Tag new threads with the current user's ID for session filtering
+    ...(userId ? { threadMetadata: { user_id: userId } } : {}),
   });
 
   const sendMessage = useCallback(
