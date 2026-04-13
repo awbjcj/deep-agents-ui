@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
 import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
+import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
-import { Settings, MessagesSquare, SquarePen } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider";
+import { Settings, MessagesSquare, SquarePen, Key } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -31,12 +34,14 @@ function HomePageInner({
   handleSaveConfig,
 }: HomePageInnerProps) {
   const client = useClient();
+  const { user } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
+  const [showTokenSidebar, setShowTokenSidebar] = useState(false);
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -132,10 +137,23 @@ function HomePageInner({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {user && (
+              <span className="text-sm text-muted-foreground">
+                <span className="font-medium">{user.username}</span>
+              </span>
+            )}
             <div className="text-sm text-muted-foreground">
               <span className="font-medium">Assistant:</span>{" "}
               {config.assistantId}
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTokenSidebar(!showTokenSidebar)}
+            >
+              <Key className="mr-2 h-4 w-4" />
+              Tokens
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -178,6 +196,7 @@ function HomePageInner({
                     onMutateReady={(fn) => setMutateThreads(() => fn)}
                     onClose={() => setSidebar(null)}
                     onInterruptCountChange={setInterruptCount}
+                    userId={user?.user_id}
                   />
                 </ResizablePanel>
                 <ResizableHandle />
@@ -192,10 +211,31 @@ function HomePageInner({
               <ChatProvider
                 activeAssistant={assistant}
                 onHistoryRevalidate={() => mutateThreads?.()}
+                userId={user?.user_id}
               >
-                <ChatInterface assistant={assistant} />
+                <ChatInterface
+                  assistant={assistant}
+                  userId={user?.user_id}
+                />
               </ChatProvider>
             </ResizablePanel>
+
+            {showTokenSidebar && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel
+                  id="token-management"
+                  order={3}
+                  defaultSize={25}
+                  minSize={20}
+                  className="relative min-w-[320px]"
+                >
+                  <TokenManagementSidebar
+                    onClose={() => setShowTokenSidebar(false)}
+                  />
+                </ResizablePanel>
+              </>
+            )}
           </ResizablePanelGroup>
         </div>
       </div>
@@ -204,9 +244,18 @@ function HomePageInner({
 }
 
 function HomePageContent() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [authLoading, user, router]);
 
   // On mount, check for saved config, otherwise show config dialog
   useEffect(() => {
@@ -236,6 +285,15 @@ function HomePageContent() {
 
   const langsmithApiKey =
     config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
+
+  // Show loading while checking auth
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   if (!config) {
     return (
