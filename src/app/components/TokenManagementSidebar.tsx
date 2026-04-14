@@ -15,8 +15,9 @@ import {
   X,
   LogOut,
   User,
+  Clock,
 } from "lucide-react";
-import { apiGetTokens, apiUpdateTokens } from "@/lib/auth";
+import { apiGetTokens, apiUpdateTokens, UserTokens } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ export function TokenManagementSidebar({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
+  const [tokenMeta, setTokenMeta] = useState<Omit<UserTokens, "graph_api_token" | "jira_api_token"> | null>(null);
 
   const fetchTokens = useCallback(async () => {
     try {
@@ -43,6 +45,14 @@ export function TokenManagementSidebar({
       const tokens = await apiGetTokens();
       setGraphToken(tokens.graph_api_token);
       setJiraToken(tokens.jira_api_token);
+      setTokenMeta({
+        graph_api_token_preview: tokens.graph_api_token_preview,
+        jira_api_token_preview: tokens.jira_api_token_preview,
+        graph_api_token_updated_at: tokens.graph_api_token_updated_at,
+        jira_api_token_updated_at: tokens.jira_api_token_updated_at,
+        graph_api_token_time_gap: tokens.graph_api_token_time_gap,
+        jira_api_token_time_gap: tokens.jira_api_token_time_gap,
+      });
     } catch {
       toast.error("Failed to load tokens");
     } finally {
@@ -57,9 +67,17 @@ export function TokenManagementSidebar({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await apiUpdateTokens({
+      const updated = await apiUpdateTokens({
         graph_api_token: graphToken,
         jira_api_token: jiraToken,
+      });
+      setTokenMeta({
+        graph_api_token_preview: updated.graph_api_token_preview,
+        jira_api_token_preview: updated.jira_api_token_preview,
+        graph_api_token_updated_at: updated.graph_api_token_updated_at,
+        jira_api_token_updated_at: updated.jira_api_token_updated_at,
+        graph_api_token_time_gap: updated.graph_api_token_time_gap,
+        jira_api_token_time_gap: updated.jira_api_token_time_gap,
       });
       setSavedIndicator(true);
       toast.success("Tokens updated successfully");
@@ -128,6 +146,20 @@ export function TokenManagementSidebar({
                 <p className="text-xs text-muted-foreground">
                   Used for Microsoft Graph API integration
                 </p>
+                {tokenMeta && tokenMeta.graph_api_token_preview && (
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                    <code className="text-xs font-mono text-foreground">
+                      {tokenMeta.graph_api_token_preview}
+                    </code>
+                  </div>
+                )}
+                {tokenMeta && tokenMeta.graph_api_token_updated_at !== "Unknown" && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>Updated: {tokenMeta.graph_api_token_updated_at}</span>
+                    <span className="text-muted-foreground/70">({tokenMeta.graph_api_token_time_gap})</span>
+                  </div>
+                )}
                 <div className="relative">
                   <Input
                     id="graphToken"
@@ -162,6 +194,20 @@ export function TokenManagementSidebar({
                 <p className="text-xs text-muted-foreground">
                   Used for JIRA project management integration
                 </p>
+                {tokenMeta && tokenMeta.jira_api_token_preview && (
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                    <code className="text-xs font-mono text-foreground">
+                      {tokenMeta.jira_api_token_preview}
+                    </code>
+                  </div>
+                )}
+                {tokenMeta && tokenMeta.jira_api_token_updated_at !== "Unknown" && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>Updated: {tokenMeta.jira_api_token_updated_at}</span>
+                    <span className="text-muted-foreground/70">({tokenMeta.jira_api_token_time_gap})</span>
+                  </div>
+                )}
                 <div className="relative">
                   <Input
                     id="jiraToken"

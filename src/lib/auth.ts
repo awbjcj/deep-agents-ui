@@ -91,6 +91,12 @@ export async function apiLogin(
 export interface UserTokens {
   graph_api_token: string;
   jira_api_token: string;
+  graph_api_token_preview: string;
+  jira_api_token_preview: string;
+  graph_api_token_updated_at: string;
+  jira_api_token_updated_at: string;
+  graph_api_token_time_gap: string;
+  jira_api_token_time_gap: string;
 }
 
 export async function apiGetTokens(): Promise<UserTokens> {

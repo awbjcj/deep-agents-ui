@@ -18,6 +18,7 @@ import {
   FileIcon,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
+import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
 import type {
   TodoItem,
   ToolCall,
@@ -238,9 +239,31 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
       interrupt?.value && (interrupt.value as any)["review_configs"];
     if (!reviewConfigs) return new Map<string, ReviewConfig>();
     return new Map(
-      reviewConfigs.map((rc: ReviewConfig) => [rc.actionName, rc])
+      reviewConfigs.map((rc: any) => {
+        // Handle both snake_case (from backend) and camelCase field names
+        const actionName = rc.actionName ?? rc.action_name;
+        const allowedDecisions = rc.allowedDecisions ?? rc.allowed_decisions;
+        return [actionName, { actionName, allowedDecisions } as ReviewConfig];
+      })
     );
   }, [interrupt]);
+
+  // Check if there are unmatched action requests (e.g. subagent tool interrupts)
+  // that don't correspond to any tool call in the parent messages
+  const unmatchedActionRequests = useMemo(() => {
+    if (!actionRequestsMap || actionRequestsMap.size === 0) return [];
+    const allToolCallNames = new Set<string>();
+    processedMessages.forEach((data) => {
+      data.toolCalls.forEach((tc: ToolCall) => allToolCallNames.add(tc.name));
+    });
+    const unmatched: ActionRequest[] = [];
+    actionRequestsMap.forEach((ar, name) => {
+      if (!allToolCallNames.has(name)) {
+        unmatched.push(ar);
+      }
+    });
+    return unmatched;
+  }, [actionRequestsMap, processedMessages]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -282,6 +305,21 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                   />
                 );
               })}
+              {/* Render standalone interrupt UI for subagent tool calls
+                  that don't appear in the parent message list */}
+              {unmatchedActionRequests.length > 0 && (
+                <div className="mt-4 flex w-full flex-col gap-3">
+                  {unmatchedActionRequests.map((ar) => (
+                    <ToolApprovalInterrupt
+                      key={ar.name}
+                      actionRequest={ar}
+                      reviewConfig={reviewConfigsMap?.get(ar.name)}
+                      onResume={resumeInterrupt}
+                      isLoading={isLoading}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
