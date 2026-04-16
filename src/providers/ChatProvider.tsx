@@ -11,6 +11,7 @@ interface ChatProviderProps {
   onHistoryRevalidate?: () => void;
   thread?: UseStreamThread<StateType>;
   userId?: string;
+  username?: string;
 }
 
 export function ChatProvider({
@@ -19,8 +20,9 @@ export function ChatProvider({
   onHistoryRevalidate,
   thread,
   userId,
+  username,
 }: ChatProviderProps) {
-  const chat = useChat({ activeAssistant, onHistoryRevalidate, thread, userId });
+  const chat = useChat({ activeAssistant, onHistoryRevalidate, thread, userId, username });
   return <ChatContext.Provider value={chat}>{children}</ChatContext.Provider>;
 }
 

@@ -212,6 +212,7 @@ function HomePageInner({
                 activeAssistant={assistant}
                 onHistoryRevalidate={() => mutateThreads?.()}
                 userId={user?.user_id}
+                username={user?.username}
               >
                 <ChatInterface
                   assistant={assistant}

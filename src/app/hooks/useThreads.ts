@@ -72,16 +72,7 @@ export function useThreads(props: {
         defaultHeaders: apiKey ? { "X-Api-Key": apiKey } : {},
       });
 
-      // Check if assistantId is a UUID (deployed) or graph name (local)
-      const isUUID =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          assistantId
-        );
-
       const metadata: Record<string, string> = {};
-      if (isUUID) {
-        metadata.assistant_id = assistantId;
-      }
       if (userId) {
         metadata.user_id = userId;
       }

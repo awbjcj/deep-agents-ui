@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   type Message,
@@ -30,14 +30,41 @@ export function useChat({
   onHistoryRevalidate,
   thread,
   userId,
+  username,
 }: {
   activeAssistant: Assistant | null;
   onHistoryRevalidate?: () => void;
   thread?: UseStreamThread<StateType>;
   userId?: string;
+  username?: string;
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+
+  // Metadata to tag new threads with the current user's ID for session filtering.
+  // Passed via submit() options so the SDK includes it in client.threads.create().
+  const threadCreationMetadata = useMemo(
+    () => (userId ? { user_id: userId } : undefined),
+    [userId]
+  );
+
+  // Build a merged config that includes system_username in configurable
+  // so the LangGraph backend can resolve per-user tokens.
+  const buildConfig = useCallback(
+    (overrides?: Record<string, unknown>) => {
+      const base = activeAssistant?.config ?? {};
+      const configurable = {
+        ...(base as Record<string, unknown>).configurable as Record<string, unknown> | undefined,
+        ...(username ? { system_username: username } : {}),
+      };
+      return {
+        ...base,
+        ...overrides,
+        configurable,
+      };
+    },
+    [activeAssistant?.config, username]
+  );
 
   const stream = useStream<StateType>({
     assistantId: activeAssistant?.assistant_id || "",
@@ -53,8 +80,6 @@ export function useChat({
     onError: onHistoryRevalidate,
     onCreated: onHistoryRevalidate,
     experimental_thread: thread,
-    // Tag new threads with the current user's ID for session filtering
-    ...(userId ? { threadMetadata: { user_id: userId } } : {}),
   });
 
   const sendMessage = useCallback(
@@ -66,13 +91,16 @@ export function useChat({
           optimisticValues: (prev) => ({
             messages: [...(prev.messages ?? []), newMessage],
           }),
-          config: { ...(activeAssistant?.config ?? {}), recursion_limit: 100 },
+          config: buildConfig({ recursion_limit: 100 }),
+          ...(threadCreationMetadata
+            ? { metadata: threadCreationMetadata }
+            : {}),
         }
       );
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate]
+    [stream, buildConfig, onHistoryRevalidate, threadCreationMetadata]
   );
 
   const runSingleStep = useCallback(
@@ -87,7 +115,7 @@ export function useChat({
           ...(optimisticMessages
             ? { optimisticValues: { messages: optimisticMessages } }
             : {}),
-          config: activeAssistant?.config,
+          config: buildConfig(),
           checkpoint: checkpoint,
           ...(isRerunningSubagent
             ? { interruptAfter: ["tools"] }
@@ -96,11 +124,11 @@ export function useChat({
       } else {
         stream.submit(
           { messages },
-          { config: activeAssistant?.config, interruptBefore: ["tools"] }
+          { config: buildConfig(), interruptBefore: ["tools"] }
         );
       }
     },
-    [stream, activeAssistant?.config]
+    [stream, buildConfig]
   );
 
   const setFiles = useCallback(
@@ -116,10 +144,7 @@ export function useChat({
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {
       stream.submit(undefined, {
-        config: {
-          ...(activeAssistant?.config || {}),
-          recursion_limit: 100,
-        },
+        config: buildConfig({ recursion_limit: 100 }),
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }
           : { interruptBefore: ["tools"] }),
@@ -127,7 +152,7 @@ export function useChat({
       // Update thread list when continuing stream
       onHistoryRevalidate?.();
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate]
+    [stream, buildConfig, onHistoryRevalidate]
   );
 
   const markCurrentThreadAsResolved = useCallback(() => {
