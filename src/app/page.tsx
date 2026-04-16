@@ -118,7 +118,7 @@ function HomePageInner({
       <div className="flex h-screen flex-col">
         <header className="flex h-16 items-center justify-between border-b border-border px-6">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Deep Agent UI</h1>
+            <h1 className="text-xl font-semibold">VSDA Deep Agent</h1>
             {!sidebar && (
               <Button
                 variant="ghost"
@@ -140,10 +140,16 @@ function HomePageInner({
             {user && (
               <span className="text-sm text-muted-foreground">
                 <span className="font-medium">{user.username}</span>
+                <span
+                  className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs uppercase"
+                  aria-label={`Role: ${user.role}`}
+                >
+                  {user.role}
+                </span>
               </span>
             )}
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium">Assistant:</span>{" "}
+              <span className="font-medium">Agent:</span>{" "}
               {config.assistantId}
             </div>
             <Button

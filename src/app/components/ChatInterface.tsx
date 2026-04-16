@@ -121,9 +121,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
     */
     const messageMap = new Map<
       string,
-      { message: Message; toolCalls: ToolCall[] }
+      { message: Message; toolCalls: ToolCall[]; stableKey: string }
     >();
-    messages.forEach((message: Message) => {
+    messages.forEach((message: Message, index: number) => {
       if (message.type === "ai") {
         const toolCallsInMessage: Array<{
           id?: string;
@@ -158,7 +158,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
             type?: string;
             args?: unknown;
             input?: unknown;
-          }) => {
+          }, toolCallIndex: number) => {
             const name =
               toolCall.function?.name ||
               toolCall.name ||
@@ -170,16 +170,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
               toolCall.input ||
               {};
             return {
-              id: toolCall.id || `tool-${Math.random()}`,
+              id: toolCall.id || `tool-${index}-${toolCallIndex}-${name}`,
               name,
               args,
               status: interrupt ? "interrupted" : ("pending" as const),
             } as ToolCall;
           }
         );
-        messageMap.set(message.id!, {
+        const messageKey = message.id || `ai-${index}`;
+        messageMap.set(messageKey, {
           message,
           toolCalls: toolCallsWithStatus,
+          stableKey: messageKey,
         });
       } else if (message.type === "tool") {
         const toolCallId = message.tool_call_id;
@@ -201,9 +203,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
           break;
         }
       } else if (message.type === "human") {
-        messageMap.set(message.id!, {
+        const humanKey = message.id || `human-${index}`;
+        messageMap.set(humanKey, {
           message,
           toolCalls: [],
+          stableKey: humanKey,
         });
       }
     });
@@ -288,7 +292,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                 const isLastMessage = index === processedMessages.length - 1;
                 return (
                   <ChatMessage
-                    key={data.message.id}
+                    key={data.stableKey}
                     message={data.message}
                     toolCalls={data.toolCalls}
                     isLoading={isLoading}

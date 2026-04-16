@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { StandaloneConfig } from "@/lib/config";
+import { toast } from "sonner";
 
 interface ConfigDialogProps {
   open: boolean;
@@ -47,7 +48,18 @@ export function ConfigDialog({
 
   const handleSave = () => {
     if (!deploymentUrl || !assistantId) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      const url = new URL(deploymentUrl);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        toast.error("Deployment URL must use http:// or https://");
+        return;
+      }
+    } catch {
+      toast.error("Please enter a valid deployment URL");
       return;
     }
 

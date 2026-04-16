@@ -1,10 +1,6 @@
 import { Message } from "@langchain/langgraph-sdk";
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export { cn } from "@/lib/utils";
 
 export function extractStringFromMessageContent(message: Message): string {
   return typeof message.content === "string"
