@@ -15,6 +15,8 @@ import {
   clearAuthUser,
   apiLogin,
   apiRegister,
+  apiGetProfile,
+  AUTH_KEY,
 } from "@/lib/auth";
 
 interface AuthContextValue {
@@ -33,22 +35,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = getAuthUser();
-    if (stored) {
-      setUser(stored);
+    if (!stored) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+    // Optimistically restore from localStorage so the UI appears immediately,
+    // then confirm the role from the server in case it changed since last login.
+    setUser(stored);
+    apiGetProfile()
+      .then((profile) => {
+        const updated: AuthUser = { ...stored, role: profile.role };
+        saveAuthUser(updated);
+        setUser(updated);
+      })
+      .catch(() => {
+        // Network error — keep the stored role; the backend will enforce access.
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Sync React state when auth is cleared (e.g. token expiry in getAuthUser)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === AUTH_KEY && e.newValue === null) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const authUser = await apiLogin(username, password);
+    // apiLogin already calls saveAuthUser — only update React state here
     setUser(authUser);
-    saveAuthUser(authUser);
   }, []);
 
   const register = useCallback(async (username: string, password: string) => {
     const authUser = await apiRegister(username, password);
+    // apiRegister already calls saveAuthUser — only update React state here
     setUser(authUser);
-    saveAuthUser(authUser);
   }, []);
 
   const logout = useCallback(() => {

@@ -33,8 +33,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (isRegister && password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (isRegister && password.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
@@ -46,8 +46,8 @@ export default function LoginPage() {
         await login(username.trim(), password);
       }
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
