@@ -137,10 +137,13 @@ export async function apiLogin(
 export interface UserTokens {
   graph_api_token_preview: string;
   jira_api_token_preview: string;
+  polarion_api_token_preview: string;
   graph_api_token_updated_at: string;
   jira_api_token_updated_at: string;
+  polarion_api_token_updated_at: string;
   graph_api_token_time_gap: string;
   jira_api_token_time_gap: string;
+  polarion_api_token_time_gap: string;
 }
 
 export async function apiGetTokens(): Promise<UserTokens> {
@@ -152,7 +155,7 @@ export async function apiGetTokens(): Promise<UserTokens> {
 }
 
 export async function apiUpdateTokens(
-  tokens: { graph_api_token?: string; jira_api_token?: string }
+  tokens: { graph_api_token?: string; jira_api_token?: string; polarion_api_token?: string }
 ): Promise<UserTokens> {
   const res = await apiFetch("/user/tokens", {
     method: "PUT",

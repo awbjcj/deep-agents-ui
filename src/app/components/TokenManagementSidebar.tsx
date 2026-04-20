@@ -51,6 +51,9 @@ export function TokenManagementSidebar({
   const [jiraDirty, setJiraDirty] = useState(false);
   const [showGraphToken, setShowGraphToken] = useState(false);
   const [showJiraToken, setShowJiraToken] = useState(false);
+  const [polarionToken, setPolarionToken] = useState("");
+  const [polarionDirty, setPolarionDirty] = useState(false);
+  const [showPolarionToken, setShowPolarionToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
@@ -71,6 +74,7 @@ export function TokenManagementSidebar({
       setTokenMeta(tokens);
       setGraphDirty(false);
       setJiraDirty(false);
+      setPolarionDirty(false);
     } catch {
       toast.error("Failed to load tokens");
     } finally {
@@ -138,19 +142,22 @@ export function TokenManagementSidebar({
   };
 
   const handleSave = async () => {
-    if (!graphDirty && !jiraDirty) return;
+    if (!graphDirty && !jiraDirty && !polarionDirty) return;
     setIsSaving(true);
     try {
       // Only send tokens the user actually edited to avoid clearing the other
-      const payload: { graph_api_token?: string; jira_api_token?: string } = {};
+      const payload: { graph_api_token?: string; jira_api_token?: string; polarion_api_token?: string } = {};
       if (graphDirty) payload.graph_api_token = graphToken;
       if (jiraDirty) payload.jira_api_token = jiraToken;
+      if (polarionDirty) payload.polarion_api_token = polarionToken;
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
       setGraphToken("");
       setJiraToken("");
       setGraphDirty(false);
       setJiraDirty(false);
+      setPolarionToken("");
+      setPolarionDirty(false);
       setSavedIndicator(true);
       toast.success("Tokens updated successfully");
       setTimeout(() => setSavedIndicator(false), 2000);
@@ -308,10 +315,56 @@ export function TokenManagementSidebar({
                 </div>
               </div>
 
+              {/* Polarion API Token */}
+              <div className="space-y-2">
+                <Label htmlFor="polarionToken" className="text-sm font-medium">
+                  Polarion API Token
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for Polarion work item integration
+                </p>
+                {tokenMeta && tokenMeta.polarion_api_token_preview && (
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                    <code className="text-xs font-mono text-foreground">
+                      {tokenMeta.polarion_api_token_preview}
+                    </code>
+                  </div>
+                )}
+                {tokenMeta && tokenMeta.polarion_api_token_updated_at !== "Unknown" && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>Updated: {tokenMeta.polarion_api_token_updated_at}</span>
+                    <span className="text-muted-foreground/70">({tokenMeta.polarion_api_token_time_gap})</span>
+                  </div>
+                )}
+                <div className="relative">
+                  <Input
+                    id="polarionToken"
+                    type={showPolarionToken ? "text" : "password"}
+                    placeholder="Enter your Polarion API token"
+                    value={polarionToken}
+                    onChange={(e) => { setPolarionToken(e.target.value); setPolarionDirty(true); }}
+                    autoComplete="off"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPolarionToken(!showPolarionToken)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPolarionToken ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {/* Save Button */}
               <Button
                 onClick={handleSave}
-                disabled={isSaving || (!graphDirty && !jiraDirty)}
+                disabled={isSaving || (!graphDirty && !jiraDirty && !polarionDirty)}
                 className="w-full bg-[#2F6868] text-white hover:bg-[#2F6868]/90"
               >
                 {isSaving ? (
