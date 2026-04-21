@@ -29,6 +29,7 @@ import {
   RunModeInfo,
 } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
+import { formatTimestamp } from "@/app/utils/utils";
 import { toast } from "sonner";
 
 interface UserManagementSidebarProps {
@@ -442,9 +443,15 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                       <option value="prod">prod</option>
                     </select>
                     {runModeInfo?.last_updated_at && (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        Updated: {runModeInfo.last_updated_at}
+                      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium text-muted-foreground">Updated</span>
+                        <time
+                          className="font-mono tabular-nums"
+                          dateTime={runModeInfo.last_updated_at}
+                        >
+                          {formatTimestamp(runModeInfo.last_updated_at)}
+                        </time>
                       </p>
                     )}
                   </div>

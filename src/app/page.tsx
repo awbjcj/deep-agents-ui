@@ -7,11 +7,13 @@ import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { UserManagementSidebar } from "@/app/components/UserManagementSidebar";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { Settings, MessagesSquare, SquarePen, Key, Users } from "lucide-react";
+import { useTheme } from "@/providers/ThemeProvider";
+import { Settings, MessagesSquare, SquarePen, Key, Users, LogOut } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -35,7 +37,8 @@ function HomePageInner({
   handleSaveConfig,
 }: HomePageInnerProps) {
   const client = useClient();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
 
@@ -116,34 +119,53 @@ function HomePageInner({
       />
       <div className="flex h-screen flex-col">
         {/* Header */}
-        <header className="relative flex h-16 flex-shrink-0 items-center justify-between border-b border-border px-6">
-          {/* Accent line along the top */}
+        <header className="relative flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
+          {/* Orange accent underline */}
           <div
-            className="pointer-events-none absolute left-0 right-0 top-0 h-[2px]"
-            style={{
-              background:
-                "linear-gradient(90deg, var(--color-primary) 0%, transparent 55%)",
-            }}
+            className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
+            style={{ background: "var(--aptiv-orange)" }}
           />
 
-          <div className="flex items-center gap-4">
-            <h1
-              className="text-lg font-bold tracking-tight"
-              style={{ fontFamily: "var(--font-family-heading)" }}
-            >
-              VSDA Deep Agent
-            </h1>
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex items-center gap-3">
+              <img
+                src={
+                  theme === "dark"
+                    ? "/assets/aptiv_logo_rev_orange.svg"
+                    : "/assets/aptiv_logo_color.svg"
+                }
+                alt="Aptiv"
+                width={76}
+                height={22}
+                className="h-5 w-auto"
+              />
+              <span className="h-5 w-px bg-border" aria-hidden="true" />
+              <div className="flex flex-col leading-none">
+                <span
+                  className="text-[9px] font-bold uppercase tracking-[0.2em]"
+                  style={{ color: "var(--aptiv-orange)" }}
+                >
+                  VSDA
+                </span>
+                <h1 className="text-[15px] font-semibold tracking-tight">
+                  Deep Agent
+                </h1>
+              </div>
+            </div>
             {!sidebar && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebar("1")}
-                className="rounded-md border border-border bg-card px-3 text-foreground hover:bg-accent"
+                className="rounded-full border border-border bg-card px-3 text-foreground hover:border-primary/40 hover:bg-accent"
               >
                 <MessagesSquare className="mr-2 h-4 w-4" />
                 Threads
                 {interruptCount > 0 && (
-                  <span className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] text-destructive-foreground">
+                  <span
+                    className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                    style={{ background: "var(--aptiv-orange)" }}
+                  >
                     {interruptCount}
                   </span>
                 )}
@@ -153,27 +175,35 @@ function HomePageInner({
 
           <div className="flex items-center gap-2">
             {user && (
-              <span className="text-sm text-muted-foreground">
-                <span className="font-medium">{user.username}</span>
+              <span className="hidden items-center gap-2 text-sm text-muted-foreground md:inline-flex">
+                <span className="font-medium text-foreground">
+                  {user.username}
+                </span>
                 <span
-                  className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs uppercase tracking-wide"
+                  className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
                   aria-label={`Role: ${user.role}`}
                 >
                   {user.role}
                 </span>
               </span>
             )}
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium">Agent:</span>{" "}
-              {config.assistantId}
+            <div className="hidden text-xs text-muted-foreground lg:inline-flex">
+              <span className="font-semibold uppercase tracking-[0.1em]">
+                Agent
+              </span>
+              <span className="ml-2 max-w-[160px] truncate font-mono text-xs text-foreground/80">
+                {config.assistantId}
+              </span>
             </div>
+            <span className="mx-1 hidden h-6 w-px bg-border md:block" />
+            <ThemeToggle />
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowUserSidebar(!showUserSidebar)}
             >
               <Users className="mr-2 h-4 w-4" />
-              User
+              Users
             </Button>
             <Button
               variant="outline"
@@ -200,6 +230,17 @@ function HomePageInner({
               <SquarePen className="mr-2 h-4 w-4" />
               New Thread
             </Button>
+            {user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </header>
 

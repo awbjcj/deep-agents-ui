@@ -20,6 +20,7 @@ import {
   apiUpdateTokens,
   UserTokens,
 } from "@/lib/auth";
+import { formatTimestamp } from "@/app/utils/utils";
 import { toast } from "sonner";
 
 interface TokenManagementSidebarProps {
@@ -139,10 +140,16 @@ export function TokenManagementSidebar({
                   </div>
                 )}
                 {tokenMeta && tokenMeta.graph_api_token_updated_at !== "Unknown" && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>Updated: {tokenMeta.graph_api_token_updated_at}</span>
-                    <span className="text-muted-foreground/70">({tokenMeta.graph_api_token_time_gap})</span>
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium text-muted-foreground">Updated</span>
+                    <time
+                      className="font-mono tabular-nums"
+                      dateTime={tokenMeta.graph_api_token_updated_at}
+                    >
+                      {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
+                    </time>
+                    <span className="text-muted-foreground/80">({tokenMeta.graph_api_token_time_gap})</span>
                   </div>
                 )}
                 <div className="relative">
@@ -185,10 +192,16 @@ export function TokenManagementSidebar({
                   </div>
                 )}
                 {tokenMeta && tokenMeta.jira_api_token_updated_at !== "Unknown" && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>Updated: {tokenMeta.jira_api_token_updated_at}</span>
-                    <span className="text-muted-foreground/70">({tokenMeta.jira_api_token_time_gap})</span>
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium text-muted-foreground">Updated</span>
+                    <time
+                      className="font-mono tabular-nums"
+                      dateTime={tokenMeta.jira_api_token_updated_at}
+                    >
+                      {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
+                    </time>
+                    <span className="text-muted-foreground/80">({tokenMeta.jira_api_token_time_gap})</span>
                   </div>
                 )}
                 <div className="relative">
@@ -231,10 +244,16 @@ export function TokenManagementSidebar({
                   </div>
                 )}
                 {tokenMeta && tokenMeta.polarion_api_token_updated_at !== "Unknown" && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>Updated: {tokenMeta.polarion_api_token_updated_at}</span>
-                    <span className="text-muted-foreground/70">({tokenMeta.polarion_api_token_time_gap})</span>
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium text-muted-foreground">Updated</span>
+                    <time
+                      className="font-mono tabular-nums"
+                      dateTime={tokenMeta.polarion_api_token_updated_at}
+                    >
+                      {formatTimestamp(tokenMeta.polarion_api_token_updated_at)}
+                    </time>
+                    <span className="text-muted-foreground/80">({tokenMeta.polarion_api_token_time_gap})</span>
                   </div>
                 )}
                 <div className="relative">

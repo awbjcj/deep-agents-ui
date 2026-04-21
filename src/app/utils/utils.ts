@@ -151,3 +151,42 @@ export function formatConversationForLLM(messages: Message[]): string {
   const formattedMessages = messages.map(formatMessageForLLM);
   return formattedMessages.join("\n\n---\n\n");
 }
+
+/**
+ * Format a backend-provided timestamp as "YYYY-MM-DD HH:mm:ss UTC±HH:mm".
+ *
+ * Backends emit timestamps in mixed formats (ISO with Z, ISO with offset,
+ * human strings like "2025-04-21 14:23:05"). Rendering those verbatim makes
+ * side-by-side timestamps look inconsistent, so we normalize everything to a
+ * single locale-stable format that includes the viewer's timezone offset.
+ * If the input can't be parsed we return it unchanged.
+ */
+export function formatTimestamp(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === "Unknown") return trimmed;
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    // Try treating a space-separated "YYYY-MM-DD HH:mm:ss" as UTC.
+    const isoAttempt = new Date(trimmed.replace(" ", "T") + "Z");
+    if (Number.isNaN(isoAttempt.getTime())) return trimmed;
+    return renderLocalTimestamp(isoAttempt);
+  }
+  return renderLocalTimestamp(parsed);
+}
+
+function renderLocalTimestamp(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = date.getFullYear();
+  const mo = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const h = pad(date.getHours());
+  const m = pad(date.getMinutes());
+  const s = pad(date.getSeconds());
+  const offsetMin = -date.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? "+" : "-";
+  const oh = pad(Math.floor(Math.abs(offsetMin) / 60));
+  const om = pad(Math.abs(offsetMin) % 60);
+  return `${y}-${mo}-${d} ${h}:${m}:${s} UTC${sign}${oh}:${om}`;
+}
