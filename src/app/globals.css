@@ -251,7 +251,7 @@
     --font-family-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
       Consolas, "Liberation Mono", "Courier New", monospace;
     --font-family-brand-mono: "Formular", "SF Mono", Monaco, "Cascadia Code",
-      "Roboto Mono", Consolas, monospace;
+      "Roboto Mono", Consolas, "Liberation Mono", "Courier New", monospace;
 
     /* Font scale */
     --font-size-xs: 0.75rem;
