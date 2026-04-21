@@ -248,8 +248,8 @@
       "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-family-heading: "Formular", -apple-system, BlinkMacSystemFont,
       "Segoe UI", Arial, sans-serif;
-    --font-family-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
-      Consolas, monospace;
+    --font-family-mono: "Formular", "SF Mono", Monaco, "Cascadia Code",
+      "Roboto Mono", Consolas, monospace;
 
     /* Font scale */
     --font-size-xs: 0.75rem;
@@ -529,6 +529,8 @@ a {
 code {
   font-family: var(--font-family-mono);
   font-size: 0.85em;
+  font-weight: 500;
+  font-feature-settings: "ss01", "cv11";
   padding: 0.15em 0.4em;
   background-color: var(--color-surface-alt);
   border: 1px solid var(--color-border-light);
@@ -538,6 +540,8 @@ code {
 pre {
   font-family: var(--font-family-mono);
   font-size: 0.875rem;
+  font-weight: 500;
+  font-feature-settings: "ss01", "cv11";
   line-height: 1.7;
   padding: 1rem;
   background-color: var(--color-surface-alt);
@@ -555,6 +559,8 @@ pre {
 pre[class*="language-"],
 code[class*="language-"] {
   font-family: var(--font-family-mono) !important;
+  font-weight: 500 !important;
+  font-feature-settings: "ss01", "cv11" !important;
 }
 
 ul,
@@ -597,25 +603,9 @@ button {
 }
 
 [data-slot="dialog-content"] {
-  font-family: var(--font-family-mono);
-}
-
-[data-slot="dialog-content"] button,
-[data-slot="dialog-content"] input,
-[data-slot="dialog-content"] label,
-[data-slot="dialog-content"] select,
-[data-slot="dialog-content"] textarea,
-[data-slot="dialog-content"] [data-slot="button"],
-[data-slot="dialog-content"] [data-slot="dialog-close"] {
   font-family: var(--font-family-base);
-}
-
-[data-slot="dialog-content"] .font-mono,
-[data-slot="dialog-content"] code,
-[data-slot="dialog-content"] pre,
-[data-slot="dialog-content"] textarea.font-mono,
-[data-slot="dialog-content"] input.font-mono {
-  font-family: var(--font-family-mono) !important;
+  font-weight: 500;
+  font-feature-settings: "ss01", "cv11";
 }
 
 .sr-only {

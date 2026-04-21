@@ -227,6 +227,9 @@ export const FileViewDialog = React.memo<{
                         margin: 0,
                         borderRadius: "0.5rem",
                         fontSize: "0.875rem",
+                        fontFamily: "var(--font-family-mono)",
+                        fontWeight: 500,
+                        fontFeatureSettings: '"ss01", "cv11"',
                       }}
                       showLineNumbers
                       wrapLines={true}
