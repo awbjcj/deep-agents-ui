@@ -34,6 +34,10 @@ function applyTheme(theme: Theme) {
 }
 
 function readInitialTheme(): Theme {
+  if (typeof document !== "undefined") {
+    const presetTheme = document.documentElement.dataset.theme;
+    if (presetTheme === "light" || presetTheme === "dark") return presetTheme;
+  }
   if (typeof window === "undefined") return "light";
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -48,27 +52,24 @@ function readInitialTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>(() => readInitialTheme());
 
   useEffect(() => {
-    const initial = readInitialTheme();
-    setThemeState(initial);
-    applyTheme(initial);
-  }, []);
-
-  const setTheme = useCallback((next: Theme) => {
-    setThemeState(next);
-    applyTheme(next);
+    applyTheme(theme);
     try {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      window.localStorage.setItem(STORAGE_KEY, theme);
     } catch {
       // ignore
     }
+  }, [theme]);
+
+  const setTheme = useCallback((next: Theme) => {
+    setThemeState(next);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [theme, setTheme]);
+    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>

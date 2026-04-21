@@ -8,7 +8,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,6 +21,11 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,9 +280,7 @@ export default function LoginPage() {
         style={{ color: "var(--color-text-tertiary)" }}
       >
         <span>Precision. Innovation. Safety.</span>
-        <span>
-          © {new Date().getFullYear()} Aptiv — Confidential
-        </span>
+        <span>{currentYear ? `© ${currentYear} Aptiv — Confidential` : "© Aptiv — Confidential"}</span>
       </div>
     </div>
   );

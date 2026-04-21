@@ -21,6 +21,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       className={cn(
         "group relative inline-flex h-9 w-16 items-center rounded-full border border-border bg-card px-1 shadow-sm",
         "transition-colors duration-300 ease-in-out hover:border-primary/40",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}
     >
@@ -34,20 +35,6 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         )}
       >
         {isDark ? <Moon size={14} /> : <Sun size={14} />}
-      </span>
-      <span className="ml-1 flex w-full justify-between px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <span
-          className={cn(
-            "transition-opacity duration-200",
-            isDark ? "opacity-0" : "opacity-0"
-          )}
-        />
-        <span
-          className={cn(
-            "transition-opacity duration-200",
-            isDark ? "opacity-0" : "opacity-0"
-          )}
-        />
       </span>
     </button>
   );

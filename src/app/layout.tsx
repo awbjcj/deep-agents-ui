@@ -1,7 +1,7 @@
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import { ThemedToaster } from "@/app/components/ThemedToaster";
 import "./globals.css";
 
 const themeInitScript = `
@@ -38,10 +38,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <NuqsAdapter>{children}</NuqsAdapter>
-            <Toaster
-              richColors
-              theme="system"
-            />
+            <ThemedToaster />
           </AuthProvider>
         </ThemeProvider>
       </body>
