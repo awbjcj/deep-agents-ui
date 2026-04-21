@@ -155,13 +155,79 @@
     --color-subagent-hover: #e6f0ef;
     --color-surface: #ffffff;
     --color-surface-alt: #f0f1ee;
-    --color-border: #e2e0dc;
-    --color-border-light: #ececea;
+    --color-border: #d6d4cf;
+    --color-border-light: #e4e2dd;
     --color-text-primary: #0a0a0a;
-    --color-text-secondary: #52514d;
-    --color-text-tertiary: #8a8a85;
+    --color-text-secondary: #3c3b37;
+    --color-text-tertiary: #6b6a65;
     --color-file-button: #ffffff;
     --color-file-button-hover: #f0f1ee;
+
+    /* Aliases expected by tailwind.config.mjs textColor/backgroundColor/borderColor */
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-tertiary: var(--color-text-tertiary);
+    --text-quaternary: #8a8a85;
+    --text-disabled: #b5b3ae;
+    --text-placeholder: #8a8a85;
+    --text-error: var(--color-error);
+    --text-warning: var(--color-warning);
+    --text-success: var(--color-success);
+    --text-purple: #6e3bb9;
+    --text-brand-primary: var(--color-primary);
+    --text-brand-secondary: var(--aptiv-turquoise-dark);
+    --text-brand-tertiary: var(--aptiv-slate);
+    --text-brand-disabled: #aeb8b8;
+    --text-status-green: var(--color-success);
+    --text-status-orange: var(--aptiv-orange);
+    --text-status-yellow: var(--color-warning);
+    --text-status-red: var(--color-error);
+    --text-button-primary: #ffffff;
+
+    --bg-primary: var(--color-background);
+    --bg-primary_hover: var(--color-surface-alt);
+    --bg-secondary: var(--color-surface);
+    --bg-secondary_hover: var(--color-surface-alt);
+    --bg-tertiary: var(--color-surface-alt);
+    --bg-quaternary: #e8e6e1;
+    --bg-brand-primary: var(--color-primary);
+    --bg-brand-primary_hover: var(--color-primary-hover);
+    --bg-brand-secondary: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    --bg-brand-tertiary: color-mix(in srgb, var(--color-primary) 6%, transparent);
+    --bg-purple: #efe6fb;
+    --bg-success-primary: color-mix(in srgb, var(--color-success) 12%, transparent);
+    --bg-success-secondary: color-mix(in srgb, var(--color-success) 20%, transparent);
+    --bg-success-strong: var(--color-success);
+    --bg-error-primary: color-mix(in srgb, var(--color-error) 12%, transparent);
+    --bg-error-secondary: color-mix(in srgb, var(--color-error) 20%, transparent);
+    --bg-error-strong: var(--color-error);
+    --bg-error-strong-hover: #b91c1c;
+    --bg-warning-primary: color-mix(in srgb, var(--color-warning) 14%, transparent);
+    --bg-warning-secondary: color-mix(in srgb, var(--color-warning) 22%, transparent);
+    --bg-warning-strong: var(--color-warning);
+
+    --border-primary: var(--color-border);
+    --border-secondary: var(--color-border-light);
+    --border-tertiary: #eceae5;
+    --border-strong: #b6b4af;
+    --border-error: color-mix(in srgb, var(--color-error) 40%, transparent);
+    --border-error-strong: var(--color-error);
+    --border-brand: var(--color-primary);
+    --border-brand-strong: var(--color-primary-dark);
+    --border-brand-subtle: color-mix(in srgb, var(--color-primary) 25%, transparent);
+    --border-warning: color-mix(in srgb, var(--color-warning) 45%, transparent);
+    --border-success: color-mix(in srgb, var(--color-success) 45%, transparent);
+    --border-purple: #c9a8f0;
+    --border-status-green: var(--color-success);
+    --border-status-orange: var(--aptiv-orange);
+    --border-status-yellow: var(--color-warning);
+    --border-status-red: var(--color-error);
+
+    --scrollbar-thumb: #c9c7c2;
+    --scrollbar-thumb-hover: #a8a6a1;
+
+    --white: #ffffff;
+    --black: #000000;
 
     /* Typography */
     --font-family-base: "Formular", -apple-system, BlinkMacSystemFont,
@@ -233,7 +299,7 @@
     --secondary: 60 6% 95%;
     --secondary-foreground: 0 0% 4%;
     --muted: 60 6% 95%;
-    --muted-foreground: 40 3% 40%;
+    --muted-foreground: 40 6% 28%;
     --accent: 180 39% 94%;
     --accent-foreground: 180 39% 20%;
     --destructive: 10 94% 54%;
@@ -274,15 +340,78 @@
       transparent 55%
     );
     --color-subagent-hover: #1a2928;
-    --color-surface: #151515;
-    --color-surface-alt: #1e1e1e;
-    --color-border: #2a2a2a;
-    --color-border-light: #1f1f1f;
+    --color-surface: #171717;
+    --color-surface-alt: #202020;
+    --color-border: #333333;
+    --color-border-light: #242424;
     --color-text-primary: #f5f5f4;
-    --color-text-secondary: #a8a8a3;
-    --color-text-tertiary: #6b6b66;
-    --color-file-button: #1a1a1a;
-    --color-file-button-hover: #232323;
+    --color-text-secondary: #c4c4bf;
+    --color-text-tertiary: #8d8d87;
+    --color-file-button: #1c1c1c;
+    --color-file-button-hover: #262626;
+
+    /* Aliases expected by tailwind.config.mjs textColor/backgroundColor/borderColor */
+    --text-primary: var(--color-text-primary);
+    --text-secondary: var(--color-text-secondary);
+    --text-tertiary: var(--color-text-tertiary);
+    --text-quaternary: #70706b;
+    --text-disabled: #4b4b47;
+    --text-placeholder: #6b6b66;
+    --text-error: var(--color-error);
+    --text-warning: var(--color-warning);
+    --text-success: var(--color-success);
+    --text-purple: #b088e0;
+    --text-brand-primary: var(--color-primary);
+    --text-brand-secondary: var(--aptiv-turquoise);
+    --text-brand-tertiary: var(--aptiv-slate);
+    --text-brand-disabled: #556a6a;
+    --text-status-green: var(--color-success);
+    --text-status-orange: var(--aptiv-orange);
+    --text-status-yellow: var(--color-warning);
+    --text-status-red: var(--color-error);
+    --text-button-primary: #0a0a0a;
+
+    --bg-primary: var(--color-background);
+    --bg-primary_hover: var(--color-surface-alt);
+    --bg-secondary: var(--color-surface);
+    --bg-secondary_hover: var(--color-surface-alt);
+    --bg-tertiary: var(--color-surface-alt);
+    --bg-quaternary: #2a2a2a;
+    --bg-brand-primary: var(--color-primary);
+    --bg-brand-primary_hover: var(--color-primary-hover);
+    --bg-brand-secondary: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    --bg-brand-tertiary: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    --bg-purple: #2a1e3d;
+    --bg-success-primary: color-mix(in srgb, var(--color-success) 18%, transparent);
+    --bg-success-secondary: color-mix(in srgb, var(--color-success) 28%, transparent);
+    --bg-success-strong: var(--color-success);
+    --bg-error-primary: color-mix(in srgb, var(--color-error) 18%, transparent);
+    --bg-error-secondary: color-mix(in srgb, var(--color-error) 28%, transparent);
+    --bg-error-strong: var(--color-error);
+    --bg-error-strong-hover: #ef4444;
+    --bg-warning-primary: color-mix(in srgb, var(--color-warning) 20%, transparent);
+    --bg-warning-secondary: color-mix(in srgb, var(--color-warning) 30%, transparent);
+    --bg-warning-strong: var(--color-warning);
+
+    --border-primary: var(--color-border);
+    --border-secondary: var(--color-border-light);
+    --border-tertiary: #1e1e1e;
+    --border-strong: #4a4a4a;
+    --border-error: color-mix(in srgb, var(--color-error) 55%, transparent);
+    --border-error-strong: var(--color-error);
+    --border-brand: var(--color-primary);
+    --border-brand-strong: #4fb4ae;
+    --border-brand-subtle: color-mix(in srgb, var(--color-primary) 35%, transparent);
+    --border-warning: color-mix(in srgb, var(--color-warning) 55%, transparent);
+    --border-success: color-mix(in srgb, var(--color-success) 55%, transparent);
+    --border-purple: #7d5abf;
+    --border-status-green: var(--color-success);
+    --border-status-orange: var(--aptiv-orange);
+    --border-status-yellow: var(--color-warning);
+    --border-status-red: var(--color-error);
+
+    --scrollbar-thumb: #3a3a3a;
+    --scrollbar-thumb-hover: #5a5a5a;
 
     /* Radix / Tailwind component vars (dark) */
     --background: 0 0% 4%;
@@ -296,7 +425,7 @@
     --secondary: 0 0% 12%;
     --secondary-foreground: 60 6% 85%;
     --muted: 0 0% 10%;
-    --muted-foreground: 40 3% 60%;
+    --muted-foreground: 40 6% 72%;
     --accent: 177 43% 15%;
     --accent-foreground: 177 43% 70%;
     --destructive: 0 70% 58%;
@@ -318,7 +447,7 @@ html,
 body {
   height: 100%;
   font-family: var(--font-family-base);
-  font-size: 1rem;
+  font-size: 15px;
   line-height: 1.55;
   color: var(--color-text-primary);
   background-color: var(--color-background);
@@ -327,6 +456,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11";
+}
+
+/* Laptop-friendly: keep body text at a comfortable 15px on ≤1440px
+   screens; bump to 16px on larger desktop displays. Using `body` only
+   (not `html`) preserves rem-based sizing for buttons, icons, and
+   layout throughout the app. */
+@media (min-width: 1600px) {
+  body {
+    font-size: 16px;
+  }
 }
 
 h1,
