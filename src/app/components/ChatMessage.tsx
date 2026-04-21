@@ -94,14 +94,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         <div
           className={cn(
             "min-w-0 max-w-full",
-            isUser ? "max-w-[70%]" : "w-full"
+            isUser ? "max-w-[76%]" : "w-full"
           )}
         >
           {hasContent && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
-                  "mt-4 overflow-hidden break-words text-sm font-medium leading-[150%]",
+                  "mt-4 overflow-hidden break-words text-base font-medium leading-[165%]",
                   isUser
                     ? "rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
                     : "text-primary"
@@ -113,7 +113,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 }
               >
                 {isUser ? (
-                  <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                  <p className="m-0 whitespace-pre-wrap break-words text-base leading-relaxed">
                     {messageContent}
                   </p>
                 ) : hasContent ? (

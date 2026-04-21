@@ -276,7 +276,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
         ref={scrollRef}
       >
         <div
-          className="mx-auto w-full max-w-[1024px] px-6 pb-6 pt-4"
+          className="mx-auto w-full max-w-[1120px] px-6 pb-6 pt-4"
           ref={contentRef}
         >
           {isThreadLoading ? (
@@ -333,7 +333,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
         <div
           className={cn(
             "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-background",
-            "mx-auto w-[calc(100%-32px)] max-w-[1024px] transition-colors duration-200 ease-in-out"
+            "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-colors duration-200 ease-in-out"
           )}
         >
           {(hasTasks || hasFiles) && (
@@ -553,7 +553,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={isLoading ? "Running..." : "Write your message..."}
-              className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-sm leading-7 text-primary outline-none placeholder:text-tertiary"
+              className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-primary outline-none placeholder:text-tertiary"
               rows={1}
             />
             <div className="flex justify-between gap-2 p-3">

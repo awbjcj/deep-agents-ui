@@ -17,7 +17,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
     return (
       <div
         className={cn(
-          "prose min-w-0 max-w-full overflow-hidden break-words text-sm leading-relaxed text-inherit [&_h1:first-child]:mt-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:font-semibold [&_h2:first-child]:mt-0 [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:font-semibold [&_h3:first-child]:mt-0 [&_h3]:mb-4 [&_h3]:mt-6 [&_h3]:font-semibold [&_h4:first-child]:mt-0 [&_h4]:mb-4 [&_h4]:mt-6 [&_h4]:font-semibold [&_h5:first-child]:mt-0 [&_h5]:mb-4 [&_h5]:mt-6 [&_h5]:font-semibold [&_h6:first-child]:mt-0 [&_h6]:mb-4 [&_h6]:mt-6 [&_h6]:font-semibold [&_p:last-child]:mb-0 [&_p]:mb-4",
+          "prose min-w-0 max-w-full overflow-hidden break-words text-base leading-7 text-inherit [&_h1:first-child]:mt-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:font-semibold [&_h2:first-child]:mt-0 [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:font-semibold [&_h3:first-child]:mt-0 [&_h3]:mb-4 [&_h3]:mt-6 [&_h3]:font-semibold [&_h4:first-child]:mt-0 [&_h4]:mb-4 [&_h4]:mt-6 [&_h4]:font-semibold [&_h5:first-child]:mt-0 [&_h5]:mb-4 [&_h5]:mt-6 [&_h5]:font-semibold [&_h6:first-child]:mt-0 [&_h6]:mb-4 [&_h6]:mt-6 [&_h6]:font-semibold [&_p:last-child]:mb-0 [&_p]:mb-4",
           className
         )}
       >
@@ -40,7 +40,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                   style={oneDark}
                   language={match[1]}
                   PreTag="div"
-                  className="max-w-full rounded-md text-sm"
+                  className="max-w-full rounded-md text-base"
                   wrapLines={true}
                   wrapLongLines={true}
                   lineProps={{
@@ -54,7 +54,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                     margin: 0,
                     maxWidth: "100%",
                     overflowX: "auto",
-                    fontSize: "0.875rem",
+                    fontSize: "1rem",
                     fontFamily: "var(--font-family-mono)",
                     fontWeight: 500,
                     fontFeatureSettings: '"ss01", "cv11"',
@@ -64,7 +64,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                 </SyntaxHighlighter>
               ) : (
                 <code
-                  className="bg-surface rounded-sm px-1 py-0.5 font-mono text-[0.9em]"
+                  className="bg-surface rounded-sm px-1 py-0.5 font-mono text-[0.95em]"
                   {...props}
                 >
                   {children}

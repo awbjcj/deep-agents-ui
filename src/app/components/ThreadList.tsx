@@ -82,8 +82,8 @@ function StatusFilterItem({
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
-      <p className="text-sm text-red-600">Failed to load threads</p>
-      <p className="mt-1 text-xs text-muted-foreground">{message}</p>
+      <p className="text-base text-red-600">Failed to load threads</p>
+      <p className="mt-1 text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }
@@ -105,7 +105,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <MessageSquare className="mb-2 h-12 w-12 text-gray-300" />
-      <p className="text-sm text-muted-foreground">No threads found</p>
+      <p className="text-base text-muted-foreground">No threads found</p>
     </div>
   );
 }
@@ -213,7 +213,7 @@ export function ThreadList({
     <div className="absolute inset-0 flex flex-col">
       {/* Header with title, filter, and close button */}
       <div className="grid flex-shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Threads</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Threads</h2>
         <div className="flex items-center gap-2">
           <Select
             value={statusFilter}
@@ -295,7 +295,7 @@ export function ThreadList({
                   key={group}
                   className="mb-4"
                 >
-                  <h4 className="m-0 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h4 className="m-0 px-3 py-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     {GROUP_LABELS[group]}
                   </h4>
                   <div className="flex flex-col gap-1">
@@ -316,16 +316,16 @@ export function ThreadList({
                         <div className="min-w-0 flex-1">
                           {/* Title + Timestamp Row */}
                           <div className="mb-1 flex items-center justify-between">
-                            <h3 className="truncate text-sm font-semibold">
+                            <h3 className="truncate text-base font-semibold">
                               {thread.title}
                             </h3>
-                            <span className="ml-2 flex-shrink-0 text-xs text-muted-foreground">
+                            <span className="ml-2 flex-shrink-0 text-sm text-muted-foreground">
                               {formatTime(thread.updatedAt)}
                             </span>
                           </div>
                           {/* Description + Status Row */}
                           <div className="flex items-center justify-between">
-                            <p className="flex-1 truncate text-sm text-muted-foreground">
+                            <p className="flex-1 truncate text-base text-muted-foreground">
                               {thread.description}
                             </p>
                             <div className="ml-2 flex-shrink-0">
