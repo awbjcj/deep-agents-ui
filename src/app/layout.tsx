@@ -1,28 +1,22 @@
-import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import "./globals.css";
 
-const syne = Syne({
-  subsets: ["latin"],
-  variable: "--font-syne",
-  display: "swap",
-});
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
+const themeInitScript = `
+(function () {
+  try {
+    var stored = localStorage.getItem('vsda_theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = stored === 'light' || stored === 'dark' ? stored : (prefersDark ? 'dark' : 'light');
+    var root = document.documentElement;
+    if (theme === 'dark') root.classList.add('dark');
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+  } catch (e) {}
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -34,14 +28,22 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
     >
-      <body
-        className={`${syne.variable} ${dmSans.variable} ${jetBrainsMono.variable}`}
-        suppressHydrationWarning
-      >
-        <AuthProvider>
-          <NuqsAdapter>{children}</NuqsAdapter>
-          <Toaster richColors theme="system" />
-        </AuthProvider>
+      <head>
+        <script
+          // Applies the persisted theme before React hydrates to avoid a flash of the wrong theme.
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+      </head>
+      <body suppressHydrationWarning>
+        <ThemeProvider>
+          <AuthProvider>
+            <NuqsAdapter>{children}</NuqsAdapter>
+            <Toaster
+              richColors
+              theme="system"
+            />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

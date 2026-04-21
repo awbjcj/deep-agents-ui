@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTheme } from "@/providers/ThemeProvider";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,6 +13,7 @@ import { useState } from "react";
 export default function LoginPage() {
   const router = useRouter();
   const { login, register } = useAuth();
+  const { theme } = useTheme();
 
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState("");
@@ -65,55 +68,96 @@ export default function LoginPage() {
           backgroundImage:
             "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
-          opacity: 0.6,
+          opacity: 0.55,
         }}
       />
 
       {/* Ambient primary glow */}
       <div
-        className="pointer-events-none absolute left-1/2 top-1/3 h-[600px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="pointer-events-none absolute left-1/2 top-1/3 h-[620px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
           background:
             "radial-gradient(circle, var(--color-primary) 0%, transparent 65%)",
-          opacity: 0.07,
+          opacity: theme === "dark" ? 0.14 : 0.07,
         }}
       />
 
+      {/* Ambient orange accent */}
+      <div
+        className="pointer-events-none absolute right-0 top-0 h-[360px] w-[360px] rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, var(--aptiv-orange) 0%, transparent 70%)",
+          opacity: theme === "dark" ? 0.08 : 0.04,
+        }}
+      />
+
+      {/* Top bar with Aptiv logo + theme toggle */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-8 py-6">
+        <img
+          src={
+            theme === "dark"
+              ? "/assets/aptiv_logo_white.svg"
+              : "/assets/aptiv_logo_color.svg"
+          }
+          alt="Aptiv"
+          className="h-6 w-auto"
+        />
+        <ThemeToggle />
+      </div>
+
       {/* Card */}
       <div
-        className="relative z-10 w-full max-w-[420px] rounded-2xl border p-10"
+        className="relative z-10 w-full max-w-[440px] rounded-2xl border p-10"
         style={{
           background: "var(--color-surface)",
           borderColor: "var(--color-border)",
           boxShadow:
-            "0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent), 0 24px 48px rgba(0,0,0,0.18)",
+            "0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent), 0 28px 64px rgba(0, 0, 0, 0.14)",
+          animation: "loginEntry 500ms cubic-bezier(.2,.8,.2,1)",
         }}
       >
         {/* Brand header */}
         <div className="mb-8">
+          <div className="mb-5 flex items-center gap-2">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: "var(--aptiv-orange)" }}
+            />
+            <span
+              className="text-[11px] font-bold uppercase tracking-[0.22em]"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Aptiv
+            </span>
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: "var(--aptiv-orange)" }}
+            />
+          </div>
           <p
-            className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em]"
-            style={{ color: "var(--color-primary)" }}
+            className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em]"
+            style={{ color: "var(--aptiv-orange)" }}
           >
             Vehicle System Data Analytics
           </p>
           <h1
-            className="text-3xl font-bold tracking-tight"
+            className="text-[32px] font-bold leading-[1.05] tracking-tight"
             style={{
               fontFamily: "var(--font-family-heading)",
               color: "var(--color-text-primary)",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.035em",
             }}
           >
             VSDA Deep Agent
           </h1>
           <p
-            className="mt-2 text-sm"
+            className="mt-3 text-sm"
             style={{ color: "var(--color-text-secondary)" }}
           >
             {isRegister
-              ? "Create your account to get started"
-              : "Sign in to your account"}
+              ? "Create your account to get started."
+              : "Sign in to your account."}
           </p>
         </div>
 
@@ -124,7 +168,7 @@ export default function LoginPage() {
           <div className="space-y-1.5">
             <Label
               htmlFor="username"
-              className="text-sm font-medium"
+              className="text-[13px] font-medium"
               style={{ color: "var(--color-text-primary)" }}
             >
               Username
@@ -143,7 +187,7 @@ export default function LoginPage() {
           <div className="space-y-1.5">
             <Label
               htmlFor="password"
-              className="text-sm font-medium"
+              className="text-[13px] font-medium"
               style={{ color: "var(--color-text-primary)" }}
             >
               Password
@@ -163,7 +207,7 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="confirmPassword"
-                className="text-sm font-medium"
+                className="text-[13px] font-medium"
                 style={{ color: "var(--color-text-primary)" }}
               >
                 Confirm Password
@@ -181,14 +225,14 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           <Button
             type="submit"
-            className="mt-2 w-full font-semibold"
+            className="mt-2 h-11 w-full rounded-lg text-sm font-semibold"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -223,6 +267,17 @@ export default function LoginPage() {
             {isRegister ? "Sign In" : "Register"}
           </button>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div
+        className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between px-8 py-5 text-[11px] uppercase tracking-[0.16em]"
+        style={{ color: "var(--color-text-tertiary)" }}
+      >
+        <span>Precision. Innovation. Safety.</span>
+        <span>
+          © {new Date().getFullYear()} Aptiv — Confidential
+        </span>
       </div>
     </div>
   );
