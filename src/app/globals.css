@@ -248,7 +248,9 @@
       "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-family-heading: "Formular", -apple-system, BlinkMacSystemFont,
       "Segoe UI", Arial, sans-serif;
-    --font-family-mono: "Formular", "SF Mono", Monaco, "Cascadia Code",
+    --font-family-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono",
+      Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-family-brand-mono: "Formular", "SF Mono", Monaco, "Cascadia Code",
       "Roboto Mono", Consolas, monospace;
 
     /* Font scale */
