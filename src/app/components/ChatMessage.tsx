@@ -101,7 +101,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
-                  "mt-4 overflow-hidden break-words text-sm font-normal leading-[150%]",
+                  "mt-4 overflow-hidden break-words text-sm font-medium leading-[150%]",
                   isUser
                     ? "rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
                     : "text-primary"

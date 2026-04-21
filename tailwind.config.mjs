@@ -53,17 +53,7 @@ export default {
         ],
       },
       fontFamily: {
-        mono: [
-          `"Fira Code"`,
-          `ui-monospace`,
-          `SFMono-Regular`,
-          `Menlo`,
-          `Monaco`,
-          `Consolas`,
-          `"Liberation Mono"`,
-          `"Courier New"`,
-          `monospace`,
-        ],
+        mono: ["var(--font-family-mono)"],
       },
       letterSpacing: {
         tighter: "-0.04em",
