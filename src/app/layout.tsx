@@ -1,10 +1,28 @@
-import { Inter } from "next/font/google";
+import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
 
 export default function RootLayout({
   children,
@@ -17,12 +35,12 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body
-        className={inter.className}
+        className={`${syne.variable} ${dmSans.variable} ${jetBrainsMono.variable}`}
         suppressHydrationWarning
       >
         <AuthProvider>
           <NuqsAdapter>{children}</NuqsAdapter>
-          <Toaster />
+          <Toaster richColors theme="system" />
         </AuthProvider>
       </body>
     </html>

@@ -13,24 +13,13 @@ import {
   EyeOff,
   CheckCircle,
   X,
-  LogOut,
-  User,
   Clock,
-  Shield,
 } from "lucide-react";
 import {
   apiGetTokens,
   apiUpdateTokens,
   UserTokens,
-  isAdmin,
-  apiGetRunMode,
-  apiUpdateRunMode,
-  apiListUsers,
-  apiUpdateUserRole,
-  AdminUser,
-  RunModeInfo,
 } from "@/lib/auth";
-import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 
 interface TokenManagementSidebarProps {
@@ -40,8 +29,6 @@ interface TokenManagementSidebarProps {
 export function TokenManagementSidebar({
   onClose,
 }: TokenManagementSidebarProps) {
-  const { user, logout } = useAuth();
-
   const [graphToken, setGraphToken] = useState("");
   const [jiraToken, setJiraToken] = useState("");
   // Track whether the user has edited each token field since load.
@@ -58,12 +45,6 @@ export function TokenManagementSidebar({
   const [isSaving, setIsSaving] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
   const [tokenMeta, setTokenMeta] = useState<UserTokens | null>(null);
-
-  // Admin state
-  const [runModeInfo, setRunModeInfo] = useState<RunModeInfo | null>(null);
-  const [isChangingRunMode, setIsChangingRunMode] = useState(false);
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
-  const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
 
   const fetchTokens = useCallback(async () => {
     try {
@@ -85,61 +66,6 @@ export function TokenManagementSidebar({
   useEffect(() => {
     fetchTokens();
   }, [fetchTokens]);
-
-  const fetchAdminData = useCallback(async () => {
-    if (!isAdmin(user)) return;
-    setIsLoadingAdmin(true);
-    try {
-      const [modeInfo, users] = await Promise.all([
-        apiGetRunMode(),
-        apiListUsers(),
-      ]);
-      setRunModeInfo(modeInfo);
-      setAdminUsers(users);
-    } catch {
-      toast.error("Failed to load admin data");
-    } finally {
-      setIsLoadingAdmin(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchAdminData();
-  }, [fetchAdminData]);
-
-  const handleRunModeChange = async (mode: "dev" | "pre" | "prod") => {
-    setIsChangingRunMode(true);
-    try {
-      const updated = await apiUpdateRunMode(mode);
-      setRunModeInfo(updated);
-      toast.success(`Run mode set to "${updated.run_mode}"`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update run mode");
-    } finally {
-      setIsChangingRunMode(false);
-    }
-  };
-
-  const handleRoleChange = async (
-    targetUserId: string,
-    role: "user" | "admin"
-  ) => {
-    if (targetUserId === user?.user_id && role !== "admin") {
-      toast.error("You cannot demote yourself");
-      return;
-    }
-    try {
-      const updated = await apiUpdateUserRole(targetUserId, role);
-      setAdminUsers((prev) =>
-        prev.map((u) =>
-          u.user_id === targetUserId ? { ...u, role: updated.role } : u
-        )
-      );
-      toast.success(`Updated ${updated.username} to "${updated.role}"`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update role");
-    }
-  };
 
   const handleSave = async () => {
     if (!graphDirty && !jiraDirty && !polarionDirty) return;
@@ -191,26 +117,6 @@ export function TokenManagementSidebar({
 
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-6 p-4">
-          {/* User info */}
-          <div className="rounded-lg border border-border bg-muted/50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2F6868] text-white">
-                <User className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-semibold">
-                  {user?.username}
-                </p>
-                <p className="truncate text-xs text-muted-foreground uppercase">
-                  Role: {user?.role || "user"}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  ID: {user?.user_id?.slice(0, 8)}...
-                </p>
-              </div>
-            </div>
-          </div>
-
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -219,10 +125,7 @@ export function TokenManagementSidebar({
             <>
               {/* Graph API Token */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="graphToken"
-                  className="text-sm font-medium"
-                >
+                <Label htmlFor="graphToken" className="text-sm font-medium">
                   Graph API Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -268,10 +171,7 @@ export function TokenManagementSidebar({
 
               {/* JIRA API Token */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="jiraToken"
-                  className="text-sm font-medium"
-                >
+                <Label htmlFor="jiraToken" className="text-sm font-medium">
                   JIRA API Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -365,7 +265,7 @@ export function TokenManagementSidebar({
               <Button
                 onClick={handleSave}
                 disabled={isSaving || (!graphDirty && !jiraDirty && !polarionDirty)}
-                className="w-full bg-[#2F6868] text-white hover:bg-[#2F6868]/90"
+                className="w-full"
               >
                 {isSaving ? (
                   <>
@@ -386,96 +286,6 @@ export function TokenManagementSidebar({
               </Button>
             </>
           )}
-
-          {/* Admin Panel */}
-          {isAdmin(user) && (
-            <div className="space-y-4 border-t border-border pt-4">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                  Admin
-                </h3>
-              </div>
-
-              {isLoadingAdmin ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <>
-                  {/* Run Mode */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Run Mode</Label>
-                    <select
-                      value={runModeInfo?.run_mode ?? ""}
-                      onChange={(e) =>
-                        handleRunModeChange(
-                          e.target.value as "dev" | "pre" | "prod"
-                        )
-                      }
-                      disabled={isChangingRunMode || !runModeInfo}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                      aria-label="Run mode"
-                    >
-                      <option value="dev">dev</option>
-                      <option value="pre">pre</option>
-                      <option value="prod">prod</option>
-                    </select>
-                    {runModeInfo?.last_updated_at && (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        Updated: {runModeInfo.last_updated_at}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* User Role Management */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">User Roles</Label>
-                    <div className="space-y-1.5">
-                      {adminUsers.map((u) => (
-                        <div
-                          key={u.user_id}
-                          className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
-                        >
-                          <span className="flex-1 truncate text-sm">
-                            {u.username}
-                          </span>
-                          <select
-                            value={u.role}
-                            onChange={(e) =>
-                              handleRoleChange(
-                                u.user_id,
-                                e.target.value as "user" | "admin"
-                              )
-                            }
-                            disabled={u.user_id === user?.user_id}
-                            className="rounded border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                            aria-label={`Role for ${u.username}`}
-                          >
-                            <option value="user">user</option>
-                            <option value="admin">admin</option>
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Logout */}
-          <div className="border-t border-border pt-4">
-            <Button
-              variant="outline"
-              className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={logout}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
         </div>
       </ScrollArea>
     </div>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/providers/AuthProvider";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,25 +54,81 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)]">
-      <div className="w-full max-w-md space-y-8 rounded-xl border border-border bg-card p-8 shadow-lg">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+    <div
+      className="relative flex min-h-screen items-center justify-center overflow-hidden"
+      style={{ background: "var(--color-background)" }}
+    >
+      {/* Dot-grid texture */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+          opacity: 0.6,
+        }}
+      />
+
+      {/* Ambient primary glow */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/3 h-[600px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, var(--color-primary) 0%, transparent 65%)",
+          opacity: 0.07,
+        }}
+      />
+
+      {/* Card */}
+      <div
+        className="relative z-10 w-full max-w-[420px] rounded-2xl border p-10"
+        style={{
+          background: "var(--color-surface)",
+          borderColor: "var(--color-border)",
+          boxShadow:
+            "0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent), 0 24px 48px rgba(0,0,0,0.18)",
+        }}
+      >
+        {/* Brand header */}
+        <div className="mb-8">
+          <p
+            className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em]"
+            style={{ color: "var(--color-primary)" }}
+          >
+            Vehicle System Data Analytics
+          </p>
+          <h1
+            className="text-3xl font-bold tracking-tight"
+            style={{
+              fontFamily: "var(--font-family-heading)",
+              color: "var(--color-text-primary)",
+              letterSpacing: "-0.03em",
+            }}
+          >
             VSDA Deep Agent
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p
+            className="mt-2 text-sm"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
             {isRegister
-              ? "Create a new account to get started"
+              ? "Create your account to get started"
               : "Sign in to your account"}
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-5"
+          className="space-y-4"
         >
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="username"
+              className="text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Username
+            </Label>
             <Input
               id="username"
               type="text"
@@ -84,8 +140,14 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="password"
+              className="text-sm font-medium"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
@@ -98,8 +160,14 @@ export default function LoginPage() {
           </div>
 
           {isRegister && (
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="confirmPassword"
+                className="text-sm font-medium"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                Confirm Password
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -113,20 +181,20 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full bg-[#2F6868] text-white hover:bg-[#2F6868]/90"
+            className="mt-2 w-full font-semibold"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isRegister ? "Creating account..." : "Signing in..."}
+                {isRegister ? "Creating account…" : "Signing in…"}
               </>
             ) : isRegister ? (
               "Create Account"
@@ -136,8 +204,8 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="text-center text-sm">
-          <span className="text-muted-foreground">
+        <div className="mt-6 text-center text-sm">
+          <span style={{ color: "var(--color-text-secondary)" }}>
             {isRegister
               ? "Already have an account? "
               : "Don't have an account? "}
@@ -149,7 +217,8 @@ export default function LoginPage() {
               setError("");
               setConfirmPassword("");
             }}
-            className="font-medium text-[#2F6868] hover:underline"
+            className="font-semibold transition-opacity hover:opacity-75"
+            style={{ color: "var(--color-primary)" }}
           >
             {isRegister ? "Sign In" : "Register"}
           </button>

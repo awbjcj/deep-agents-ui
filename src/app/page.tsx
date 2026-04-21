@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
+import { UserManagementSidebar } from "@/app/components/UserManagementSidebar";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { Settings, MessagesSquare, SquarePen, Key } from "lucide-react";
+import { Settings, MessagesSquare, SquarePen, Key, Users } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -42,6 +43,7 @@ function HomePageInner({
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [showTokenSidebar, setShowTokenSidebar] = useState(false);
+  const [showUserSidebar, setShowUserSidebar] = useState(false);
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -50,7 +52,6 @@ function HomePageInner({
       );
 
     if (isUUID) {
-      // We should try to fetch the assistant directly with this UUID
       try {
         const data = await client.assistants.get(config.assistantId);
         setAssistant(data);
@@ -70,8 +71,6 @@ function HomePageInner({
       }
     } else {
       try {
-        // We should try to list out the assistants for this graph, and then use the default one.
-        // TODO: Paginate this search, but 100 should be enough for graph name
         const assistants = await client.assistants.search({
           graphId: config.assistantId,
           limit: 100,
@@ -116,15 +115,30 @@ function HomePageInner({
         initialConfig={config}
       />
       <div className="flex h-screen flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border px-6">
+        {/* Header */}
+        <header className="relative flex h-16 flex-shrink-0 items-center justify-between border-b border-border px-6">
+          {/* Accent line along the top */}
+          <div
+            className="pointer-events-none absolute left-0 right-0 top-0 h-[2px]"
+            style={{
+              background:
+                "linear-gradient(90deg, var(--color-primary) 0%, transparent 55%)",
+            }}
+          />
+
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">VSDA Deep Agent</h1>
+            <h1
+              className="text-lg font-bold tracking-tight"
+              style={{ fontFamily: "var(--font-family-heading)" }}
+            >
+              VSDA Deep Agent
+            </h1>
             {!sidebar && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebar("1")}
-                className="rounded-md border border-border bg-card p-3 text-foreground hover:bg-accent"
+                className="rounded-md border border-border bg-card px-3 text-foreground hover:bg-accent"
               >
                 <MessagesSquare className="mr-2 h-4 w-4" />
                 Threads
@@ -136,12 +150,13 @@ function HomePageInner({
               </Button>
             )}
           </div>
+
           <div className="flex items-center gap-2">
             {user && (
               <span className="text-sm text-muted-foreground">
                 <span className="font-medium">{user.username}</span>
                 <span
-                  className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs uppercase"
+                  className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs uppercase tracking-wide"
                   aria-label={`Role: ${user.role}`}
                 >
                   {user.role}
@@ -152,6 +167,14 @@ function HomePageInner({
               <span className="font-medium">Agent:</span>{" "}
               {config.assistantId}
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowUserSidebar(!showUserSidebar)}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              User
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -169,11 +192,10 @@ function HomePageInner({
               Settings
             </Button>
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => setThreadId(null)}
               disabled={!threadId}
-              className="border-[#2F6868] bg-[#2F6868] text-white hover:bg-[#2F6868]/80"
             >
               <SquarePen className="mr-2 h-4 w-4" />
               New Thread
@@ -227,12 +249,29 @@ function HomePageInner({
               </ChatProvider>
             </ResizablePanel>
 
+            {showUserSidebar && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel
+                  id="user-management"
+                  order={3}
+                  defaultSize={25}
+                  minSize={20}
+                  className="relative min-w-[320px]"
+                >
+                  <UserManagementSidebar
+                    onClose={() => setShowUserSidebar(false)}
+                  />
+                </ResizablePanel>
+              </>
+            )}
+
             {showTokenSidebar && (
               <>
                 <ResizableHandle />
                 <ResizablePanel
                   id="token-management"
-                  order={3}
+                  order={4}
                   defaultSize={25}
                   minSize={20}
                   className="relative min-w-[320px]"
@@ -257,14 +296,12 @@ function HomePageContent() {
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
   }, [authLoading, user, router]);
 
-  // On mount, check for saved config, otherwise show config dialog
   useEffect(() => {
     const savedConfig = getConfig();
     if (savedConfig) {
@@ -278,7 +315,6 @@ function HomePageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If config changes, update the assistantId
   useEffect(() => {
     if (config && !assistantId) {
       setAssistantId(config.assistantId);
@@ -293,11 +329,10 @@ function HomePageContent() {
   const langsmithApiKey =
     config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
 
-  // Show loading while checking auth
   if (authLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Loading…</p>
       </div>
     );
   }
@@ -312,7 +347,7 @@ function HomePageContent() {
         />
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Welcome to Standalone Chat</h1>
+            <h1 className="text-2xl font-bold">Welcome to VSDA Deep Agent</h1>
             <p className="mt-2 text-muted-foreground">
               Configure your deployment to get started
             </p>
@@ -348,7 +383,7 @@ export default function HomePage() {
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Loading…</p>
         </div>
       }
     >

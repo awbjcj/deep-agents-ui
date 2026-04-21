@@ -251,3 +251,34 @@ export async function apiUpdateUserRole(
   }
   return res.json();
 }
+
+// --- Profile update ---
+
+export interface UpdateProfileData {
+  username?: string;
+  current_password?: string;
+  new_password?: string;
+}
+
+export interface UpdateProfileResult {
+  user_id: string;
+  username: string;
+  role: string;
+  access_token: string;
+}
+
+export async function apiUpdateProfile(
+  data: UpdateProfileData
+): Promise<UpdateProfileResult> {
+  const res = await apiFetch("/user/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to update profile")
+    );
+  }
+  return res.json();
+}

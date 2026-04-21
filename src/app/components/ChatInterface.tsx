@@ -436,7 +436,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                         >
                           <FileIcon size={16} />
                           Files (State)
-                          <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
+                          <span className="h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px] text-primary-foreground">
                             {Object.keys(files).length}
                           </span>
                         </button>
@@ -482,7 +482,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                         aria-expanded={metaOpen === "files"}
                       >
                         Files (State)
-                        <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
+                        <span className="h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px] text-primary-foreground">
                           {Object.keys(files).length}
                         </span>
                       </button>

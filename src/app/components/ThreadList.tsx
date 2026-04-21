@@ -32,10 +32,10 @@ const GROUP_LABELS = {
 } as const;
 
 const STATUS_COLORS: Record<ThreadItem["status"], string> = {
-  idle: "bg-green-500",
-  busy: "bg-blue-500",
-  interrupted: "bg-orange-500",
-  error: "bg-red-600",
+  idle: "bg-emerald-400",
+  busy: "bg-sky-400",
+  interrupted: "bg-amber-400",
+  error: "bg-rose-500",
 };
 
 function getThreadColor(status: ThreadItem["status"]): string {
@@ -71,7 +71,7 @@ function StatusFilterItem({
       />
       {label}
       {badge !== undefined && badge > 0 && (
-        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-bold leading-none text-white">
+        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-xs font-bold leading-none text-destructive-foreground">
           {badge}
         </span>
       )}
