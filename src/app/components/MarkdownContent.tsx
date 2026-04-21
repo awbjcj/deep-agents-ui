@@ -55,6 +55,9 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                     maxWidth: "100%",
                     overflowX: "auto",
                     fontSize: "0.875rem",
+                    fontFamily: "var(--font-family-mono)",
+                    fontWeight: 500,
+                    fontFeatureSettings: '"ss01", "cv11"',
                   }}
                 >
                   {String(children).replace(/\n$/, "")}
