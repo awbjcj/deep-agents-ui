@@ -233,44 +233,60 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
   const hasTasks = todos.length > 0;
   const hasFiles = Object.keys(files).length > 0;
 
-  // Parse out any action requests or review configs from the interrupt
-  const actionRequestsMap: Map<string, ActionRequest> | null = useMemo(() => {
-    const actionRequests =
-      interrupt?.value && (interrupt.value as any)["action_requests"];
-    if (!actionRequests) return new Map<string, ActionRequest>();
-    return new Map(actionRequests.map((ar: ActionRequest) => [ar.name, ar]));
+  const interruptData = useMemo(() => {
+    const value = interrupt?.value as Partial<ToolApprovalInterruptData> | undefined;
+    if (!value || !Array.isArray(value.action_requests)) {
+      return undefined;
+    }
+
+    return {
+      action_requests: value.action_requests,
+      review_configs: Array.isArray(value.review_configs)
+        ? value.review_configs
+        : [],
+    } satisfies ToolApprovalInterruptData;
   }, [interrupt]);
 
-  const reviewConfigsMap: Map<string, ReviewConfig> | null = useMemo(() => {
-    const reviewConfigs =
-      interrupt?.value && (interrupt.value as any)["review_configs"];
-    if (!reviewConfigs) return new Map<string, ReviewConfig>();
-    return new Map(
-      reviewConfigs.map((rc: any) => {
-        // Handle both snake_case (from backend) and camelCase field names
+  const actionRequests = interruptData?.action_requests ?? [];
+  const hasGroupedInterrupt = actionRequests.length > 1;
+  const singleActionRequest =
+    actionRequests.length === 1 ? actionRequests[0] : undefined;
+
+  const actionRequestsMap = useMemo(() => {
+    if (!singleActionRequest) return new Map<string, ActionRequest>();
+    return new Map([[singleActionRequest.name, singleActionRequest]]);
+  }, [singleActionRequest]);
+
+  const reviewConfigsMap = useMemo(() => {
+    const entries = (interruptData?.review_configs ?? [])
+      .map((rc: RawReviewConfig) => {
         const actionName = rc.actionName ?? rc.action_name;
+        if (!actionName) {
+          return null;
+        }
+
         const allowedDecisions = rc.allowedDecisions ?? rc.allowed_decisions;
         return [actionName, { actionName, allowedDecisions } as ReviewConfig];
       })
-    );
-  }, [interrupt]);
+      .filter(
+        (entry): entry is [string, ReviewConfig] => entry !== null
+      );
+
+    return new Map(entries);
+  }, [interruptData]);
 
   // Check if there are unmatched action requests (e.g. subagent tool interrupts)
   // that don't correspond to any tool call in the parent messages
   const unmatchedActionRequests = useMemo(() => {
-    if (!actionRequestsMap || actionRequestsMap.size === 0) return [];
+    if (hasGroupedInterrupt || !singleActionRequest) return [];
     const allToolCallNames = new Set<string>();
     processedMessages.forEach((data) => {
       data.toolCalls.forEach((tc: ToolCall) => allToolCallNames.add(tc.name));
     });
-    const unmatched: ActionRequest[] = [];
-    actionRequestsMap.forEach((ar, name) => {
-      if (!allToolCallNames.has(name)) {
-        unmatched.push(ar);
-      }
-    });
-    return unmatched;
-  }, [actionRequestsMap, processedMessages]);
+    return allToolCallNames.has(singleActionRequest.name)
+      ? []
+      : [singleActionRequest];
+  }, [hasGroupedInterrupt, processedMessages, singleActionRequest]);
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
