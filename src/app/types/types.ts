@@ -46,12 +46,35 @@ export interface ActionRequest {
   description?: string;
 }
 
+export type HumanDecisionType = "approve" | "edit" | "reject";
+
 export interface ReviewConfig {
   actionName: string;
-  allowedDecisions?: string[];
+  allowedDecisions?: HumanDecisionType[];
+}
+
+export interface RawReviewConfig {
+  actionName?: string;
+  allowedDecisions?: HumanDecisionType[];
+  action_name?: string;
+  allowed_decisions?: HumanDecisionType[];
+}
+
+export interface EditedAction {
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export type HumanDecision =
+  | { type: "approve" }
+  | { type: "reject"; message?: string }
+  | { type: "edit"; edited_action: EditedAction };
+
+export interface ResumeInterruptValue {
+  decisions: HumanDecision[];
 }
 
 export interface ToolApprovalInterruptData {
   action_requests: ActionRequest[];
-  review_configs?: ReviewConfig[];
+  review_configs?: RawReviewConfig[];
 }
