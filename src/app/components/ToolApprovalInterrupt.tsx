@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Check, X, Pencil } from "lucide-react";
-import type { ActionRequest, ReviewConfig } from "@/app/types/types";
+import type {
+  ActionRequest,
+  HumanDecision,
+  ResumeInterruptValue,
+  ReviewConfig,
+} from "@/app/types/types";
 import { cn } from "@/lib/utils";
 
 interface ToolApprovalInterruptProps {
   actionRequest: ActionRequest;
   reviewConfig?: ReviewConfig;
-  onResume: (value: any) => void;
+  onResume?: (value: ResumeInterruptValue) => void;
+  onDecisionChange?: (decision: HumanDecision) => void;
+  currentDecision?: HumanDecision;
   isLoading?: boolean;
 }
 
@@ -18,6 +25,8 @@ export function ToolApprovalInterrupt({
   actionRequest,
   reviewConfig,
   onResume,
+  onDecisionChange,
+  currentDecision,
   isLoading,
 }: ToolApprovalInterruptProps) {
   const [rejectionMessage, setRejectionMessage] = useState("");
@@ -31,53 +40,78 @@ export function ToolApprovalInterrupt({
     "edit",
   ];
 
+  useEffect(() => {
+    if (currentDecision?.type === "reject") {
+      setRejectionMessage(currentDecision.message ?? "");
+      return;
+    }
+
+    if (currentDecision?.type === "edit") {
+      setEditedArgs(JSON.parse(JSON.stringify(currentDecision.edited_action.args)));
+    }
+  }, [currentDecision]);
+
+  const decisionSummary = useMemo(() => {
+    if (!currentDecision) {
+      return null;
+    }
+
+    switch (currentDecision.type) {
+      case "approve":
+        return "Approve selected";
+      case "reject":
+        return currentDecision.message?.trim()
+          ? "Reject selected with explanation"
+          : "Reject selected";
+      case "edit":
+        return "Edited action saved";
+      default:
+        return null;
+    }
+  }, [currentDecision]);
+
+  const emitDecision = (decision: HumanDecision) => {
+    if (onDecisionChange) {
+      onDecisionChange(decision);
+      return;
+    }
+
+    onResume?.({ decisions: [decision] });
+  };
+
   const handleApprove = () => {
-    onResume({
-      decisions: [{ type: "approve" }],
-    });
+    setShowRejectionInput(false);
+    setIsEditing(false);
+    emitDecision({ type: "approve" });
   };
 
   const handleReject = () => {
     if (showRejectionInput) {
-      onResume({
-        decisions: [
-          {
-            type: "reject",
-            message: rejectionMessage.trim(),
-          },
-        ],
-      });
+      handleRejectConfirm();
     } else {
+      setIsEditing(false);
       setShowRejectionInput(true);
     }
   };
 
   const handleRejectConfirm = () => {
-    onResume({
-      decisions: [
-        {
-          type: "reject",
-          message: rejectionMessage.trim(),
-        },
-      ],
+    emitDecision({
+      type: "reject",
+      message: rejectionMessage.trim() || undefined,
     });
+    setShowRejectionInput(false);
   };
 
   const handleEdit = () => {
     if (isEditing) {
-      onResume({
-        decisions: [
-          {
-            type: "edit",
-            edited_action: {
-              name: actionRequest.name,
-              args: editedArgs,
-            },
-          },
-        ],
+      emitDecision({
+        type: "edit",
+        edited_action: {
+          name: actionRequest.name,
+          args: editedArgs,
+        },
       });
       setIsEditing(false);
-      setEditedArgs({});
     }
   };
 
@@ -122,6 +156,12 @@ export function ToolApprovalInterrupt({
         <p className="mb-3 text-sm text-muted-foreground">
           {actionRequest.description}
         </p>
+      )}
+
+      {decisionSummary && !isEditing && !showRejectionInput && (
+        <div className="mb-3 rounded-sm border border-border bg-background p-2 text-xs text-muted-foreground">
+          {decisionSummary}
+        </div>
       )}
 
       {/* Tool Info Card */}
