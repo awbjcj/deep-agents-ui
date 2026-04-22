@@ -18,12 +18,15 @@ import {
   FileIcon,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
+import { BatchToolApprovalInterrupt } from "@/app/components/BatchToolApprovalInterrupt";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
 import type {
   TodoItem,
   ToolCall,
   ActionRequest,
+  RawReviewConfig,
   ReviewConfig,
+  ToolApprovalInterruptData,
 } from "@/app/types/types";
 import { Assistant, Message } from "@langchain/langgraph-sdk";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
