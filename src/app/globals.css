@@ -157,15 +157,15 @@
     --color-error: #dc2626;
     --color-background: #f7f7f6;
     --color-background-gradient: radial-gradient(
-      circle at 0% 0%,
-      rgba(183, 209, 207, 0.35) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 100% 100%,
-      rgba(47, 104, 104, 0.08) 0%,
-      transparent 55%
-    );
+        circle at 0% 0%,
+        rgba(183, 209, 207, 0.35) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 100% 100%,
+        rgba(47, 104, 104, 0.08) 0%,
+        transparent 55%
+      );
     --color-subagent-hover: #e6f0ef;
     --color-surface: #ffffff;
     --color-surface-alt: #f0f1ee;
@@ -206,18 +206,46 @@
     --bg-quaternary: #e8e6e1;
     --bg-brand-primary: var(--color-primary);
     --bg-brand-primary_hover: var(--color-primary-hover);
-    --bg-brand-secondary: color-mix(in srgb, var(--color-primary) 12%, transparent);
-    --bg-brand-tertiary: color-mix(in srgb, var(--color-primary) 6%, transparent);
+    --bg-brand-secondary: color-mix(
+      in srgb,
+      var(--color-primary) 12%,
+      transparent
+    );
+    --bg-brand-tertiary: color-mix(
+      in srgb,
+      var(--color-primary) 6%,
+      transparent
+    );
     --bg-purple: #efe6fb;
-    --bg-success-primary: color-mix(in srgb, var(--color-success) 12%, transparent);
-    --bg-success-secondary: color-mix(in srgb, var(--color-success) 20%, transparent);
+    --bg-success-primary: color-mix(
+      in srgb,
+      var(--color-success) 12%,
+      transparent
+    );
+    --bg-success-secondary: color-mix(
+      in srgb,
+      var(--color-success) 20%,
+      transparent
+    );
     --bg-success-strong: var(--color-success);
     --bg-error-primary: color-mix(in srgb, var(--color-error) 12%, transparent);
-    --bg-error-secondary: color-mix(in srgb, var(--color-error) 20%, transparent);
+    --bg-error-secondary: color-mix(
+      in srgb,
+      var(--color-error) 20%,
+      transparent
+    );
     --bg-error-strong: var(--color-error);
     --bg-error-strong-hover: #b91c1c;
-    --bg-warning-primary: color-mix(in srgb, var(--color-warning) 14%, transparent);
-    --bg-warning-secondary: color-mix(in srgb, var(--color-warning) 22%, transparent);
+    --bg-warning-primary: color-mix(
+      in srgb,
+      var(--color-warning) 14%,
+      transparent
+    );
+    --bg-warning-secondary: color-mix(
+      in srgb,
+      var(--color-warning) 22%,
+      transparent
+    );
     --bg-warning-strong: var(--color-warning);
 
     --border-primary: var(--color-border);
@@ -228,7 +256,11 @@
     --border-error-strong: var(--color-error);
     --border-brand: var(--color-primary);
     --border-brand-strong: var(--color-primary-dark);
-    --border-brand-subtle: color-mix(in srgb, var(--color-primary) 25%, transparent);
+    --border-brand-subtle: color-mix(
+      in srgb,
+      var(--color-primary) 25%,
+      transparent
+    );
     --border-warning: color-mix(in srgb, var(--color-warning) 45%, transparent);
     --border-success: color-mix(in srgb, var(--color-success) 45%, transparent);
     --border-purple: #c9a8f0;
@@ -346,15 +378,15 @@
     --color-error: #f87171;
     --color-background: #0a0a0a;
     --color-background-gradient: radial-gradient(
-      circle at 0% 0%,
-      rgba(47, 104, 104, 0.18) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 100% 100%,
-      rgba(248, 64, 24, 0.06) 0%,
-      transparent 55%
-    );
+        circle at 0% 0%,
+        rgba(47, 104, 104, 0.18) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 100% 100%,
+        rgba(248, 64, 24, 0.06) 0%,
+        transparent 55%
+      );
     --color-subagent-hover: #1a2928;
     --color-surface: #171717;
     --color-surface-alt: #202020;
@@ -395,18 +427,46 @@
     --bg-quaternary: #2a2a2a;
     --bg-brand-primary: var(--color-primary);
     --bg-brand-primary_hover: var(--color-primary-hover);
-    --bg-brand-secondary: color-mix(in srgb, var(--color-primary) 20%, transparent);
-    --bg-brand-tertiary: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    --bg-brand-secondary: color-mix(
+      in srgb,
+      var(--color-primary) 20%,
+      transparent
+    );
+    --bg-brand-tertiary: color-mix(
+      in srgb,
+      var(--color-primary) 10%,
+      transparent
+    );
     --bg-purple: #2a1e3d;
-    --bg-success-primary: color-mix(in srgb, var(--color-success) 18%, transparent);
-    --bg-success-secondary: color-mix(in srgb, var(--color-success) 28%, transparent);
+    --bg-success-primary: color-mix(
+      in srgb,
+      var(--color-success) 18%,
+      transparent
+    );
+    --bg-success-secondary: color-mix(
+      in srgb,
+      var(--color-success) 28%,
+      transparent
+    );
     --bg-success-strong: var(--color-success);
     --bg-error-primary: color-mix(in srgb, var(--color-error) 18%, transparent);
-    --bg-error-secondary: color-mix(in srgb, var(--color-error) 28%, transparent);
+    --bg-error-secondary: color-mix(
+      in srgb,
+      var(--color-error) 28%,
+      transparent
+    );
     --bg-error-strong: var(--color-error);
     --bg-error-strong-hover: #ef4444;
-    --bg-warning-primary: color-mix(in srgb, var(--color-warning) 20%, transparent);
-    --bg-warning-secondary: color-mix(in srgb, var(--color-warning) 30%, transparent);
+    --bg-warning-primary: color-mix(
+      in srgb,
+      var(--color-warning) 20%,
+      transparent
+    );
+    --bg-warning-secondary: color-mix(
+      in srgb,
+      var(--color-warning) 30%,
+      transparent
+    );
     --bg-warning-strong: var(--color-warning);
 
     --border-primary: var(--color-border);
@@ -417,7 +477,11 @@
     --border-error-strong: var(--color-error);
     --border-brand: var(--color-primary);
     --border-brand-strong: #4fb4ae;
-    --border-brand-subtle: color-mix(in srgb, var(--color-primary) 35%, transparent);
+    --border-brand-subtle: color-mix(
+      in srgb,
+      var(--color-primary) 35%,
+      transparent
+    );
     --border-warning: color-mix(in srgb, var(--color-warning) 55%, transparent);
     --border-success: color-mix(in srgb, var(--color-success) 55%, transparent);
     --border-purple: #7d5abf;
@@ -472,7 +536,7 @@ body {
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "ss01", "cv11";
+  /* font-feature-settings: "ss01", "cv11"; */
 }
 
 /* Laptop-friendly: keep body text at a comfortable 15px on ≤1440px
@@ -503,12 +567,25 @@ b {
   font-weight: 700;
 }
 
-h1 { font-size: 1.875rem; letter-spacing: -0.03em; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.25rem; }
-h4 { font-size: 1.125rem; }
-h5 { font-size: 1rem; }
-h6 { font-size: 0.875rem; }
+h1 {
+  font-size: 1.875rem;
+  letter-spacing: -0.03em;
+}
+h2 {
+  font-size: 1.5rem;
+}
+h3 {
+  font-size: 1.25rem;
+}
+h4 {
+  font-size: 1.125rem;
+}
+h5 {
+  font-size: 1rem;
+}
+h6 {
+  font-size: 0.875rem;
+}
 
 p {
   margin-bottom: 1rem;
@@ -607,7 +684,7 @@ button {
 [data-slot="dialog-content"] {
   font-family: var(--font-family-base);
   font-weight: 500;
-  font-feature-settings: "ss01", "cv11";
+  /* font-feature-settings: "ss01", "cv11"; */
 }
 
 .sr-only {
@@ -655,8 +732,12 @@ button {
 
 /* ─── Animations ────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideIn {

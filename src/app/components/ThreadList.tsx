@@ -1,25 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { format } from "date-fns";
-import { Loader2, MessageSquare, X } from "lucide-react";
-import { useQueryState } from "nuqs";
+import type { ThreadItem } from "@/app/hooks/useThreads";
+import { useThreads } from "@/app/hooks/useThreads";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
   SelectGroup,
-  SelectLabel,
   SelectItem,
+  SelectLabel,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import type { ThreadItem } from "@/app/hooks/useThreads";
-import { useThreads } from "@/app/hooks/useThreads";
+import { format } from "date-fns";
+import { Loader2, MessageSquare, X } from "lucide-react";
+import { useQueryState } from "nuqs";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type StatusFilter = "all" | "idle" | "busy" | "interrupted" | "error";
 
@@ -316,7 +316,7 @@ export function ThreadList({
                         <div className="min-w-0 flex-1">
                           {/* Title + Timestamp Row */}
                           <div className="mb-1 flex items-center justify-between">
-                            <h3 className="truncate text-base font-semibold">
+                            <h3 className="truncate text-lg font-semibold">
                               {thread.title}
                             </h3>
                             <span className="ml-2 flex-shrink-0 text-sm text-muted-foreground">
@@ -325,7 +325,7 @@ export function ThreadList({
                           </div>
                           {/* Description + Status Row */}
                           <div className="flex items-center justify-between">
-                            <p className="flex-1 truncate text-base text-muted-foreground">
+                            <p className="flex-1 truncate text-sm text-muted-foreground">
                               {thread.description}
                             </p>
                             <div className="ml-2 flex-shrink-0">
