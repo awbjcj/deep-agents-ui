@@ -316,10 +316,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                     toolCalls={data.toolCalls}
                     isLoading={isLoading}
                     actionRequestsMap={
-                      isLastMessage ? actionRequestsMap : undefined
+                      isLastMessage && !hasGroupedInterrupt
+                        ? actionRequestsMap
+                        : undefined
                     }
                     reviewConfigsMap={
-                      isLastMessage ? reviewConfigsMap : undefined
+                      isLastMessage && !hasGroupedInterrupt
+                        ? reviewConfigsMap
+                        : undefined
                     }
                     ui={messageUi}
                     stream={stream}
@@ -328,9 +332,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                   />
                 );
               })}
+              {hasGroupedInterrupt && (
+                <BatchToolApprovalInterrupt
+                  actionRequests={actionRequests}
+                  reviewConfigsMap={reviewConfigsMap}
+                  onResume={resumeInterrupt}
+                  isLoading={isLoading}
+                />
+              )}
               {/* Render standalone interrupt UI for subagent tool calls
                   that don't appear in the parent message list */}
-              {unmatchedActionRequests.length > 0 && (
+              {!hasGroupedInterrupt && unmatchedActionRequests.length > 0 && (
                 <div className="mt-4 flex w-full flex-col gap-3">
                   {unmatchedActionRequests.map((ar) => (
                     <ToolApprovalInterrupt
