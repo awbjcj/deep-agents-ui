@@ -54,7 +54,9 @@ export function useChat({
     (overrides?: Record<string, unknown>) => {
       const base = activeAssistant?.config ?? {};
       const configurable = {
-        ...(base as Record<string, unknown>).configurable as Record<string, unknown> | undefined,
+        ...((base as Record<string, unknown>).configurable as
+          | Record<string, unknown>
+          | undefined),
         ...(username ? { system_username: username } : {}),
       };
       return {
@@ -92,6 +94,7 @@ export function useChat({
             messages: [...(prev.messages ?? []), newMessage],
           }),
           config: buildConfig({ recursion_limit: 100 }),
+          streamSubgraphs: true,
           ...(threadCreationMetadata
             ? { metadata: threadCreationMetadata }
             : {}),
@@ -120,11 +123,16 @@ export function useChat({
           ...(isRerunningSubagent
             ? { interruptAfter: ["tools"] }
             : { interruptBefore: ["tools"] }),
+          streamSubgraphs: true,
         });
       } else {
         stream.submit(
           { messages },
-          { config: buildConfig(), interruptBefore: ["tools"] }
+          {
+            config: buildConfig(),
+            interruptBefore: ["tools"],
+            streamSubgraphs: true,
+          }
         );
       }
     },
@@ -148,6 +156,7 @@ export function useChat({
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }
           : { interruptBefore: ["tools"] }),
+        streamSubgraphs: true,
       });
       // Update thread list when continuing stream
       onHistoryRevalidate?.();
