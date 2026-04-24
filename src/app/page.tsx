@@ -15,6 +15,11 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Settings, MessagesSquare, SquarePen, Key, Users, LogOut } from "lucide-react";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -173,7 +178,7 @@ function HomePageInner({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {user && (
               <span className="hidden items-center gap-2 text-sm text-muted-foreground md:inline-flex">
                 <span className="font-medium text-foreground">
@@ -187,59 +192,77 @@ function HomePageInner({
                 </span>
               </span>
             )}
-            <div className="hidden text-xs text-muted-foreground lg:inline-flex">
-              <span className="font-semibold uppercase tracking-[0.1em]">
-                Agent
-              </span>
-              <span className="ml-2 max-w-[160px] truncate font-mono text-xs text-foreground/80">
+            <div className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:inline-flex">
+              <span className="font-semibold uppercase tracking-[0.1em]">Agent</span>
+              <code className="max-w-[140px] truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground/70">
                 {config.assistantId}
-              </span>
+              </code>
             </div>
             <span className="mx-1 hidden h-6 w-px bg-border md:block" />
             <ThemeToggle />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowUserSidebar(!showUserSidebar)}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Users
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTokenSidebar(!showTokenSidebar)}
-            >
-              <Key className="mr-2 h-4 w-4" />
-              Tokens
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfigDialogOpen(true)}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
+            <span className="mx-0.5 hidden h-5 w-px bg-border md:block" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showUserSidebar ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setShowUserSidebar(!showUserSidebar)}
+                  aria-label="User Management"
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Users</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showTokenSidebar ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setShowTokenSidebar(!showTokenSidebar)}
+                  aria-label="Token Management"
+                >
+                  <Key className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Tokens</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setConfigDialogOpen(true)}
+                  aria-label="Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Settings</TooltipContent>
+            </Tooltip>
             <Button
               variant="default"
               size="sm"
               onClick={() => setThreadId(null)}
               disabled={!threadId}
             >
-              <SquarePen className="mr-2 h-4 w-4" />
+              <SquarePen className="h-4 w-4" />
               New Thread
             </Button>
             {user && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={logout}
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Sign out</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </header>

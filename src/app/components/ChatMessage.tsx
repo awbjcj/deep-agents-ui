@@ -103,7 +103,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 className={cn(
                   "mt-4 overflow-hidden break-words text-base font-medium leading-[165%]",
                   isUser
-                    ? "rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
+                    ? "rounded-2xl rounded-br-sm border border-border/60 px-4 py-3 text-foreground shadow-sm"
                     : "text-primary"
                 )}
                 style={
@@ -165,8 +165,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   </div>
                   {isSubAgentExpanded(subAgent.id) && (
                     <div className="w-full max-w-full">
-                      <div className="bg-surface border-border-light rounded-md border p-4">
-                        <h4 className="text-primary/70 mb-2 text-xs font-semibold uppercase tracking-wider">
+                      <div className="rounded-xl border border-border bg-muted/30 p-4">
+                        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           Input
                         </h4>
                         <div className="mb-4">
@@ -176,7 +176,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                         </div>
                         {subAgent.output && (
                           <>
-                            <h4 className="text-primary/70 mb-2 text-xs font-semibold uppercase tracking-wider">
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                               Output
                             </h4>
                             <MarkdownContent
