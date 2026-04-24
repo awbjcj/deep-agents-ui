@@ -16,10 +16,12 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useClient } from "@/providers/ClientProvider";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, X } from "lucide-react";
+import { Loader2, MessageSquare, Pencil, Trash2, X } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type StatusFilter = "all" | "idle" | "busy" | "interrupted" | "error";
 
@@ -111,7 +113,7 @@ function EmptyState() {
 }
 
 interface ThreadListProps {
-  onThreadSelect: (id: string) => void;
+  onThreadSelect: (id: string | null) => void;
   onMutateReady?: (mutate: () => void) => void;
   onClose?: () => void;
   onInterruptCountChange?: (count: number) => void;
@@ -125,8 +127,18 @@ export function ThreadList({
   onInterruptCountChange,
   userId,
 }: ThreadListProps) {
+  const client = useClient();
   const [currentThreadId] = useQueryState("threadId");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [editingOriginal, setEditingOriginal] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Tracks whether the current rename was cancelled via Escape, so onBlur doesn't save.
+  const cancelledRef = useRef(false);
 
   const threads = useThreads({
     status: statusFilter === "all" ? undefined : statusFilter,
@@ -134,16 +146,8 @@ export function ThreadList({
     userId,
   });
 
-  const flattened = useMemo(() => {
-    return threads.data?.flat() ?? [];
-  }, [threads.data]);
+  const flattened = useMemo(() => threads.data?.flat() ?? [], [threads.data]);
 
-  const isLoadingMore =
-    threads.size > 0 && threads.data?.[threads.size - 1] == null;
-  const isEmpty = threads.data?.at(0)?.length === 0;
-  const isReachingEnd = isEmpty || (threads.data?.at(-1)?.length ?? 0) < 20;
-
-  // Group threads by time and status
   const grouped = useMemo(() => {
     const now = new Date();
     const groups: Record<keyof typeof GROUP_LABELS, ThreadItem[]> = {

@@ -119,6 +119,12 @@ export function useThreads(props: {
           title = `Thread ${thread.thread_id.slice(0, 8)}`;
         }
 
+        const customName = (thread.metadata as Record<string, unknown>)
+          ?.custom_name;
+        if (typeof customName === "string" && customName) {
+          title = customName;
+        }
+
         return {
           id: thread.thread_id,
           updatedAt: new Date(thread.updated_at),
