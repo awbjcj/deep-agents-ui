@@ -82,8 +82,8 @@ function StatusFilterItem({
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
-      <p className="text-base text-red-600">Failed to load threads</p>
-      <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm font-medium text-destructive">Failed to load threads</p>
+      <p className="mt-1 text-xs text-muted-foreground">{message}</p>
     </div>
   );
 }
@@ -104,8 +104,8 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
-      <MessageSquare className="mb-2 h-12 w-12 text-gray-300" />
-      <p className="text-base text-muted-foreground">No threads found</p>
+      <MessageSquare className="mb-3 h-8 w-8 text-muted-foreground/30" />
+      <p className="text-sm text-muted-foreground">No threads found</p>
     </div>
   );
 }
@@ -295,7 +295,7 @@ export function ThreadList({
                   key={group}
                   className="mb-4"
                 >
-                  <h4 className="m-0 px-3 py-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  <h4 className="m-0 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70">
                     {GROUP_LABELS[group]}
                   </h4>
                   <div className="flex flex-col gap-1">
@@ -305,33 +305,33 @@ export function ThreadList({
                         type="button"
                         onClick={() => onThreadSelect(thread.id)}
                         className={cn(
-                          "grid w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors duration-200",
+                          "grid w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors duration-150",
                           "hover:bg-accent",
                           currentThreadId === thread.id
-                            ? "border border-primary bg-accent hover:bg-accent"
+                            ? "border border-primary/60 bg-accent hover:bg-accent"
                             : "border border-transparent bg-transparent"
                         )}
                         aria-current={currentThreadId === thread.id}
                       >
                         <div className="min-w-0 flex-1">
                           {/* Title + Timestamp Row */}
-                          <div className="mb-1 flex items-center justify-between">
-                            <h3 className="truncate text-lg font-semibold">
+                          <div className="mb-0.5 flex items-center justify-between gap-2">
+                            <h3 className="truncate text-sm font-semibold leading-snug">
                               {thread.title}
                             </h3>
-                            <span className="ml-2 flex-shrink-0 text-sm text-muted-foreground">
+                            <span className="flex-shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
                               {formatTime(thread.updatedAt)}
                             </span>
                           </div>
                           {/* Description + Status Row */}
-                          <div className="flex items-center justify-between">
-                            <p className="flex-1 truncate text-sm text-muted-foreground">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="flex-1 truncate text-xs text-muted-foreground">
                               {thread.description}
                             </p>
-                            <div className="ml-2 flex-shrink-0">
+                            <div className="flex-shrink-0">
                               <div
                                 className={cn(
-                                  "h-2 w-2 rounded-full",
+                                  "h-1.5 w-1.5 rounded-full",
                                   getThreadColor(thread.status)
                                 )}
                               />

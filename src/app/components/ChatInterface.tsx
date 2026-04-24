@@ -363,8 +363,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
       <div className="flex-shrink-0 bg-background">
         <div
           className={cn(
-            "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-background",
-            "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-colors duration-200 ease-in-out"
+            "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background",
+            "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-all duration-200 ease-in-out",
+            "focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10"
           )}
         >
           {(hasTasks || hasFiles) && (
@@ -587,27 +588,25 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
               className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-primary outline-none placeholder:text-tertiary"
               rows={1}
             />
-            <div className="flex justify-between gap-2 p-3">
-              <div className="flex justify-end gap-2">
-                <Button
-                  type={isLoading ? "button" : "submit"}
-                  variant={isLoading ? "destructive" : "default"}
-                  onClick={isLoading ? stopStream : handleSubmit}
-                  disabled={!isLoading && (submitDisabled || !input.trim())}
-                >
-                  {isLoading ? (
-                    <>
-                      <Square size={14} />
-                      <span>Stop</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUp size={18} />
-                      <span>Send</span>
-                    </>
-                  )}
-                </Button>
-              </div>
+            <div className="flex justify-end gap-2 p-3">
+              <Button
+                type={isLoading ? "button" : "submit"}
+                variant={isLoading ? "destructive" : "default"}
+                onClick={isLoading ? stopStream : handleSubmit}
+                disabled={!isLoading && (submitDisabled || !input.trim())}
+              >
+                {isLoading ? (
+                  <>
+                    <Square size={14} />
+                    <span>Stop</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowUp size={18} />
+                    <span>Send</span>
+                  </>
+                )}
+              </Button>
             </div>
           </form>
         </div>
