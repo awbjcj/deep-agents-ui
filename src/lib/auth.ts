@@ -78,7 +78,11 @@ async function apiFetch(
   if (user?.access_token) {
     headers["Authorization"] = `Bearer ${user.access_token}`;
   }
-  return fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    clearAuthUser();
+  }
+  return res;
 }
 
 function extractErrorMessage(detail: unknown, fallback: string): string {
