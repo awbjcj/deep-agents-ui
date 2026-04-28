@@ -1,7 +1,9 @@
+export type Role = "user" | "developer" | "admin";
+
 export interface AuthUser {
   user_id: string;
   username: string;
-  role: string;
+  role: Role;
   access_token: string;
 }
 
@@ -178,7 +180,7 @@ export function isAdmin(user: AuthUser | null): boolean {
 export interface UserProfile {
   user_id: string;
   username: string;
-  role: string;
+  role: Role;
   has_graph_api_token: boolean;
   has_jira_api_token: boolean;
 }
@@ -191,41 +193,12 @@ export async function apiGetProfile(): Promise<UserProfile> {
   return res.json();
 }
 
-// --- Run mode ---
-
-export interface RunModeInfo {
-  run_mode: string;
-  last_updated_at: string;
-}
-
-export async function apiGetRunMode(): Promise<RunModeInfo> {
-  const res = await apiFetch("/run-mode");
-  if (!res.ok) {
-    throw new Error("Failed to fetch run mode");
-  }
-  return res.json();
-}
-
-export async function apiUpdateRunMode(
-  run_mode: "dev" | "pre" | "prod"
-): Promise<RunModeInfo> {
-  const res = await apiFetch("/run-mode", {
-    method: "PUT",
-    body: JSON.stringify({ run_mode }),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to update run mode");
-  }
-  return res.json();
-}
-
 // --- Admin: user management ---
 
 export interface AdminUser {
   user_id: string;
   username: string;
-  role: string;
+  role: Role;
 }
 
 export async function apiListUsers(): Promise<AdminUser[]> {
@@ -239,7 +212,7 @@ export async function apiListUsers(): Promise<AdminUser[]> {
 
 export async function apiUpdateUserRole(
   userId: string,
-  role: "user" | "admin"
+  role: Role
 ): Promise<AdminUser> {
   const res = await apiFetch(`/admin/users/${userId}/role`, {
     method: "PUT",
@@ -250,6 +223,118 @@ export async function apiUpdateUserRole(
     throw new Error((data as { detail?: string }).detail || "Failed to update role");
   }
   return res.json();
+}
+
+// --- Tier model allowlist ---
+
+export interface TierModelEntry {
+  provider: string;
+  model: string;
+}
+
+export interface TierAllowlist {
+  tier: Role;
+  models: TierModelEntry[];
+}
+
+export async function apiGetTierModels(tier: Role): Promise<TierAllowlist> {
+  const res = await apiFetch(`/admin/tier-models/${tier}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch tier models");
+  }
+  return res.json();
+}
+
+export async function apiGetAllowedModels(): Promise<{ models: TierModelEntry[] }> {
+  const res = await apiFetch("/user/allowed-models");
+  if (!res.ok) {
+    throw new Error("Failed to fetch allowed models");
+  }
+  return res.json();
+}
+
+export async function apiSetTierModels(
+  tier: Role,
+  models: TierModelEntry[]
+): Promise<TierAllowlist> {
+  const res = await apiFetch(`/admin/tier-models/${tier}`, {
+    method: "PUT",
+    body: JSON.stringify({ models }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to set tier models");
+  }
+  return res.json();
+}
+
+// --- Per-user model selection ---
+
+export interface UserModelSelection {
+  provider: string | null;
+  model: string | null;
+}
+
+export async function apiGetUserModel(): Promise<UserModelSelection> {
+  const res = await apiFetch("/user/model");
+  if (!res.ok) {
+    throw new Error("Failed to fetch user model");
+  }
+  return res.json();
+}
+
+export async function apiSetUserModel(
+  provider: string,
+  model: string
+): Promise<UserModelSelection> {
+  const res = await apiFetch("/user/model", {
+    method: "PUT",
+    body: JSON.stringify({ provider, model }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to set user model");
+  }
+  return res.json();
+}
+
+// --- Admin destructive ops ---
+
+export async function apiDeleteUser(userId: string): Promise<void> {
+  const res = await apiFetch(`/admin/users/${userId}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to delete user");
+  }
+}
+
+export interface TempPassword {
+  user_id: string;
+  username: string;
+  temporary_password: string;
+}
+
+export async function apiResetPassword(userId: string): Promise<TempPassword> {
+  const res = await apiFetch(`/admin/users/${userId}/reset-password`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to reset password");
+  }
+  return res.json();
+}
+
+export async function apiResetAllPasswords(): Promise<TempPassword[]> {
+  const res = await apiFetch("/admin/users/reset-all-passwords", {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to reset passwords");
+  }
+  const data: { resets: TempPassword[] } = await res.json();
+  return data.resets;
 }
 
 // --- Profile update ---
@@ -263,7 +348,7 @@ export interface UpdateProfileData {
 export interface UpdateProfileResult {
   user_id: string;
   username: string;
-  role: string;
+  role: Role;
   access_token: string;
 }
 

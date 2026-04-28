@@ -5,38 +5,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Users,
   X,
   LogOut,
   User,
   Shield,
-  Clock,
   Loader2,
   Eye,
   EyeOff,
   Save,
   CheckCircle,
+  Trash2,
+  KeyRound,
+  Download,
 } from "lucide-react";
 import {
   isAdmin,
-  apiGetRunMode,
-  apiUpdateRunMode,
   apiListUsers,
   apiUpdateUserRole,
   apiUpdateProfile,
+  apiGetTierModels,
+  apiSetTierModels,
+  apiDeleteUser,
+  apiResetPassword,
+  apiResetAllPasswords,
   AdminUser,
-  RunModeInfo,
+  TierModelEntry,
+  Role,
 } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
-import { formatTimestamp } from "@/app/utils/utils";
 import { toast } from "sonner";
+import { ModelSelector } from "./ModelSelector";
 
 interface UserManagementSidebarProps {
   onClose: () => void;
 }
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+const ROLES: Role[] = ["user", "developer", "admin"];
 
 export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const { user, logout, updateUser } = useAuth();
@@ -59,21 +67,30 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const passwordSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Admin state ---
-  const [runModeInfo, setRunModeInfo] = useState<RunModeInfo | null>(null);
-  const [isChangingRunMode, setIsChangingRunMode] = useState(false);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [tierAllowlists, setTierAllowlists] = useState<Record<Role, TierModelEntry[]>>({
+    user: [],
+    developer: [],
+    admin: [],
+  });
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
 
   const fetchAdminData = useCallback(async () => {
     if (!isAdmin(user)) return;
     setIsLoadingAdmin(true);
     try {
-      const [modeInfo, users] = await Promise.all([
-        apiGetRunMode(),
+      const [users, userAllowlist, developerAllowlist, adminAllowlist] = await Promise.all([
         apiListUsers(),
+        apiGetTierModels("user"),
+        apiGetTierModels("developer"),
+        apiGetTierModels("admin"),
       ]);
-      setRunModeInfo(modeInfo);
       setAdminUsers(users);
+      setTierAllowlists({
+        user: userAllowlist.models,
+        developer: developerAllowlist.models,
+        admin: adminAllowlist.models,
+      });
     } catch {
       toast.error("Failed to load admin data");
     } finally {
@@ -106,20 +123,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       ? "Username may only contain letters, digits, underscores, hyphens, and dots"
       : "";
 
-  const handleRunModeChange = async (mode: "dev" | "pre" | "prod") => {
-    setIsChangingRunMode(true);
-    try {
-      const updated = await apiUpdateRunMode(mode);
-      setRunModeInfo(updated);
-      toast.success(`Run mode set to "${updated.run_mode}"`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update run mode");
-    } finally {
-      setIsChangingRunMode(false);
-    }
-  };
-
-  const handleRoleChange = async (targetUserId: string, role: "user" | "admin") => {
+  const handleRoleChange = async (targetUserId: string, role: Role) => {
     if (targetUserId === user?.user_id && role !== "admin") {
       toast.error("You cannot demote yourself");
       return;
@@ -134,6 +138,80 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       toast.success(`Updated ${updated.username} to "${updated.role}"`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update role");
+    }
+  };
+
+  const handleDeleteUser = async (targetUser: AdminUser) => {
+    if (targetUser.user_id === user?.user_id) return;
+    if (!confirm(`Delete user ${targetUser.username}? This cannot be undone.`)) return;
+
+    try {
+      await apiDeleteUser(targetUser.user_id);
+      setAdminUsers((prev) => prev.filter((u) => u.user_id !== targetUser.user_id));
+      toast.success(`Deleted ${targetUser.username}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    }
+  };
+
+  const handleResetPassword = async (targetUser: AdminUser) => {
+    try {
+      const reset = await apiResetPassword(targetUser.user_id);
+
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        await navigator.clipboard.writeText(reset.temporary_password);
+        toast.success("Temporary password copied to clipboard");
+        return;
+      }
+
+      const content = `username\ttemporary_password\n${reset.username}\t${reset.temporary_password}\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `temp-password-${reset.username}.txt`;
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      toast.success(
+        "Temporary password reset; downloaded a file containing the temporary password"
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reset password");
+    }
+  };
+
+  const handleResetAllPasswords = async () => {
+    if (!confirm("Reset passwords for all non-admin users?")) return;
+
+    try {
+      const resets = await apiResetAllPasswords();
+      const rows = ["username\ttemporary_password"].concat(
+        resets.map((reset) => `${reset.username}\t${reset.temporary_password}`)
+      );
+      const blob = new Blob([rows.join("\n")], { type: "text/tab-separated-values" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "temp-passwords.tsv";
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      toast.success(`Reset ${resets.length} password(s); file downloaded`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reset passwords");
     }
   };
 
@@ -247,6 +325,14 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
               </div>
             </div>
           </div>
+
+          {/* Model selection */}
+          {user?.role && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Model</h3>
+              <ModelSelector />
+            </div>
+          )}
 
           {/* Change Username */}
           <div className="space-y-3">
@@ -426,36 +512,6 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 </div>
               ) : (
                 <>
-                  {/* Run Mode */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Run Mode</Label>
-                    <select
-                      value={runModeInfo?.run_mode ?? ""}
-                      onChange={(e) =>
-                        handleRunModeChange(e.target.value as "dev" | "pre" | "prod")
-                      }
-                      disabled={isChangingRunMode || !runModeInfo}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                      aria-label="Run mode"
-                    >
-                      <option value="dev">dev</option>
-                      <option value="pre">pre</option>
-                      <option value="prod">prod</option>
-                    </select>
-                    {runModeInfo?.last_updated_at && (
-                      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="font-medium text-muted-foreground">Updated</span>
-                        <time
-                          className="font-mono tabular-nums"
-                          dateTime={runModeInfo.last_updated_at}
-                        >
-                          {formatTimestamp(runModeInfo.last_updated_at)}
-                        </time>
-                      </p>
-                    )}
-                  </div>
-
                   {/* User Role Management */}
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">User Roles</Label>
@@ -463,25 +519,77 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                       {adminUsers.map((u) => (
                         <div
                           key={u.user_id}
-                          className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                          className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2"
                         >
-                          <span className="flex-1 truncate text-sm">{u.username}</span>
-                          <select
-                            value={u.role}
-                            onChange={(e) =>
-                              handleRoleChange(u.user_id, e.target.value as "user" | "admin")
-                            }
-                            disabled={u.user_id === user?.user_id}
-                            className="rounded border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                            aria-label={`Role for ${u.username}`}
-                          >
-                            <option value="user">user</option>
-                            <option value="admin">admin</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <span className="flex-1 truncate text-sm">{u.username}</span>
+                            <select
+                              value={u.role}
+                              onChange={(e) =>
+                                handleRoleChange(u.user_id, e.target.value as Role)
+                              }
+                              disabled={u.user_id === user?.user_id}
+                              className="rounded border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                              aria-label={`Role for ${u.username}`}
+                            >
+                              {ROLES.map((role) => (
+                                <option key={role} value={role}>
+                                  {role}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResetPassword(u)}
+                              className="h-8 flex-1 px-2 text-xs"
+                            >
+                              <KeyRound className="h-3.5 w-3.5" />
+                              Reset PW
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteUser(u)}
+                              disabled={u.user_id === user?.user_id}
+                              className="h-8 flex-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
+
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <h4 className="text-sm font-semibold">Tier Model Allowlists</h4>
+                    {ROLES.map((role) => (
+                      <TierAllowlistEditor
+                        key={role}
+                        tier={role}
+                        entries={tierAllowlists[role]}
+                        onSaved={(next) =>
+                          setTierAllowlists((prev) => ({ ...prev, [role]: next }))
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={handleResetAllPasswords}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Reset all non-admin passwords
+                  </Button>
                 </>
               )}
             </div>
@@ -500,6 +608,92 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           </div>
         </div>
       </ScrollArea>
+    </div>
+  );
+}
+
+function TierAllowlistEditor({
+  tier,
+  entries,
+  onSaved,
+}: {
+  tier: Role;
+  entries: TierModelEntry[];
+  onSaved: (next: TierModelEntry[]) => void;
+}) {
+  const [text, setText] = useState(
+    entries.map((entry) => `${entry.provider}:${entry.model}`).join("\n")
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setText(entries.map((entry) => `${entry.provider}:${entry.model}`).join("\n"));
+  }, [entries]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const parsed = text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const separatorIndex = line.indexOf(":");
+          const provider = line.slice(0, separatorIndex).trim();
+          const model = line.slice(separatorIndex + 1).trim();
+
+          if (separatorIndex <= 0 || !provider || !model) {
+            throw new Error(`Invalid model entry: ${line}`);
+          }
+
+          return { provider, model };
+        });
+
+      const updated = await apiSetTierModels(tier, parsed);
+      onSaved(updated.models);
+      toast.success(`${tier} tier allowlist saved`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save allowlist");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label
+        htmlFor={`tier-allowlist-${tier}`}
+        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        {tier}
+      </Label>
+      <Textarea
+        id={`tier-allowlist-${tier}`}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={Math.max(2, entries.length + 1)}
+        placeholder="provider:model (one per line)"
+        className="min-h-[72px] font-mono text-xs"
+      />
+      <Button
+        type="button"
+        size="sm"
+        onClick={handleSave}
+        disabled={isSaving}
+        className="w-full"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Save className="mr-2 h-4 w-4" />
+            Save {tier} allowlist
+          </>
+        )}
+      </Button>
     </div>
   );
 }
