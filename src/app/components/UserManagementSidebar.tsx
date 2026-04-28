@@ -157,12 +157,33 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const handleResetPassword = async (targetUser: AdminUser) => {
     try {
       const reset = await apiResetPassword(targetUser.user_id);
-      try {
-        await navigator.clipboard?.writeText(reset.temporary_password);
-        toast.success(`Temp password copied: ${reset.temporary_password}`);
-      } catch {
-        toast.success(`Temp password: ${reset.temporary_password}`);
+
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        await navigator.clipboard.writeText(reset.temporary_password);
+        toast.success("Temporary password copied to clipboard");
+        return;
       }
+
+      const content = `username\ttemporary_password\n${reset.username}\t${reset.temporary_password}\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `temp-password-${reset.username}.txt`;
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      toast.success(
+        "Temporary password reset; downloaded a file containing the temporary password"
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset password");
     }
@@ -181,8 +202,13 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       const link = document.createElement("a");
       link.href = url;
       link.download = "temp-passwords.tsv";
-      link.click();
-      URL.revokeObjectURL(url);
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
       toast.success(`Reset ${resets.length} password(s); file downloaded`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset passwords");
@@ -304,7 +330,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           {user?.role && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">Model</h3>
-              <ModelSelector role={(user.role as Role) ?? "user"} />
+              <ModelSelector />
             </div>
           )}
 

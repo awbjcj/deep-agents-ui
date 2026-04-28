@@ -245,6 +245,14 @@ export async function apiGetTierModels(tier: Role): Promise<TierAllowlist> {
   return res.json();
 }
 
+export async function apiGetAllowedModels(): Promise<{ models: TierModelEntry[] }> {
+  const res = await apiFetch("/user/allowed-models");
+  if (!res.ok) {
+    throw new Error("Failed to fetch allowed models");
+  }
+  return res.json();
+}
+
 export async function apiSetTierModels(
   tier: Role,
   models: TierModelEntry[]
@@ -294,7 +302,7 @@ export async function apiSetUserModel(
 
 export async function apiDeleteUser(userId: string): Promise<void> {
   const res = await apiFetch(`/admin/users/${userId}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 204) {
+  if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error((data as { detail?: string }).detail || "Failed to delete user");
   }
