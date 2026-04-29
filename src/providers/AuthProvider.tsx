@@ -2,28 +2,38 @@
 
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
   ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
 import {
+  AUTH_KEY,
   AuthUser,
+  RegisterInitResponse,
+  apiGetProfile,
+  apiLogin,
+  apiRegisterInit,
+  apiRegisterVerify,
+  clearAuthUser,
   getAuthUser,
   saveAuthUser,
-  clearAuthUser,
-  apiLogin,
-  apiRegister,
-  apiGetProfile,
-  AUTH_KEY,
 } from "@/lib/auth";
 
 interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  registerInit: (payload: {
+    username: string;
+    email: string;
+    password: string;
+  }) => Promise<RegisterInitResponse>;
+  registerVerify: (payload: {
+    pending_registration_id: string;
+    verification_code: string;
+  }) => Promise<void>;
   logout: () => void;
   updateUser: (user: AuthUser) => void;
 }
@@ -40,22 +50,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
-    // Optimistically restore from localStorage so the UI appears immediately,
-    // then confirm the role from the server in case it changed since last login.
     setUser(stored);
     apiGetProfile()
       .then((profile) => {
-        const updated: AuthUser = { ...stored, role: profile.role };
+        const updated: AuthUser = {
+          ...stored,
+          role: profile.role,
+          email: profile.email,
+        };
         saveAuthUser(updated);
         setUser(updated);
       })
       .catch(() => {
-        // Network error — keep the stored role; the backend will enforce access.
+        // Keep the stored role; protected backend routes still enforce access.
       })
       .finally(() => setIsLoading(false));
   }, []);
 
-  // Sync React state when auth is cleared (e.g. token expiry in getAuthUser)
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === AUTH_KEY && e.newValue === null) {
@@ -68,15 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const authUser = await apiLogin(username, password);
-    // apiLogin already calls saveAuthUser — only update React state here
     setUser(authUser);
   }, []);
 
-  const register = useCallback(async (username: string, password: string) => {
-    const authUser = await apiRegister(username, password);
-    // apiRegister already calls saveAuthUser — only update React state here
-    setUser(authUser);
-  }, []);
+  const registerInit = useCallback(
+    async (payload: { username: string; email: string; password: string }) =>
+      apiRegisterInit(payload),
+    [],
+  );
+
+  const registerVerify = useCallback(
+    async (payload: { pending_registration_id: string; verification_code: string }) => {
+      const authUser = await apiRegisterVerify(payload);
+      setUser(authUser);
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     clearAuthUser();
@@ -89,7 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        registerInit,
+        registerVerify,
+        logout,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
