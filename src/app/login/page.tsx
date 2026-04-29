@@ -34,6 +34,21 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentYear, setCurrentYear] = useState<number | null>(null);
 
+  const headline =
+    mode === "register"
+      ? "Register"
+      : mode === "verify"
+        ? "Verify email"
+        : "Sign in";
+  const supportingCopy =
+    mode === "register"
+      ? "Use your Aptiv email to request access."
+      : mode === "verify"
+        ? `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
+            expiresInMinutes ?? 15
+          } minutes.`
+        : "Use your Aptiv credentials to continue.";
+
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
   }, []);
@@ -337,7 +352,7 @@ export default function LoginPage() {
                 {mode === "verify" && "Verifying..."}
               </>
             ) : mode === "login" ? (
-              "Sign In"
+              "Sign in"
             ) : mode === "register" ? (
               "Send Verification Code"
             ) : (
@@ -381,7 +396,7 @@ export default function LoginPage() {
                 className="font-semibold transition-opacity hover:opacity-75"
                 style={{ color: "var(--color-primary)" }}
               >
-                {mode === "register" ? "Sign In" : "Register"}
+                {mode === "register" ? "Sign in" : "Register"}
               </button>
             </>
           )}
