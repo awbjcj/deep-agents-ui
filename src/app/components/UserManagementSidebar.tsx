@@ -26,6 +26,7 @@ import {
   apiListUsers,
   apiUpdateUserRole,
   apiUpdateProfile,
+  apiGetProfile,
   apiGetTierModels,
   apiSetTierModels,
   apiDeleteUser,
@@ -44,6 +45,7 @@ interface UserManagementSidebarProps {
 }
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+const APTIV_EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@aptiv\.com$/i;
 const ROLES: Role[] = ["user", "developer", "admin"];
 
 export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
@@ -54,6 +56,13 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const [isSavingUsername, setIsSavingUsername] = useState(false);
   const [usernameSaved, setUsernameSaved] = useState(false);
   const usernameSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --- Change email ---
+  const [profileEmail, setProfileEmail] = useState<string>(user?.email ?? "");
+  const [newEmail, setNewEmail] = useState("");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
+  const emailSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Change password ---
   const [currentPassword, setCurrentPassword] = useState("");
@@ -103,9 +112,28 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   }, [fetchAdminData]);
 
   useEffect(() => {
+    let active = true;
+    apiGetProfile()
+      .then((profile) => {
+        if (active) {
+          setProfileEmail(profile.email ?? "");
+        }
+      })
+      .catch(() => {
+        // Profile fetch failures are surfaced by protected API calls elsewhere.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (usernameSavedTimeoutRef.current) {
         clearTimeout(usernameSavedTimeoutRef.current);
+      }
+      if (emailSavedTimeoutRef.current) {
+        clearTimeout(emailSavedTimeoutRef.current);
       }
       if (passwordSavedTimeoutRef.current) {
         clearTimeout(passwordSavedTimeoutRef.current);
@@ -121,6 +149,14 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       ? "Username must be at least 3 characters"
       : !USERNAME_PATTERN.test(trimmedUsername)
       ? "Username may only contain letters, digits, underscores, hyphens, and dots"
+      : "";
+
+  const trimmedEmail = newEmail.trim().toLowerCase();
+  const emailValidationError =
+    trimmedEmail.length === 0
+      ? ""
+      : !APTIV_EMAIL_PATTERN.test(trimmedEmail)
+      ? "Email must be a valid @aptiv.com address"
       : "";
 
   const handleRoleChange = async (targetUserId: string, role: Role) => {
@@ -157,12 +193,33 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const handleResetPassword = async (targetUser: AdminUser) => {
     try {
       const reset = await apiResetPassword(targetUser.user_id);
-      try {
-        await navigator.clipboard?.writeText(reset.temporary_password);
-        toast.success(`Temp password copied: ${reset.temporary_password}`);
-      } catch {
-        toast.success(`Temp password: ${reset.temporary_password}`);
+
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        await navigator.clipboard.writeText(reset.temporary_password);
+        toast.success("Temporary password copied to clipboard");
+        return;
       }
+
+      const content = `username\ttemporary_password\n${reset.username}\t${reset.temporary_password}\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `temp-password-${reset.username}.txt`;
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      toast.success(
+        "Temporary password reset; downloaded a file containing the temporary password"
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset password");
     }
@@ -181,8 +238,13 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       const link = document.createElement("a");
       link.href = url;
       link.download = "temp-passwords.tsv";
-      link.click();
-      URL.revokeObjectURL(url);
+      try {
+        document.body.appendChild(link);
+        link.click();
+      } finally {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
       toast.success(`Reset ${resets.length} password(s); file downloaded`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset passwords");
@@ -198,6 +260,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         user_id: result.user_id,
         username: result.username,
         role: result.role,
+        email: result.email ?? user?.email,
         access_token: result.access_token,
       });
       setNewUsername("");
@@ -214,6 +277,36 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       toast.error(err instanceof Error ? err.message : "Failed to update username");
     } finally {
       setIsSavingUsername(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    if (!trimmedEmail || trimmedEmail === profileEmail || emailValidationError) return;
+    setIsSavingEmail(true);
+    try {
+      const result = await apiUpdateProfile({ email: trimmedEmail });
+      updateUser({
+        user_id: result.user_id,
+        username: result.username,
+        role: result.role,
+        email: result.email ?? trimmedEmail,
+        access_token: result.access_token,
+      });
+      setProfileEmail(result.email ?? trimmedEmail);
+      setNewEmail("");
+      setEmailSaved(true);
+      toast.success("Email updated successfully");
+      if (emailSavedTimeoutRef.current) {
+        clearTimeout(emailSavedTimeoutRef.current);
+      }
+      emailSavedTimeoutRef.current = setTimeout(() => {
+        setEmailSaved(false);
+        emailSavedTimeoutRef.current = null;
+      }, 2000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update email");
+    } finally {
+      setIsSavingEmail(false);
     }
   };
 
@@ -240,6 +333,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         user_id: result.user_id,
         username: result.username,
         role: result.role,
+        email: result.email ?? user?.email,
         access_token: result.access_token,
       });
       setCurrentPassword("");
@@ -293,6 +387,11 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 <p className="truncate text-xs text-muted-foreground uppercase">
                   Role: {user?.role || "user"}
                 </p>
+                {profileEmail && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {profileEmail}
+                  </p>
+                )}
                 <p className="truncate text-xs text-muted-foreground">
                   ID: {user?.user_id?.slice(0, 8)}...
                 </p>
@@ -304,7 +403,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           {user?.role && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">Model</h3>
-              <ModelSelector role={(user.role as Role) ?? "user"} />
+              <ModelSelector />
             </div>
           )}
 
@@ -351,6 +450,54 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 <>
                   <Save className="mr-2 h-4 w-4" />
                   Save Username
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Change Email */}
+          <div className="space-y-3 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">Aptiv Email</h3>
+            <div className="space-y-1.5">
+              <Label htmlFor="newEmail" className="text-sm font-medium">
+                Current: {profileEmail || "Not set"}
+              </Label>
+              <Input
+                id="newEmail"
+                type="email"
+                placeholder={profileEmail || "first.last@aptiv.com"}
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                autoComplete="email"
+              />
+              {emailValidationError && (
+                <p className="text-xs text-destructive">{emailValidationError}</p>
+              )}
+            </div>
+            <Button
+              onClick={handleSaveEmail}
+              disabled={
+                isSavingEmail ||
+                !trimmedEmail ||
+                trimmedEmail === profileEmail ||
+                !!emailValidationError
+              }
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isSavingEmail ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : emailSaved ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Email
                 </>
               )}
             </Button>
