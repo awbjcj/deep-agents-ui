@@ -7,22 +7,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
-  Role,
   TierModelEntry,
-  apiGetTierModels,
+  apiGetAllowedModels,
   apiGetUserModel,
   apiSetUserModel,
 } from "@/lib/auth";
-
-interface ModelSelectorProps {
-  role: Role;
-}
 
 function modelKey(entry: TierModelEntry): string {
   return `${entry.provider}:${entry.model}`;
 }
 
-export function ModelSelector({ role }: ModelSelectorProps) {
+export function ModelSelector() {
   const [models, setModels] = useState<TierModelEntry[]>([]);
   const [selected, setSelected] = useState("");
   const [savedSelection, setSavedSelection] = useState("");
@@ -33,7 +28,7 @@ export function ModelSelector({ role }: ModelSelectorProps) {
     let isMounted = true;
     setIsLoading(true);
 
-    Promise.all([apiGetTierModels(role), apiGetUserModel()])
+    Promise.all([apiGetAllowedModels(), apiGetUserModel()])
       .then(([allowlist, current]) => {
         if (!isMounted) return;
         const currentKey =
@@ -58,7 +53,7 @@ export function ModelSelector({ role }: ModelSelectorProps) {
     return () => {
       isMounted = false;
     };
-  }, [role]);
+  }, []);
 
   const selectedEntry = useMemo(
     () => models.find((entry) => modelKey(entry) === selected),
