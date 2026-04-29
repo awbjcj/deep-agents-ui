@@ -4,16 +4,18 @@ import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
 import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
+import { AccountMenu } from "@/app/components/AccountMenu";
+import { AdminSidebar } from "@/app/components/AdminSidebar";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
+import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
-import { UserManagementSidebar } from "@/app/components/UserManagementSidebar";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
-import { Settings, MessagesSquare, SquarePen, Key, Users, LogOut } from "lucide-react";
+import { Cpu, Key, MessagesSquare, Settings, Shield, SquarePen } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -42,7 +44,7 @@ function HomePageInner({
   handleSaveConfig,
 }: HomePageInnerProps) {
   const client = useClient();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
@@ -50,8 +52,9 @@ function HomePageInner({
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
+  const [showAdminSidebar, setShowAdminSidebar] = useState(false);
+  const [showModelSidebar, setShowModelSidebar] = useState(false);
   const [showTokenSidebar, setShowTokenSidebar] = useState(false);
-  const [showUserSidebar, setShowUserSidebar] = useState(false);
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -124,7 +127,7 @@ function HomePageInner({
       />
       <div className="flex h-screen flex-col">
         {/* Header */}
-        <header className="relative flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
+        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
@@ -179,48 +182,56 @@ function HomePageInner({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {user && (
-              <span className="hidden items-center gap-2 text-sm text-muted-foreground md:inline-flex">
-                <span className="font-medium text-foreground">
-                  {user.username}
-                </span>
-                <span
-                  className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
-                  aria-label={`Role: ${user.role}`}
-                >
-                  {user.role}
-                </span>
-              </span>
-            )}
             <div className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:inline-flex">
               <span className="font-semibold uppercase tracking-[0.1em]">Agent</span>
-              <code className="max-w-[140px] truncate rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground/70">
+              <span className="max-w-[140px] truncate font-mono text-[11px] text-foreground/60">
                 {config.assistantId}
-              </code>
+              </span>
             </div>
             <span className="mx-1 hidden h-6 w-px bg-border md:block" />
             <ThemeToggle />
             <span className="mx-0.5 hidden h-5 w-px bg-border md:block" />
+            {user?.role === "admin" && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowAdminSidebar(!showAdminSidebar)}
+                    aria-label="Admin"
+                    aria-pressed={showAdminSidebar}
+                    className={showAdminSidebar ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
+                  >
+                    <Shield className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Admin</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={showUserSidebar ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="icon"
-                  onClick={() => setShowUserSidebar(!showUserSidebar)}
-                  aria-label="User Management"
+                  onClick={() => setShowModelSidebar(!showModelSidebar)}
+                  aria-label="Models"
+                  aria-pressed={showModelSidebar}
+                  className={showModelSidebar ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
                 >
-                  <Users className="h-4 w-4" />
+                  <Cpu className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Users</TooltipContent>
+              <TooltipContent>Models</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={showTokenSidebar ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="icon"
                   onClick={() => setShowTokenSidebar(!showTokenSidebar)}
-                  aria-label="Token Management"
+                  aria-label="Token management"
+                  aria-pressed={showTokenSidebar}
+                  className={showTokenSidebar ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
                 >
                   <Key className="h-4 w-4" />
                 </Button>
@@ -249,21 +260,7 @@ function HomePageInner({
               <SquarePen className="h-4 w-4" />
               New Thread
             </Button>
-            {user && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={logout}
-                    aria-label="Sign out"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Sign out</TooltipContent>
-              </Tooltip>
-            )}
+            <AccountMenu />
           </div>
         </header>
 
@@ -313,19 +310,32 @@ function HomePageInner({
               </ChatProvider>
             </ResizablePanel>
 
-            {showUserSidebar && (
+            {showAdminSidebar && (
               <>
                 <ResizableHandle />
                 <ResizablePanel
-                  id="user-management"
+                  id="admin"
                   order={3}
                   defaultSize={25}
                   minSize={20}
                   className="relative min-w-[320px]"
                 >
-                  <UserManagementSidebar
-                    onClose={() => setShowUserSidebar(false)}
-                  />
+                  <AdminSidebar onClose={() => setShowAdminSidebar(false)} />
+                </ResizablePanel>
+              </>
+            )}
+
+            {showModelSidebar && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel
+                  id="models"
+                  order={4}
+                  defaultSize={25}
+                  minSize={20}
+                  className="relative min-w-[320px]"
+                >
+                  <ModelSidebar onClose={() => setShowModelSidebar(false)} />
                 </ResizablePanel>
               </>
             )}
@@ -335,7 +345,7 @@ function HomePageInner({
                 <ResizableHandle />
                 <ResizablePanel
                   id="token-management"
-                  order={4}
+                  order={5}
                   defaultSize={25}
                   minSize={20}
                   className="relative min-w-[320px]"
