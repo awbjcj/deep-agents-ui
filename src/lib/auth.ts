@@ -274,9 +274,19 @@ export interface TierModelEntry {
   model: string;
 }
 
+export interface ModelEntry extends TierModelEntry {
+  supports_effort: boolean;
+  efforts: string[];
+  supports_thinking: boolean;
+}
+
 export interface TierAllowlist {
   tier: Role;
   models: TierModelEntry[];
+}
+
+export interface AllowedModelsResponse {
+  models: ModelEntry[];
 }
 
 export async function apiGetTierModels(tier: Role): Promise<TierAllowlist> {
@@ -287,7 +297,7 @@ export async function apiGetTierModels(tier: Role): Promise<TierAllowlist> {
   return res.json();
 }
 
-export async function apiGetAllowedModels(): Promise<{ models: TierModelEntry[] }> {
+export async function apiGetAllowedModels(): Promise<AllowedModelsResponse> {
   const res = await apiFetch("/user/allowed-models");
   if (!res.ok) {
     throw new Error("Failed to fetch allowed models");
@@ -310,11 +320,29 @@ export async function apiSetTierModels(
   return res.json();
 }
 
+export async function apiSetAllTierModels(payload: {
+  user: TierModelEntry[];
+  developer: TierModelEntry[];
+  admin: TierModelEntry[];
+}): Promise<Record<Role, TierModelEntry[]>> {
+  const res = await apiFetch("/admin/tier-models", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to save tier models");
+  }
+  return res.json();
+}
+
 // --- Per-user model selection ---
 
 export interface UserModelSelection {
   provider: string | null;
   model: string | null;
+  effort: string | null;
+  thinking: boolean | null;
 }
 
 export async function apiGetUserModel(): Promise<UserModelSelection> {
@@ -325,13 +353,39 @@ export async function apiGetUserModel(): Promise<UserModelSelection> {
   return res.json();
 }
 
+export async function apiSetUserModel(payload: {
+  provider: string;
+  model: string;
+  effort: string | null;
+  thinking: boolean | null;
+}): Promise<UserModelSelection>;
 export async function apiSetUserModel(
   provider: string,
   model: string
+): Promise<UserModelSelection>;
+export async function apiSetUserModel(
+  payloadOrProvider:
+    | string
+    | {
+        provider: string;
+        model: string;
+        effort: string | null;
+        thinking: boolean | null;
+      },
+  model?: string
 ): Promise<UserModelSelection> {
+  const payload =
+    typeof payloadOrProvider === "string"
+      ? {
+          provider: payloadOrProvider,
+          model: model ?? "",
+          effort: null,
+          thinking: null,
+        }
+      : payloadOrProvider;
   const res = await apiFetch("/user/model", {
     method: "PUT",
-    body: JSON.stringify({ provider, model }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
