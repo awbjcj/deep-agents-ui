@@ -730,6 +730,14 @@ button {
   color: var(--aptiv-orange);
 }
 
+.aptiv-rule {
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin: 6px 0 12px;
+  background: var(--aptiv-orange);
+}
+
 /* ─── Animations ────────────────────────────────────────────────────── */
 @keyframes fadeIn {
   from {
