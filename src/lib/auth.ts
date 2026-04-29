@@ -4,6 +4,7 @@ export interface AuthUser {
   user_id: string;
   username: string;
   role: Role;
+  email?: string | null;
   access_token: string;
 }
 
@@ -78,7 +79,11 @@ async function apiFetch(
   if (user?.access_token) {
     headers["Authorization"] = `Bearer ${user.access_token}`;
   }
-  return fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    clearAuthUser();
+  }
+  return res;
 }
 
 function extractErrorMessage(detail: unknown, fallback: string): string {
@@ -90,27 +95,62 @@ function extractErrorMessage(detail: unknown, fallback: string): string {
   return fallback;
 }
 
-export async function apiRegister(
-  username: string,
-  password: string
-): Promise<AuthUser> {
-  const res = await apiFetch("/auth/register", {
+export interface RegisterInitResponse {
+  pending_registration_id: string;
+  email: string;
+  expires_in_minutes: number;
+}
+
+export async function apiRegisterInit(payload: {
+  username: string;
+  email: string;
+  password: string;
+}): Promise<RegisterInitResponse> {
+  const res = await apiFetch("/auth/register/init", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(extractErrorMessage(data.detail, "Registration failed"));
+  }
+  return res.json();
+}
+
+export async function apiRegisterVerify(payload: {
+  pending_registration_id: string;
+  verification_code: string;
+}): Promise<AuthUser> {
+  const res = await apiFetch("/auth/register/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(data.detail, "Verification failed"));
   }
   const data = await res.json();
   const user: AuthUser = {
     user_id: data.user_id,
     username: data.username,
     role: data.role,
+    email: data.email,
     access_token: data.access_token,
   };
   saveAuthUser(user);
   return user;
+}
+
+export async function apiForgotPassword(email: string): Promise<{ sent: boolean }> {
+  const res = await apiFetch("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(data.detail, "Could not send reset email"));
+  }
+  return res.json();
 }
 
 export async function apiLogin(
@@ -130,6 +170,7 @@ export async function apiLogin(
     user_id: data.user_id,
     username: data.username,
     role: data.role,
+    email: data.email,
     access_token: data.access_token,
   };
   saveAuthUser(user);
@@ -181,6 +222,7 @@ export interface UserProfile {
   user_id: string;
   username: string;
   role: Role;
+  email?: string | null;
   has_graph_api_token: boolean;
   has_jira_api_token: boolean;
 }
@@ -245,6 +287,14 @@ export async function apiGetTierModels(tier: Role): Promise<TierAllowlist> {
   return res.json();
 }
 
+export async function apiGetAllowedModels(): Promise<{ models: TierModelEntry[] }> {
+  const res = await apiFetch("/user/allowed-models");
+  if (!res.ok) {
+    throw new Error("Failed to fetch allowed models");
+  }
+  return res.json();
+}
+
 export async function apiSetTierModels(
   tier: Role,
   models: TierModelEntry[]
@@ -294,7 +344,7 @@ export async function apiSetUserModel(
 
 export async function apiDeleteUser(userId: string): Promise<void> {
   const res = await apiFetch(`/admin/users/${userId}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 204) {
+  if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error((data as { detail?: string }).detail || "Failed to delete user");
   }
@@ -333,6 +383,7 @@ export async function apiResetAllPasswords(): Promise<TempPassword[]> {
 
 export interface UpdateProfileData {
   username?: string;
+  email?: string;
   current_password?: string;
   new_password?: string;
 }
@@ -341,6 +392,7 @@ export interface UpdateProfileResult {
   user_id: string;
   username: string;
   role: Role;
+  email?: string | null;
   access_token: string;
 }
 
