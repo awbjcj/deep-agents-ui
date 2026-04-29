@@ -4,6 +4,7 @@ export interface AuthUser {
   user_id: string;
   username: string;
   role: Role;
+  email?: string | null;
   access_token: string;
 }
 
@@ -94,27 +95,62 @@ function extractErrorMessage(detail: unknown, fallback: string): string {
   return fallback;
 }
 
-export async function apiRegister(
-  username: string,
-  password: string
-): Promise<AuthUser> {
-  const res = await apiFetch("/auth/register", {
+export interface RegisterInitResponse {
+  pending_registration_id: string;
+  email: string;
+  expires_in_minutes: number;
+}
+
+export async function apiRegisterInit(payload: {
+  username: string;
+  email: string;
+  password: string;
+}): Promise<RegisterInitResponse> {
+  const res = await apiFetch("/auth/register/init", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(extractErrorMessage(data.detail, "Registration failed"));
+  }
+  return res.json();
+}
+
+export async function apiRegisterVerify(payload: {
+  pending_registration_id: string;
+  verification_code: string;
+}): Promise<AuthUser> {
+  const res = await apiFetch("/auth/register/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(data.detail, "Verification failed"));
   }
   const data = await res.json();
   const user: AuthUser = {
     user_id: data.user_id,
     username: data.username,
     role: data.role,
+    email: data.email,
     access_token: data.access_token,
   };
   saveAuthUser(user);
   return user;
+}
+
+export async function apiForgotPassword(email: string): Promise<{ sent: boolean }> {
+  const res = await apiFetch("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(data.detail, "Could not send reset email"));
+  }
+  return res.json();
 }
 
 export async function apiLogin(
@@ -134,6 +170,7 @@ export async function apiLogin(
     user_id: data.user_id,
     username: data.username,
     role: data.role,
+    email: data.email,
     access_token: data.access_token,
   };
   saveAuthUser(user);
@@ -185,6 +222,7 @@ export interface UserProfile {
   user_id: string;
   username: string;
   role: Role;
+  email?: string | null;
   has_graph_api_token: boolean;
   has_jira_api_token: boolean;
 }
@@ -345,6 +383,7 @@ export async function apiResetAllPasswords(): Promise<TempPassword[]> {
 
 export interface UpdateProfileData {
   username?: string;
+  email?: string;
   current_password?: string;
   new_password?: string;
 }
@@ -353,6 +392,7 @@ export interface UpdateProfileResult {
   user_id: string;
   username: string;
   role: Role;
+  email?: string | null;
   access_token: string;
 }
 
