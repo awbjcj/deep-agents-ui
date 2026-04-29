@@ -180,45 +180,23 @@ export default function LoginPage() {
         }}
       >
         <div className="mb-8">
-          <div className="mb-5 flex items-center gap-2">
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ background: "var(--aptiv-orange)" }}
-            />
-            <span
-              className="text-[11px] font-bold uppercase tracking-[0.22em]"
-              style={{ color: "var(--color-text-primary)" }}
-            >
-              Aptiv
-            </span>
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ background: "var(--aptiv-orange)" }}
-            />
-          </div>
-          <p
-            className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em]"
-            style={{ color: "var(--aptiv-orange)" }}
-          >
-            Vehicle System Data Analytics
-          </p>
+          <span className="aptiv-eyebrow">VSDA Deep Agent</span>
           <h1
-            className="text-[32px] font-bold leading-[1.05] tracking-normal"
+            className="mt-2 text-[32px] font-bold leading-[1.05] tracking-normal"
             style={{
               fontFamily: "var(--font-family-heading)",
               color: "var(--color-text-primary)",
               letterSpacing: "0",
             }}
           >
-            VSDA Deep Agent
+            {headline}
           </h1>
-          <p className="mt-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-            {mode === "login" && "Sign in to your account."}
-            {mode === "register" && "Create your account with your Aptiv email."}
-            {mode === "verify" &&
-              `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
-                expiresInMinutes ?? 15
-              } minutes.`}
+          <span className="aptiv-rule" aria-hidden="true" />
+          <p
+            className="mt-3 text-sm"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
+            {supportingCopy}
           </p>
         </div>
 
