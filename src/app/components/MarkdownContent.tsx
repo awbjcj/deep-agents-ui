@@ -3,9 +3,12 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { cn } from "@/lib/utils";
+import { normalizeDisplayMathDelimiters } from "@/app/utils/markdown";
 
 interface MarkdownContentProps {
   content: string;
@@ -14,6 +17,8 @@ interface MarkdownContentProps {
 
 export const MarkdownContent = React.memo<MarkdownContentProps>(
   ({ content, className = "" }) => {
+    const normalizedContent = normalizeDisplayMathDelimiters(content);
+
     return (
       <div
         className={cn(
@@ -22,7 +27,8 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         )}
       >
         <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[[rehypeKatex, { strict: "ignore", output: "html" }]]}
           components={{
             code({
               inline,
@@ -119,16 +125,72 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
             },
             table({ children }: { children?: React.ReactNode }) {
               return (
-                <div className="my-4 overflow-x-auto">
-                  <table className="[&_th]:bg-surface w-full border-collapse [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:text-left [&_th]:font-semibold">
+                <div
+                  className="not-prose my-4 max-w-full overflow-x-auto rounded-md border border-border bg-secondary"
+                  role="region"
+                  aria-label="table"
+                  tabIndex={0}
+                >
+                  <table className="my-0 w-full border-collapse text-sm">
                     {children}
                   </table>
                 </div>
               );
             },
+            thead({ children }: { children?: React.ReactNode }) {
+              return (
+                <thead className="bg-tertiary text-left">{children}</thead>
+              );
+            },
+            tbody({ children }: { children?: React.ReactNode }) {
+              return (
+                <tbody className="[&>tr:nth-child(even)]:bg-tertiary [&>tr:hover]:bg-quaternary">
+                  {children}
+                </tbody>
+              );
+            },
+            tr({ children }: { children?: React.ReactNode }) {
+              return (
+                <tr className="border-b border-border last:border-b-0">
+                  {children}
+                </tr>
+              );
+            },
+            th({
+              style,
+              children,
+            }: {
+              style?: React.CSSProperties;
+              children?: React.ReactNode;
+            }) {
+              return (
+                <th
+                  style={style}
+                  className="border-b border-border px-3 py-2 font-semibold whitespace-nowrap"
+                >
+                  {children}
+                </th>
+              );
+            },
+            td({
+              style,
+              children,
+            }: {
+              style?: React.CSSProperties;
+              children?: React.ReactNode;
+            }) {
+              return (
+                <td
+                  style={style}
+                  className="px-3 py-2 align-top [&_p:last-child]:mb-0 [&_p]:mb-1"
+                >
+                  {children}
+                </td>
+              );
+            },
           }}
         >
-          {content}
+          {normalizedContent}
         </ReactMarkdown>
       </div>
     );
