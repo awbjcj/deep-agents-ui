@@ -156,9 +156,23 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
         await navigator.clipboard.writeText(reset.temporary_password);
         toast.success("Temporary password copied to clipboard");
       } else {
-        toast.error(
-          "Clipboard not available. Use \"Reset all\" to download passwords."
-        );
+        const tsv = [
+          "username\ttemporary_password",
+          `${reset.username}\t${reset.temporary_password}`,
+        ].join("\n");
+        const blob = new Blob([tsv], { type: "text/tab-separated-values" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${reset.username}-temp-password.tsv`;
+        try {
+          document.body.appendChild(link);
+          link.click();
+        } finally {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+        toast.success("Temporary password downloaded");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset password");
