@@ -1,3 +1,6 @@
+/* Required once globally so KaTeX math glyph metrics and fonts render correctly. */
+@import "katex/dist/katex.min.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
