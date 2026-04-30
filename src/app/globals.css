@@ -272,6 +272,37 @@
     --scrollbar-thumb: #c9c7c2;
     --scrollbar-thumb-hover: #a8a6a1;
 
+    /* Aptiv glass surfaces (light) */
+    --aptiv-glass-bg: color-mix(in srgb, #ffffff 70%, transparent);
+    --aptiv-glass-bg-soft: color-mix(in srgb, var(--aptiv-slate) 14%, #ffffff 80%);
+    --aptiv-glass-border: color-mix(in srgb, var(--aptiv-slate) 45%, transparent);
+    --aptiv-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 8px 24px -12px rgba(47, 104, 104, 0.18);
+
+    /* Aptiv slider tokens (light) */
+    --slider-track-bg: color-mix(
+      in srgb,
+      var(--aptiv-slate) 22%,
+      transparent
+    );
+    --slider-track-border: color-mix(
+      in srgb,
+      var(--aptiv-slate) 55%,
+      transparent
+    );
+    --slider-fill: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-primary) 65%, transparent) 0%,
+      color-mix(in srgb, var(--color-primary) 90%, transparent) 100%
+    );
+    --slider-thumb-bg: #ffffff;
+    --slider-thumb-ring: var(--color-primary);
+    --slider-thumb-shadow: 0 0 0 1px var(--slider-thumb-ring),
+      0 0 0 6px color-mix(in srgb, var(--slider-thumb-ring) 18%, transparent),
+      0 6px 18px -6px rgba(47, 104, 104, 0.35);
+    --slider-tick: color-mix(in srgb, var(--aptiv-slate) 75%, transparent);
+    --slider-tick-active: var(--aptiv-orange);
+
     --white: #ffffff;
     --black: #000000;
 
@@ -492,6 +523,37 @@
 
     --scrollbar-thumb: #3a3a3a;
     --scrollbar-thumb-hover: #5a5a5a;
+
+    /* Aptiv glass surfaces (dark) */
+    --aptiv-glass-bg: color-mix(in srgb, #ffffff 5%, transparent);
+    --aptiv-glass-bg-soft: color-mix(in srgb, var(--color-primary) 10%, #0d0d0d 90%);
+    --aptiv-glass-border: color-mix(in srgb, var(--aptiv-slate) 22%, transparent);
+    --aptiv-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 12px 32px -16px rgba(0, 0, 0, 0.6);
+
+    /* Aptiv slider tokens (dark) */
+    --slider-track-bg: color-mix(
+      in srgb,
+      var(--aptiv-slate) 14%,
+      transparent
+    );
+    --slider-track-border: color-mix(
+      in srgb,
+      var(--aptiv-slate) 28%,
+      transparent
+    );
+    --slider-fill: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--color-primary) 55%, transparent) 0%,
+      color-mix(in srgb, var(--color-primary) 95%, transparent) 100%
+    );
+    --slider-thumb-bg: #f5f5f4;
+    --slider-thumb-ring: var(--color-primary);
+    --slider-thumb-shadow: 0 0 0 1px var(--color-primary),
+      0 0 0 6px color-mix(in srgb, var(--color-primary) 26%, transparent),
+      0 8px 22px -6px rgba(63, 160, 154, 0.45);
+    --slider-tick: color-mix(in srgb, var(--aptiv-slate) 38%, transparent);
+    --slider-tick-active: var(--aptiv-orange);
 
     /* Radix / Tailwind component vars (dark) */
     --background: 0 0% 4%;
@@ -825,6 +887,100 @@ button {
 
 .scrollbar-pretty::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-text-tertiary);
+}
+
+/* ─── Aptiv glass surface ──────────────────────────────────────────── */
+.aptiv-glass {
+  background-color: var(--aptiv-glass-bg);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--aptiv-slate) 6%, transparent) 0%,
+    transparent 60%
+  );
+  border: 1px solid var(--aptiv-glass-border);
+  box-shadow: var(--aptiv-glass-shadow);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+}
+
+.aptiv-glass-soft {
+  background-color: var(--aptiv-glass-bg-soft);
+  border: 1px solid var(--aptiv-glass-border);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
+  backdrop-filter: blur(8px) saturate(130%);
+}
+
+/* ─── Aptiv effort button group ────────────────────────────────────── */
+.effort-btn-group {
+  display: flex;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--aptiv-glass-border);
+  background-color: var(--aptiv-glass-bg);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
+  backdrop-filter: blur(8px) saturate(130%);
+  box-shadow: var(--aptiv-glass-shadow);
+}
+
+.effort-btn {
+  position: relative;
+  flex: 1;
+  padding: 9px 6px;
+  font-family: var(--font-family-heading);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--aptiv-glass-border);
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease;
+  text-align: center;
+  line-height: 1;
+}
+
+.effort-btn:last-child {
+  border-right: none;
+}
+
+.effort-btn:hover:not(:disabled):not(.effort-btn--active) {
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+}
+
+.effort-btn--active {
+  color: var(--text-button-primary);
+  background: var(--color-primary);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Orange dot brand accent on the active button */
+.effort-btn--active::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--aptiv-orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--aptiv-orange) 28%, transparent);
+}
+
+.effort-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.effort-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  z-index: 1;
+  position: relative;
 }
 
 /* ─── Diff highlighting ─────────────────────────────────────────────── */

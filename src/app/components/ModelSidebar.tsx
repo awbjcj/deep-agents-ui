@@ -198,7 +198,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
                     }));
                   }}
                   disabled={isSaving || models.length === 0}
-                  className="w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  className="aptiv-glass-soft w-full cursor-pointer rounded-md px-3 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Selected model"
                 >
                   <option value="" disabled>
@@ -214,55 +214,27 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
 
               {selectedEntry?.supports_effort && (
                 <section className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">
-                      Reasoning effort
-                    </Label>
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {selectedEntry.efforts.length} levels
-                    </span>
-                  </div>
-                  <div
-                    role="radiogroup"
-                    aria-label="Reasoning effort"
-                    className="grid overflow-hidden rounded-md border border-border"
-                    style={{
-                      gridTemplateColumns: `repeat(${selectedEntry.efforts.length}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {selectedEntry.efforts.map((effort) => {
-                      const active = selection.effort === effort;
-                      return (
-                        <button
-                          key={effort}
-                          type="button"
-                          role="radio"
-                          aria-checked={active}
-                          onClick={() =>
-                            setSelection((prev) => ({ ...prev, effort }))
-                          }
-                          className={
-                            "px-2 py-2 text-xs font-medium uppercase tracking-wide transition-colors " +
-                            (active
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-background text-muted-foreground hover:bg-muted")
-                          }
-                        >
-                          {effort}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <Label className="text-sm font-medium">
+                    Reasoning effort
+                  </Label>
+                  <EffortButtonGroup
+                    efforts={selectedEntry.efforts}
+                    value={selection.effort}
+                    disabled={isSaving}
+                    onChange={(effort) =>
+                      setSelection((prev) => ({ ...prev, effort }))
+                    }
+                  />
                 </section>
               )}
 
               {selectedEntry?.supports_thinking && (
-                <section className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
+                <section className="aptiv-glass flex items-center justify-between gap-3 rounded-lg p-3">
                   <Label
                     htmlFor="thinking-toggle"
                     className="flex items-center gap-1.5 text-sm font-medium"
                   >
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
                     Adaptive thinking
                   </Label>
                   <Switch
@@ -296,6 +268,34 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
           )}
         </div>
       </ScrollArea>
+    </div>
+  );
+}
+
+interface EffortButtonGroupProps {
+  efforts: string[];
+  value: string | null;
+  disabled?: boolean;
+  onChange: (effort: string) => void;
+}
+
+function EffortButtonGroup({ efforts, value, disabled, onChange }: EffortButtonGroupProps) {
+  if (efforts.length === 0) return null;
+
+  return (
+    <div className="effort-btn-group" role="group" aria-label="Reasoning effort">
+      {efforts.map((effort) => (
+        <button
+          key={effort}
+          type="button"
+          className={"effort-btn" + (effort === value ? " effort-btn--active" : "")}
+          onClick={() => onChange(effort)}
+          disabled={disabled}
+          aria-pressed={effort === value}
+        >
+          {effort}
+        </button>
+      ))}
     </div>
   );
 }
