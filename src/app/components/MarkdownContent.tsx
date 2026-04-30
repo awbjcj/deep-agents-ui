@@ -28,7 +28,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
       >
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[[rehypeKatex, { strict: "ignore", output: "html" }]]}
+          rehypePlugins={[[rehypeKatex, { strict: "ignore" }]]}
           components={{
             code({
               inline,
@@ -128,7 +128,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                 <div
                   className="not-prose my-4 max-w-full overflow-x-auto rounded-md border border-border bg-secondary"
                   role="region"
-                  aria-label="table"
+                  aria-label="Markdown table"
                   tabIndex={0}
                 >
                   <table className="my-0 w-full border-collapse text-sm">
