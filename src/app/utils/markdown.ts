@@ -1,6 +1,8 @@
 const OPENAI_DISPLAY_MATH_BRACKET_LINE = /^(\s*)\\\[\s*(.+?)\s*\\\]\s*$/;
 const DISPLAY_MATH_BRACKET_LINE = /^(\s*)\[\s*(.+?)\s*\]\s*$/;
 const DANGLING_DISPLAY_MATH_BRACKET_LINE = /^(\s*)(.+?)\s*\]\s*$/;
+const OPENAI_DISPLAY_MATH_OPEN_LINE = /^(\s*)\\\[\s*$/;
+const OPENAI_DISPLAY_MATH_CLOSE_LINE = /^\s*\\\]\s*$/;
 const OPENAI_INLINE_MATH_PARENTHESES = /\\\(\s*(.+?)\s*\\\)/g;
 const OPENAI_INLINE_MATH_BRACKETS = /\\\[\s*(.+?)\s*\\\]/g;
 const INLINE_MATH_BRACKETS = /(^|[^!\\])\[\s*([^\]\n]+?)\s*\](?!\()/g;
@@ -29,34 +31,67 @@ function normalizeOpenAiInlineMathDelimiters(line: string): string {
 }
 
 export function normalizeDisplayMathDelimiters(content: string): string {
-  return content
-    .split("\n")
-    .map((line) => {
-      const openAiMatch = OPENAI_DISPLAY_MATH_BRACKET_LINE.exec(line);
-      if (openAiMatch) {
-        const [, indent, expression] = openAiMatch;
-        return renderDisplayMath(indent, expression);
+  const normalizedLines: string[] = [];
+  let displayMathIndent: string | null = null;
+  let displayMathLines: string[] = [];
+
+  for (const line of content.split("\n")) {
+    if (displayMathIndent !== null) {
+      if (OPENAI_DISPLAY_MATH_CLOSE_LINE.test(line)) {
+        normalizedLines.push(
+          renderDisplayMath(displayMathIndent, displayMathLines.join("\n"))
+        );
+        displayMathIndent = null;
+        displayMathLines = [];
+      } else {
+        displayMathLines.push(line);
       }
 
-      const match = DISPLAY_MATH_BRACKET_LINE.exec(line);
-      if (match) {
-        const [, indent, expression] = match;
-        if (!MATH_LIKE_CONTENT.test(expression)) return line;
+      continue;
+    }
 
-        return renderDisplayMath(indent, expression);
-      }
+    const openBlockMatch = OPENAI_DISPLAY_MATH_OPEN_LINE.exec(line);
+    if (openBlockMatch) {
+      displayMathIndent = openBlockMatch[1];
+      displayMathLines = [];
+      continue;
+    }
 
-      const danglingMatch = DANGLING_DISPLAY_MATH_BRACKET_LINE.exec(line);
-      if (danglingMatch && !line.includes("[")) {
-        const [, indent, expression] = danglingMatch;
-        if (MATH_LIKE_CONTENT.test(expression)) {
-          return renderDisplayMath(indent, expression);
-        }
-      }
+    const openAiMatch = OPENAI_DISPLAY_MATH_BRACKET_LINE.exec(line);
+    if (openAiMatch) {
+      const [, indent, expression] = openAiMatch;
+      normalizedLines.push(renderDisplayMath(indent, expression));
+      continue;
+    }
 
-      return normalizeInlineMathBrackets(
-        normalizeOpenAiInlineMathDelimiters(line)
+    const match = DISPLAY_MATH_BRACKET_LINE.exec(line);
+    if (match) {
+      const [, indent, expression] = match;
+      normalizedLines.push(
+        MATH_LIKE_CONTENT.test(expression)
+          ? renderDisplayMath(indent, expression)
+          : line
       );
-    })
-    .join("\n");
+      continue;
+    }
+
+    const danglingMatch = DANGLING_DISPLAY_MATH_BRACKET_LINE.exec(line);
+    if (danglingMatch && !line.includes("[")) {
+      const [, indent, expression] = danglingMatch;
+      if (MATH_LIKE_CONTENT.test(expression)) {
+        normalizedLines.push(renderDisplayMath(indent, expression));
+        continue;
+      }
+    }
+
+    normalizedLines.push(
+      normalizeInlineMathBrackets(normalizeOpenAiInlineMathDelimiters(line))
+    );
+  }
+
+  if (displayMathIndent !== null) {
+    normalizedLines.push(String.raw`\[`, ...displayMathLines);
+  }
+
+  return normalizedLines.join("\n");
 }

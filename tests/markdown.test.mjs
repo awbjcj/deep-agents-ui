@@ -29,3 +29,32 @@ test("normalizes OpenAI escaped math delimiters for markdown rendering", () => {
     ].join("\n")
   );
 });
+
+test("normalizes multiline OpenAI display math blocks", () => {
+  const content = [
+    "So the sum becomes:",
+    "",
+    String.raw`\[`,
+    String.raw`\frac{5000(5000+1)}{2}`,
+    String.raw`\]`,
+    "",
+    String.raw`\[`,
+    String.raw`=12,502,500`,
+    String.raw`\]`,
+  ].join("\n");
+
+  assert.equal(
+    normalizeDisplayMathDelimiters(content),
+    [
+      "So the sum becomes:",
+      "",
+      "$$",
+      String.raw`\frac{5000(5000+1)}{2}`,
+      "$$",
+      "",
+      "$$",
+      String.raw`=12,502,500`,
+      "$$",
+    ].join("\n")
+  );
+});
