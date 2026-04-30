@@ -1,26 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { formatTimestamp } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { apiGetTokens, apiUpdateTokens, UserTokens } from "@/lib/auth";
 import {
-  Key,
-  Save,
-  Loader2,
+  CheckCircle,
+  Clock,
   Eye,
   EyeOff,
-  CheckCircle,
+  Key,
+  Loader2,
+  Save,
   X,
-  Clock,
 } from "lucide-react";
-import {
-  apiGetTokens,
-  apiUpdateTokens,
-  UserTokens,
-} from "@/lib/auth";
-import { formatTimestamp } from "@/app/utils/utils";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface TokenManagementSidebarProps {
@@ -73,7 +69,11 @@ export function TokenManagementSidebar({
     setIsSaving(true);
     try {
       // Only send tokens the user actually edited to avoid clearing the other
-      const payload: { graph_api_token?: string; jira_api_token?: string; polarion_api_token?: string } = {};
+      const payload: {
+        graph_api_token?: string;
+        jira_api_token?: string;
+        polarion_api_token?: string;
+      } = {};
       if (graphDirty) payload.graph_api_token = graphToken;
       if (jiraDirty) payload.jira_api_token = jiraToken;
       if (polarionDirty) payload.polarion_api_token = polarionToken;
@@ -139,26 +139,34 @@ export function TokenManagementSidebar({
                     </code>
                   </div>
                 )}
-                {tokenMeta && tokenMeta.graph_api_token_updated_at !== "Unknown" && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">Updated</span>
-                    <time
-                      className="font-mono tabular-nums"
-                      dateTime={tokenMeta.graph_api_token_updated_at}
-                    >
-                      {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
-                    </time>
-                    <span className="text-muted-foreground/80">({tokenMeta.graph_api_token_time_gap})</span>
-                  </div>
-                )}
+                {tokenMeta &&
+                  tokenMeta.graph_api_token_updated_at !== "Unknown" && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.graph_api_token_updated_at}
+                      >
+                        {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.graph_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
                 <div className="relative">
                   <Input
                     id="graphToken"
                     type={showGraphToken ? "text" : "password"}
                     placeholder="Enter your Graph API token"
                     value={graphToken}
-                    onChange={(e) => { setGraphToken(e.target.value); setGraphDirty(true); }}
+                    onChange={(e) => {
+                      setGraphToken(e.target.value);
+                      setGraphDirty(true);
+                    }}
                     autoComplete="off"
                     className="pr-10"
                   />
@@ -191,26 +199,34 @@ export function TokenManagementSidebar({
                     </code>
                   </div>
                 )}
-                {tokenMeta && tokenMeta.jira_api_token_updated_at !== "Unknown" && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">Updated</span>
-                    <time
-                      className="font-mono tabular-nums"
-                      dateTime={tokenMeta.jira_api_token_updated_at}
-                    >
-                      {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
-                    </time>
-                    <span className="text-muted-foreground/80">({tokenMeta.jira_api_token_time_gap})</span>
-                  </div>
-                )}
+                {tokenMeta &&
+                  tokenMeta.jira_api_token_updated_at !== "Unknown" && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.jira_api_token_updated_at}
+                      >
+                        {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.jira_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
                 <div className="relative">
                   <Input
                     id="jiraToken"
                     type={showJiraToken ? "text" : "password"}
                     placeholder="Enter your JIRA API token"
                     value={jiraToken}
-                    onChange={(e) => { setJiraToken(e.target.value); setJiraDirty(true); }}
+                    onChange={(e) => {
+                      setJiraToken(e.target.value);
+                      setJiraDirty(true);
+                    }}
                     autoComplete="off"
                     className="pr-10"
                   />
@@ -243,26 +259,36 @@ export function TokenManagementSidebar({
                     </code>
                   </div>
                 )}
-                {tokenMeta && tokenMeta.polarion_api_token_updated_at !== "Unknown" && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">Updated</span>
-                    <time
-                      className="font-mono tabular-nums"
-                      dateTime={tokenMeta.polarion_api_token_updated_at}
-                    >
-                      {formatTimestamp(tokenMeta.polarion_api_token_updated_at)}
-                    </time>
-                    <span className="text-muted-foreground/80">({tokenMeta.polarion_api_token_time_gap})</span>
-                  </div>
-                )}
+                {tokenMeta &&
+                  tokenMeta.polarion_api_token_updated_at !== "Unknown" && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.polarion_api_token_updated_at}
+                      >
+                        {formatTimestamp(
+                          tokenMeta.polarion_api_token_updated_at,
+                        )}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.polarion_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
                 <div className="relative">
                   <Input
                     id="polarionToken"
                     type={showPolarionToken ? "text" : "password"}
                     placeholder="Enter your Polarion API token"
                     value={polarionToken}
-                    onChange={(e) => { setPolarionToken(e.target.value); setPolarionDirty(true); }}
+                    onChange={(e) => {
+                      setPolarionToken(e.target.value);
+                      setPolarionDirty(true);
+                    }}
                     autoComplete="off"
                     className="pr-10"
                   />
@@ -283,7 +309,9 @@ export function TokenManagementSidebar({
               {/* Save Button */}
               <Button
                 onClick={handleSave}
-                disabled={isSaving || (!graphDirty && !jiraDirty && !polarionDirty)}
+                disabled={
+                  isSaving || (!graphDirty && !jiraDirty && !polarionDirty)
+                }
                 className="w-full"
               >
                 {isSaving ? (
@@ -299,7 +327,7 @@ export function TokenManagementSidebar({
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save Tokens
+                    Save tokens
                   </>
                 )}
               </Button>
