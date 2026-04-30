@@ -52,9 +52,10 @@ function HomePageInner({
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
-  const [showAdminSidebar, setShowAdminSidebar] = useState(false);
-  const [showModelSidebar, setShowModelSidebar] = useState(false);
-  const [showTokenSidebar, setShowTokenSidebar] = useState(false);
+  const [rightPanel, setRightPanel] = useState<"admin" | "model" | "token" | null>(null);
+
+  const toggleRightPanel = (panel: "admin" | "model" | "token") =>
+    setRightPanel((prev) => (prev === panel ? null : panel));
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -197,10 +198,10 @@ function HomePageInner({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setShowAdminSidebar(!showAdminSidebar)}
+                    onClick={() => toggleRightPanel("admin")}
                     aria-label="Admin"
-                    aria-pressed={showAdminSidebar}
-                    className={showAdminSidebar ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
+                    aria-pressed={rightPanel === "admin"}
+                    className={rightPanel === "admin" ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
                   >
                     <Shield className="h-4 w-4" />
                   </Button>
@@ -213,10 +214,10 @@ function HomePageInner({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowModelSidebar(!showModelSidebar)}
+                  onClick={() => toggleRightPanel("model")}
                   aria-label="Models"
-                  aria-pressed={showModelSidebar}
-                  className={showModelSidebar ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
+                  aria-pressed={rightPanel === "model"}
+                  className={rightPanel === "model" ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
                 >
                   <Cpu className="h-4 w-4" />
                 </Button>
@@ -228,10 +229,10 @@ function HomePageInner({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowTokenSidebar(!showTokenSidebar)}
+                  onClick={() => toggleRightPanel("token")}
                   aria-label="Token management"
-                  aria-pressed={showTokenSidebar}
-                  className={showTokenSidebar ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
+                  aria-pressed={rightPanel === "token"}
+                  className={rightPanel === "token" ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
                 >
                   <Key className="h-4 w-4" />
                 </Button>
@@ -310,49 +311,25 @@ function HomePageInner({
               </ChatProvider>
             </ResizablePanel>
 
-            {showAdminSidebar && (
+            {rightPanel && (
               <>
                 <ResizableHandle />
                 <ResizablePanel
-                  id="admin"
+                  id="right-panel"
                   order={3}
                   defaultSize={25}
                   minSize={20}
                   className="relative min-w-[320px]"
                 >
-                  <AdminSidebar onClose={() => setShowAdminSidebar(false)} />
-                </ResizablePanel>
-              </>
-            )}
-
-            {showModelSidebar && (
-              <>
-                <ResizableHandle />
-                <ResizablePanel
-                  id="models"
-                  order={4}
-                  defaultSize={25}
-                  minSize={20}
-                  className="relative min-w-[320px]"
-                >
-                  <ModelSidebar onClose={() => setShowModelSidebar(false)} />
-                </ResizablePanel>
-              </>
-            )}
-
-            {showTokenSidebar && (
-              <>
-                <ResizableHandle />
-                <ResizablePanel
-                  id="token-management"
-                  order={5}
-                  defaultSize={25}
-                  minSize={20}
-                  className="relative min-w-[320px]"
-                >
-                  <TokenManagementSidebar
-                    onClose={() => setShowTokenSidebar(false)}
-                  />
+                  {rightPanel === "admin" && (
+                    <AdminSidebar onClose={() => setRightPanel(null)} />
+                  )}
+                  {rightPanel === "model" && (
+                    <ModelSidebar onClose={() => setRightPanel(null)} />
+                  )}
+                  {rightPanel === "token" && (
+                    <TokenManagementSidebar onClose={() => setRightPanel(null)} />
+                  )}
                 </ResizablePanel>
               </>
             )}
