@@ -267,6 +267,36 @@ export async function apiUpdateUserRole(
   return res.json();
 }
 
+// --- Admin: run mode ---
+
+export type RunMode = "remote" | "gateway" | "proxy";
+
+export interface RunModeInfo {
+  run_mode: RunMode;
+  run_mode_updated_at: string;
+  run_mode_time_gap: string;
+}
+
+export async function apiGetRunMode(): Promise<RunModeInfo> {
+  const res = await apiFetch("/admin/run-mode");
+  if (!res.ok) {
+    throw new Error("Failed to fetch run mode");
+  }
+  return res.json();
+}
+
+export async function apiSetRunMode(mode: RunMode): Promise<RunModeInfo> {
+  const res = await apiFetch("/admin/run-mode", {
+    method: "PUT",
+    body: JSON.stringify({ run_mode: mode }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { detail?: string }).detail || "Failed to set run mode");
+  }
+  return res.json();
+}
+
 // --- Tier model allowlist ---
 
 export interface TierModelEntry {

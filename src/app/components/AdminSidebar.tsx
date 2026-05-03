@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  CheckCircle,
+  Clock,
   Download,
   KeyRound,
   Loader2,
+  RadioTower,
   Save,
   Shield,
   Trash2,
@@ -17,14 +20,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { formatTimestamp } from "@/app/utils/utils";
 import {
   AdminUser,
   Role,
+  RunMode,
+  RunModeInfo,
   apiDeleteUser,
+  apiGetRunMode,
   apiGetTierModels,
   apiListUsers,
   apiResetAllPasswords,
   apiResetPassword,
+  apiSetRunMode,
   apiSetAllTierModels,
   apiUpdateUserRole,
   TierModelEntry,
@@ -32,6 +40,7 @@ import {
 import { useAuth } from "@/providers/AuthProvider";
 
 const ROLES: Role[] = ["user", "developer", "admin"];
+const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
 
 type TierMap = Record<Role, TierModelEntry[]>;
 type TierTextMap = Record<Role, string>;
@@ -83,18 +92,26 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
     admin: "",
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingRunMode, setPendingRunMode] = useState<RunMode>("gateway");
+  const [runModeInfo, setRunModeInfo] = useState<RunModeInfo | null>(null);
+  const [isSavingRunMode, setIsSavingRunMode] = useState(false);
+  const [runModeSavedIndicator, setRunModeSavedIndicator] = useState(false);
   const [isSavingTiers, setIsSavingTiers] = useState(false);
 
   const fetchAdminData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [list, userTier, developerTier, adminTier] = await Promise.all([
-        apiListUsers(),
-        apiGetTierModels("user"),
-        apiGetTierModels("developer"),
-        apiGetTierModels("admin"),
-      ]);
+      const [list, userTier, developerTier, adminTier, runModeData] =
+        await Promise.all([
+          apiListUsers(),
+          apiGetTierModels("user"),
+          apiGetTierModels("developer"),
+          apiGetTierModels("admin"),
+          apiGetRunMode(),
+        ]);
       setUsers(list);
+      setPendingRunMode(runModeData.run_mode);
+      setRunModeInfo(runModeData);
       const next: TierMap = {
         user: userTier.models,
         developer: developerTier.models,
@@ -118,6 +135,7 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
     tierText.user !== savedTierText.user ||
     tierText.developer !== savedTierText.developer ||
     tierText.admin !== savedTierText.admin;
+  const runModeDirty = runModeInfo !== null && pendingRunMode !== runModeInfo.run_mode;
 
   const handleRoleChange = async (id: string, role: Role) => {
     if (id === user?.user_id && role !== "admin") {
@@ -230,6 +248,23 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
     }
   };
 
+  const handleSaveRunMode = async () => {
+    if (!runModeDirty) return;
+    setIsSavingRunMode(true);
+    try {
+      const updated = await apiSetRunMode(pendingRunMode);
+      setPendingRunMode(updated.run_mode);
+      setRunModeInfo(updated);
+      setRunModeSavedIndicator(true);
+      toast.success("Run mode saved");
+      setTimeout(() => setRunModeSavedIndicator(false), 2000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save run mode");
+    } finally {
+      setIsSavingRunMode(false);
+    }
+  };
+
   return (
     <div className="absolute inset-0 flex flex-col">
       <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card/70 p-4 backdrop-blur-sm">
@@ -329,6 +364,76 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
             >
               <Download className="mr-2 h-4 w-4" />
               Reset all non-admin passwords
+            </Button>
+          </section>
+
+          <section className="space-y-3 border-t border-border pt-4">
+            <div className="flex items-center gap-2">
+              <RadioTower className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Connectivity / Run Mode
+              </h3>
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="admin-run-mode"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                Mode
+              </Label>
+              <select
+                id="admin-run-mode"
+                value={pendingRunMode}
+                onChange={(e) => setPendingRunMode(e.target.value as RunMode)}
+                className="h-9 w-full cursor-pointer rounded border border-input bg-background px-3 text-sm text-foreground ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {RUN_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {runModeInfo &&
+              runModeInfo.run_mode_updated_at !== "Unknown" && (
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium text-muted-foreground">
+                    Updated
+                  </span>
+                  <time
+                    className="font-mono tabular-nums"
+                    dateTime={runModeInfo.run_mode_updated_at}
+                  >
+                    {formatTimestamp(runModeInfo.run_mode_updated_at)}
+                  </time>
+                  <span className="text-muted-foreground/80">
+                    ({runModeInfo.run_mode_time_gap})
+                  </span>
+                </div>
+              )}
+            <Button
+              type="button"
+              onClick={handleSaveRunMode}
+              disabled={isSavingRunMode || !runModeDirty}
+              className="w-full"
+            >
+              {isSavingRunMode ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : runModeSavedIndicator ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Saved!
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save run mode
+                </>
+              )}
             </Button>
           </section>
 
