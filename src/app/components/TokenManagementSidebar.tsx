@@ -38,6 +38,9 @@ export function TokenManagementSidebar({
   const [polarionToken, setPolarionToken] = useState("");
   const [polarionDirty, setPolarionDirty] = useState(false);
   const [showPolarionToken, setShowPolarionToken] = useState(false);
+  const [confluenceToken, setConfluenceToken] = useState("");
+  const [confluenceDirty, setConfluenceDirty] = useState(false);
+  const [showConfluenceToken, setShowConfluenceToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedIndicator, setSavedIndicator] = useState(false);
@@ -53,6 +56,7 @@ export function TokenManagementSidebar({
       setGraphDirty(false);
       setJiraDirty(false);
       setPolarionDirty(false);
+      setConfluenceDirty(false);
     } catch {
       toast.error("Failed to load tokens");
     } finally {
@@ -65,7 +69,7 @@ export function TokenManagementSidebar({
   }, [fetchTokens]);
 
   const handleSave = async () => {
-    if (!graphDirty && !jiraDirty && !polarionDirty) return;
+    if (!graphDirty && !jiraDirty && !polarionDirty && !confluenceDirty) return;
     setIsSaving(true);
     try {
       // Only send tokens the user actually edited to avoid clearing the other
@@ -73,10 +77,12 @@ export function TokenManagementSidebar({
         graph_api_token?: string;
         jira_api_token?: string;
         polarion_api_token?: string;
+        confluence_api_token?: string;
       } = {};
       if (graphDirty) payload.graph_api_token = graphToken;
       if (jiraDirty) payload.jira_api_token = jiraToken;
       if (polarionDirty) payload.polarion_api_token = polarionToken;
+      if (confluenceDirty) payload.confluence_api_token = confluenceToken;
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
       setGraphToken("");
@@ -85,6 +91,8 @@ export function TokenManagementSidebar({
       setJiraDirty(false);
       setPolarionToken("");
       setPolarionDirty(false);
+      setConfluenceToken("");
+      setConfluenceDirty(false);
       setSavedIndicator(true);
       toast.success("Tokens updated successfully");
       setTimeout(() => setSavedIndicator(false), 2000);
@@ -306,11 +314,77 @@ export function TokenManagementSidebar({
                 </div>
               </div>
 
+              {/* Confluence API Token */}
+              <div className="space-y-2">
+                <Label htmlFor="confluenceToken" className="text-sm font-medium">
+                  Confluence API Token
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for retrieving Confluence spaces, pages, and attachments.
+                </p>
+                {tokenMeta && tokenMeta.confluence_api_token_preview && (
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                    <code className="text-xs font-mono text-foreground">
+                      {tokenMeta.confluence_api_token_preview}
+                    </code>
+                  </div>
+                )}
+                {tokenMeta &&
+                  tokenMeta.confluence_api_token_updated_at !== "Unknown" && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.confluence_api_token_updated_at}
+                      >
+                        {formatTimestamp(
+                          tokenMeta.confluence_api_token_updated_at,
+                        )}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.confluence_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
+                <div className="relative">
+                  <Input
+                    id="confluenceToken"
+                    type={showConfluenceToken ? "text" : "password"}
+                    placeholder="Enter your Confluence API token"
+                    value={confluenceToken}
+                    onChange={(e) => {
+                      setConfluenceToken(e.target.value);
+                      setConfluenceDirty(true);
+                    }}
+                    autoComplete="off"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfluenceToken(!showConfluenceToken)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfluenceToken ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {/* Save Button */}
               <Button
                 onClick={handleSave}
                 disabled={
-                  isSaving || (!graphDirty && !jiraDirty && !polarionDirty)
+                  isSaving ||
+                  (!graphDirty &&
+                    !jiraDirty &&
+                    !polarionDirty &&
+                    !confluenceDirty)
                 }
                 className="w-full"
               >
