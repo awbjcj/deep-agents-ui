@@ -49,6 +49,14 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                   className="max-w-full rounded-md text-base"
                   wrapLines={true}
                   wrapLongLines={true}
+                  codeTagProps={{
+                    style: {
+                      padding: 0,
+                      background: "transparent",
+                      border: 0,
+                      borderRadius: 0,
+                    },
+                  }}
                   lineProps={{
                     style: {
                       wordBreak: "break-all",
@@ -79,7 +87,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
             },
             pre({ children }: { children?: React.ReactNode }) {
               return (
-                <div className="my-4 max-w-full overflow-hidden last:mb-0">
+                <div className="not-prose my-4 max-w-full overflow-hidden last:mb-0">
                   {children}
                 </div>
               );
