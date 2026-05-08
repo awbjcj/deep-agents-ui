@@ -1,8 +1,10 @@
 import type { NextConfig } from "next";
 
-// NEXT_STATIC_EXPORT=1 produces an `out/` directory for FastAPI/uvicorn serving.
+// `process.env.NODE_ENV === "production"` corresponds to `next build`
 // Without it, the dev server rewrites keep /api/* proxied to the LangGraph runtime.
-const isStaticExport = process.env.NEXT_STATIC_EXPORT === "1";
+const isStaticExport =
+  process.env.NODE_ENV === "production" ||
+  process.env.NEXT_STATIC_EXPORT === "1";
 
 const nextConfig: NextConfig = isStaticExport
   ? { output: "export", basePath: "/chat" }
