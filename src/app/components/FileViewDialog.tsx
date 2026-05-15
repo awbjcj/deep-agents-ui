@@ -2,12 +2,7 @@
 
 import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { FileText, Copy, Download, Edit, Save, X, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,9 +142,6 @@ export const FileViewDialog = React.memo<{
         <DialogTitle className="sr-only">
           {file?.path || "New File"}
         </DialogTitle>
-        <DialogDescription className="sr-only">
-          {file ? "View and edit file contents" : "Create a new file"}
-        </DialogDescription>
         <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
           <div className="flex min-w-0 items-center gap-2">
             <FileText className="text-primary/50 h-5 w-5 shrink-0" />

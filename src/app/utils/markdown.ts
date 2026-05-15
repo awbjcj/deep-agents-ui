@@ -7,9 +7,7 @@ const OPENAI_INLINE_MATH_PARENTHESES = /\\\(\s*(.+?)\s*\\\)/g;
 const OPENAI_INLINE_MATH_BRACKETS = /\\\[\s*(.+?)\s*\\\]/g;
 const INLINE_MATH_BRACKETS = /(^|[^!\\])\[\s*([^\]\n]+?)\s*\](?!\()/g;
 const MATH_LIKE_CONTENT =
-  /(?:\\[a-zA-Z]+|\\[,;! ]|[=^_]|[+\-*/]|\d+\s*[{}(),]\s*\d+)/;
-// Comma-separated simple tokens (numbers, words, dots) with no math operators — e.g. [1, 2, 3] or [a, b, c]
-const PLAIN_LIST_EXPRESSION = /^\s*[\w.]+(?:\s*,\s*[\w.]+)+\s*$/;
+  /(?:\\[a-zA-Z]+|\\[,;! ]|[=^_]|[+*/]|\d+\s*[{}(),]\s*\d+)/;
 
 function renderDisplayMath(indent: string, expression: string): string {
   return `${indent}$$\n${expression.trim()}\n${indent}$$`;
@@ -17,7 +15,7 @@ function renderDisplayMath(indent: string, expression: string): string {
 
 function normalizeInlineMathBrackets(line: string): string {
   return line.replace(INLINE_MATH_BRACKETS, (match, prefix, expression) => {
-    if (!MATH_LIKE_CONTENT.test(expression) || PLAIN_LIST_EXPRESSION.test(expression)) return match;
+    if (!MATH_LIKE_CONTENT.test(expression)) return match;
     return `${prefix}$${expression.trim()}$`;
   });
 }
@@ -70,7 +68,7 @@ export function normalizeDisplayMathDelimiters(content: string): string {
     if (match) {
       const [, indent, expression] = match;
       normalizedLines.push(
-        MATH_LIKE_CONTENT.test(expression) && !PLAIN_LIST_EXPRESSION.test(expression)
+        MATH_LIKE_CONTENT.test(expression)
           ? renderDisplayMath(indent, expression)
           : line
       );
