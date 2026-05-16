@@ -13,6 +13,7 @@ import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
 import { useQueryState } from "nuqs";
+import { createStreamModeCompatibilityClient } from "@/app/utils/langgraphStreamModes";
 
 export type StateType = {
   messages: Message[];
@@ -41,6 +42,10 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const streamClient = useMemo(
+    () => createStreamModeCompatibilityClient(client),
+    [client]
+  );
 
   // Metadata to tag new threads with the current user's ID for session filtering.
   // Passed via submit() options so the SDK includes it in client.threads.create().
@@ -71,7 +76,7 @@ export function useChat({
 
   const stream = useStream<StateType>({
     assistantId: activeAssistant?.assistant_id || "",
-    client: client ?? undefined,
+    client: streamClient ?? undefined,
     reconnectOnMount: true,
     threadId: threadId ?? null,
     onThreadId: setThreadId,
@@ -82,7 +87,7 @@ export function useChat({
     onFinish: onHistoryRevalidate,
     onError: onHistoryRevalidate,
     onCreated: onHistoryRevalidate,
-    experimental_thread: thread,
+    thread,
   });
 
   // Multi-mode event stream per deepagents event-streaming guide:
