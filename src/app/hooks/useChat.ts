@@ -6,6 +6,7 @@ import {
   type Message,
   type Assistant,
   type Checkpoint,
+  type StreamMode,
 } from "@langchain/langgraph-sdk";
 import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
@@ -84,6 +85,18 @@ export function useChat({
     experimental_thread: thread,
   });
 
+  // Multi-mode event stream per deepagents event-streaming guide:
+  // - "values": full graph state snapshots (drives values.todos / files / ui)
+  // - "messages-tuple": token-level streaming of assistant messages
+  // - "updates": per-node delta updates (granular tool/state changes)
+  // - "custom": arbitrary events emitted by the agent (progress, status)
+  const STREAM_MODES: StreamMode[] = [
+    "values",
+    "messages-tuple",
+    "updates",
+    "custom",
+  ];
+
   const sendMessage = useCallback(
     (content: string) => {
       const newMessage: Message = { id: uuidv4(), type: "human", content };
@@ -95,6 +108,7 @@ export function useChat({
           }),
           config: buildConfig({ recursion_limit: 100 }),
           streamSubgraphs: true,
+          streamMode: STREAM_MODES,
           ...(threadCreationMetadata
             ? { metadata: threadCreationMetadata }
             : {}),
@@ -124,6 +138,7 @@ export function useChat({
             ? { interruptAfter: ["tools"] }
             : { interruptBefore: ["tools"] }),
           streamSubgraphs: true,
+          streamMode: STREAM_MODES,
         });
       } else {
         stream.submit(
@@ -132,6 +147,7 @@ export function useChat({
             config: buildConfig(),
             interruptBefore: ["tools"],
             streamSubgraphs: true,
+            streamMode: STREAM_MODES,
           }
         );
       }
@@ -157,6 +173,7 @@ export function useChat({
           ? { interruptAfter: ["tools"] }
           : { interruptBefore: ["tools"] }),
         streamSubgraphs: true,
+        streamMode: STREAM_MODES,
       });
       // Update thread list when continuing stream
       onHistoryRevalidate?.();
