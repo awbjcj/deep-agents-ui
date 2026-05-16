@@ -71,20 +71,43 @@ export function ToolApprovalInterrupt({
     }
   }, [currentDecision]);
 
-  const decisionSummary = useMemo(() => {
+  const argFieldCount = useMemo(
+    () => Object.keys(actionRequest.args ?? {}).length,
+    [actionRequest.args]
+  );
+
+  const argsAsMarkdown = useMemo(
+    () =>
+      "```json\n" + JSON.stringify(actionRequest.args ?? {}, null, 2) + "\n```",
+    [actionRequest.args]
+  );
+
+  const decisionBanner = useMemo(() => {
     if (!currentDecision) {
       return null;
     }
 
     switch (currentDecision.type) {
       case "approve":
-        return "Approve selected";
+        return {
+          tone: "success" as const,
+          icon: <CheckCircle2 size={14} />,
+          label: "Marked for approval",
+        };
       case "reject":
-        return currentDecision.message?.trim()
-          ? "Reject selected with explanation"
-          : "Reject selected";
+        return {
+          tone: "danger" as const,
+          icon: <XCircle size={14} />,
+          label: currentDecision.message?.trim()
+            ? "Marked for rejection · note attached"
+            : "Marked for rejection",
+        };
       case "edit":
-        return "Edited action saved";
+        return {
+          tone: "neutral" as const,
+          icon: <PencilLine size={14} />,
+          label: "Edited action queued",
+        };
       default:
         return null;
     }
