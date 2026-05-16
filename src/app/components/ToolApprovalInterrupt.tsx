@@ -21,6 +21,7 @@ import type {
   ReviewConfig,
 } from "@/app/types/types";
 import { cn } from "@/lib/utils";
+import { MarkdownContent } from "@/app/components/MarkdownContent";
 
 interface ToolApprovalInterruptProps {
   actionRequest: ActionRequest;
@@ -30,6 +31,14 @@ interface ToolApprovalInterruptProps {
   currentDecision?: HumanDecision;
   isLoading?: boolean;
 }
+
+const DESCRIPTION_PROSE_OVERRIDES =
+  "text-sm leading-6 [&_p]:!mb-2 [&_p:last-child]:!mb-0 [&_ul]:!my-2 [&_ol]:!my-2 " +
+  "[&_pre]:!my-2 [&_pre]:!rounded-md [&_h1]:!text-base [&_h2]:!text-sm [&_h3]:!text-sm " +
+  "[&_h1]:!mt-0 [&_h2]:!mt-0 [&_h3]:!mt-0 [&_h1]:!mb-2 [&_h2]:!mb-2 [&_h3]:!mb-2";
+
+const ARGS_PROSE_OVERRIDES =
+  "text-xs [&_pre]:!my-0 [&_pre]:!rounded-md [&_pre]:!border-0";
 
 export function ToolApprovalInterrupt({
   actionRequest,
