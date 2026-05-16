@@ -61,17 +61,20 @@ export function BatchToolApprovalInterrupt({
   };
 
   return (
-    <div className="mt-4 flex w-full flex-col gap-3 rounded-lg border border-border bg-muted/20 p-4">
-      <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-foreground">
-          Review required for {actionRequests.length} actions
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          Select a decision for each action, then continue the run.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {reviewedCount} of {actionRequests.length} decisions selected
-        </p>
+    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/60 via-background to-background p-5 shadow-sm dark:border-amber-400/15 dark:from-amber-500/5 dark:via-background dark:to-background">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Review {actionRequests.length} pending{" "}
+            {actionRequests.length === 1 ? "action" : "actions"}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Mark a decision for each item, then continue the run.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+          {reviewedCount} / {actionRequests.length}
+        </span>
       </div>
 
       {actionRequests.map((actionRequest, index) => (
