@@ -418,43 +418,45 @@ export function ThreadList({
                           style={{ background: "var(--aptiv-orange)" }}
                         />
 
-                        {/* Title row */}
-                        <div className="flex items-baseline gap-2">
-                          {editingId === thread.id ? (
-                            <Input
-                              autoFocus
-                              value={editingValue}
-                              onChange={(e) => setEditingValue(e.target.value)}
-                              onBlur={() => handleSaveRename(thread.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  cancelledRef.current = false;
-                                  e.currentTarget.blur();
+                        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1">
+                          {/* Title row */}
+                          <div className="min-w-0">
+                            {editingId === thread.id ? (
+                              <Input
+                                autoFocus
+                                value={editingValue}
+                                onChange={(e) =>
+                                  setEditingValue(e.target.value)
                                 }
-                                if (e.key === "Escape") {
-                                  handleCancelRename();
-                                  e.currentTarget.blur();
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="h-auto flex-1 border-0 border-b border-primary/40 bg-transparent p-0 text-[13px] font-semibold leading-tight tracking-tight shadow-none focus-visible:border-primary focus-visible:ring-0 rounded-none"
-                            />
-                          ) : (
-                            <h3
-                              className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight tracking-tight"
-                              title={thread.title}
-                            >
-                              {thread.title}
-                            </h3>
-                          )}
-                          <span className="flex-shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground/60">
+                                onBlur={() => handleSaveRename(thread.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    cancelledRef.current = false;
+                                    e.currentTarget.blur();
+                                  }
+                                  if (e.key === "Escape") {
+                                    handleCancelRename();
+                                    e.currentTarget.blur();
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-auto w-full min-w-0 rounded-none border-0 border-b border-primary/40 bg-transparent p-0 text-[13px] font-semibold leading-tight tracking-tight shadow-none focus-visible:border-primary focus-visible:ring-0"
+                              />
+                            ) : (
+                              <h3
+                                className="min-w-0 whitespace-normal break-words text-[13px] font-semibold leading-tight tracking-tight [overflow-wrap:anywhere]"
+                                title={thread.title}
+                              >
+                                {thread.title}
+                              </h3>
+                            )}
+                          </div>
+                          <span className="pt-px text-[10px] font-medium tabular-nums text-muted-foreground/60">
                             {formatTime(thread.updatedAt)}
                           </span>
-                        </div>
 
-                        {/* Meta row — description + status + actions (always visible) */}
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <p className="min-w-0 flex-1 truncate text-[11px] leading-snug text-muted-foreground/75">
+                          {/* Meta row — description + status + actions */}
+                          <p className="min-w-0 whitespace-normal break-words text-[11px] leading-snug text-muted-foreground/75 [overflow-wrap:anywhere]">
                             {thread.description || (
                               <span className="italic opacity-60">
                                 No response yet
@@ -462,12 +464,12 @@ export function ThreadList({
                             )}
                           </p>
                           {/* Fixed-width slot: dot and buttons share the same position */}
-                          <div className="relative h-5 w-[42px] flex-shrink-0">
+                          <div className="relative h-5 w-[42px] flex-shrink-0 justify-self-end">
                             <span
                               aria-hidden="true"
                               title={thread.status}
                               className={cn(
-                                "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full ring-2 ring-background/40 transition-opacity duration-150",
+                                "absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background/40 transition-opacity duration-150",
                                 getThreadColor(thread.status),
                                 editingId !== thread.id &&
                                   "group-hover:opacity-0 group-focus-within:opacity-0"
