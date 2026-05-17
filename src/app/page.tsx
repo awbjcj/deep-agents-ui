@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
+import { useNotifications } from "@/app/hooks/useNotifications";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Cpu, Key, MessagesSquare, Settings, Shield, SquarePen } from "lucide-react";
 import {
@@ -53,6 +54,17 @@ function HomePageInner({
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [rightPanel, setRightPanel] = useState<"admin" | "model" | "token" | null>(null);
+  const { pendingTokenFocus, requestTokenFocus } = useNotifications();
+
+  // When the user clicks "Update token" on a notification banner, route the
+  // request through NotificationsProvider's pendingTokenFocus state. This
+  // both opens the panel and (via TokenManagementSidebar's initialFocus prop)
+  // scrolls/focuses the right input.
+  useEffect(() => {
+    if (pendingTokenFocus) {
+      setRightPanel("token");
+    }
+  }, [pendingTokenFocus]);
 
   const toggleRightPanel = (panel: "admin" | "model" | "token") =>
     setRightPanel((prev) => (prev === panel ? null : panel));
@@ -328,7 +340,11 @@ function HomePageInner({
                     <ModelSidebar onClose={() => setRightPanel(null)} />
                   )}
                   {rightPanel === "token" && (
-                    <TokenManagementSidebar onClose={() => setRightPanel(null)} />
+                    <TokenManagementSidebar
+                      onClose={() => setRightPanel(null)}
+                      initialFocus={pendingTokenFocus}
+                      onFocusConsumed={() => requestTokenFocus(null)}
+                    />
                   )}
                 </ResizablePanel>
               </>

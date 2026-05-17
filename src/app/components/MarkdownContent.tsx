@@ -196,6 +196,10 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
                 </td>
               );
             },
+            img({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) {
+              if (!src) return null;
+              return <img src={src} alt={alt ?? ""} {...props} />;
+            },
           }}
         >
           {normalizedContent}

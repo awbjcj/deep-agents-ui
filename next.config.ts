@@ -6,6 +6,8 @@ import type { NextConfig } from "next";
 const isStaticExport = process.env.NEXT_STATIC_EXPORT === "1";
 const isProduction = process.env.NODE_ENV === "production";
 
+const apiPort = isProduction ? 8123 : 2024;
+
 const nextConfig: NextConfig = isStaticExport
   ? { output: "export", basePath: "/chat" }
   : {
@@ -13,7 +15,7 @@ const nextConfig: NextConfig = isStaticExport
         return [
           {
             source: "/api/:path*",
-            destination: `http://localhost:${isProduction ? 8123 : 2024}/api/:path*`,
+            destination: "http://localhost:" + apiPort + "/api/:path*",
           },
         ];
       },

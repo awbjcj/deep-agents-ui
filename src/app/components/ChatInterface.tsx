@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { BatchToolApprovalInterrupt } from "@/app/components/BatchToolApprovalInterrupt";
+import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
 import type {
   TodoItem,
@@ -290,6 +291,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Sticky banner stack lives outside the scroll container so urgent
+          notifications (e.g. expired tokens) stay visible while the user
+          scrolls long conversations. */}
+      <div className="mx-auto w-full max-w-[1120px]">
+        <NotificationBanner />
+      </div>
       <div
         className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
         ref={scrollRef}
