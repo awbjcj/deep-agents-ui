@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
-// `process.env.NODE_ENV === "production"` corresponds to `next build`
-// Without it, the dev server rewrites keep /api/* proxied to the LangGraph runtime.
-const isStaticExport =
-  process.env.NODE_ENV === "production" ||
-  process.env.NEXT_STATIC_EXPORT === "1";
+// `NEXT_STATIC_EXPORT=1` produces a fully static export (output: "export").
+// `next build` (NODE_ENV=production) proxies /api/* to the LangGraph runtime on port 8123.
+// `next dev` proxies /api/* to the LangGraph runtime on port 2024.
+const isStaticExport = process.env.NEXT_STATIC_EXPORT === "1";
+const isProduction = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = isStaticExport
   ? { output: "export", basePath: "/chat" }
@@ -13,7 +13,7 @@ const nextConfig: NextConfig = isStaticExport
         return [
           {
             source: "/api/:path*",
-            destination: "http://localhost:2024/api/:path*",
+            destination: `http://localhost:${isProduction ? 8123 : 2024}/api/:path*`,
           },
         ];
       },
