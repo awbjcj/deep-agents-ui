@@ -986,6 +986,109 @@ button {
   position: relative;
 }
 
+/* ─── Aptiv slider ─────────────────────────────────────────────────── */
+.aptiv-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+
+.aptiv-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--slider-track-bg);
+  background-image: var(--slider-fill);
+  background-size: var(--aptiv-slider-fill, 0%) 100%;
+  background-repeat: no-repeat;
+  border: 1px solid var(--slider-track-border);
+}
+
+.aptiv-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--slider-track-bg);
+  border: 1px solid var(--slider-track-border);
+}
+
+.aptiv-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background-image: var(--slider-fill);
+}
+
+.aptiv-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--slider-thumb-bg);
+  border: none;
+  box-shadow: var(--slider-thumb-shadow);
+  margin-top: -5px;
+  transition: transform 160ms ease;
+}
+
+.aptiv-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--slider-thumb-bg);
+  border: none;
+  box-shadow: var(--slider-thumb-shadow);
+  transition: transform 160ms ease;
+}
+
+.aptiv-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.08);
+}
+
+.aptiv-slider:hover::-moz-range-thumb {
+  transform: scale(1.08);
+}
+
+.aptiv-slider:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aptiv-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.aptiv-slider:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.aptiv-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+  margin-top: 4px;
+}
+
+.aptiv-slider-tick {
+  font-family: var(--font-family-heading);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slider-tick);
+  transition: color 160ms ease;
+}
+
+.aptiv-slider-tick--active {
+  color: var(--slider-tick-active);
+}
+
 /* ─── Diff highlighting ─────────────────────────────────────────────── */
 .word-added {
   background-color: rgba(52, 211, 153, 0.25);

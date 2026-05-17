@@ -7,143 +7,221 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  ModelEntry,
   apiGetAllowedModels,
   apiGetUserModel,
   apiSetUserModel,
+  type EffectiveModelSelection,
+  type ModelEntry,
+  type ModelPreset,
+  type UserModelSelection,
 } from "@/lib/auth";
 
 interface ModelSidebarProps {
   onClose: () => void;
 }
 
-interface Selection {
+const PRESET_SUGGESTIONS: Array<{
+  value: ModelPreset;
+  label: string;
+  tone: string;
+}> = [
+  { value: "economy", label: "Economy", tone: "Lower spend" },
+  { value: "balanced", label: "Balanced", tone: "Default" },
+  { value: "deep_work", label: "Deep Work", tone: "Hard tasks" },
+];
+
+const PRESET_LABELS: Record<ModelPreset, string> = {
+  economy: "Economy",
+  balanced: "Balanced",
+  deep_work: "Deep Work",
+};
+
+const PRESET_VALUES: ModelPreset[] = ["economy", "balanced", "deep_work"];
+
+const MAX_TOKENS_MIN = 512;
+const MAX_TOKENS_MAX = 32768;
+const MAX_TOKENS_STEP = 256;
+
+interface DraftState {
   provider: string;
   model: string;
   effort: string | null;
   thinking: boolean | null;
+  max_tokens: number;
 }
 
-const EMPTY_SELECTION: Selection = {
-  provider: "",
-  model: "",
-  effort: null,
-  thinking: null,
-};
+function isPreset(v: string | null | undefined): v is ModelPreset {
+  return v !== null && v !== undefined && PRESET_VALUES.includes(v as ModelPreset);
+}
 
-function modelKey(entry: { provider: string; model: string }): string {
-  return `${entry.provider}:${entry.model}`;
+function modelKey(provider: string, model: string): string {
+  return `${provider}::${model}`;
+}
+
+function draftFromEffective(eff: EffectiveModelSelection): DraftState {
+  return {
+    provider: eff.provider ?? "",
+    model: eff.model ?? "",
+    effort: eff.effort,
+    thinking: eff.thinking,
+    max_tokens: eff.max_tokens,
+  };
+}
+
+function draftsEqual(a: DraftState, b: DraftState): boolean {
+  return (
+    a.provider === b.provider &&
+    a.model === b.model &&
+    (a.effort ?? null) === (b.effort ?? null) &&
+    (a.thinking ?? null) === (b.thinking ?? null) &&
+    a.max_tokens === b.max_tokens
+  );
 }
 
 export function ModelSidebar({ onClose }: ModelSidebarProps) {
-  const [models, setModels] = useState<ModelEntry[]>([]);
-  const [selection, setSelection] = useState<Selection>(EMPTY_SELECTION);
-  const [savedSelection, setSavedSelection] =
-    useState<Selection>(EMPTY_SELECTION);
+  const [selection, setSelection] = useState<UserModelSelection | null>(null);
+  const [allowed, setAllowed] = useState<ModelEntry[]>([]);
+  const [draft, setDraft] = useState<DraftState | null>(null);
+  const [activePreset, setActivePreset] = useState<ModelPreset | null>(null);
+  const [serverCustom, setServerCustom] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
-  const selectedEntry = useMemo(
-    () =>
-      models.find(
-        (entry) =>
-          entry.provider === selection.provider &&
-          entry.model === selection.model
-      ),
-    [models, selection.provider, selection.model]
-  );
 
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
-    Promise.all([apiGetAllowedModels(), apiGetUserModel()])
-      .then(([allowed, current]) => {
+
+    Promise.all([apiGetUserModel(), apiGetAllowedModels()])
+      .then(([current, modelsResp]) => {
         if (!mounted) return;
-        setModels(allowed.models);
-        const initial: Selection = {
-          provider: current.provider ?? "",
-          model: current.model ?? "",
-          effort: current.effort,
-          thinking: current.thinking,
-        };
-        setSelection(initial);
-        setSavedSelection(initial);
+        setSelection(current);
+        setAllowed(modelsResp.models);
+        setDraft(draftFromEffective(current.effective));
+        if (isPreset(current.preset)) {
+          setActivePreset(current.preset);
+          setServerCustom(false);
+        } else {
+          setActivePreset(null);
+          setServerCustom(true);
+        }
       })
       .catch(() => {
-        if (mounted) {
-          toast.error("Failed to load models");
-        }
+        if (mounted) toast.error("Failed to load model settings");
       })
       .finally(() => {
-        if (mounted) {
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
       });
+
     return () => {
       mounted = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (!selectedEntry) return;
-    setSelection((prev) => {
-      const modelChanged =
-        prev.provider !== savedSelection.provider ||
-        prev.model !== savedSelection.model;
-      const next = { ...prev };
+  const currentModelEntry = useMemo(() => {
+    if (!draft || !draft.provider || !draft.model) return null;
+    return (
+      allowed.find(
+        (m) => m.provider === draft.provider && m.model === draft.model
+      ) ?? null
+    );
+  }, [allowed, draft]);
 
-      if (!selectedEntry.supports_effort) {
-        next.effort = null;
-      } else if (next.effort && !selectedEntry.efforts.includes(next.effort)) {
-        next.effort = selectedEntry.efforts[0] ?? null;
-      } else if (!next.effort && modelChanged) {
-        next.effort = selectedEntry.efforts[0] ?? null;
-      }
-
-      if (!selectedEntry.supports_thinking) {
-        next.thinking = null;
-      } else if (next.thinking === null && modelChanged) {
-        next.thinking = false;
-      }
-
-      if (next.effort === prev.effort && next.thinking === prev.thinking) return prev;
-      return next;
-    });
-  }, [selectedEntry, savedSelection.model, savedSelection.provider]);
+  const baseline = useMemo(
+    () => (selection ? draftFromEffective(selection.effective) : null),
+    [selection]
+  );
 
   const dirty =
-    selection.provider !== savedSelection.provider ||
-    selection.model !== savedSelection.model ||
-    selection.effort !== savedSelection.effort ||
-    selection.thinking !== savedSelection.thinking;
+    draft !== null && baseline !== null && !draftsEqual(draft, baseline);
+  const isCustom = serverCustom || dirty;
 
-  const handleSave = async () => {
-    if (!selection.provider || !selection.model) return;
+  function applyPreset(preset: ModelPreset) {
+    if (isSaving) return;
     setIsSaving(true);
-    try {
-      const result = await apiSetUserModel({
-        provider: selection.provider,
-        model: selection.model,
-        effort: selection.effort,
-        thinking: selection.thinking,
-      });
-      const next: Selection = {
-        provider: result.provider ?? selection.provider,
-        model: result.model ?? selection.model,
-        effort: result.effort,
-        thinking: result.thinking,
-      };
-      setSelection(next);
-      setSavedSelection(next);
-      toast.success(`Model set to ${next.provider}/${next.model}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save model");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    apiSetUserModel({ preset })
+      .then((result) => {
+        setSelection(result);
+        setDraft(draftFromEffective(result.effective));
+        setActivePreset(isPreset(result.preset) ? result.preset : preset);
+        setServerCustom(false);
+        toast.success(`Preset set to ${PRESET_LABELS[preset]}`);
+      })
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : "Failed to load preset")
+      )
+      .finally(() => setIsSaving(false));
+  }
+
+  function handleSave() {
+    if (!draft || !dirty || !draft.provider || !draft.model) return;
+    setIsSaving(true);
+    apiSetUserModel({
+      provider: draft.provider,
+      model: draft.model,
+      effort: draft.effort,
+      thinking: draft.thinking,
+      max_tokens: draft.max_tokens,
+    })
+      .then((result) => {
+        setSelection(result);
+        setDraft(draftFromEffective(result.effective));
+        setActivePreset(null);
+        setServerCustom(true);
+        toast.success("Saved custom configuration");
+      })
+      .catch((err) =>
+        toast.error(err instanceof Error ? err.message : "Failed to save")
+      )
+      .finally(() => setIsSaving(false));
+  }
+
+  function updateDraft(patch: Partial<DraftState>) {
+    setDraft((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  function handleModelChange(value: string) {
+    const [provider, model] = value.split("::", 2);
+    if (!provider || !model) return;
+    const entry = allowed.find(
+      (m) => m.provider === provider && m.model === model
+    );
+    if (!entry) return;
+    const defaultEffort = entry.supports_effort
+      ? entry.efforts[0] ?? null
+      : null;
+    updateDraft({
+      provider,
+      model,
+      effort: defaultEffort,
+      thinking: entry.supports_thinking ? false : null,
+    });
+  }
+
+  const sliderFillPct = draft
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          ((draft.max_tokens - MAX_TOKENS_MIN) /
+            (MAX_TOKENS_MAX - MAX_TOKENS_MIN)) *
+            100
+        )
+      )
+    : 0;
+
+  const effortOptions =
+    currentModelEntry?.efforts.length
+      ? currentModelEntry.efforts
+      : ["low", "medium", "high"];
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -152,7 +230,9 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
           <Cpu className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col leading-none">
             <span className="aptiv-eyebrow">Model</span>
-            <h2 className="text-lg font-semibold tracking-tight">Model &amp; Reasoning</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Model &amp; Reasoning
+            </h2>
             <span className="aptiv-rule" aria-hidden="true" />
           </div>
         </div>
@@ -173,83 +253,202 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
+          ) : !draft || allowed.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
+              No models are available for your account.
+            </div>
           ) : (
             <>
-              <section className="space-y-1.5">
-                <Label htmlFor="model-select" className="text-sm font-medium">
-                  Model
-                </Label>
-                <select
-                  id="model-select"
-                  value={
-                    selection.provider && selection.model
-                      ? modelKey(selection)
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const found = models.find(
-                      (entry) => modelKey(entry) === e.target.value
+              <section className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
+                  <Label className="text-sm font-medium">
+                    Suggested presets
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Quick starting points. Tweak anything below to make it your own.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {PRESET_SUGGESTIONS.map((preset) => {
+                    const active = !isCustom && activePreset === preset.value;
+                    return (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => applyPreset(preset.value)}
+                        disabled={isSaving}
+                        className={[
+                          "aptiv-glass-soft flex flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                          "disabled:cursor-not-allowed disabled:opacity-50",
+                          active
+                            ? "!border-primary/60 bg-primary/10"
+                            : "hover:bg-muted/40",
+                        ].join(" ")}
+                      >
+                        <span className="text-xs font-semibold text-foreground">
+                          {preset.label}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          {preset.tone}
+                        </span>
+                      </button>
                     );
-                    if (!found) return;
-                    setSelection((prev) => ({
-                      ...prev,
-                      provider: found.provider,
-                      model: found.model,
-                    }));
-                  }}
-                  disabled={isSaving || models.length === 0}
-                  className="aptiv-glass-soft w-full cursor-pointer rounded-md px-3 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Selected model"
-                >
-                  <option value="" disabled>
-                    {models.length === 0 ? "No models available" : "Select a model"}
-                  </option>
-                  {models.map((entry) => (
-                    <option key={modelKey(entry)} value={modelKey(entry)}>
-                      {modelKey(entry)}
-                    </option>
-                  ))}
-                </select>
+                  })}
+                </div>
               </section>
 
-              {selectedEntry?.supports_effort && (
-                <section className="space-y-2">
-                  <Label className="text-sm font-medium">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Configuration</Label>
+                {isCustom ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--aptiv-orange)]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)]" />
+                    Custom
+                  </span>
+                ) : activePreset ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                    {PRESET_LABELS[activePreset]}
+                  </span>
+                ) : null}
+              </div>
+
+              <section className="space-y-2">
+                <Label
+                  htmlFor="model-select"
+                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  Model
+                </Label>
+                <Select
+                  value={modelKey(draft.provider, draft.model)}
+                  onValueChange={handleModelChange}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger id="model-select" className="aptiv-glass-soft">
+                    <SelectValue placeholder="Choose a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowed.map((m) => (
+                      <SelectItem
+                        key={modelKey(m.provider, m.model)}
+                        value={modelKey(m.provider, m.model)}
+                      >
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {m.provider}
+                        </span>
+                        <span className="mx-1 text-muted-foreground">/</span>
+                        <span className="text-sm">{m.model}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </section>
+
+              <section className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Reasoning effort
                   </Label>
-                  <EffortButtonGroup
-                    efforts={selectedEntry.efforts}
-                    value={selection.effort}
-                    disabled={isSaving}
-                    onChange={(effort) =>
-                      setSelection((prev) => ({ ...prev, effort }))
-                    }
-                  />
-                </section>
-              )}
+                  {!currentModelEntry?.supports_effort && (
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Not supported
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="effort-btn-group"
+                  role="group"
+                  aria-label="Reasoning effort"
+                >
+                  {effortOptions.map((effort) => {
+                    const supported = !!currentModelEntry?.supports_effort;
+                    const active = supported && draft.effort === effort;
+                    return (
+                      <button
+                        key={effort}
+                        type="button"
+                        className={[
+                          "effort-btn",
+                          active ? "effort-btn--active" : "",
+                        ].join(" ")}
+                        onClick={() => updateDraft({ effort })}
+                        disabled={!supported || isSaving}
+                      >
+                        {effort}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
 
-              {selectedEntry?.supports_thinking && (
-                <section className="aptiv-glass flex items-center justify-between gap-3 rounded-lg p-3">
-                  <Label
-                    htmlFor="thinking-toggle"
-                    className="flex items-center gap-1.5 text-sm font-medium"
-                  >
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    Adaptive thinking
-                  </Label>
+              <section className="space-y-2">
+                <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium text-foreground">
+                      Adaptive thinking
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {currentModelEntry?.supports_thinking
+                        ? "Let the model take longer on hard prompts"
+                        : "Not supported by this model"}
+                    </span>
+                  </div>
                   <Switch
-                    id="thinking-toggle"
-                    checked={!!selection.thinking}
+                    checked={!!draft.thinking}
                     onCheckedChange={(checked) =>
-                      setSelection((prev) => ({ ...prev, thinking: checked }))
+                      updateDraft({ thinking: checked })
+                    }
+                    disabled={
+                      !currentModelEntry?.supports_thinking || isSaving
                     }
                   />
-                </section>
-              )}
+                </div>
+              </section>
+
+              <section className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label
+                    htmlFor="max-tokens-slider"
+                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Output cap
+                  </Label>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                    {draft.max_tokens.toLocaleString()}
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      tokens
+                    </span>
+                  </span>
+                </div>
+                <input
+                  id="max-tokens-slider"
+                  type="range"
+                  className="aptiv-slider"
+                  min={MAX_TOKENS_MIN}
+                  max={MAX_TOKENS_MAX}
+                  step={MAX_TOKENS_STEP}
+                  value={draft.max_tokens}
+                  disabled={isSaving}
+                  onChange={(e) =>
+                    updateDraft({ max_tokens: parseInt(e.target.value, 10) })
+                  }
+                  style={
+                    {
+                      ["--aptiv-slider-fill" as string]: `${sliderFillPct}%`,
+                    } as React.CSSProperties
+                  }
+                />
+                <div className="aptiv-slider-ticks">
+                  <span className="aptiv-slider-tick">0.5k</span>
+                  <span className="aptiv-slider-tick">16k</span>
+                  <span className="aptiv-slider-tick">32k</span>
+                </div>
+              </section>
 
               <Button
                 onClick={handleSave}
-                disabled={isSaving || !dirty || !selection.provider}
+                disabled={isSaving || !dirty || !draft.provider || !draft.model}
                 className="w-full"
               >
                 {isSaving ? (
@@ -260,7 +459,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Save
+                    Save custom configuration
                   </>
                 )}
               </Button>
@@ -268,34 +467,6 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
           )}
         </div>
       </ScrollArea>
-    </div>
-  );
-}
-
-interface EffortButtonGroupProps {
-  efforts: string[];
-  value: string | null;
-  disabled?: boolean;
-  onChange: (effort: string) => void;
-}
-
-function EffortButtonGroup({ efforts, value, disabled, onChange }: EffortButtonGroupProps) {
-  if (efforts.length === 0) return null;
-
-  return (
-    <div className="effort-btn-group" role="group" aria-label="Reasoning effort">
-      {efforts.map((effort) => (
-        <button
-          key={effort}
-          type="button"
-          className={"effort-btn" + (effort === value ? " effort-btn--active" : "")}
-          onClick={() => onChange(effort)}
-          disabled={disabled}
-          aria-pressed={effort === value}
-        >
-          {effort}
-        </button>
-      ))}
     </div>
   );
 }

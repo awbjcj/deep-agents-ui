@@ -376,11 +376,19 @@ export async function apiSetAllTierModels(payload: {
 
 // --- Per-user model selection ---
 
-export interface UserModelSelection {
+export type ModelPreset = "economy" | "balanced" | "deep_work";
+
+export interface EffectiveModelSelection {
   provider: string | null;
   model: string | null;
   effort: string | null;
   thinking: boolean | null;
+  max_tokens: number;
+}
+
+export interface UserModelSelection extends EffectiveModelSelection {
+  preset: ModelPreset;
+  effective: EffectiveModelSelection;
 }
 
 export async function apiGetUserModel(): Promise<UserModelSelection> {
@@ -392,10 +400,14 @@ export async function apiGetUserModel(): Promise<UserModelSelection> {
 }
 
 export async function apiSetUserModel(payload: {
+  preset: ModelPreset;
+}): Promise<UserModelSelection>;
+export async function apiSetUserModel(payload: {
   provider: string;
   model: string;
-  effort: string | null;
-  thinking: boolean | null;
+  effort?: string | null;
+  thinking?: boolean | null;
+  max_tokens?: number | null;
 }): Promise<UserModelSelection>;
 export async function apiSetUserModel(
   provider: string,
@@ -405,10 +417,14 @@ export async function apiSetUserModel(
   payloadOrProvider:
     | string
     | {
+        preset: ModelPreset;
+      }
+    | {
         provider: string;
         model: string;
-        effort: string | null;
-        thinking: boolean | null;
+        effort?: string | null;
+        thinking?: boolean | null;
+        max_tokens?: number | null;
       },
   model?: string
 ): Promise<UserModelSelection> {
