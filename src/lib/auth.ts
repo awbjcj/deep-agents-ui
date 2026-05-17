@@ -200,6 +200,23 @@ export async function apiGetTokens(): Promise<UserTokens> {
   return res.json();
 }
 
+export interface UserNotification {
+  id: number;
+  code: string;
+  severity: "info" | "warning" | "error";
+  title: string;
+  message: string;
+  action_label: string | null;
+  action_target: string | null;
+  action_params: Record<string, string> | null;
+  created_at: string;
+  snoozed_until: string | null;
+}
+
+export interface TokenUpdateResponse extends UserTokens {
+  cleared_notifications: UserNotification[];
+}
+
 export async function apiUpdateTokens(
   tokens: {
     graph_api_token?: string;
@@ -207,7 +224,7 @@ export async function apiUpdateTokens(
     polarion_api_token?: string;
     confluence_api_token?: string;
   }
-): Promise<UserTokens> {
+): Promise<TokenUpdateResponse> {
   const res = await apiFetch("/user/tokens", {
     method: "PUT",
     body: JSON.stringify(tokens),
@@ -216,6 +233,38 @@ export async function apiUpdateTokens(
     throw new Error("Failed to update tokens");
   }
   return res.json();
+}
+
+// --- User Notifications ---
+
+export async function apiListNotifications(): Promise<UserNotification[]> {
+  const res = await apiFetch("/user/notifications");
+  if (!res.ok) {
+    throw new Error("Failed to fetch notifications");
+  }
+  return res.json();
+}
+
+export async function apiAcknowledgeNotification(id: number): Promise<void> {
+  const res = await apiFetch(`/user/notifications/${id}/acknowledge`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error("Failed to acknowledge notification");
+  }
+}
+
+export async function apiSnoozeNotification(
+  id: number,
+  hours = 1
+): Promise<void> {
+  const res = await apiFetch(`/user/notifications/${id}/snooze`, {
+    method: "POST",
+    body: JSON.stringify({ hours }),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to snooze notification");
+  }
 }
 
 // --- Role utilities ---

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   type Message,
@@ -12,6 +13,10 @@ import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
+import {
+  useNotifications,
+  type StreamNotificationEvent,
+} from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
 
 export type StateType = {
@@ -41,6 +46,40 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const { ingestStreamEvent } = useNotifications();
+
+  // Route `custom` stream events from ToolErrorNotificationMiddleware:
+  //   - scope "user" → durable banner (handled by NotificationsProvider)
+  //   - scope "thread" → ephemeral sonner toast (kept here so the chat hook
+  //     owns thread-scoped UX; banners are user-wide and live in their
+  //     own provider).
+  const handleCustomEvent = useCallback(
+    (event: unknown) => {
+      if (
+        typeof event !== "object" ||
+        event === null ||
+        (event as Record<string, unknown>).kind !== "notification"
+      ) {
+        return;
+      }
+      const notif = event as StreamNotificationEvent;
+      if (notif.scope === "user") {
+        ingestStreamEvent(notif);
+        return;
+      }
+      const show =
+        notif.severity === "error"
+          ? toast.error
+          : notif.severity === "warning"
+            ? toast.warning
+            : toast.info;
+      show(notif.title, {
+        description: notif.message,
+        duration: notif.severity === "error" ? Infinity : 8000,
+      });
+    },
+    [ingestStreamEvent]
+  );
 
   // Metadata to tag new threads with the current user's ID for session filtering.
   // Passed via submit() options so the SDK includes it in client.threads.create().
@@ -69,21 +108,29 @@ export function useChat({
     [activeAssistant?.config, username]
   );
 
-  const stream = useStream<StateType>({
-    assistantId: activeAssistant?.assistant_id || "",
-    client: client ?? undefined,
-    reconnectOnMount: true,
-    threadId: threadId ?? null,
-    onThreadId: setThreadId,
-    defaultHeaders: { "x-auth-scheme": "langsmith" },
-    // Enable fetching state history when switching to existing threads
-    fetchStateHistory: true,
-    // Revalidate thread list when stream finishes, errors, or creates new thread
-    onFinish: onHistoryRevalidate,
-    onError: onHistoryRevalidate,
-    onCreated: onHistoryRevalidate,
-    thread,
-  });
+  // The langgraph-sdk's `useStream` accepts an `onCustomEvent(event)`
+  // callback at runtime but doesn't expose it in its public types. We attach
+  // the listener via Object.assign so the rest of the options keep their
+  // strong typing.
+  const streamOptions = Object.assign(
+    {
+      assistantId: activeAssistant?.assistant_id || "",
+      client: client ?? undefined,
+      reconnectOnMount: true,
+      threadId: threadId ?? null,
+      onThreadId: setThreadId,
+      defaultHeaders: { "x-auth-scheme": "langsmith" },
+      // Enable fetching state history when switching to existing threads
+      fetchStateHistory: true,
+      // Revalidate thread list when stream finishes, errors, or creates new thread
+      onFinish: onHistoryRevalidate,
+      onError: onHistoryRevalidate,
+      onCreated: onHistoryRevalidate,
+      thread,
+    },
+    { onCustomEvent: handleCustomEvent }
+  );
+  const stream = useStream<StateType>(streamOptions);
 
   // Multi-mode event stream per deepagents event-streaming guide:
   // - "values": full graph state snapshots (drives values.todos / files / ui)

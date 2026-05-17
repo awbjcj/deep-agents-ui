@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiGetTokens, apiUpdateTokens, UserTokens } from "@/lib/auth";
+import { useNotifications } from "@/app/hooks/useNotifications";
 import {
   CheckCircle,
   Clock,
@@ -21,11 +22,19 @@ import { toast } from "sonner";
 
 interface TokenManagementSidebarProps {
   onClose: () => void;
+  /** Service key ("graph" | "jira" | "polarion" | "confluence") to focus on mount. */
+  initialFocus?: string | null;
+  /** Called once after the initialFocus has been consumed so the parent
+   *  doesn't keep re-focusing on every render. */
+  onFocusConsumed?: () => void;
 }
 
 export function TokenManagementSidebar({
   onClose,
+  initialFocus,
+  onFocusConsumed,
 }: TokenManagementSidebarProps) {
+  const { applyClearedNotifications } = useNotifications();
   const [graphToken, setGraphToken] = useState("");
   const [jiraToken, setJiraToken] = useState("");
   // Track whether the user has edited each token field since load.
@@ -68,6 +77,20 @@ export function TokenManagementSidebar({
     fetchTokens();
   }, [fetchTokens]);
 
+  // When the sidebar opens via a banner action, scroll the matching token
+  // input into view and focus it. Wait for the inputs to render (isLoading
+  // → false), then consume the focus request so the parent state clears.
+  useEffect(() => {
+    if (!initialFocus || isLoading) return;
+    const targetId = `${initialFocus}Token`;
+    const el = document.getElementById(targetId) as HTMLInputElement | null;
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus();
+    }
+    onFocusConsumed?.();
+  }, [initialFocus, isLoading, onFocusConsumed]);
+
   const handleSave = async () => {
     if (!graphDirty && !jiraDirty && !polarionDirty && !confluenceDirty) return;
     setIsSaving(true);
@@ -85,6 +108,12 @@ export function TokenManagementSidebar({
       if (confluenceDirty) payload.confluence_api_token = confluenceToken;
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
+      // PUT /api/user/tokens returns `cleared_notifications` for any
+      // active token-expired banner that this update resolves. Drop those
+      // banners locally without a follow-up GET.
+      if (updated.cleared_notifications?.length) {
+        applyClearedNotifications(updated.cleared_notifications);
+      }
       setGraphToken("");
       setJiraToken("");
       setGraphDirty(false);
