@@ -13,7 +13,7 @@ const nextConfig: NextConfig = isStaticExport
         return [
           {
             source: "/api/:path*",
-            destination: "http://localhost:8123/api/:path*",
+            destination: "http://localhost:2024/api/:path*",
           },
         ];
       },
