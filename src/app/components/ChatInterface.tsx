@@ -16,6 +16,7 @@ import {
   Clock,
   Circle,
   FileIcon,
+  X,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { BatchToolApprovalInterrupt } from "@/app/components/BatchToolApprovalInterrupt";
@@ -29,8 +30,7 @@ import type {
   ReviewConfig,
   ToolApprovalInterruptData,
 } from "@/app/types/types";
-import { Assistant, Message } from "@langchain/langgraph-sdk";
-import { extractStringFromMessageContent } from "@/app/utils/utils";
+import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
@@ -77,7 +77,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
 
   const {
     stream,
-    messages,
+    processedMessages,
     todos,
     files,
     ui,
@@ -115,115 +115,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
     },
     [handleSubmit, submitDisabled]
   );
-
-  // TODO: can we make this part of the hook?
-  const processedMessages = useMemo(() => {
-    /*
-     1. Loop through all messages
-     2. For each AI message, add the AI message, and any tool calls to the messageMap
-     3. For each tool message, find the corresponding tool call in the messageMap and update the status and output
-    */
-    const messageMap = new Map<
-      string,
-      { message: Message; toolCalls: ToolCall[]; stableKey: string }
-    >();
-    messages.forEach((message: Message, index: number) => {
-      if (message.type === "ai") {
-        const toolCallsInMessage: Array<{
-          id?: string;
-          function?: { name?: string; arguments?: unknown };
-          name?: string;
-          type?: string;
-          args?: unknown;
-          input?: unknown;
-        }> = [];
-        if (
-          message.additional_kwargs?.tool_calls &&
-          Array.isArray(message.additional_kwargs.tool_calls)
-        ) {
-          toolCallsInMessage.push(...message.additional_kwargs.tool_calls);
-        } else if (message.tool_calls && Array.isArray(message.tool_calls)) {
-          toolCallsInMessage.push(
-            ...message.tool_calls.filter(
-              (toolCall: { name?: string }) => toolCall.name !== ""
-            )
-          );
-        } else if (Array.isArray(message.content)) {
-          const toolUseBlocks = message.content.filter(
-            (block: { type?: string }) => block.type === "tool_use"
-          );
-          toolCallsInMessage.push(...toolUseBlocks);
-        }
-        const toolCallsWithStatus = toolCallsInMessage.map(
-          (toolCall: {
-            id?: string;
-            function?: { name?: string; arguments?: unknown };
-            name?: string;
-            type?: string;
-            args?: unknown;
-            input?: unknown;
-          }, toolCallIndex: number) => {
-            const name =
-              toolCall.function?.name ||
-              toolCall.name ||
-              toolCall.type ||
-              "unknown";
-            const args =
-              toolCall.function?.arguments ||
-              toolCall.args ||
-              toolCall.input ||
-              {};
-            return {
-              id: toolCall.id || `tool-${index}-${toolCallIndex}-${name}`,
-              name,
-              args,
-              status: interrupt ? "interrupted" : ("pending" as const),
-            } as ToolCall;
-          }
-        );
-        const messageKey = message.id || `ai-${index}`;
-        messageMap.set(messageKey, {
-          message,
-          toolCalls: toolCallsWithStatus,
-          stableKey: messageKey,
-        });
-      } else if (message.type === "tool") {
-        const toolCallId = message.tool_call_id;
-        if (!toolCallId) {
-          return;
-        }
-        for (const [, data] of messageMap.entries()) {
-          const toolCallIndex = data.toolCalls.findIndex(
-            (tc: ToolCall) => tc.id === toolCallId
-          );
-          if (toolCallIndex === -1) {
-            continue;
-          }
-          data.toolCalls[toolCallIndex] = {
-            ...data.toolCalls[toolCallIndex],
-            status: "completed" as const,
-            result: extractStringFromMessageContent(message),
-          };
-          break;
-        }
-      } else if (message.type === "human") {
-        const humanKey = message.id || `human-${index}`;
-        messageMap.set(humanKey, {
-          message,
-          toolCalls: [],
-          stableKey: humanKey,
-        });
-      }
-    });
-    const processedArray = Array.from(messageMap.values());
-    return processedArray.map((data, index) => {
-      const prevMessage = index > 0 ? processedArray[index - 1].message : null;
-      return {
-        ...data,
-        showAvatar: data.message.type !== prevMessage?.type,
-      };
-    });
-  }, [messages, interrupt]);
 
   const groupedTodos = {
     in_progress: todos.filter((t) => t.status === "in_progress"),
@@ -526,11 +417,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
                         </span>
                       </button>
                     )}
+                    <div className="flex-1" aria-hidden="true" />
                     <button
-                      aria-label="Close"
-                      className="flex-1"
+                      type="button"
+                      aria-label="Close panel"
                       onClick={() => setMetaOpen(null)}
-                    />
+                      className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                   <div
                     ref={tasksContainerRef}
