@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useMemo, useCallback, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  lazy,
+  Suspense,
+} from "react";
 import { FileText, Copy, Download, Edit, Save, X, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -12,12 +19,24 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { toast } from "sonner";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import type { FileItem } from "@/app/types/types";
 import useSWRMutation from "swr/mutation";
+
+// Lazy: Prism + its theme together push ~300KB. We only need them when the
+// user opens a non-markdown file in the viewer.
+const SyntaxHighlighter = lazy(() =>
+  import("react-syntax-highlighter").then((m) => ({ default: m.Prism })),
+);
+let oneDarkTheme: unknown = undefined;
+import("react-syntax-highlighter/dist/esm/styles/prism").then((m) => {
+  oneDarkTheme = m.oneDark;
+});
+
+// Above this size, line-numbered syntax highlighting becomes painful in the
+// browser. Show truncated head with a "Download to view full" affordance.
+const LARGE_FILE_BYTES = 250_000;
 
 const LANGUAGE_MAP: Record<string, string> = {
   js: "javascript",
@@ -230,27 +249,10 @@ export const FileViewDialog = React.memo<{
                       <MarkdownContent content={fileContent} />
                     </div>
                   ) : (
-                    <SyntaxHighlighter
+                    <FileCodeView
+                      content={fileContent}
                       language={language}
-                      style={oneDark}
-                      customStyle={{
-                        margin: 0,
-                        borderRadius: "0.5rem",
-                        fontSize: "0.875rem",
-                        fontFamily: "var(--font-family-mono)",
-                        fontWeight: 500,
-                        fontFeatureSettings: '"ss01", "cv11"',
-                      }}
-                      showLineNumbers
-                      wrapLines={true}
-                      lineProps={{
-                        style: {
-                          whiteSpace: "pre-wrap",
-                        },
-                      }}
-                    >
-                      {fileContent}
-                    </SyntaxHighlighter>
+                    />
                   )
                 ) : (
                   <div className="flex items-center justify-center p-12">
@@ -307,3 +309,59 @@ export const FileViewDialog = React.memo<{
 });
 
 FileViewDialog.displayName = "FileViewDialog";
+
+interface FileCodeViewProps {
+  content: string;
+  language: string;
+}
+
+// Memoized so toggling unrelated dialog state (edit mode flag, etc.) does not
+// re-mount the heavy Prism subtree. Also handles the large-file truncation.
+const FileCodeView = React.memo<FileCodeViewProps>(({ content, language }) => {
+  const isLarge = content.length > LARGE_FILE_BYTES;
+  const displayContent = useMemo(() => {
+    if (!isLarge) return content;
+    // Show the first ~250KB worth of lines; keep boundary on a line break.
+    const slice = content.slice(0, LARGE_FILE_BYTES);
+    const lastNewline = slice.lastIndexOf("\n");
+    return slice.slice(0, lastNewline > 0 ? lastNewline : slice.length);
+  }, [content, isLarge]);
+
+  return (
+    <>
+      {isLarge && (
+        <div className="mb-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground/80">
+          File is {Math.round(content.length / 1024)} KB; showing the first{" "}
+          {Math.round(displayContent.length / 1024)} KB. Use Download to view in full.
+        </div>
+      )}
+      <Suspense
+        fallback={
+          <pre className="overflow-auto rounded-md bg-surface-alt p-4 font-mono text-sm">
+            {displayContent}
+          </pre>
+        }
+      >
+        <SyntaxHighlighter
+          language={language}
+          style={oneDarkTheme as any}
+          customStyle={{
+            margin: 0,
+            borderRadius: "0.5rem",
+            fontSize: "0.875rem",
+            fontFamily: "var(--font-family-mono)",
+            fontWeight: 500,
+            fontFeatureSettings: '"ss01", "cv11"',
+          }}
+          showLineNumbers
+          wrapLines={true}
+          lineProps={{ style: { whiteSpace: "pre-wrap" } }}
+        >
+          {displayContent}
+        </SyntaxHighlighter>
+      </Suspense>
+    </>
+  );
+});
+
+FileCodeView.displayName = "FileCodeView";
