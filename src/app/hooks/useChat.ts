@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
@@ -11,13 +11,21 @@ import {
 } from "@langchain/langgraph-sdk";
 import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
-import type { TodoItem } from "@/app/types/types";
+import type { TodoItem, ToolCall } from "@/app/types/types";
+import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { useClient } from "@/providers/ClientProvider";
 import {
   useNotifications,
   type StreamNotificationEvent,
 } from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
+
+export interface ProcessedMessage {
+  message: Message;
+  toolCalls: ToolCall[];
+  stableKey: string;
+  showAvatar: boolean;
+}
 
 export type StateType = {
   messages: Message[];
@@ -202,14 +210,55 @@ export function useChat({
     [stream, buildConfig]
   );
 
+  // Optimistic file state.
+  //
+  // `client.threads.updateState` writes the new map server-side but
+  // `stream.values.files` only refreshes on the next streamed event, which can
+  // be never (no active run). We mirror the server value in local state and
+  // override it the moment the user saves, so the FilesPopover/FileViewDialog
+  // both feel instant. When a real stream event lands with matching content we
+  // drop the override and re-trust the stream.
+  const [optimisticFiles, setOptimisticFiles] = useState<
+    Record<string, string> | null
+  >(null);
+  // Memoize so identity changes only when the stream actually emits new files
+  // — otherwise the effect below would loop on every parent render.
+  const serverFiles = useMemo(
+    () => stream.values.files ?? {},
+    [stream.values.files],
+  );
+  const files = optimisticFiles ?? serverFiles;
+
+  useEffect(() => {
+    if (!optimisticFiles) return;
+    const sameKeys =
+      Object.keys(optimisticFiles).length === Object.keys(serverFiles).length &&
+      Object.keys(optimisticFiles).every(
+        (k) => optimisticFiles[k] === serverFiles[k],
+      );
+    if (sameKeys) setOptimisticFiles(null);
+  }, [serverFiles, optimisticFiles]);
+
+  // Switching threads must clear the override; otherwise a write in one thread
+  // would visually persist into the next.
+  useEffect(() => {
+    setOptimisticFiles(null);
+  }, [threadId]);
+
   const setFiles = useCallback(
-    async (files: Record<string, string>) => {
+    async (next: Record<string, string>) => {
       if (!threadId) return;
-      // TODO: missing a way how to revalidate the internal state
-      // I think we do want to have the ability to externally manage the state
-      await client.threads.updateState(threadId, { values: { files } });
+      const previous = optimisticFiles ?? serverFiles;
+      setOptimisticFiles(next);
+      try {
+        await client.threads.updateState(threadId, { values: { files: next } });
+      } catch (err) {
+        // Roll back to whatever was being shown before the user edit.
+        setOptimisticFiles(previous);
+        throw err;
+      }
     },
-    [client, threadId]
+    [client, threadId, optimisticFiles, serverFiles],
   );
 
   const continueStream = useCallback(
@@ -247,14 +296,97 @@ export function useChat({
     stream.stop();
   }, [stream]);
 
+  // Tool-call reconciliation.
+  //
+  // For each AI message, gather its tool calls into a flat record. For each
+  // tool message, fold the result back into the originating tool call. A
+  // single side-map keyed by tool_call_id makes the second step O(1) per
+  // tool result instead of O(n_messages × n_tool_calls) as in the previous
+  // implementation that lived inside ChatInterface.
+  const isInterrupted = stream.interrupt !== undefined;
+  const processedMessages = useMemo<ProcessedMessage[]>(() => {
+    type Bucket = { message: Message; toolCalls: ToolCall[]; stableKey: string };
+    const messageMap = new Map<string, Bucket>();
+    const toolCallIndex = new Map<
+      string,
+      { messageKey: string; index: number }
+    >();
+
+    stream.messages.forEach((message: Message, idx: number) => {
+      if (message.type === "ai") {
+        const rawToolCalls: Array<{
+          id?: string;
+          function?: { name?: string; arguments?: unknown };
+          name?: string;
+          type?: string;
+          args?: unknown;
+          input?: unknown;
+        }> = [];
+        if (
+          message.additional_kwargs?.tool_calls &&
+          Array.isArray(message.additional_kwargs.tool_calls)
+        ) {
+          rawToolCalls.push(...message.additional_kwargs.tool_calls);
+        } else if (message.tool_calls && Array.isArray(message.tool_calls)) {
+          rawToolCalls.push(
+            ...message.tool_calls.filter((tc: { name?: string }) => tc.name !== ""),
+          );
+        } else if (Array.isArray(message.content)) {
+          const toolUseBlocks = message.content.filter(
+            (block: { type?: string }) => block.type === "tool_use",
+          );
+          rawToolCalls.push(...toolUseBlocks);
+        }
+
+        const messageKey = message.id || `ai-${idx}`;
+        const toolCalls: ToolCall[] = rawToolCalls.map((tc, tcIdx) => {
+          const name = tc.function?.name || tc.name || tc.type || "unknown";
+          const args = tc.function?.arguments || tc.args || tc.input || {};
+          const id = tc.id || `tool-${idx}-${tcIdx}-${name}`;
+          toolCallIndex.set(id, { messageKey, index: tcIdx });
+          return {
+            id,
+            name,
+            args,
+            status: isInterrupted ? "interrupted" : ("pending" as const),
+          } as ToolCall;
+        });
+
+        messageMap.set(messageKey, { message, toolCalls, stableKey: messageKey });
+      } else if (message.type === "tool") {
+        const toolCallId = message.tool_call_id;
+        if (!toolCallId) return;
+        const location = toolCallIndex.get(toolCallId);
+        if (!location) return;
+        const bucket = messageMap.get(location.messageKey);
+        if (!bucket) return;
+        bucket.toolCalls[location.index] = {
+          ...bucket.toolCalls[location.index],
+          status: "completed" as const,
+          result: extractStringFromMessageContent(message),
+        };
+      } else if (message.type === "human") {
+        const humanKey = message.id || `human-${idx}`;
+        messageMap.set(humanKey, { message, toolCalls: [], stableKey: humanKey });
+      }
+    });
+
+    const arr = Array.from(messageMap.values());
+    return arr.map((bucket, i) => ({
+      ...bucket,
+      showAvatar: bucket.message.type !== arr[i - 1]?.message.type,
+    }));
+  }, [stream.messages, isInterrupted]);
+
   return {
     stream,
     todos: stream.values.todos ?? [],
-    files: stream.values.files ?? {},
+    files,
     email: stream.values.email,
     ui: stream.values.ui,
     setFiles,
     messages: stream.messages,
+    processedMessages,
     isLoading: stream.isLoading,
     isThreadLoading: stream.isThreadLoading,
     interrupt: stream.interrupt,
