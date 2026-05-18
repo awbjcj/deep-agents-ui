@@ -2,7 +2,11 @@ import type { Client, StreamMode } from "@langchain/langgraph-sdk";
 
 type StreamModeRequest = StreamMode | StreamMode[] | undefined;
 
-const UNSUPPORTED_STREAM_MODES = new Set<StreamMode>(["tools"]);
+// "tools" was a valid mode in older SDK versions; the newer typings dropped
+// it from the union, but the runtime still rejects it server-side. We keep
+// stripping it on the way out for backward compatibility, using a widened
+// Set so the literal is acceptable here.
+const UNSUPPORTED_STREAM_MODES = new Set<string>(["tools"]);
 
 export function filterUnsupportedStreamMode<T extends StreamModeRequest>(
   streamMode: T
