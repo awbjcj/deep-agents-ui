@@ -5,18 +5,24 @@ import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
 import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
 import { AccountMenu } from "@/app/components/AccountMenu";
-import { AdminSidebar } from "@/app/components/AdminSidebar";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
-import { ModelSidebar } from "@/app/components/ModelSidebar";
-import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import {
+  WorkspacePanel,
+  type WorkspaceTab,
+} from "@/app/components/WorkspacePanel";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { useTheme } from "@/providers/ThemeProvider";
-import { Cpu, Key, MessagesSquare, Settings, Shield, SquarePen } from "lucide-react";
+import {
+  LayoutPanelLeft,
+  MessagesSquare,
+  Settings,
+  SquarePen,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -53,21 +59,20 @@ function HomePageInner({
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
-  const [rightPanel, setRightPanel] = useState<"admin" | "model" | "token" | null>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab | undefined>(
+    undefined,
+  );
   const { pendingTokenFocus, requestTokenFocus } = useNotifications();
 
-  // When the user clicks "Update token" on a notification banner, route the
-  // request through NotificationsProvider's pendingTokenFocus state. This
-  // both opens the panel and (via TokenManagementSidebar's initialFocus prop)
-  // scrolls/focuses the right input.
+  // Notification-banner deep link: open the workspace pinned to Tokens and
+  // pass the service key through so the matching input scrolls into focus.
   useEffect(() => {
     if (pendingTokenFocus) {
-      setRightPanel("token");
+      setWorkspaceOpen(true);
+      setWorkspaceTab("tokens");
     }
   }, [pendingTokenFocus]);
-
-  const toggleRightPanel = (panel: "admin" | "model" | "token") =>
-    setRightPanel((prev) => (prev === panel ? null : panel));
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -195,61 +200,45 @@ function HomePageInner({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="hidden items-center gap-1.5 text-xs text-muted-foreground lg:inline-flex">
-              <span className="font-semibold uppercase tracking-[0.1em]">Agent</span>
-              <span className="max-w-[140px] truncate font-mono text-[11px] text-foreground/60">
-                {config.assistantId}
-              </span>
-            </div>
+            {/* Assistant name surfaced over its raw ID — full ID is in tooltip
+                for power users who need to copy it. */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="hidden cursor-default items-center gap-1.5 text-xs text-muted-foreground lg:inline-flex">
+                  <span className="font-semibold uppercase tracking-[0.1em]">
+                    Agent
+                  </span>
+                  <span className="max-w-[180px] truncate text-[12px] font-medium text-foreground/80">
+                    {assistant?.name || config.assistantId}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="font-mono text-[11px]">{config.assistantId}</div>
+              </TooltipContent>
+            </Tooltip>
             <span className="mx-1 hidden h-6 w-px bg-border md:block" />
             <ThemeToggle />
             <span className="mx-0.5 hidden h-5 w-px bg-border md:block" />
-            {user?.role === "admin" && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleRightPanel("admin")}
-                    aria-label="Admin"
-                    aria-pressed={rightPanel === "admin"}
-                    className={rightPanel === "admin" ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
-                  >
-                    <Shield className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Admin</TooltipContent>
-              </Tooltip>
-            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  onClick={() => toggleRightPanel("model")}
-                  aria-label="Models"
-                  aria-pressed={rightPanel === "model"}
-                  className={rightPanel === "model" ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
+                  size="sm"
+                  onClick={() => setWorkspaceOpen((v) => !v)}
+                  aria-label="Workspace"
+                  aria-pressed={workspaceOpen}
+                  className={
+                    workspaceOpen
+                      ? "rounded-full border border-primary/40 bg-primary/10 px-3 text-primary hover:bg-primary/15"
+                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-primary/40 hover:bg-accent"
+                  }
                 >
-                  <Cpu className="h-4 w-4" />
+                  <LayoutPanelLeft className="mr-2 h-4 w-4" />
+                  Workspace
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Models</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleRightPanel("token")}
-                  aria-label="Token management"
-                  aria-pressed={rightPanel === "token"}
-                  className={rightPanel === "token" ? "bg-primary/10 text-primary ring-1 ring-primary/40 hover:bg-primary/15" : ""}
-                >
-                  <Key className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Tokens</TooltipContent>
+              <TooltipContent>Models · Tokens{user?.role === "admin" ? " · Admin" : ""}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -323,29 +312,26 @@ function HomePageInner({
               </ChatProvider>
             </ResizablePanel>
 
-            {rightPanel && (
+            {workspaceOpen && (
               <>
                 <ResizableHandle />
                 <ResizablePanel
                   id="right-panel"
                   order={3}
-                  defaultSize={25}
-                  minSize={20}
-                  className="relative min-w-[320px]"
+                  defaultSize={28}
+                  minSize={22}
+                  className="relative min-w-[360px]"
                 >
-                  {rightPanel === "admin" && (
-                    <AdminSidebar onClose={() => setRightPanel(null)} />
-                  )}
-                  {rightPanel === "model" && (
-                    <ModelSidebar onClose={() => setRightPanel(null)} />
-                  )}
-                  {rightPanel === "token" && (
-                    <TokenManagementSidebar
-                      onClose={() => setRightPanel(null)}
-                      initialFocus={pendingTokenFocus}
-                      onFocusConsumed={() => requestTokenFocus(null)}
-                    />
-                  )}
+                  <WorkspacePanel
+                    initialTab={workspaceTab}
+                    initialTokenFocus={pendingTokenFocus}
+                    onTokenFocusConsumed={() => requestTokenFocus(null)}
+                    showAdmin={user?.role === "admin"}
+                    onClose={() => {
+                      setWorkspaceOpen(false);
+                      setWorkspaceTab(undefined);
+                    }}
+                  />
                 </ResizablePanel>
               </>
             )}
