@@ -12,7 +12,11 @@ interface Props {
 export const AttachmentsRow = React.memo<Props>(({ items, onRemove }) => {
   if (items.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-2 border-b border-border px-[18px] py-2">
+    <div
+      role="list"
+      aria-label="Attachments"
+      className="flex flex-wrap gap-2 border-b border-border px-[18px] py-2"
+    >
       {items.map((item) => (
         <AttachmentChip
           key={item.localId}

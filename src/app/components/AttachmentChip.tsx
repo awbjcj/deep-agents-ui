@@ -21,14 +21,13 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
       ? item.meta.kind === "image"
       : /\.(png|jpe?g|gif|webp)$/i.test(item.file.name);
 
-  const filename =
-    item.phase === "ready" ? item.meta.filename : item.file.name;
-  const size =
-    item.phase === "ready" ? item.meta.byte_size : item.file.size;
+  const filename = item.phase === "ready" ? item.meta.filename : item.file.name;
+  const size = item.phase === "ready" ? item.meta.byte_size : item.file.size;
 
   return (
     <div
-      className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs"
+      role="listitem"
+      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-sm data-[state=error]:border-destructive/40 data-[state=error]:bg-destructive/5"
       data-state={item.phase}
     >
       {item.phase === "uploading" ? (
@@ -41,7 +40,10 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
       <span className="max-w-[160px] truncate font-medium">{filename}</span>
       <span className="text-muted-foreground">{humanSize(size)}</span>
       {item.phase === "error" && (
-        <span className="text-destructive" title={item.error}>
+        <span
+          className="text-destructive"
+          title={item.error}
+        >
           error
         </span>
       )}
@@ -49,7 +51,7 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
         type="button"
         aria-label={`Remove ${filename}`}
         onClick={() => onRemove(item.localId)}
-        className="rounded-full p-0.5 hover:bg-foreground/10"
+        className="rounded-md p-0.5 hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <X className="h-3 w-3" />
       </button>
