@@ -16,6 +16,7 @@ import {
   Clock,
   Circle,
   FileIcon,
+  Paperclip,
   X,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
@@ -35,6 +36,9 @@ import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
+import { AttachmentsRow } from "@/app/components/AttachmentsRow";
+import { useAttachments } from "@/app/hooks/useAttachments";
+import { useQueryState } from "nuqs";
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
@@ -73,6 +77,19 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [input, setInput] = useState("");
+  const [threadId] = useQueryState("threadId");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const {
+    items: attachments,
+    addFiles,
+    remove: removeAttachment,
+    takeReady,
+    hasUploading,
+    accept: acceptAttr,
+  } = useAttachments({ threadId });
+
   const { scrollRef, contentRef } = useStickToBottom();
 
   const {
@@ -94,15 +111,56 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
 
   const handleSubmit = useCallback(
     (e?: FormEvent) => {
-      if (e) {
-        e.preventDefault();
-      }
+      if (e) e.preventDefault();
+      if (hasUploading) return;
+
       const messageText = input.trim();
-      if (!messageText || isLoading || submitDisabled) return;
-      sendMessage(messageText);
+      const ready = takeReady();
+      if (!messageText && ready.length === 0) return;
+      if (isLoading || submitDisabled) return;
+
+      const docs = ready.filter((r) => r.kind === "document");
+      const images = ready.filter(
+        (r) => r.kind === "image" && r.image !== null,
+      );
+
+      const noteLines = docs.map(
+        (d) =>
+          `- ${d.state_files_key}  (from ${d.filename}, ${d.markdown_chars} chars` +
+          (d.engine ? `, engine=${d.engine}` : "") +
+          `)`,
+      );
+      const systemNote = noteLines.length
+        ? `[Uploaded files — read with read_file or grep_file]\n${noteLines.join("\n")}`
+        : "";
+      const combinedText = [messageText, systemNote]
+        .filter(Boolean)
+        .join("\n\n");
+
+      if (images.length === 0) {
+        sendMessage(combinedText);
+      } else {
+        sendMessage([
+          { type: "text", text: combinedText || " " },
+          ...images.map((img) => ({
+            type: "image_url",
+            image_url: {
+              url: `data:${img.image!.media_type};base64,${img.image!.data_b64}`,
+            },
+          })),
+        ]);
+      }
       setInput("");
     },
-    [input, isLoading, sendMessage, setInput, submitDisabled]
+    [
+      input,
+      isLoading,
+      hasUploading,
+      sendMessage,
+      setInput,
+      submitDisabled,
+      takeReady,
+    ],
   );
 
   const handleKeyDown = useCallback(
@@ -479,8 +537,22 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
           )}
           <form
             onSubmit={handleSubmit}
-            className="flex flex-col"
+            className={`relative flex flex-col ${isDragging ? "ring-2 ring-primary/40" : ""}`}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes("Files")) {
+                e.preventDefault();
+                setIsDragging(true);
+              }
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              const files = Array.from(e.dataTransfer.files);
+              if (files.length) addFiles(files);
+            }}
           >
+            <AttachmentsRow items={attachments} onRemove={removeAttachment} />
             <textarea
               ref={textareaRef}
               value={input}
@@ -490,12 +562,42 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, userId
               className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-primary outline-none placeholder:text-tertiary"
               rows={1}
             />
-            <div className="flex justify-end gap-2 p-3">
+            <div className="flex items-center justify-between gap-2 p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept={acceptAttr}
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) {
+                      addFiles(Array.from(e.target.files));
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Attach files"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={submitDisabled}
+                >
+                  <Paperclip size={18} />
+                </Button>
+              </div>
               <Button
                 type={isLoading ? "button" : "submit"}
                 variant={isLoading ? "destructive" : "default"}
                 onClick={isLoading ? stopStream : handleSubmit}
-                disabled={!isLoading && (submitDisabled || !input.trim())}
+                disabled={
+                  !isLoading &&
+                  (submitDisabled ||
+                    hasUploading ||
+                    (!input.trim() && attachments.every((a) => a.phase !== "ready")))
+                }
               >
                 {isLoading ? (
                   <>
