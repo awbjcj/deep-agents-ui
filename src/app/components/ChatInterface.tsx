@@ -617,6 +617,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   type={isLoading ? "button" : "submit"}
                   variant={isLoading ? "destructive" : "default"}
                   onClick={isLoading ? stopStream : handleSubmit}
+                  className={cn(
+                    "min-w-[104px] rounded-md font-semibold tracking-[0.01em]",
+                    isLoading
+                      ? "border border-destructive/40"
+                      : "relative overflow-hidden border border-[var(--border-brand-strong)] bg-[var(--color-primary)] text-white shadow-sm hover:border-[var(--color-primary-dark)] hover:bg-[var(--color-primary-hover)] hover:shadow-md focus-visible:ring-primary/25 active:translate-y-px after:absolute after:inset-y-1 after:right-1 after:w-[2px] after:rounded-full after:bg-[var(--aptiv-orange)] after:opacity-80 after:content-[''] disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:after:opacity-0"
+                  )}
                   disabled={
                     !isLoading &&
                     (submitDisabled ||
