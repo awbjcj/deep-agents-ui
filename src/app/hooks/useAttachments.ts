@@ -36,12 +36,21 @@ function extOf(name: string): string {
 export function useAttachments({ threadId }: UseAttachmentsOpts) {
   const [items, setItems] = useState<AttachmentState[]>([]);
   const aborters = useRef(new Map<string, AbortController>());
+  const deferredIds = useRef(new Set<string>());
+  const previousThreadId = useRef<string | null>(null);
 
-  // Switching threads clears the buffer entirely.
+  // Only abort+clear when switching between two real threads.
+  // null -> string: keep buffered uploads so they can be retried.
   useEffect(() => {
-    aborters.current.forEach((c) => c.abort());
-    aborters.current.clear();
-    setItems([]);
+    if (
+      previousThreadId.current !== null &&
+      previousThreadId.current !== threadId
+    ) {
+      aborters.current.forEach((c) => c.abort());
+      aborters.current.clear();
+      setItems([]);
+    }
+    previousThreadId.current = threadId;
   }, [threadId]);
 
   const update = useCallback(
@@ -59,13 +68,8 @@ export function useAttachments({ threadId }: UseAttachmentsOpts) {
   const beginUpload = useCallback(
     async (item: { localId: string; file: File }) => {
       if (!threadId) {
-        update(item.localId, {
-          phase: "error",
-          localId: item.localId,
-          file: item.file,
-          error: "Send a message first to create a thread, then re-attach.",
-        });
-        return;
+        deferredIds.current.add(item.localId);
+        return; // Stay in "uploading" phase; retried by the effect below.
       }
       const controller = new AbortController();
       aborters.current.set(item.localId, controller);
@@ -84,10 +88,26 @@ export function useAttachments({ threadId }: UseAttachmentsOpts) {
         toast.error(`Upload failed: ${item.file.name}`, { description: msg });
       } finally {
         aborters.current.delete(item.localId);
+        deferredIds.current.delete(item.localId);
       }
     },
     [threadId, update],
   );
+
+  // Retry deferred uploads once threadId becomes available.
+  useEffect(() => {
+    if (!threadId) return;
+    if (deferredIds.current.size === 0) return;
+    // Snapshot then process so we don't iterate a mutating set.
+    const ids = Array.from(deferredIds.current);
+    ids.forEach((localId) => {
+      const target = items.find((it) => it.localId === localId);
+      if (target && target.phase === "uploading") {
+        beginUpload({ localId, file: target.file });
+      }
+      deferredIds.current.delete(localId);
+    });
+  }, [threadId, items, beginUpload]);
 
   const addFiles = useCallback(
     (incoming: File[]) => {
@@ -153,15 +173,18 @@ export function useAttachments({ threadId }: UseAttachmentsOpts) {
   }, []);
 
   const takeReady = useCallback((): UploadResponse[] => {
-    const ready = items
-      .filter(
-        (it): it is Extract<AttachmentState, { phase: "ready" }> =>
-          it.phase === "ready",
-      )
-      .map((it) => it.meta);
-    setItems((prev) => prev.filter((it) => it.phase !== "ready"));
+    let ready: UploadResponse[] = [];
+    setItems((prev) => {
+      ready = prev
+        .filter(
+          (it): it is Extract<AttachmentState, { phase: "ready" }> =>
+            it.phase === "ready",
+        )
+        .map((it) => it.meta);
+      return prev.filter((it) => it.phase !== "ready");
+    });
     return ready;
-  }, [items]);
+  }, []);
 
   const hasUploading = items.some((it) => it.phase === "uploading");
 
