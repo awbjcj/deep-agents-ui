@@ -153,8 +153,12 @@ export function useChat({
   ];
 
   const sendMessage = useCallback(
-    (content: string) => {
-      const newMessage: Message = { id: uuidv4(), type: "human", content };
+    (content: string | Array<Record<string, unknown>>) => {
+      const newMessage: Message = {
+        id: uuidv4(),
+        type: "human",
+        content: content as Message["content"],
+      };
       stream.submit(
         { messages: [newMessage] },
         {
