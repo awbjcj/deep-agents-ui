@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
@@ -39,6 +39,18 @@ export type StateType = {
   ui?: any;
 };
 
+// Multi-mode event stream per deepagents event-streaming guide:
+// - "values": full graph state snapshots (drives values.todos / files / ui)
+// - "messages-tuple": token-level streaming of assistant messages
+// - "updates": per-node delta updates (granular tool/state changes)
+// - "custom": arbitrary events emitted by the agent (progress, status)
+const STREAM_MODES: StreamMode[] = [
+  "values",
+  "messages-tuple",
+  "updates",
+  "custom",
+];
+
 export function useChat({
   activeAssistant,
   onHistoryRevalidate,
@@ -55,6 +67,12 @@ export function useChat({
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
   const { ingestStreamEvent } = useNotifications();
+  const threadIdRef = useRef(threadId);
+  const creatingThreadRef = useRef<Promise<string> | null>(null);
+
+  useEffect(() => {
+    threadIdRef.current = threadId;
+  }, [threadId]);
 
   // Route `custom` stream events from ToolErrorNotificationMiddleware:
   //   - scope "user" → durable banner (handled by NotificationsProvider)
@@ -79,8 +97,8 @@ export function useChat({
         notif.severity === "error"
           ? toast.error
           : notif.severity === "warning"
-            ? toast.warning
-            : toast.info;
+          ? toast.warning
+          : toast.info;
       show(notif.title, {
         description: notif.message,
         duration: notif.severity === "error" ? Infinity : 8000,
@@ -95,6 +113,29 @@ export function useChat({
     () => (userId ? { user_id: userId } : undefined),
     [userId]
   );
+
+  const ensureThreadId = useCallback(async () => {
+    if (threadIdRef.current) return threadIdRef.current;
+    if (!creatingThreadRef.current) {
+      const payload = threadCreationMetadata
+        ? { metadata: threadCreationMetadata }
+        : undefined;
+      creatingThreadRef.current = client.threads
+        .create(payload)
+        .then((thread) => {
+          if (!threadIdRef.current) {
+            threadIdRef.current = thread.thread_id;
+            setThreadId(thread.thread_id);
+            onHistoryRevalidate?.();
+          }
+          return thread.thread_id;
+        })
+        .finally(() => {
+          creatingThreadRef.current = null;
+        });
+    }
+    return creatingThreadRef.current;
+  }, [client, onHistoryRevalidate, setThreadId, threadCreationMetadata]);
 
   // Build a merged config that includes system_username in configurable
   // so the LangGraph backend can resolve per-user tokens.
@@ -140,21 +181,13 @@ export function useChat({
   );
   const stream = useStream<StateType>(streamOptions);
 
-  // Multi-mode event stream per deepagents event-streaming guide:
-  // - "values": full graph state snapshots (drives values.todos / files / ui)
-  // - "messages-tuple": token-level streaming of assistant messages
-  // - "updates": per-node delta updates (granular tool/state changes)
-  // - "custom": arbitrary events emitted by the agent (progress, status)
-  const STREAM_MODES: StreamMode[] = [
-    "values",
-    "messages-tuple",
-    "updates",
-    "custom",
-  ];
-
   const sendMessage = useCallback(
-    (content: string) => {
-      const newMessage: Message = { id: uuidv4(), type: "human", content };
+    (content: string | Array<Record<string, unknown>>) => {
+      const newMessage: Message = {
+        id: uuidv4(),
+        type: "human",
+        content: content as Message["content"],
+      };
       stream.submit(
         { messages: [newMessage] },
         {
@@ -218,14 +251,15 @@ export function useChat({
   // override it the moment the user saves, so the FilesPopover/FileViewDialog
   // both feel instant. When a real stream event lands with matching content we
   // drop the override and re-trust the stream.
-  const [optimisticFiles, setOptimisticFiles] = useState<
-    Record<string, string> | null
-  >(null);
+  const [optimisticFiles, setOptimisticFiles] = useState<Record<
+    string,
+    string
+  > | null>(null);
   // Memoize so identity changes only when the stream actually emits new files
   // — otherwise the effect below would loop on every parent render.
   const serverFiles = useMemo(
     () => stream.values.files ?? {},
-    [stream.values.files],
+    [stream.values.files]
   );
   const files = optimisticFiles ?? serverFiles;
 
@@ -234,7 +268,7 @@ export function useChat({
     const sameKeys =
       Object.keys(optimisticFiles).length === Object.keys(serverFiles).length &&
       Object.keys(optimisticFiles).every(
-        (k) => optimisticFiles[k] === serverFiles[k],
+        (k) => optimisticFiles[k] === serverFiles[k]
       );
     if (sameKeys) setOptimisticFiles(null);
   }, [serverFiles, optimisticFiles]);
@@ -258,7 +292,7 @@ export function useChat({
         throw err;
       }
     },
-    [client, threadId, optimisticFiles, serverFiles],
+    [client, threadId, optimisticFiles, serverFiles]
   );
 
   const continueStream = useCallback(
@@ -305,7 +339,11 @@ export function useChat({
   // implementation that lived inside ChatInterface.
   const isInterrupted = stream.interrupt !== undefined;
   const processedMessages = useMemo<ProcessedMessage[]>(() => {
-    type Bucket = { message: Message; toolCalls: ToolCall[]; stableKey: string };
+    type Bucket = {
+      message: Message;
+      toolCalls: ToolCall[];
+      stableKey: string;
+    };
     const messageMap = new Map<string, Bucket>();
     const toolCallIndex = new Map<
       string,
@@ -329,11 +367,13 @@ export function useChat({
           rawToolCalls.push(...message.additional_kwargs.tool_calls);
         } else if (message.tool_calls && Array.isArray(message.tool_calls)) {
           rawToolCalls.push(
-            ...message.tool_calls.filter((tc: { name?: string }) => tc.name !== ""),
+            ...message.tool_calls.filter(
+              (tc: { name?: string }) => tc.name !== ""
+            )
           );
         } else if (Array.isArray(message.content)) {
           const toolUseBlocks = message.content.filter(
-            (block: { type?: string }) => block.type === "tool_use",
+            (block: { type?: string }) => block.type === "tool_use"
           );
           rawToolCalls.push(...toolUseBlocks);
         }
@@ -352,7 +392,11 @@ export function useChat({
           } as ToolCall;
         });
 
-        messageMap.set(messageKey, { message, toolCalls, stableKey: messageKey });
+        messageMap.set(messageKey, {
+          message,
+          toolCalls,
+          stableKey: messageKey,
+        });
       } else if (message.type === "tool") {
         const toolCallId = message.tool_call_id;
         if (!toolCallId) return;
@@ -367,7 +411,11 @@ export function useChat({
         };
       } else if (message.type === "human") {
         const humanKey = message.id || `human-${idx}`;
-        messageMap.set(humanKey, { message, toolCalls: [], stableKey: humanKey });
+        messageMap.set(humanKey, {
+          message,
+          toolCalls: [],
+          stableKey: humanKey,
+        });
       }
     });
 
@@ -392,6 +440,7 @@ export function useChat({
     interrupt: stream.interrupt,
     getMessagesMetadata: stream.getMessagesMetadata,
     sendMessage,
+    ensureThreadId,
     runSingleStep,
     continueStream,
     stopStream,
