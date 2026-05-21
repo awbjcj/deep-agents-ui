@@ -148,13 +148,18 @@ export function useAttachments({
       aborters.current.get(localId)?.abort();
       aborters.current.delete(localId);
       update(localId, null);
-      if (target.phase === "ready" && target.meta.state_files_key && threadId) {
-        deleteUpload(threadId, target.meta.state_files_key).catch(() => {
-          // Best-effort cleanup; user already moved on.
-        });
+      if (target.phase === "ready" && target.meta.state_files_key) {
+        void (async () => {
+          try {
+            const cleanupThreadId = threadId ?? (await ensureThreadId());
+            await deleteUpload(cleanupThreadId, target.meta.state_files_key);
+          } catch {
+            // Best-effort cleanup; user already moved on.
+          }
+        })();
       }
     },
-    [items, threadId, update]
+    [ensureThreadId, items, threadId, update]
   );
 
   const clear = useCallback(() => {
