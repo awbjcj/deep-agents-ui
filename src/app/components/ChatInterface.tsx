@@ -122,6 +122,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     } = useAttachments({ threadId, ensureThreadId });
 
     const submitDisabled = isLoading || !assistant;
+    const sendDisabled =
+      submitDisabled ||
+      hasUploading ||
+      (!input.trim() && attachments.every((a) => a.phase !== "ready"));
 
     const handleSubmit = useCallback(
       (e?: FormEvent) => {
@@ -626,20 +630,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 <Button
                   type={isLoading ? "button" : "submit"}
                   variant={isLoading ? "destructive" : "default"}
+                  size={isLoading ? "default" : "icon"}
                   onClick={isLoading ? stopStream : handleSubmit}
+                  aria-label={isLoading ? "Stop" : "Send message"}
                   className={cn(
-                    "min-w-[104px] rounded-md font-semibold tracking-[0.01em]",
+                    "transition-all duration-150",
                     isLoading
-                      ? "border border-destructive/40"
-                      : "relative overflow-hidden border border-[var(--border-brand-strong)] bg-[var(--color-primary)] text-white shadow-sm hover:border-[var(--color-primary-dark)] hover:bg-[var(--color-primary-hover)] hover:shadow-md focus-visible:ring-primary/25 active:translate-y-px after:absolute after:inset-y-1 after:right-1 after:w-[2px] after:rounded-full after:bg-[var(--aptiv-orange)] after:opacity-80 after:content-[''] disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:after:opacity-0"
+                      ? "rounded-full px-4 font-medium"
+                      : "size-9 rounded-full bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                   )}
-                  disabled={
-                    !isLoading &&
-                    (submitDisabled ||
-                      hasUploading ||
-                      (!input.trim() &&
-                        attachments.every((a) => a.phase !== "ready")))
-                  }
+                  disabled={!isLoading && sendDisabled}
                 >
                   {isLoading ? (
                     <>
@@ -647,10 +647,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       <span>Stop</span>
                     </>
                   ) : (
-                    <>
-                      <ArrowUp size={18} />
-                      <span>Send</span>
-                    </>
+                    <ArrowUp size={18} strokeWidth={2.5} />
                   )}
                 </Button>
               </div>

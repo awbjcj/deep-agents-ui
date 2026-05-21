@@ -71,6 +71,14 @@ export function useAttachments({
     previousThreadId.current = threadId;
   }, [threadId]);
 
+  // Abort in-flight uploads on unmount
+  useEffect(() => {
+    const ref = aborters;
+    return () => {
+      ref.current.forEach((c) => c.abort());
+    };
+  }, []);
+
   const update = useCallback(
     (localId: string, next: AttachmentState | null) => {
       setItems((prev) => {
@@ -163,7 +171,7 @@ export function useAttachments({
 
   const remove = useCallback(
     (localId: string) => {
-      const target = items.find((it) => it.localId === localId);
+      const target = itemsRef.current.find((it) => it.localId === localId);
       if (!target) return;
       aborters.current.get(localId)?.abort();
       aborters.current.delete(localId);
@@ -180,7 +188,7 @@ export function useAttachments({
         })();
       }
     },
-    [items, update]
+    [update]
   );
 
   const clear = useCallback(() => {
@@ -191,7 +199,8 @@ export function useAttachments({
 
   const takeReady = useCallback(
     (shouldConsume?: (item: UploadResponse) => boolean): UploadResponse[] => {
-      const readyItems = items.filter(
+      const current = itemsRef.current;
+      const readyItems = current.filter(
         (it): it is Extract<AttachmentState, { phase: "ready" }> =>
           it.phase === "ready"
       );
@@ -209,7 +218,7 @@ export function useAttachments({
       }
       return consumed.map((it) => it.meta);
     },
-    [items]
+    []
   );
 
   const hasUploading = items.some((it) => it.phase === "uploading");
