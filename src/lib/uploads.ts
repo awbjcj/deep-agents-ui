@@ -94,10 +94,18 @@ export async function deleteUpload(
   threadId: string,
   stateFilesKey: string,
 ): Promise<void> {
-  await fetch(
+  const resp = await fetch(
     `${deploymentBase()}/api/threads/${encodeURIComponent(
       threadId,
     )}/uploads/${encodeURIComponent(stateFilesKey)}`,
     { method: "DELETE", headers: authHeaders() },
   );
+  if (!resp.ok) {
+    const detail =
+      (await resp
+        .json()
+        .then((d) => d?.detail)
+        .catch(() => undefined)) ?? `Delete failed (${resp.status})`;
+    throw new Error(detail);
+  }
 }
