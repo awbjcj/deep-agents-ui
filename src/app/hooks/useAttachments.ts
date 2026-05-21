@@ -16,7 +16,7 @@ import {
 
 export type AttachmentState =
   | { phase: "uploading"; localId: string; file: File }
-  | { phase: "ready"; localId: string; meta: UploadResponse }
+  | { phase: "ready"; localId: string; meta: UploadResponse; threadId: string }
   | { phase: "error"; localId: string; file: File; error: string };
 
 interface UseAttachmentsOpts {
@@ -41,6 +41,11 @@ export function useAttachments({
   const [items, setItems] = useState<AttachmentState[]>([]);
   const aborters = useRef(new Map<string, AbortController>());
   const previousThreadId = useRef<string | null>(null);
+  const itemsRef = useRef<AttachmentState[]>([]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   // Switching away from an existing thread clears in-flight chips.
   // null -> string is initial thread creation; keep attachments in place.
@@ -49,6 +54,16 @@ export function useAttachments({
       previousThreadId.current !== null &&
       previousThreadId.current !== threadId
     ) {
+      const readyItems = itemsRef.current.filter(
+        (item): item is Extract<AttachmentState, { phase: "ready" }> =>
+          item.phase === "ready"
+      );
+      readyItems.forEach((item) => {
+        if (!item.meta.state_files_key) return;
+        void deleteUpload(item.threadId, item.meta.state_files_key).catch(() => {
+          // Best-effort cleanup; user already moved on.
+        });
+      });
       aborters.current.forEach((c) => c.abort());
       aborters.current.clear();
       setItems([]);
@@ -83,7 +98,12 @@ export function useAttachments({
           item.file,
           controller.signal
         );
-        update(item.localId, { phase: "ready", localId: item.localId, meta });
+        update(item.localId, {
+          phase: "ready",
+          localId: item.localId,
+          meta,
+          threadId: uploadThreadId,
+        });
       } catch (err) {
         if (controller.signal.aborted) return;
         const msg = err instanceof Error ? err.message : "Upload failed";
@@ -149,17 +169,18 @@ export function useAttachments({
       aborters.current.delete(localId);
       update(localId, null);
       if (target.phase === "ready" && target.meta.state_files_key) {
+        const stateFilesKey = target.meta.state_files_key;
+        const cleanupThreadId = target.threadId;
         void (async () => {
           try {
-            const cleanupThreadId = threadId ?? (await ensureThreadId());
-            await deleteUpload(cleanupThreadId, target.meta.state_files_key);
+            await deleteUpload(cleanupThreadId, stateFilesKey);
           } catch {
             // Best-effort cleanup; user already moved on.
           }
         })();
       }
     },
-    [ensureThreadId, items, threadId, update]
+    [items, update]
   );
 
   const clear = useCallback(() => {
@@ -168,18 +189,28 @@ export function useAttachments({
     setItems([]);
   }, []);
 
-  const takeReady = useCallback((): UploadResponse[] => {
-    const ready = items
-      .filter(
+  const takeReady = useCallback(
+    (shouldConsume?: (item: UploadResponse) => boolean): UploadResponse[] => {
+      const readyItems = items.filter(
         (it): it is Extract<AttachmentState, { phase: "ready" }> =>
           it.phase === "ready"
-      )
-      .map((it) => it.meta);
-    if (ready.length > 0) {
-      setItems((prev) => prev.filter((it) => it.phase !== "ready"));
-    }
-    return ready;
-  }, [items]);
+      );
+      if (readyItems.length === 0) return [];
+
+      if (!shouldConsume) {
+        setItems((prev) => prev.filter((it) => it.phase !== "ready"));
+        return readyItems.map((it) => it.meta);
+      }
+
+      const consumed = readyItems.filter((it) => shouldConsume(it.meta));
+      if (consumed.length > 0) {
+        const consumedIds = new Set(consumed.map((it) => it.localId));
+        setItems((prev) => prev.filter((it) => !consumedIds.has(it.localId)));
+      }
+      return consumed.map((it) => it.meta);
+    },
+    [items]
+  );
 
   const hasUploading = items.some((it) => it.phase === "uploading");
 

@@ -130,10 +130,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         if (isLoading || submitDisabled) return;
 
         const messageText = input.trim();
-        const ready = takeReady();
+        const ready = takeReady(
+          (upload) =>
+            (upload.kind === "document" && Boolean(upload.state_files_key)) ||
+            hasImagePayload(upload)
+        );
         if (!messageText && ready.length === 0) return;
 
-        const docs = ready.filter((r) => r.kind === "document");
+        const docs = ready.filter(
+          (
+            r
+          ): r is UploadResponse & {
+            state_files_key: string;
+          } => r.kind === "document" && Boolean(r.state_files_key)
+        );
         const images = ready.filter(hasImagePayload);
 
         const noteLines = docs.map(

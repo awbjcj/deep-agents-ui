@@ -1,4 +1,5 @@
 import { getConfig } from "@/lib/config";
+import { getAuthUser } from "@/lib/auth";
 
 export type UploadKind = "image" | "document";
 
@@ -56,21 +57,10 @@ function deploymentBase(): string {
   return cfg.deploymentUrl.replace(/\/+$/, "");
 }
 
-/**
- * Reads the JWT access token from the auth object stored under AUTH_KEY
- * ("deep-agent-auth") by AuthProvider / saveAuthUser in src/lib/auth.ts.
- * The stored value is a JSON-serialised AuthUser with an access_token field.
- */
 function authHeaders(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem("deep-agent-auth");
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as { access_token?: string };
-    const token = parsed.access_token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
+  const user = getAuthUser();
+  if (!user?.access_token) return {};
+  return { Authorization: `Bearer ${user.access_token}` };
 }
 
 export async function uploadFile(
