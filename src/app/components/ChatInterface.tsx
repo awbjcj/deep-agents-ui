@@ -130,15 +130,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const handleSubmit = useCallback(
       (e?: FormEvent) => {
         if (e) e.preventDefault();
-        if (hasUploading) return;
-        if (isLoading || submitDisabled) return;
+        if (hasUploading || submitDisabled) return;
 
         const messageText = input.trim();
-        const ready = takeReady(
-          (upload) =>
-            (upload.kind === "document" && Boolean(upload.state_files_key)) ||
-            hasImagePayload(upload)
-        );
+        const ready = takeReady();
         if (!messageText && ready.length === 0) return;
 
         const docs = ready.filter(
@@ -182,7 +177,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       },
       [
         input,
-        isLoading,
         hasUploading,
         sendMessage,
         setInput,

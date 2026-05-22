@@ -8,6 +8,7 @@ import {
   KeyRound,
   Loader2,
   RadioTower,
+  RotateCcw,
   Save,
   Shield,
   Trash2,
@@ -23,15 +24,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatTimestamp } from "@/app/utils/utils";
 import {
   AdminUser,
+  AdminUserUsage,
   Role,
   RunMode,
   RunModeInfo,
   apiDeleteUser,
   apiGetRunMode,
   apiGetTierModels,
+  apiGetUserUsage,
   apiListUsers,
   apiResetAllPasswords,
+  apiResetAllUsage,
   apiResetPassword,
+  apiResetUserUsage,
   apiSetRunMode,
   apiSetAllTierModels,
   apiUpdateUserRole,
@@ -97,6 +102,7 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
   const [isSavingRunMode, setIsSavingRunMode] = useState(false);
   const [runModeSavedIndicator, setRunModeSavedIndicator] = useState(false);
   const [isSavingTiers, setIsSavingTiers] = useState(false);
+  const [userUsage, setUserUsage] = useState<Record<string, AdminUserUsage>>({});
 
   const fetchAdminData = useCallback(async () => {
     setIsLoading(true);
@@ -129,6 +135,23 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
   useEffect(() => {
     void fetchAdminData();
   }, [fetchAdminData]);
+
+  useEffect(() => {
+    if (users.length === 0) return;
+    const fetchUsage = async () => {
+      const results = await Promise.allSettled(
+        users.map((u) => apiGetUserUsage(u.username))
+      );
+      const map: Record<string, AdminUserUsage> = {};
+      results.forEach((r, i) => {
+        if (r.status === "fulfilled") {
+          map[users[i]!.username] = r.value;
+        }
+      });
+      setUserUsage(map);
+    };
+    void fetchUsage();
+  }, [users]);
 
   const savedTierText = useMemo(() => tierMapToText(tiers), [tiers]);
   const tiersDirty =
@@ -222,6 +245,40 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
     }
   };
 
+  const handleResetUserUsage = async (target: AdminUser) => {
+    if (!confirm(`Reset weekly token usage for ${target.username}?`)) return;
+    try {
+      await apiResetUserUsage(target.username);
+      setUserUsage((prev) => {
+        const next = { ...prev };
+        if (next[target.username]) {
+          next[target.username] = { ...next[target.username], used: 0, pct: 0 };
+        }
+        return next;
+      });
+      toast.success(`Reset usage for ${target.username}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reset usage");
+    }
+  };
+
+  const handleResetAllUsage = async () => {
+    if (!confirm("Reset weekly token usage for ALL users?")) return;
+    try {
+      const { reset } = await apiResetAllUsage();
+      setUserUsage((prev) => {
+        const next: Record<string, AdminUserUsage> = {};
+        for (const [k, v] of Object.entries(prev)) {
+          next[k] = { ...v, used: 0, pct: 0 };
+        }
+        return next;
+      });
+      toast.success(`Reset usage for ${reset} user(s)`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reset all usage");
+    }
+  };
+
   const handleSaveAllTiers = async () => {
     const parsed = {} as TierMap;
     for (const tier of ROLES) {
@@ -304,7 +361,9 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
               </div>
             ) : (
               <div className="space-y-1.5">
-                {users.map((u) => (
+                {users.map((u) => {
+                  const usage = userUsage[u.username];
+                  return (
                   <div
                     key={u.user_id}
                     className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2"
@@ -329,6 +388,27 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
                         ))}
                       </select>
                     </div>
+                    {usage && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="h-1.5 flex-1 rounded-full bg-muted">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              usage.pct >= 90
+                                ? "bg-destructive"
+                                : usage.pct >= 70
+                                  ? "bg-warning-strong"
+                                  : "bg-brand-primary"
+                            }`}
+                            style={{ width: `${Math.min(usage.pct, 100)}%` }}
+                          />
+                        </div>
+                        <span className="whitespace-nowrap font-mono tabular-nums">
+                          {usage.is_unlimited
+                            ? `${Math.round(usage.used).toLocaleString()} (no limit)`
+                            : `${Math.round(usage.pct)}%`}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Button
                         type="button"
@@ -344,6 +424,16 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
                         type="button"
                         variant="outline"
                         size="sm"
+                        onClick={() => handleResetUserUsage(u)}
+                        className="h-8 flex-1 px-2 text-xs text-status-orange hover:bg-warning-secondary hover:text-status-orange"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Reset Usage
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleDelete(u)}
                         disabled={u.user_id === user?.user_id}
                         className="h-8 flex-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -353,7 +443,8 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <Button
@@ -364,6 +455,15 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
             >
               <Download className="mr-2 h-4 w-4" />
               Reset all non-admin passwords
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-status-orange hover:bg-warning-secondary hover:text-status-orange"
+              onClick={handleResetAllUsage}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset all weekly usage
             </Button>
           </section>
 

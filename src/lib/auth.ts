@@ -540,6 +540,49 @@ export async function apiResetAllPasswords(): Promise<TempPassword[]> {
   return data.resets;
 }
 
+// --- Admin: token usage reset ---
+
+export interface AdminUserUsage {
+  used: number;
+  limit: number;
+  pct: number;
+  is_unlimited: boolean;
+  display_reset: string;
+}
+
+export async function apiGetUserUsage(username: string): Promise<AdminUserUsage> {
+  const res = await apiFetch(`/admin/token-usage/users/${username}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch user usage");
+  }
+  return res.json();
+}
+
+export async function apiResetUserUsage(username: string): Promise<void> {
+  const res = await apiFetch(`/admin/token-usage/users/${username}/reset`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to reset user usage"
+    );
+  }
+}
+
+export async function apiResetAllUsage(): Promise<{ reset: number }> {
+  const res = await apiFetch("/admin/token-usage/reset-all", {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to reset all usage"
+    );
+  }
+  return res.json();
+}
+
 // --- Profile update ---
 
 export interface UpdateProfileData {
