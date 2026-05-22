@@ -20,6 +20,19 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+/**
+ * Whether a token's `updated_at` value is meaningful enough to show the
+ * "Updated …" block. We treat falsy values, an empty string, or the sentinel
+ * "Unknown" returned by the backend as "no record yet". This protects against
+ * older deployments that omit a field or send an empty string instead of
+ * "Unknown" — the previous `!== "Unknown"` check would render "Updated  ()".
+ */
+function hasUpdatedAt(value: string | null | undefined): value is string {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed !== "" && trimmed !== "Unknown";
+}
+
 interface TokenManagementSidebarProps {
   onClose: () => void;
   /** Service key ("graph" | "jira" | "polarion" | "confluence") to focus on mount. */
@@ -184,24 +197,23 @@ export function TokenManagementSidebar({
                     </code>
                   </div>
                 )}
-                {tokenMeta &&
-                  tokenMeta.graph_api_token_updated_at !== "Unknown" && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.graph_api_token_updated_at}
-                      >
-                        {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.graph_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
+                {tokenMeta && hasUpdatedAt(tokenMeta.graph_api_token_updated_at) && (
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium text-muted-foreground">
+                      Updated
+                    </span>
+                    <time
+                      className="font-mono tabular-nums"
+                      dateTime={tokenMeta.graph_api_token_updated_at}
+                    >
+                      {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
+                    </time>
+                    <span className="text-muted-foreground/80">
+                      ({tokenMeta.graph_api_token_time_gap})
+                    </span>
+                  </div>
+                )}
                 <div className="relative">
                   <Input
                     id="graphToken"
@@ -244,24 +256,23 @@ export function TokenManagementSidebar({
                     </code>
                   </div>
                 )}
-                {tokenMeta &&
-                  tokenMeta.jira_api_token_updated_at !== "Unknown" && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.jira_api_token_updated_at}
-                      >
-                        {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.jira_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
+                {tokenMeta && hasUpdatedAt(tokenMeta.jira_api_token_updated_at) && (
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-medium text-muted-foreground">
+                      Updated
+                    </span>
+                    <time
+                      className="font-mono tabular-nums"
+                      dateTime={tokenMeta.jira_api_token_updated_at}
+                    >
+                      {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
+                    </time>
+                    <span className="text-muted-foreground/80">
+                      ({tokenMeta.jira_api_token_time_gap})
+                    </span>
+                  </div>
+                )}
                 <div className="relative">
                   <Input
                     id="jiraToken"
@@ -305,7 +316,7 @@ export function TokenManagementSidebar({
                   </div>
                 )}
                 {tokenMeta &&
-                  tokenMeta.polarion_asux_api_token_updated_at !== "Unknown" && (
+                  hasUpdatedAt(tokenMeta.polarion_asux_api_token_updated_at) && (
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-muted-foreground">
@@ -367,7 +378,7 @@ export function TokenManagementSidebar({
                   </div>
                 )}
                 {tokenMeta &&
-                  tokenMeta.polarion_prod1_api_token_updated_at !== "Unknown" && (
+                  hasUpdatedAt(tokenMeta.polarion_prod1_api_token_updated_at) && (
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-muted-foreground">
@@ -429,7 +440,7 @@ export function TokenManagementSidebar({
                   </div>
                 )}
                 {tokenMeta &&
-                  tokenMeta.confluence_api_token_updated_at !== "Unknown" && (
+                  hasUpdatedAt(tokenMeta.confluence_api_token_updated_at) && (
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-muted-foreground">

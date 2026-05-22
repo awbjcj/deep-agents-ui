@@ -180,19 +180,16 @@ export async function apiLogin(
 export interface UserTokens {
   graph_api_token_preview: string;
   jira_api_token_preview: string;
-  polarion_api_token_preview: string;
   polarion_asux_api_token_preview: string;
   polarion_prod1_api_token_preview: string;
   confluence_api_token_preview: string;
   graph_api_token_updated_at: string;
   jira_api_token_updated_at: string;
-  polarion_api_token_updated_at: string;
   polarion_asux_api_token_updated_at: string;
   polarion_prod1_api_token_updated_at: string;
   confluence_api_token_updated_at: string;
   graph_api_token_time_gap: string;
   jira_api_token_time_gap: string;
-  polarion_api_token_time_gap: string;
   polarion_asux_api_token_time_gap: string;
   polarion_prod1_api_token_time_gap: string;
   confluence_api_token_time_gap: string;
