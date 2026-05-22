@@ -44,9 +44,12 @@ export function TokenManagementSidebar({
   const [jiraDirty, setJiraDirty] = useState(false);
   const [showGraphToken, setShowGraphToken] = useState(false);
   const [showJiraToken, setShowJiraToken] = useState(false);
-  const [polarionToken, setPolarionToken] = useState("");
-  const [polarionDirty, setPolarionDirty] = useState(false);
-  const [showPolarionToken, setShowPolarionToken] = useState(false);
+  const [polarionAsuxToken, setPolarionAsuxToken] = useState("");
+  const [polarionAsuxDirty, setPolarionAsuxDirty] = useState(false);
+  const [showPolarionAsuxToken, setShowPolarionAsuxToken] = useState(false);
+  const [polarionProd1Token, setPolarionProd1Token] = useState("");
+  const [polarionProd1Dirty, setPolarionProd1Dirty] = useState(false);
+  const [showPolarionProd1Token, setShowPolarionProd1Token] = useState(false);
   const [confluenceToken, setConfluenceToken] = useState("");
   const [confluenceDirty, setConfluenceDirty] = useState(false);
   const [showConfluenceToken, setShowConfluenceToken] = useState(false);
@@ -64,7 +67,8 @@ export function TokenManagementSidebar({
       setTokenMeta(tokens);
       setGraphDirty(false);
       setJiraDirty(false);
-      setPolarionDirty(false);
+      setPolarionAsuxDirty(false);
+      setPolarionProd1Dirty(false);
       setConfluenceDirty(false);
     } catch {
       toast.error("Failed to load tokens");
@@ -92,19 +96,21 @@ export function TokenManagementSidebar({
   }, [initialFocus, isLoading, onFocusConsumed]);
 
   const handleSave = async () => {
-    if (!graphDirty && !jiraDirty && !polarionDirty && !confluenceDirty) return;
+    if (!graphDirty && !jiraDirty && !polarionAsuxDirty && !polarionProd1Dirty && !confluenceDirty) return;
     setIsSaving(true);
     try {
       // Only send tokens the user actually edited to avoid clearing the other
       const payload: {
         graph_api_token?: string;
         jira_api_token?: string;
-        polarion_api_token?: string;
+        polarion_asux_api_token?: string;
+        polarion_prod1_api_token?: string;
         confluence_api_token?: string;
       } = {};
       if (graphDirty) payload.graph_api_token = graphToken;
       if (jiraDirty) payload.jira_api_token = jiraToken;
-      if (polarionDirty) payload.polarion_api_token = polarionToken;
+      if (polarionAsuxDirty) payload.polarion_asux_api_token = polarionAsuxToken;
+      if (polarionProd1Dirty) payload.polarion_prod1_api_token = polarionProd1Token;
       if (confluenceDirty) payload.confluence_api_token = confluenceToken;
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
@@ -118,8 +124,10 @@ export function TokenManagementSidebar({
       setJiraToken("");
       setGraphDirty(false);
       setJiraDirty(false);
-      setPolarionToken("");
-      setPolarionDirty(false);
+      setPolarionAsuxToken("");
+      setPolarionAsuxDirty(false);
+      setPolarionProd1Token("");
+      setPolarionProd1Dirty(false);
       setConfluenceToken("");
       setConfluenceDirty(false);
       setSavedIndicator(true);
@@ -281,23 +289,23 @@ export function TokenManagementSidebar({
                 </div>
               </div>
 
-              {/* Polarion API Token */}
+              {/* Polarion ASUX Token */}
               <div className="space-y-2">
-                <Label htmlFor="polarionToken" className="text-sm font-medium">
-                  Polarion API Token
+                <Label htmlFor="polarion_asuxToken" className="text-sm font-medium">
+                  Polarion (ASUX) Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Used for Polarion work item integration
+                  Used for Polarion ASUX server work item integration
                 </p>
-                {tokenMeta && tokenMeta.polarion_api_token_preview && (
+                {tokenMeta && tokenMeta.polarion_asux_api_token_preview && (
                   <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
                     <code className="text-xs font-mono text-foreground">
-                      {tokenMeta.polarion_api_token_preview}
+                      {tokenMeta.polarion_asux_api_token_preview}
                     </code>
                   </div>
                 )}
                 {tokenMeta &&
-                  tokenMeta.polarion_api_token_updated_at !== "Unknown" && (
+                  tokenMeta.polarion_asux_api_token_updated_at !== "Unknown" && (
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-muted-foreground">
@@ -305,36 +313,98 @@ export function TokenManagementSidebar({
                       </span>
                       <time
                         className="font-mono tabular-nums"
-                        dateTime={tokenMeta.polarion_api_token_updated_at}
+                        dateTime={tokenMeta.polarion_asux_api_token_updated_at}
                       >
                         {formatTimestamp(
-                          tokenMeta.polarion_api_token_updated_at,
+                          tokenMeta.polarion_asux_api_token_updated_at,
                         )}
                       </time>
                       <span className="text-muted-foreground/80">
-                        ({tokenMeta.polarion_api_token_time_gap})
+                        ({tokenMeta.polarion_asux_api_token_time_gap})
                       </span>
                     </div>
                   )}
                 <div className="relative">
                   <Input
-                    id="polarionToken"
-                    type={showPolarionToken ? "text" : "password"}
-                    placeholder="Enter your Polarion API token"
-                    value={polarionToken}
+                    id="polarion_asuxToken"
+                    type={showPolarionAsuxToken ? "text" : "password"}
+                    placeholder="Enter your Polarion ASUX token"
+                    value={polarionAsuxToken}
                     onChange={(e) => {
-                      setPolarionToken(e.target.value);
-                      setPolarionDirty(true);
+                      setPolarionAsuxToken(e.target.value);
+                      setPolarionAsuxDirty(true);
                     }}
                     autoComplete="off"
                     className="pr-10"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPolarionToken(!showPolarionToken)}
+                    onClick={() => setShowPolarionAsuxToken(!showPolarionAsuxToken)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    {showPolarionToken ? (
+                    {showPolarionAsuxToken ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Polarion Prod1 Token */}
+              <div className="space-y-2">
+                <Label htmlFor="polarion_prod1Token" className="text-sm font-medium">
+                  Polarion (Prod1) Token
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for Polarion Prod1 server work item integration
+                </p>
+                {tokenMeta && tokenMeta.polarion_prod1_api_token_preview && (
+                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                    <code className="text-xs font-mono text-foreground">
+                      {tokenMeta.polarion_prod1_api_token_preview}
+                    </code>
+                  </div>
+                )}
+                {tokenMeta &&
+                  tokenMeta.polarion_prod1_api_token_updated_at !== "Unknown" && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.polarion_prod1_api_token_updated_at}
+                      >
+                        {formatTimestamp(
+                          tokenMeta.polarion_prod1_api_token_updated_at,
+                        )}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.polarion_prod1_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
+                <div className="relative">
+                  <Input
+                    id="polarion_prod1Token"
+                    type={showPolarionProd1Token ? "text" : "password"}
+                    placeholder="Enter your Polarion Prod1 token"
+                    value={polarionProd1Token}
+                    onChange={(e) => {
+                      setPolarionProd1Token(e.target.value);
+                      setPolarionProd1Dirty(true);
+                    }}
+                    autoComplete="off"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPolarionProd1Token(!showPolarionProd1Token)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPolarionProd1Token ? (
                       <EyeOff className="h-4 w-4" />
                     ) : (
                       <Eye className="h-4 w-4" />
@@ -412,7 +482,8 @@ export function TokenManagementSidebar({
                   isSaving ||
                   (!graphDirty &&
                     !jiraDirty &&
-                    !polarionDirty &&
+                    !polarionAsuxDirty &&
+                    !polarionProd1Dirty &&
                     !confluenceDirty)
                 }
                 className="w-full"
