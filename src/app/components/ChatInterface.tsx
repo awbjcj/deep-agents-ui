@@ -630,14 +630,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 <Button
                   type={isLoading ? "button" : "submit"}
                   variant={isLoading ? "destructive" : "default"}
-                  size={isLoading ? "default" : "icon"}
+                  size="default"
                   onClick={isLoading ? stopStream : handleSubmit}
                   aria-label={isLoading ? "Stop" : "Send message"}
                   className={cn(
-                    "transition-all duration-150",
-                    isLoading
-                      ? "rounded-full px-4 font-medium"
-                      : "size-9 rounded-full bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+                    "rounded-full px-4 font-medium transition-all duration-150",
+                    !isLoading &&
+                      "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                   )}
                   disabled={!isLoading && sendDisabled}
                 >
@@ -647,7 +646,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       <span>Stop</span>
                     </>
                   ) : (
-                    <ArrowUp size={18} strokeWidth={2.5} />
+                    <>
+                      <span>Send</span>
+                      <ArrowUp size={16} strokeWidth={2.5} />
+                    </>
                   )}
                 </Button>
               </div>
