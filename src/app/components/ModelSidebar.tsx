@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cpu, Gauge, Loader2, Save, Sparkles, X } from "lucide-react";
+import { Cpu, Gauge, Loader2, Save, Sliders, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -101,6 +101,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [activePreset, setActivePreset] = useState<ModelPreset | null>(null);
   const [serverCustom, setServerCustom] = useState(false);
+  const [customManuallySelected, setCustomManuallySelected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const usage = useTokenUsage();
@@ -151,7 +152,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
 
   const dirty =
     draft !== null && baseline !== null && !draftsEqual(draft, baseline);
-  const isCustom = serverCustom || dirty;
+  const isCustom = serverCustom || dirty || customManuallySelected;
 
   function applyPreset(preset: ModelPreset) {
     if (isSaving) return;
@@ -162,6 +163,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
         setDraft(draftFromEffective(result.effective));
         setActivePreset(isPreset(result.preset) ? result.preset : preset);
         setServerCustom(false);
+        setCustomManuallySelected(false);
         toast.success(`Preset set to ${PRESET_LABELS[preset]}`);
       })
       .catch((err) =>
@@ -185,6 +187,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
         setDraft(draftFromEffective(result.effective));
         setActivePreset(null);
         setServerCustom(true);
+        setCustomManuallySelected(false);
         toast.success("Saved custom configuration");
       })
       .catch((err) =>
@@ -249,12 +252,14 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card/70 p-4 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <Cpu className="h-5 w-5 text-muted-foreground" />
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card/70 px-5 pb-4 pt-5 backdrop-blur-sm">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)] shadow-sm">
+            <Cpu className="h-4 w-4" />
+          </span>
           <div className="flex flex-col leading-none">
             <span className="aptiv-eyebrow">Model</span>
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="mt-1 text-lg font-semibold tracking-tight">
               Model &amp; Reasoning
             </h2>
             <span className="aptiv-rule" aria-hidden="true" />
@@ -271,116 +276,94 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
         </Button>
       </div>
 
-      {usage && (
-        <section className="flex-shrink-0 border-b border-border bg-card/45 px-4 py-3">
-          <div className="mb-2 flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <Gauge className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-foreground">
-                  Weekly token budget
-                </div>
-                <div className="truncate text-[11px] tabular-nums text-muted-foreground">
-                  {usageDetail ?? usageLabel}
-                </div>
-              </div>
-            </div>
-            <div className="max-w-[8.5rem] flex-shrink-0 text-right text-[11px] leading-4 text-muted-foreground">
-              {resetLabel}
-            </div>
-          </div>
-          <div
-            role="meter"
-            aria-label="Weekly token budget usage"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={usage.is_unlimited ? undefined : Math.round(usagePct)}
-            aria-valuetext={
-              usage.is_unlimited ? "Unlimited budget" : `${Math.round(usage.pct)}% used`
-            }
-            className="h-2 overflow-hidden rounded-full bg-muted"
-          >
-            <div
-              className={[
-                "h-full rounded-full transition-[width] duration-200 ease-out",
-                usageBarClass(usage.pct, usage.is_unlimited),
-              ].join(" ")}
-              style={{
-                width: usage.is_unlimited ? "100%" : `${usagePct.toFixed(1)}%`,
-              }}
-            />
-          </div>
-          <div className="mt-1.5 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-            <span className="font-medium text-foreground">{usageLabel}</span>
-            {!usage.is_unlimited && usage.pct >= 80 && (
-              <span
-                className={
-                  usage.pct >= 100
-                    ? "text-destructive"
-                    : "text-[var(--color-warning)]"
-                }
-              >
-                {usage.pct >= 100 ? "Limit reached" : "Approaching limit"}
-              </span>
-            )}
-          </div>
-        </section>
-      )}
-
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-6 p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : !draft || allowed.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
-              No models are available for your account.
-            </div>
-          ) : (
-            <>
-              <section className="space-y-2">
+        <div className="space-y-8 p-5">
+          {usage && (
+            <section className="space-y-3" aria-labelledby="usage-section-heading">
+              <div className="flex items-baseline justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
-                  <Label className="text-sm font-medium">
-                    Suggested presets
-                  </Label>
+                  <span
+                    className="aptiv-eyebrow"
+                    id="usage-section-heading"
+                  >
+                    Usage
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Quick starting points. Tweak anything below to make it your own.
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {PRESET_SUGGESTIONS.map((preset) => {
-                    const active = !isCustom && activePreset === preset.value;
-                    return (
-                      <button
-                        key={preset.value}
-                        type="button"
-                        onClick={() => applyPreset(preset.value)}
-                        disabled={isSaving}
-                        className={[
-                          "aptiv-glass-soft flex flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                          "disabled:cursor-not-allowed disabled:opacity-50",
-                          active
-                            ? "!border-primary/60 bg-primary/10"
-                            : "hover:bg-muted/40",
-                        ].join(" ")}
-                      >
-                        <span className="text-xs font-semibold text-foreground">
-                          {preset.label}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {preset.tone}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {resetLabel}
+                </span>
+              </div>
+              <div className="aptiv-glass-soft rounded-lg p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Gauge className="h-4 w-4 flex-shrink-0 text-[var(--color-primary)]" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">
+                        Weekly token budget
+                      </div>
+                      <div className="truncate text-xs tabular-nums text-muted-foreground">
+                        {usageDetail ?? usageLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                    {usage.is_unlimited ? "∞" : `${Math.round(usage.pct)}%`}
+                  </span>
                 </div>
-              </section>
+                <div
+                  role="meter"
+                  aria-label="Weekly token budget usage"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={
+                    usage.is_unlimited ? undefined : Math.round(usagePct)
+                  }
+                  aria-valuetext={
+                    usage.is_unlimited
+                      ? "Unlimited budget"
+                      : `${Math.round(usage.pct)}% used`
+                  }
+                  className="mt-3 h-2 overflow-hidden rounded-full bg-muted/70"
+                >
+                  <div
+                    className={[
+                      "h-full rounded-full transition-[width] duration-200 ease-out",
+                      usageBarClass(usage.pct, usage.is_unlimited),
+                    ].join(" ")}
+                    style={{
+                      width: usage.is_unlimited
+                        ? "100%"
+                        : `${usagePct.toFixed(1)}%`,
+                    }}
+                  />
+                </div>
+                {!usage.is_unlimited && usage.pct >= 80 && (
+                  <div className="mt-2 flex items-center justify-end text-[11px]">
+                    <span
+                      className={
+                        usage.pct >= 100
+                          ? "font-semibold text-destructive"
+                          : "font-semibold text-[var(--color-warning)]"
+                      }
+                    >
+                      {usage.pct >= 100
+                        ? "Limit reached"
+                        : "Approaching limit"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Configuration</Label>
+          <div className="border-t border-dashed border-border" aria-hidden="true" />
+
+          <div className="flex items-baseline justify-between">
+            <div className="flex items-center gap-2">
+              <span className="aptiv-eyebrow">Configuration</span>
+            </div>
+            {!isLoading && draft && (
+              <>
                 {isCustom ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--aptiv-orange)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)]" />
@@ -391,6 +374,117 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
                     {PRESET_LABELS[activePreset]}
                   </span>
                 ) : null}
+              </>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : !draft || allowed.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
+              No models are available for your account.
+            </div>
+          ) : (
+            <>
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
+                  <Label className="text-sm font-medium">
+                    Quick presets
+                  </Label>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Start with a curated profile, then tweak any of the controls
+                  below to make it your own.
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {PRESET_SUGGESTIONS.map((preset) => {
+                    const active = !isCustom && activePreset === preset.value;
+                    return (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => applyPreset(preset.value)}
+                        disabled={isSaving}
+                        className={[
+                          "aptiv-glass-soft flex flex-col items-start gap-0.5 rounded-md px-3 py-2.5 text-left transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40",
+                          "disabled:cursor-not-allowed disabled:opacity-50",
+                          active
+                            ? "!border-[var(--aptiv-orange)]/60 bg-[var(--aptiv-orange)]/10 text-[var(--aptiv-orange)]"
+                            : "hover:bg-muted/40",
+                        ].join(" ")}
+                      >
+                        <span
+                          className={[
+                            "text-xs font-semibold",
+                            active ? "text-[var(--aptiv-orange)]" : "text-foreground",
+                          ].join(" ")}
+                        >
+                          {preset.label}
+                        </span>
+                        <span
+                          className={[
+                            "text-[10px] uppercase tracking-wider",
+                            active
+                              ? "text-[var(--aptiv-orange)]/80"
+                              : "text-muted-foreground",
+                          ].join(" ")}
+                        >
+                          {preset.tone}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    key="custom"
+                    type="button"
+                    onClick={() => setCustomManuallySelected(true)}
+                    disabled={isSaving}
+                    aria-pressed={isCustom}
+                    className={[
+                      "aptiv-glass-soft flex flex-col items-start gap-0.5 rounded-md px-3 py-2.5 text-left transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                      isCustom
+                        ? "!border-[var(--aptiv-orange)]/60 bg-[var(--aptiv-orange)]/10"
+                        : "hover:bg-muted/40",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "text-xs font-semibold",
+                        isCustom ? "text-[var(--aptiv-orange)]" : "text-foreground",
+                      ].join(" ")}
+                    >
+                      Custom
+                    </span>
+                    <span
+                      className={[
+                        "text-[10px] uppercase tracking-wider",
+                        isCustom
+                          ? "text-[var(--aptiv-orange)]/80"
+                          : "text-muted-foreground",
+                      ].join(" ")}
+                    >
+                      Fine-tuned
+                    </span>
+                  </button>
+                </div>
+              </section>
+
+              <div
+                className="flex items-center gap-3 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                aria-hidden="true"
+              >
+                <span className="h-px flex-1 bg-border" />
+                <span className="inline-flex items-center gap-1.5">
+                  <Sliders className="h-3 w-3" />
+                  Fine-tune
+                </span>
+                <span className="h-px flex-1 bg-border" />
               </div>
 
               <section className="space-y-2">
