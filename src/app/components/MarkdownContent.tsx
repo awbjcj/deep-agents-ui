@@ -11,14 +11,20 @@ import { normalizeDisplayMathDelimiters } from "@/app/utils/markdown";
 
 // Lazy-load Prism only when the user actually views code. The full Prism
 // languages bundle is ~300KB minified — keeping it out of the initial chunk
-// makes first chat paint noticeably faster.
-const SyntaxHighlighter = lazy(() =>
-  import("react-syntax-highlighter").then((m) => ({ default: m.Prism })),
-);
+// makes first chat paint noticeably faster. The oneDark theme used to be a
+// loose top-level `import().then(...)` side effect that fired on module load
+// for every chat (~80KB parse cost) even if no code block ever rendered;
+// folding it into the same dynamic import makes the cost truly conditional.
 let oneDarkTheme: unknown = undefined;
-import("react-syntax-highlighter/dist/esm/styles/prism").then((m) => {
-  oneDarkTheme = m.oneDark;
-});
+const SyntaxHighlighter = lazy(() =>
+  Promise.all([
+    import("react-syntax-highlighter"),
+    import("react-syntax-highlighter/dist/esm/styles/prism"),
+  ]).then(([sh, themes]) => {
+    oneDarkTheme = themes.oneDark;
+    return { default: sh.Prism };
+  }),
+);
 
 const PROSE_CLASS =
   "prose min-w-0 max-w-full overflow-hidden break-words text-base leading-7 text-inherit [&_h1:first-child]:mt-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:font-semibold [&_h2:first-child]:mt-0 [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:font-semibold [&_h3:first-child]:mt-0 [&_h3]:mb-4 [&_h3]:mt-6 [&_h3]:font-semibold [&_h4:first-child]:mt-0 [&_h4]:mb-4 [&_h4]:mt-6 [&_h4]:font-semibold [&_h5:first-child]:mt-0 [&_h5]:mb-4 [&_h5]:mt-6 [&_h5]:font-semibold [&_h6:first-child]:mt-0 [&_h6]:mb-4 [&_h6]:mt-6 [&_h6]:font-semibold [&_p:last-child]:mb-0 [&_p]:mb-4";

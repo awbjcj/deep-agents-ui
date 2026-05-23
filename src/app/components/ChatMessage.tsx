@@ -45,6 +45,20 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     const messageContent = extractStringFromMessageContent(message);
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
+    // Build a tool_call_id → ui-component index once instead of calling
+    // ui?.find(...) inside the toolCalls.map below. Streaming re-renders this
+    // component every token, so the previous O(toolCalls × ui_items) lookup
+    // was paid per frame even when no ui components were emitted.
+    const uiByToolCallId = useMemo(() => {
+      const m = new Map<string, any>();
+      if (!ui) return m;
+      for (const u of ui) {
+        const id = (u as any)?.metadata?.tool_call_id;
+        if (id && !m.has(id)) m.set(id, u);
+      }
+      return m;
+    }, [ui]);
+
     const subAgents = useMemo(() => {
       return toolCalls
         .filter((toolCall: ToolCall) => {
@@ -126,9 +140,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             <div className="mt-4 flex w-full flex-col">
               {toolCalls.map((toolCall: ToolCall) => {
                 if (toolCall.name === "task") return null;
-                const toolCallGenUiComponent = ui?.find(
-                  (u) => u.metadata?.tool_call_id === toolCall.id
-                );
+                const toolCallGenUiComponent = uiByToolCallId.get(toolCall.id);
                 const actionRequest = actionRequestsMap?.get(toolCall.name);
                 const reviewConfig = reviewConfigsMap?.get(toolCall.name);
                 return (

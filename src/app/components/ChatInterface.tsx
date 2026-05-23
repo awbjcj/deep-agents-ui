@@ -196,14 +196,41 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       [handleSubmit, submitDisabled]
     );
 
-    const groupedTodos = {
-      in_progress: todos.filter((t) => t.status === "in_progress"),
-      pending: todos.filter((t) => t.status === "pending"),
-      completed: todos.filter((t) => t.status === "completed"),
-    };
+    // Single-pass bucket instead of three .filter() calls per render.
+    // ChatInterface re-renders on every stream token; the old form
+    // walked `todos` three times each frame.
+    const groupedTodos = useMemo(() => {
+      const groups: Record<TodoItem["status"], TodoItem[]> = {
+        in_progress: [],
+        pending: [],
+        completed: [],
+      };
+      for (const t of todos) {
+        const bucket = groups[t.status];
+        if (bucket) bucket.push(t);
+      }
+      return groups;
+    }, [todos]);
 
     const hasTasks = todos.length > 0;
-    const hasFiles = Object.keys(files).length > 0;
+    const fileKeysCount = Object.keys(files).length;
+    const hasFiles = fileKeysCount > 0;
+
+    // Build the message-id → ui[] index once per render instead of running
+    // `ui?.filter(...)` inside every `processedMessages.map` iteration
+    // (which was O(messages × ui_items) every streamed token).
+    const uiByMessageId = useMemo(() => {
+      const m = new Map<string, any[]>();
+      if (!ui) return m;
+      for (const u of ui) {
+        const id = (u as any)?.metadata?.message_id;
+        if (!id) continue;
+        const arr = m.get(id);
+        if (arr) arr.push(u);
+        else m.set(id, [u]);
+      }
+      return m;
+    }, [ui]);
 
     const interruptData = useMemo(() => {
       const value = interrupt?.value as
@@ -283,9 +310,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             ) : (
               <>
                 {processedMessages.map((data, index) => {
-                  const messageUi = ui?.filter(
-                    (u: any) => u.metadata?.message_id === data.message.id
-                  );
+                  const messageUi = data.message.id
+                    ? uiByMessageId.get(data.message.id)
+                    : undefined;
                   const isLastMessage = index === processedMessages.length - 1;
                   return (
                     <ChatMessage
@@ -448,7 +475,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                             <FileIcon size={16} />
                             Files (State)
                             <span className="text-primary-foreground h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px]">
-                              {Object.keys(files).length}
+                              {fileKeysCount}
                             </span>
                           </button>
                         );
@@ -494,7 +521,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                         >
                           Files (State)
                           <span className="text-primary-foreground h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px]">
-                            {Object.keys(files).length}
+                            {fileKeysCount}
                           </span>
                         </button>
                       )}

@@ -31,6 +31,13 @@ function normalizeOpenAiInlineMathDelimiters(line: string): string {
 }
 
 export function normalizeDisplayMathDelimiters(content: string): string {
+  // Streaming hot path: every assistant token re-runs this on the full message.
+  // All patterns require at least one `\` or `[`; if neither is present the
+  // whole split+per-line regex loop is dead work, so bail out early.
+  if (content.indexOf("[") === -1 && content.indexOf("\\") === -1) {
+    return content;
+  }
+
   const normalizedLines: string[] = [];
   let displayMathIndent: string | null = null;
   let displayMathLines: string[] = [];
