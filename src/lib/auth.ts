@@ -615,3 +615,144 @@ export async function apiUpdateProfile(
   }
   return res.json();
 }
+
+// --- Admin: memory scopes ---
+
+export type ScopeType = "project" | "vehicle" | "feature";
+export type ScopeAccess = "read" | "write";
+
+export const SCOPE_TYPES: ScopeType[] = ["project", "vehicle", "feature"];
+
+export interface MemoryScope {
+  scope_type: ScopeType;
+  scope_id: string;
+  display_name: string | null;
+  aliases: string[];
+  member_count?: number;
+}
+
+export interface ScopeMember {
+  username: string;
+  access: ScopeAccess;
+}
+
+export async function apiListScopes(): Promise<MemoryScope[]> {
+  const res = await apiFetch("/admin/scopes");
+  if (!res.ok) throw new Error("Failed to load scopes");
+  return res.json();
+}
+
+export async function apiCreateScope(payload: {
+  scope_type: ScopeType;
+  scope_id: string;
+  display_name?: string | null;
+  aliases?: string[];
+}): Promise<MemoryScope> {
+  const res = await apiFetch("/admin/scopes", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to create scope")
+    );
+  }
+  return res.json();
+}
+
+export async function apiUpdateScope(
+  scope_type: ScopeType,
+  scope_id: string,
+  payload: { display_name?: string | null; aliases?: string[] }
+): Promise<MemoryScope> {
+  const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to update scope")
+    );
+  }
+  return res.json();
+}
+
+export async function apiDeleteScope(
+  scope_type: ScopeType,
+  scope_id: string
+): Promise<void> {
+  const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to delete scope")
+    );
+  }
+}
+
+export async function apiListScopeMembers(
+  scope_type: ScopeType,
+  scope_id: string
+): Promise<ScopeMember[]> {
+  const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}/members`);
+  if (!res.ok) throw new Error("Failed to load scope members");
+  return res.json();
+}
+
+export async function apiAddScopeMember(
+  scope_type: ScopeType,
+  scope_id: string,
+  payload: { username: string; access: ScopeAccess }
+): Promise<ScopeMember> {
+  const res = await apiFetch(
+    `/admin/scopes/${scope_type}/${scope_id}/members`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to add member")
+    );
+  }
+  return res.json();
+}
+
+export async function apiUpdateScopeMember(
+  scope_type: ScopeType,
+  scope_id: string,
+  username: string,
+  access: ScopeAccess
+): Promise<ScopeMember> {
+  const res = await apiFetch(
+    `/admin/scopes/${scope_type}/${scope_id}/members/${username}`,
+    { method: "PATCH", body: JSON.stringify({ access }) }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to update member")
+    );
+  }
+  return res.json();
+}
+
+export async function apiRemoveScopeMember(
+  scope_type: ScopeType,
+  scope_id: string,
+  username: string
+): Promise<void> {
+  const res = await apiFetch(
+    `/admin/scopes/${scope_type}/${scope_id}/members/${username}`,
+    { method: "DELETE" }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to remove member")
+    );
+  }
+}
