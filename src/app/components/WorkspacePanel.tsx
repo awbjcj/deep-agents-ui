@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Cpu, Key, Shield, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Cpu, Key, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AdminSidebar } from "@/app/components/AdminSidebar";
 import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 
-export type WorkspaceTab = "models" | "tokens" | "admin";
+export type WorkspaceTab = "models" | "tokens";
 
 interface WorkspacePanelProps {
-  /** Tab to show on mount; falls back to "models" if undefined or admin requested without role. */
+  /** Tab to show on mount; falls back to "models" if undefined. */
   initialTab?: WorkspaceTab;
   /** Token-section deep link (e.g. "graph" / "jira") passed through to TokenManagementSidebar. */
   initialTokenFocus?: string | null;
   onTokenFocusConsumed?: () => void;
-  /** True when current user has admin role; if false the Admin tab is hidden. */
-  showAdmin: boolean;
   onClose: () => void;
 }
 
@@ -27,10 +24,9 @@ interface TabDef {
   icon: typeof Cpu;
 }
 
-const ALL_TABS: TabDef[] = [
+const TABS: TabDef[] = [
   { id: "models", label: "Models", icon: Cpu },
   { id: "tokens", label: "Tokens", icon: Key },
-  { id: "admin", label: "Admin", icon: Shield },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
@@ -39,21 +35,15 @@ export function WorkspacePanel({
   initialTab,
   initialTokenFocus,
   onTokenFocusConsumed,
-  showAdmin,
   onClose,
 }: WorkspacePanelProps) {
-  const tabs = useMemo(
-    () => ALL_TABS.filter((t) => t.id !== "admin" || showAdmin),
-    [showAdmin],
-  );
-
   // Remember the last-opened tab across sessions so a user doing iterative
   // token edits → model tweaks doesn't have to re-find the tab each time.
   const [active, setActive] = useState<WorkspaceTab>(() => {
-    if (initialTab && (initialTab !== "admin" || showAdmin)) return initialTab;
+    if (initialTab) return initialTab;
     if (typeof window === "undefined") return "models";
     const stored = window.localStorage.getItem(STORAGE_KEY) as WorkspaceTab | null;
-    if (stored && tabs.some((t) => t.id === stored)) return stored;
+    if (stored && TABS.some((t) => t.id === stored)) return stored;
     return "models";
   });
 
@@ -61,9 +51,8 @@ export function WorkspacePanel({
   // link asks for "tokens"), honour that without trashing user prefs.
   useEffect(() => {
     if (!initialTab) return;
-    if (initialTab === "admin" && !showAdmin) return;
     setActive(initialTab);
-  }, [initialTab, showAdmin]);
+  }, [initialTab]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -78,7 +67,7 @@ export function WorkspacePanel({
           <div className="flex flex-col leading-none">
             <span className="aptiv-eyebrow">Workspace</span>
             <h2 className="mt-1 text-base font-semibold tracking-tight">
-              {tabs.find((t) => t.id === active)?.label ?? "Workspace"}
+              {TABS.find((t) => t.id === active)?.label ?? "Workspace"}
             </h2>
           </div>
           <Button
@@ -96,7 +85,7 @@ export function WorkspacePanel({
           aria-label="Workspace sections"
           className="flex items-end gap-1 px-4 pt-3"
         >
-          {tabs.map((tab) => {
+          {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
             return (
@@ -163,18 +152,6 @@ export function WorkspacePanel({
                 initialFocus={initialTokenFocus}
                 onFocusConsumed={onTokenFocusConsumed}
               />
-            </PanelChrome>
-          </div>
-        )}
-        {active === "admin" && showAdmin && (
-          <div
-            id="workspace-panel-admin"
-            role="tabpanel"
-            aria-labelledby="workspace-tab-admin"
-            className="absolute inset-0"
-          >
-            <PanelChrome>
-              <AdminSidebar onClose={onClose} />
             </PanelChrome>
           </div>
         )}
