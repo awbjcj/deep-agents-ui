@@ -304,8 +304,8 @@ export interface AdminUser {
   role: Role;
 }
 
-export async function apiListUsers(): Promise<AdminUser[]> {
-  const res = await apiFetch("/admin/users");
+export async function apiListUsers(signal?: AbortSignal): Promise<AdminUser[]> {
+  const res = await apiFetch("/admin/users", { signal });
   if (!res.ok) {
     throw new Error("Failed to fetch users");
   }
@@ -424,7 +424,48 @@ export async function apiSetAllTierModels(payload: {
     const data = await res.json().catch(() => ({}));
     throw new Error((data as { detail?: string }).detail || "Failed to save tier models");
   }
-  return res.json();
+  const raw = (await res.json()) as unknown;
+  return normalizeTierMap(raw, payload);
+}
+
+function isTierEntryArray(value: unknown): value is TierModelEntry[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (v) =>
+        v !== null &&
+        typeof v === "object" &&
+        typeof (v as TierModelEntry).provider === "string" &&
+        typeof (v as TierModelEntry).model === "string"
+    )
+  );
+}
+
+/**
+ * Tolerates either of two response shapes from PUT /admin/tier-models:
+ *   {user: TierModelEntry[], developer: ..., admin: ...}      (flat)
+ *   {user: {tier, models}, developer: ..., admin: ...}        (nested, mirrors GET)
+ * Falls back to the request payload if the backend returns something unrecognized,
+ * so a successful save never crashes the TiersSection on render.
+ */
+function normalizeTierMap(
+  raw: unknown,
+  fallback: { user: TierModelEntry[]; developer: TierModelEntry[]; admin: TierModelEntry[] }
+): Record<Role, TierModelEntry[]> {
+  const out: Record<Role, TierModelEntry[]> = { user: [], developer: [], admin: [] };
+  const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null);
+  for (const role of ["user", "developer", "admin"] as Role[]) {
+    const slot = obj?.[role];
+    if (isTierEntryArray(slot)) {
+      out[role] = slot;
+    } else if (slot && typeof slot === "object" && "models" in slot) {
+      const nested = (slot as { models?: unknown }).models;
+      out[role] = isTierEntryArray(nested) ? nested : fallback[role];
+    } else {
+      out[role] = fallback[role];
+    }
+  }
+  return out;
 }
 
 // --- Per-user model selection ---
@@ -550,8 +591,11 @@ export interface AdminUserUsage {
   display_reset: string;
 }
 
-export async function apiGetUserUsage(username: string): Promise<AdminUserUsage> {
-  const res = await apiFetch(`/admin/token-usage/users/${username}`);
+export async function apiGetUserUsage(
+  username: string,
+  signal?: AbortSignal
+): Promise<AdminUserUsage> {
+  const res = await apiFetch(`/admin/token-usage/users/${username}`, { signal });
   if (!res.ok) {
     throw new Error("Failed to fetch user usage");
   }
@@ -696,9 +740,13 @@ export async function apiDeleteScope(
 
 export async function apiListScopeMembers(
   scope_type: ScopeType,
-  scope_id: string
+  scope_id: string,
+  signal?: AbortSignal
 ): Promise<ScopeMember[]> {
-  const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}/members`);
+  const res = await apiFetch(
+    `/admin/scopes/${scope_type}/${scope_id}/members`,
+    { signal }
+  );
   if (!res.ok) throw new Error("Failed to load scope members");
   return res.json();
 }
@@ -706,11 +754,12 @@ export async function apiListScopeMembers(
 export async function apiAddScopeMember(
   scope_type: ScopeType,
   scope_id: string,
-  payload: { username: string; access: ScopeAccess }
+  payload: { username: string; access: ScopeAccess },
+  signal?: AbortSignal
 ): Promise<ScopeMember> {
   const res = await apiFetch(
     `/admin/scopes/${scope_type}/${scope_id}/members`,
-    { method: "POST", body: JSON.stringify(payload) }
+    { method: "POST", body: JSON.stringify(payload), signal }
   );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

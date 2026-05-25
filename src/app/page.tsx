@@ -234,6 +234,7 @@ function HomePageInner({
                     setWorkspaceOpen((v) => {
                       const next = !v;
                       if (next) setAdminOpen(false);
+                      else setWorkspaceTab(undefined);
                       return next;
                     });
                   }}
