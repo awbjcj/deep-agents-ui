@@ -1,4 +1,4 @@
-import { getConfig } from "@/lib/config";
+import { getDeploymentUrl } from "@/lib/config";
 import { getAuthUser } from "@/lib/auth";
 
 export type UploadKind = "image" | "document";
@@ -50,11 +50,11 @@ export const ACCEPT_ATTR = [
 ].join(",");
 
 function deploymentBase(): string {
-  const cfg = getConfig();
-  if (!cfg?.deploymentUrl) {
+  const url = getDeploymentUrl();
+  if (!url) {
     throw new Error("Deployment URL is not configured");
   }
-  return cfg.deploymentUrl.replace(/\/+$/, "");
+  return url.replace(/\/+$/, "");
 }
 
 function authHeaders(): Record<string, string> {

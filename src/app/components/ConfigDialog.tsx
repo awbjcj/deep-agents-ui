@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { StandaloneConfig } from "@/lib/config";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { StandaloneConfig, getDeploymentUrl, getLangsmithApiKey } from "@/lib/config";
 import { toast } from "sonner";
+import { Client } from "@langchain/langgraph-sdk";
+import { Loader2 } from "lucide-react";
+
+interface AssistantOption {
+  id: string;
+  name: string;
+  graphId: string;
+}
 
 interface ConfigDialogProps {
   open: boolean;
@@ -28,38 +43,53 @@ export function ConfigDialog({
   onSave,
   initialConfig,
 }: ConfigDialogProps) {
-  const [deploymentUrl, setDeploymentUrl] = useState(
-    initialConfig?.deploymentUrl || ""
-  );
   const [assistantId, setAssistantId] = useState(
     initialConfig?.assistantId || ""
   );
-  const [langsmithApiKey, setLangsmithApiKey] = useState(
-    initialConfig?.langsmithApiKey || ""
-  );
+  const [assistants, setAssistants] = useState<AssistantOption[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const deploymentUrl = getDeploymentUrl();
+  const langsmithApiKey = getLangsmithApiKey();
+
+  const fetchAssistants = useCallback(async () => {
+    if (!deploymentUrl) return;
+    setLoading(true);
+    try {
+      const client = new Client({
+        apiUrl: deploymentUrl,
+        defaultHeaders: {
+          "Content-Type": "application/json",
+          ...(langsmithApiKey ? { "X-Api-Key": langsmithApiKey } : {}),
+        },
+      });
+      const results = await client.assistants.search({ limit: 100 });
+      const options: AssistantOption[] = results.map((a) => ({
+        id: a.assistant_id,
+        name: a.name || a.graph_id || a.assistant_id,
+        graphId: a.graph_id,
+      }));
+      setAssistants(options);
+    } catch (error) {
+      console.error("Failed to fetch assistants:", error);
+      toast.error("Failed to fetch assistants from deployment");
+    } finally {
+      setLoading(false);
+    }
+  }, [deploymentUrl, langsmithApiKey]);
 
   useEffect(() => {
-    if (open && initialConfig) {
-      setDeploymentUrl(initialConfig.deploymentUrl);
-      setAssistantId(initialConfig.assistantId);
-      setLangsmithApiKey(initialConfig.langsmithApiKey || "");
+    if (open) {
+      fetchAssistants();
+      if (initialConfig) {
+        setAssistantId(initialConfig.assistantId);
+      }
     }
-  }, [open, initialConfig]);
+  }, [open, initialConfig, fetchAssistants]);
 
   const handleSave = () => {
-    if (!deploymentUrl || !assistantId) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    try {
-      const url = new URL(deploymentUrl);
-      if (!["http:", "https:"].includes(url.protocol)) {
-        toast.error("Deployment URL must use http:// or https://");
-        return;
-      }
-    } catch {
-      toast.error("Please enter a valid deployment URL");
+    if (!assistantId) {
+      toast.error("Please select an assistant");
       return;
     }
 
@@ -72,16 +102,13 @@ export function ConfigDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>Configuration</DialogTitle>
           <DialogDescription>
-            Configure your LangGraph deployment settings. These settings are
-            saved in your browser&apos;s local storage.
+            Deployment settings are configured via environment variables.
+            Select an assistant to get started.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -89,19 +116,32 @@ export function ConfigDialog({
             <Label htmlFor="deploymentUrl">Deployment URL</Label>
             <Input
               id="deploymentUrl"
-              placeholder="https://<deployment-url>"
               value={deploymentUrl}
-              onChange={(e) => setDeploymentUrl(e.target.value)}
+              disabled
+              className="bg-muted"
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="assistantId">Assistant ID</Label>
-            <Input
-              id="assistantId"
-              placeholder="<assistant-id>"
-              value={assistantId}
-              onChange={(e) => setAssistantId(e.target.value)}
-            />
+            <Label htmlFor="assistantId">Assistant</Label>
+            {loading ? (
+              <div className="flex items-center gap-2 h-10 px-3 text-sm text-muted-foreground border rounded-md">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading assistants...
+              </div>
+            ) : (
+              <Select value={assistantId} onValueChange={setAssistantId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an assistant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assistants.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} ({a.graphId})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="langsmithApiKey">
@@ -111,20 +151,19 @@ export function ConfigDialog({
             <Input
               id="langsmithApiKey"
               type="password"
-              placeholder="lsv2_pt_..."
-              value={langsmithApiKey}
-              onChange={(e) => setLangsmithApiKey(e.target.value)}
+              value={langsmithApiKey ? "••••••••" : ""}
+              disabled
+              className="bg-muted"
             />
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave} disabled={loading || !assistantId}>
+            Save
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

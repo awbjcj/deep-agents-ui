@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
-import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
+import { getConfig, saveConfig, getDeploymentUrl, getLangsmithApiKey, StandaloneConfig } from "@/lib/config";
 import { AccountMenu } from "@/app/components/AccountMenu";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
@@ -412,12 +412,12 @@ function HomePageContent() {
 
   useEffect(() => {
     const savedConfig = getConfig();
-    if (savedConfig) {
+    if (savedConfig && savedConfig.assistantId) {
       setConfig(savedConfig);
       if (!assistantId) {
         setAssistantId(savedConfig.assistantId);
       }
-    } else {
+    } else if (getDeploymentUrl()) {
       setConfigDialogOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -434,8 +434,7 @@ function HomePageContent() {
     setConfig(newConfig);
   }, []);
 
-  const langsmithApiKey =
-    config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
+  const langsmithApiKey = getLangsmithApiKey();
 
   if (authLoading || !user) {
     return (
@@ -445,19 +444,20 @@ function HomePageContent() {
     );
   }
 
-  if (!config) {
+  if (!config || !config.assistantId) {
     return (
       <>
         <ConfigDialog
           open={configDialogOpen}
           onOpenChange={setConfigDialogOpen}
           onSave={handleSaveConfig}
+          initialConfig={config || undefined}
         />
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Welcome to VSDA Deep Agent</h1>
             <p className="mt-2 text-muted-foreground">
-              Configure your deployment to get started
+              Select an assistant to get started
             </p>
             <Button
               onClick={() => setConfigDialogOpen(true)}
@@ -473,7 +473,7 @@ function HomePageContent() {
 
   return (
     <ClientProvider
-      deploymentUrl={config.deploymentUrl}
+      deploymentUrl={getDeploymentUrl()}
       apiKey={langsmithApiKey}
     >
       <HomePageInner
