@@ -21,6 +21,7 @@ import {
   LayoutPanelLeft,
   MessagesSquare,
   Settings,
+  Shield,
   SquarePen,
 } from "lucide-react";
 import {
@@ -36,6 +37,7 @@ import {
 import { ThreadList } from "@/app/components/ThreadList";
 import { ChatProvider } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
+import { AdminPanel } from "@/app/components/AdminPanel";
 
 interface HomePageInnerProps {
   config: StandaloneConfig;
@@ -63,6 +65,8 @@ function HomePageInner({
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab | undefined>(
     undefined,
   );
+  const [adminOpen, setAdminOpen] = useState(false);
+  const isAdmin = user?.role === "admin";
   const { pendingTokenFocus, requestTokenFocus } = useNotifications();
 
   // Notification-banner deep link: open the workspace pinned to Tokens and
@@ -71,6 +75,7 @@ function HomePageInner({
     if (pendingTokenFocus) {
       setWorkspaceOpen(true);
       setWorkspaceTab("tokens");
+      setAdminOpen(false);
     }
   }, [pendingTokenFocus]);
 
@@ -225,7 +230,13 @@ function HomePageInner({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setWorkspaceOpen((v) => !v)}
+                  onClick={() => {
+                    setWorkspaceOpen((v) => {
+                      const next = !v;
+                      if (next) setAdminOpen(false);
+                      return next;
+                    });
+                  }}
                   aria-label="Workspace"
                   aria-pressed={workspaceOpen}
                   className={
@@ -238,8 +249,38 @@ function HomePageInner({
                   Workspace
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Models · Tokens{user?.role === "admin" ? " · Admin" : ""}</TooltipContent>
+              <TooltipContent>Models · Tokens</TooltipContent>
             </Tooltip>
+            {isAdmin && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAdminOpen((v) => {
+                        const next = !v;
+                        if (next) {
+                          setWorkspaceOpen(false);
+                          setWorkspaceTab(undefined);
+                        }
+                        return next;
+                      });
+                    }}
+                    aria-label="Admin console"
+                    aria-pressed={adminOpen}
+                    className={
+                      adminOpen
+                        ? "rounded-full border border-[var(--aptiv-orange)]/50 bg-[var(--aptiv-orange)]/10 text-[var(--aptiv-orange)] hover:bg-[var(--aptiv-orange)]/15"
+                        : "rounded-full border border-border bg-card text-foreground hover:border-[var(--aptiv-orange)]/50 hover:text-[var(--aptiv-orange)]"
+                    }
+                  >
+                    <Shield className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Admin console</TooltipContent>
+              </Tooltip>
+            )}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -326,12 +367,25 @@ function HomePageInner({
                     initialTab={workspaceTab}
                     initialTokenFocus={pendingTokenFocus}
                     onTokenFocusConsumed={() => requestTokenFocus(null)}
-                    showAdmin={user?.role === "admin"}
                     onClose={() => {
                       setWorkspaceOpen(false);
                       setWorkspaceTab(undefined);
                     }}
                   />
+                </ResizablePanel>
+              </>
+            )}
+            {adminOpen && isAdmin && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel
+                  id="admin-panel"
+                  order={4}
+                  defaultSize={30}
+                  minSize={24}
+                  className="relative min-w-[380px]"
+                >
+                  <AdminPanel onClose={() => setAdminOpen(false)} />
                 </ResizablePanel>
               </>
             )}
