@@ -165,7 +165,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
       .then((status) => {
         if (!mounted) return;
         setImageFetching(status.effective);
-        setImageFetchingDisabledByAdmin(!status.effective && status.enabled !== false);
+        setImageFetchingDisabledByAdmin(!status.effective && status.enabled === true);
       })
       .catch(() => {});
 
@@ -686,10 +686,17 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
                     checked={imageFetching}
                     onCheckedChange={(checked) => {
                       setImageFetching(checked);
-                      apiSetImageFetching(checked).catch(() => {
-                        setImageFetching(!checked);
-                        toast.error("Failed to update image fetching");
-                      });
+                      apiSetImageFetching(checked)
+                        .then((status) => {
+                          setImageFetching(status.effective);
+                          setImageFetchingDisabledByAdmin(
+                            !status.effective && status.enabled === true
+                          );
+                        })
+                        .catch(() => {
+                          setImageFetching(!checked);
+                          toast.error("Failed to update image fetching");
+                        });
                     }}
                     disabled={imageFetchingDisabledByAdmin || isSaving}
                   />
