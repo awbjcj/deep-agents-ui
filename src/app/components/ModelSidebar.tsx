@@ -1,7 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Cpu, Gauge, Loader2, Save, Sliders, Sparkles, X } from "lucide-react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
+import {
+  Brain,
+  Cpu,
+  Gauge,
+  Leaf,
+  Loader2,
+  Save,
+  Scale,
+  Sliders,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -30,14 +42,26 @@ interface ModelSidebarProps {
   onClose: () => void;
 }
 
-const PRESET_SUGGESTIONS: Array<{
-  value: ModelPreset;
-  label: string;
-  tone: string;
-}> = [
-  { value: "economy", label: "Economy", tone: "Lower spend" },
-  { value: "balanced", label: "Balanced", tone: "Default" },
-  { value: "deep_work", label: "Deep Work", tone: "Hard tasks" },
+type PresetOption =
+  | {
+      kind: "preset";
+      value: ModelPreset;
+      label: string;
+      tone: string;
+      icon: ComponentType<{ className?: string }>;
+    }
+  | {
+      kind: "custom";
+      label: string;
+      tone: string;
+      icon: ComponentType<{ className?: string }>;
+    };
+
+const PRESET_OPTIONS: PresetOption[] = [
+  { kind: "preset", value: "economy", label: "Economy", tone: "Lower spend", icon: Leaf },
+  { kind: "preset", value: "balanced", label: "Balanced", tone: "Default", icon: Scale },
+  { kind: "preset", value: "deep_work", label: "Deep Work", tone: "Hard tasks", icon: Brain },
+  { kind: "custom", label: "Custom", tone: "Fine-tuned", icon: SlidersHorizontal },
 ];
 
 const PRESET_LABELS: Record<ModelPreset, string> = {
@@ -104,6 +128,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
   const [customManuallySelected, setCustomManuallySelected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingPreset, setPendingPreset] = useState<ModelPreset | null>(null);
   const usage = useTokenUsage();
 
   useEffect(() => {
@@ -157,6 +182,7 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
   function applyPreset(preset: ModelPreset) {
     if (isSaving) return;
     setIsSaving(true);
+    setPendingPreset(preset);
     apiSetUserModel({ preset })
       .then((result) => {
         setSelection(result);
@@ -169,7 +195,10 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
       .catch((err) =>
         toast.error(err instanceof Error ? err.message : "Failed to load preset")
       )
-      .finally(() => setIsSaving(false));
+      .finally(() => {
+        setIsSaving(false);
+        setPendingPreset(null);
+      });
   }
 
   function handleSave() {
@@ -399,79 +428,87 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
                   Start with a curated profile, then tweak any of the controls
                   below to make it your own.
                 </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {PRESET_SUGGESTIONS.map((preset) => {
-                    const active = !isCustom && activePreset === preset.value;
+                <div
+                  role="radiogroup"
+                  aria-label="Model preset"
+                  className="grid grid-cols-4 gap-2"
+                >
+                  {PRESET_OPTIONS.map((option) => {
+                    const active =
+                      option.kind === "custom"
+                        ? isCustom
+                        : !isCustom && activePreset === option.value;
+                    const loading =
+                      option.kind === "preset" && pendingPreset === option.value;
+                    const handleClick =
+                      option.kind === "custom"
+                        ? () => setCustomManuallySelected(true)
+                        : () => applyPreset(option.value);
+                    const Icon = option.icon;
+                    const key =
+                      option.kind === "custom" ? "custom" : option.value;
                     return (
                       <button
-                        key={preset.value}
+                        key={key}
                         type="button"
-                        onClick={() => applyPreset(preset.value)}
+                        role="radio"
+                        aria-checked={active}
+                        onClick={handleClick}
                         disabled={isSaving}
                         className={[
-                          "aptiv-glass-soft flex flex-col items-start gap-0.5 rounded-md px-3 py-2.5 text-left transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40",
+                          "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-all duration-200",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
-                            ? "!border-[var(--aptiv-orange)]/60 bg-[var(--aptiv-orange)]/10 text-[var(--aptiv-orange)]"
-                            : "hover:bg-muted/40",
+                            ? "!border-[var(--aptiv-orange)]/55 !bg-[var(--aptiv-orange)]/10 shadow-[0_2px_10px_-4px_color-mix(in_srgb,var(--aptiv-orange)_30%,transparent)]"
+                            : "hover:-translate-y-px hover:!border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
                         ].join(" ")}
                       >
+                        {active && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--aptiv-orange)_25%,transparent)]"
+                          />
+                        )}
                         <span
                           className={[
-                            "text-xs font-semibold",
-                            active ? "text-[var(--aptiv-orange)]" : "text-foreground",
-                          ].join(" ")}
-                        >
-                          {preset.label}
-                        </span>
-                        <span
-                          className={[
-                            "text-[10px] uppercase tracking-wider",
+                            "inline-flex h-4 w-4 items-center justify-center transition-colors",
                             active
-                              ? "text-[var(--aptiv-orange)]/80"
-                              : "text-muted-foreground",
+                              ? "text-[var(--aptiv-orange)]"
+                              : "text-[var(--color-text-tertiary)] group-hover:text-[var(--color-primary)]",
                           ].join(" ")}
                         >
-                          {preset.tone}
+                          {loading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Icon className="h-3.5 w-3.5" />
+                          )}
+                        </span>
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span
+                            className={[
+                              "truncate text-xs font-semibold leading-tight",
+                              active
+                                ? "text-[var(--aptiv-orange)]"
+                                : "text-foreground",
+                            ].join(" ")}
+                          >
+                            {option.label}
+                          </span>
+                          <span
+                            className={[
+                              "truncate text-[10px] font-semibold uppercase leading-tight tracking-[0.1em]",
+                              active
+                                ? "text-[var(--aptiv-orange)]/75"
+                                : "text-muted-foreground",
+                            ].join(" ")}
+                          >
+                            {option.tone}
+                          </span>
                         </span>
                       </button>
                     );
                   })}
-                  <button
-                    key="custom"
-                    type="button"
-                    onClick={() => setCustomManuallySelected(true)}
-                    disabled={isSaving}
-                    aria-pressed={isCustom}
-                    className={[
-                      "aptiv-glass-soft flex flex-col items-start gap-0.5 rounded-md px-3 py-2.5 text-left transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40",
-                      "disabled:cursor-not-allowed disabled:opacity-50",
-                      isCustom
-                        ? "!border-[var(--aptiv-orange)]/60 bg-[var(--aptiv-orange)]/10"
-                        : "hover:bg-muted/40",
-                    ].join(" ")}
-                  >
-                    <span
-                      className={[
-                        "text-xs font-semibold",
-                        isCustom ? "text-[var(--aptiv-orange)]" : "text-foreground",
-                      ].join(" ")}
-                    >
-                      Custom
-                    </span>
-                    <span
-                      className={[
-                        "text-[10px] uppercase tracking-wider",
-                        isCustom
-                          ? "text-[var(--aptiv-orange)]/80"
-                          : "text-muted-foreground",
-                      ].join(" ")}
-                    >
-                      Fine-tuned
-                    </span>
-                  </button>
                 </div>
               </section>
 
