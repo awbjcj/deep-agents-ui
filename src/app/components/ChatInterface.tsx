@@ -365,12 +365,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
           </div>
         </div>
 
-        <div className="flex-shrink-0 bg-background">
+        <div className="pointer-events-none flex-shrink-0">
           <div
             className={cn(
-              "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-background",
+              "pointer-events-auto mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/85 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.35),0_6px_18px_-12px_rgba(15,23,42,0.18)] backdrop-blur-md",
               "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-all duration-200 ease-in-out",
-              "focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10"
+              "hover:border-primary/30 hover:shadow-[0_22px_55px_-22px_rgba(15,23,42,0.4),0_8px_22px_-12px_rgba(15,23,42,0.22)]",
+              "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
             )}
           >
             {(hasTasks || hasFiles) && (
