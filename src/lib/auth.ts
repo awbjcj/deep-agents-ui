@@ -805,3 +805,62 @@ export async function apiRemoveScopeMember(
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Image fetching settings
+// ---------------------------------------------------------------------------
+
+export interface ImageFetchingStatus {
+  enabled: boolean | null;
+  effective: boolean;
+}
+
+export interface TierImageFetchingStatus {
+  tier: string;
+  enabled: boolean;
+}
+
+export async function apiGetImageFetching(): Promise<ImageFetchingStatus> {
+  const res = await apiFetch("/user/image-fetching");
+  if (!res.ok) {
+    throw new Error("Failed to fetch image fetching status");
+  }
+  return res.json();
+}
+
+export async function apiSetImageFetching(
+  enabled: boolean
+): Promise<ImageFetchingStatus> {
+  const res = await apiFetch("/user/image-fetching", {
+    method: "PUT",
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to update image fetching preference");
+  }
+  return res.json();
+}
+
+export async function apiGetTierImageFetching(
+  tier: Role
+): Promise<TierImageFetchingStatus> {
+  const res = await apiFetch(`/admin/tier-image-fetching/${tier}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch tier image fetching status");
+  }
+  return res.json();
+}
+
+export async function apiSetTierImageFetching(
+  tier: Role,
+  enabled: boolean
+): Promise<TierImageFetchingStatus> {
+  const res = await apiFetch(`/admin/tier-image-fetching/${tier}`, {
+    method: "PUT",
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to update tier image fetching");
+  }
+  return res.json();
+}

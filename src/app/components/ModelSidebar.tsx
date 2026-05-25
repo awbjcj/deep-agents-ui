@@ -30,7 +30,9 @@ import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
 import {
   apiGetAllowedModels,
+  apiGetImageFetching,
   apiGetUserModel,
+  apiSetImageFetching,
   apiSetUserModel,
   type EffectiveModelSelection,
   type ModelEntry,
@@ -129,6 +131,9 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<ModelPreset | null>(null);
+  const [imageFetching, setImageFetching] = useState<boolean>(false);
+  const [imageFetchingDisabledByAdmin, setImageFetchingDisabledByAdmin] =
+    useState(false);
   const usage = useTokenUsage();
 
   useEffect(() => {
@@ -155,6 +160,14 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
       .finally(() => {
         if (mounted) setIsLoading(false);
       });
+
+    apiGetImageFetching()
+      .then((status) => {
+        if (!mounted) return;
+        setImageFetching(status.effective);
+        setImageFetchingDisabledByAdmin(!status.effective && status.enabled !== false);
+      })
+      .catch(() => {});
 
     return () => {
       mounted = false;
@@ -654,6 +667,32 @@ export function ModelSidebar({ onClose }: ModelSidebarProps) {
                   <span className="aptiv-slider-tick">0.5k</span>
                   <span className="aptiv-slider-tick">16k</span>
                   <span className="aptiv-slider-tick">32k</span>
+                </div>
+              </section>
+
+              <section className="space-y-2">
+                <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium text-foreground">
+                      Image attachments
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {imageFetchingDisabledByAdmin
+                        ? "Disabled by administrator"
+                        : "Include images from tickets and pages"}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={imageFetching}
+                    onCheckedChange={(checked) => {
+                      setImageFetching(checked);
+                      apiSetImageFetching(checked).catch(() => {
+                        setImageFetching(!checked);
+                        toast.error("Failed to update image fetching");
+                      });
+                    }}
+                    disabled={imageFetchingDisabledByAdmin || isSaving}
+                  />
                 </div>
               </section>
 
