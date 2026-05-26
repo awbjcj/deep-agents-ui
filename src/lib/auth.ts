@@ -881,7 +881,7 @@ export interface AdminConnectivityResponse {
 }
 
 export interface AdminConnectivityUpdatePayload {
-  run_mode?: RunMode;
+  run_mode?: RunMode | "";
   openai_base_url?: string;
   openai_base_url_gateway?: string;
   openai_base_url_proxy?: string;
