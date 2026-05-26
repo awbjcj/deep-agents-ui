@@ -27,15 +27,22 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     setIsLoading(true);
     apiGetUserConnectivity()
       .then((res) => {
+        if (!mounted) return;
         setData(res);
         setPendingMode(res.run_mode);
         setProxyUrl(res.proxy_url);
       })
-      .catch(() => toast.error("Failed to load connectivity settings"))
-      .finally(() => setIsLoading(false));
+      .catch(() => {
+        if (mounted) toast.error("Failed to load connectivity settings");
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
+    return () => { mounted = false; };
   }, []);
 
   const dirty =
@@ -181,7 +188,8 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
               <button
                 type="button"
                 onClick={handleReset}
-                className="w-full text-center text-[10px] text-muted-foreground underline hover:text-foreground"
+                disabled={isSaving}
+                className="w-full text-center text-[10px] text-muted-foreground underline hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
               >
                 Reset to system defaults
               </button>
