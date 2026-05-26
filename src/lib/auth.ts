@@ -864,3 +864,90 @@ export async function apiSetTierImageFetching(
   }
   return res.json();
 }
+
+// --- Connectivity settings ---
+
+export interface UrlSettingInfo {
+  value: string;
+  source: "database" | "env";
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface AdminConnectivityResponse {
+  run_mode: RunMode;
+  run_mode_source: "database" | "env";
+  urls: Record<string, UrlSettingInfo>;
+}
+
+export interface AdminConnectivityUpdatePayload {
+  run_mode?: RunMode;
+  openai_base_url?: string;
+  openai_base_url_gateway?: string;
+  openai_base_url_proxy?: string;
+  claude_base_url?: string;
+  claude_base_url_gateway?: string;
+  claude_base_url_proxy?: string;
+}
+
+export async function apiGetAdminConnectivity(): Promise<AdminConnectivityResponse> {
+  const res = await apiFetch("/admin/connectivity");
+  if (!res.ok) {
+    throw new Error("Failed to fetch connectivity settings");
+  }
+  return res.json();
+}
+
+export async function apiSetAdminConnectivity(
+  payload: AdminConnectivityUpdatePayload
+): Promise<AdminConnectivityResponse> {
+  const res = await apiFetch("/admin/connectivity", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to update connectivity settings"
+    );
+  }
+  return res.json();
+}
+
+export interface UserConnectivityResponse {
+  run_mode: RunMode;
+  run_mode_source: "user" | "admin" | "env";
+  default_run_mode: RunMode;
+  proxy_url: string;
+  proxy_url_source: "user" | "admin" | "env";
+  available_modes: RunMode[];
+}
+
+export interface UserConnectivityUpdatePayload {
+  run_mode?: RunMode | null;
+  proxy_url?: string | null;
+}
+
+export async function apiGetUserConnectivity(): Promise<UserConnectivityResponse> {
+  const res = await apiFetch("/user/connectivity");
+  if (!res.ok) {
+    throw new Error("Failed to fetch user connectivity");
+  }
+  return res.json();
+}
+
+export async function apiSetUserConnectivity(
+  payload: UserConnectivityUpdatePayload
+): Promise<UserConnectivityResponse> {
+  const res = await apiFetch("/user/connectivity", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to update user connectivity"
+    );
+  }
+  return res.json();
+}
