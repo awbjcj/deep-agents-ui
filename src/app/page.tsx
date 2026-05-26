@@ -250,7 +250,7 @@ function HomePageInner({
                   Workspace
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Models · Tokens</TooltipContent>
+              <TooltipContent>Models · Tokens · Connectivity</TooltipContent>
             </Tooltip>
             {isAdmin && (
               <Tooltip>

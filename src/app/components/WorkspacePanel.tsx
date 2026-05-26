@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cpu, Key, X } from "lucide-react";
+import { Cpu, Key, Link, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
+import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";
 
-export type WorkspaceTab = "models" | "tokens";
+export type WorkspaceTab = "models" | "tokens" | "connectivity";
 
 interface WorkspacePanelProps {
   /** Tab to show on mount; falls back to "models" if undefined. */
@@ -27,6 +28,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: "models", label: "Models", icon: Cpu },
   { id: "tokens", label: "Tokens", icon: Key },
+  { id: "connectivity", label: "Connectivity", icon: Link },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
@@ -152,6 +154,18 @@ export function WorkspacePanel({
                 initialFocus={initialTokenFocus}
                 onFocusConsumed={onTokenFocusConsumed}
               />
+            </PanelChrome>
+          </div>
+        )}
+        {active === "connectivity" && (
+          <div
+            id="workspace-panel-connectivity"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-connectivity"
+            className="absolute inset-0"
+          >
+            <PanelChrome>
+              <ConnectivitySidebar onClose={onClose} />
             </PanelChrome>
           </div>
         )}
