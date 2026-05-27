@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Link, Loader2, Save, X } from "lucide-react";
+import { CheckCircle, Clock, Link, Loader2, RotateCcw, Save, X } from "lucide-react";
 import {
   apiGetUserConnectivity,
   apiSetUserConnectivity,
@@ -14,6 +13,30 @@ import {
 } from "@/lib/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
+
+function runModeBlurb(mode: RunMode): string {
+  switch (mode) {
+    case "remote":
+      return "Direct provider";
+    case "gateway":
+      return "Via gateway";
+    case "proxy":
+      return "Via proxy";
+  }
+}
+
+function runModeDescription(mode: RunMode): string {
+  switch (mode) {
+    case "remote":
+      return "Connect directly to OpenAI / Anthropic APIs using API keys";
+    case "gateway":
+      return "Route through Cloudflare AI Gateway for caching and observability";
+    case "proxy":
+      return "Route through a local or custom proxy without sending API keys";
+  }
+}
 
 interface ConnectivitySidebarProps {
   onClose: () => void;
@@ -25,6 +48,9 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
   const [proxyUrl, setProxyUrl] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const radioRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +69,15 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
         if (mounted) setIsLoading(false);
       });
     return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current !== null) {
+        clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = null;
+      }
+    };
   }, []);
 
   const dirty =
@@ -64,7 +99,15 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
       setData(updated);
       setPendingMode(updated.run_mode);
       setProxyUrl(updated.proxy_url);
+      setSaved(true);
       toast.success("Connectivity saved");
+      if (savedTimerRef.current !== null) {
+        clearTimeout(savedTimerRef.current);
+      }
+      savedTimerRef.current = setTimeout(() => {
+        setSaved(false);
+        savedTimerRef.current = null;
+      }, 2000);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -90,11 +133,38 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
     }
   };
 
-  const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
+  const handleRadioKeyDown = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) => {
+    const last = RUN_MODES.length - 1;
+    let nextIndex: number;
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        nextIndex = index === last ? 0 : index + 1;
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        nextIndex = index === 0 ? last : index - 1;
+        break;
+      case "Home":
+        nextIndex = 0;
+        break;
+      case "End":
+        nextIndex = last;
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+    const target = RUN_MODES[nextIndex]!;
+    setPendingMode(target);
+    radioRefs.current[nextIndex]?.focus();
+  };
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Header (hidden by PanelChrome in WorkspacePanel) */}
       <div className="flex flex-shrink-0 items-center justify-between border-b border-border p-4">
         <div className="flex items-center gap-2">
           <Link className="h-5 w-5 text-muted-foreground" />
@@ -112,88 +182,165 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
       </div>
 
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-6 p-4">
+        <div className="space-y-5 p-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Run mode
-                </Label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {RUN_MODES.map((mode) => {
+            <>
+              <header className="space-y-1">
+                <h3 className="text-base font-semibold tracking-tight">Run mode</h3>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  How your requests reach the LLM backend
+                </p>
+                <span className="aptiv-rule" aria-hidden="true" />
+              </header>
+
+              <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
+                <div
+                  role="radiogroup"
+                  aria-label="Run mode"
+                  className="grid grid-cols-3 gap-1.5"
+                >
+                  {RUN_MODES.map((mode, index) => {
                     const active = pendingMode === mode;
                     return (
                       <button
                         key={mode}
                         type="button"
+                        role="radio"
+                        aria-checked={active}
+                        tabIndex={active ? 0 : -1}
+                        ref={(el) => {
+                          radioRefs.current[index] = el;
+                        }}
+                        onKeyDown={(event) => handleRadioKeyDown(event, index)}
                         onClick={() => setPendingMode(mode)}
                         className={cn(
-                          "rounded-md border px-3 py-2 text-center text-xs font-semibold transition-all",
+                          "group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-all duration-200",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           active
-                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-card text-foreground hover:border-primary/40"
+                            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--text-button-primary)] shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]"
+                            : "border-border bg-card hover:-translate-y-px hover:border-[var(--color-primary)]/40 hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
                         )}
                       >
-                        {mode}
+                        {active && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--aptiv-orange)_25%,transparent)]"
+                          />
+                        )}
+                        <span
+                          className={cn(
+                            "text-xs font-semibold tracking-tight transition-colors",
+                            active
+                              ? "text-[var(--text-button-primary)]"
+                              : "text-foreground group-hover:text-[var(--color-primary)]"
+                          )}
+                        >
+                          {mode}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors",
+                            active
+                              ? "text-[var(--text-button-primary)]/75"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {runModeBlurb(mode)}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
+
                 {data && (
-                  <p className="text-[9px] text-muted-foreground">
-                    System default: {data.default_run_mode}
-                    {data.run_mode_source === "user" && " · Your choice: " + data.run_mode}
+                  <p className="text-[10px] leading-relaxed text-muted-foreground">
+                    {runModeDescription(pendingMode)}
                   </p>
                 )}
-              </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  My proxy URL
-                </Label>
-                <Input
-                  value={proxyUrl}
-                  onChange={(e) => setProxyUrl(e.target.value)}
-                  placeholder="(not set — using system proxy)"
-                  className="h-9 font-mono text-[11px]"
-                />
-                <p className="text-[9px] text-muted-foreground">
-                  Used when run mode is &quot;proxy&quot;. Leave empty for system default.
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving || !dirty}
-                className="w-full"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save connectivity
-                  </>
+                {data && (
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span className="font-semibold uppercase tracking-wider">
+                      System default
+                    </span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums">
+                      {data.default_run_mode}
+                    </span>
+                    {data.run_mode_source === "user" && (
+                      <span className="text-[var(--color-primary)]">
+                        &middot; Your override active
+                      </span>
+                    )}
+                  </div>
                 )}
-              </Button>
+              </div>
 
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={isSaving}
-                className="w-full text-center text-[10px] text-muted-foreground underline hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-              >
-                Reset to system defaults
-              </button>
-            </div>
+              {pendingMode === "proxy" && (
+                <div className="space-y-2 border-t border-border/40 pt-4">
+                  <header className="space-y-1">
+                    <h3 className="text-sm font-semibold tracking-tight">Proxy URL</h3>
+                    <p className="text-[10px] text-muted-foreground">
+                      Your personal proxy endpoint. Leave empty to use the system default.
+                    </p>
+                  </header>
+                  <Input
+                    value={proxyUrl}
+                    onChange={(e) => setProxyUrl(e.target.value)}
+                    placeholder="(not set — using system proxy)"
+                    className={cn(
+                      "h-9 font-mono text-[11px]",
+                      proxyUrl ? "border-[var(--color-primary)]/40" : ""
+                    )}
+                  />
+                  {data?.proxy_url_source === "user" && data.proxy_url && (
+                    <span className="text-[9px] text-[var(--color-primary)]">
+                      Using your custom proxy URL
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 pt-2">
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || !dirty}
+                  className="w-full"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving
+                    </>
+                  ) : saved ? (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Saved
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save connectivity
+                    </>
+                  )}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isSaving}
+                  className="inline-flex w-full items-center justify-center gap-1.5 text-center text-[10px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset to system defaults
+                </button>
+              </div>
+            </>
           )}
         </div>
       </ScrollArea>
