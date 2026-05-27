@@ -190,7 +190,7 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
           ) : (
             <>
               <header className="space-y-1">
-                <h3 className="text-base font-semibold tracking-tight">Run modes</h3>
+                <h3 className="text-base font-semibold tracking-tight">Run mode</h3>
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   How your requests reach the LLM backend
                 </p>
@@ -200,7 +200,7 @@ export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
               <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
                 <div
                   role="radiogroup"
-                  aria-label="Run modes"
+                  aria-label="Run mode"
                   className="grid grid-cols-3 gap-1.5"
                 >
                   {RUN_MODES.map((mode, index) => {
