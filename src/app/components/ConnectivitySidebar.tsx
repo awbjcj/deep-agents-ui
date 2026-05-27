@@ -30,11 +30,11 @@ function runModeBlurb(mode: RunMode): string {
 function runModeDescription(mode: RunMode): string {
   switch (mode) {
     case "remote":
-      return "Connect directly to OpenAI / Anthropic APIs (Lowest latency, could be blocked by network firewalls)";
+      return "Connect directly to Provider";
     case "gateway":
-      return "Route through VSDA Team Maintained Gateway (Recommended, best performance and reliability)";
+      return "Route through Gateway";
     case "proxy":
-      return "Route through local Copilot Proxy with Github Copilot Subscription (Requires setup, may have higher latency)";
+      return "Route through local Proxy";
   }
 }
 
