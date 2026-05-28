@@ -12,10 +12,8 @@ import {
   Clock,
   Eye,
   EyeOff,
-  Key,
   Loader2,
   Save,
-  X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
