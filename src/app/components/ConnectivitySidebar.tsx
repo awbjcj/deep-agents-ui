@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle, Clock, Link, Loader2, RotateCcw, Save, X } from "lucide-react";
+import { CheckCircle, Clock, Loader2, RotateCcw, Save } from "lucide-react";
 import {
   apiGetUserConnectivity,
   apiSetUserConnectivity,
