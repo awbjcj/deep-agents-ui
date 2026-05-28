@@ -40,7 +40,6 @@ interface TokenManagementSidebarProps {
 }
 
 export function TokenManagementSidebar({
-  onClose,
   initialFocus,
   onFocusConsumed,
 }: TokenManagementSidebarProps) {
