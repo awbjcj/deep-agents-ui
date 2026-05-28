@@ -161,22 +161,9 @@ export function ConnectivitySidebar() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <div className="flex flex-shrink-0 items-center justify-between border-b border-border p-4">
-        <div className="flex items-center gap-2">
-          <Link className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold tracking-tight">Connectivity</h2>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-8 w-8"
-          aria-label="Close connectivity sidebar"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
+      {/* Title bar is supplied by the parent WorkspacePanel — this sidebar
+          only owns its content. Keeping the close button out avoids a
+          double X next to the parent's. */}
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-5 p-4">
           {isLoading ? (
