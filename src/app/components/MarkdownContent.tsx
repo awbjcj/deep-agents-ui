@@ -27,7 +27,27 @@ const SyntaxHighlighter = lazy(() =>
 );
 
 const PROSE_CLASS =
-  "prose min-w-0 max-w-full overflow-hidden break-words text-base leading-7 text-inherit [&_h1:first-child]:mt-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:font-semibold [&_h2:first-child]:mt-0 [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:font-semibold [&_h3:first-child]:mt-0 [&_h3]:mb-4 [&_h3]:mt-6 [&_h3]:font-semibold [&_h4:first-child]:mt-0 [&_h4]:mb-4 [&_h4]:mt-6 [&_h4]:font-semibold [&_h5:first-child]:mt-0 [&_h5]:mb-4 [&_h5]:mt-6 [&_h5]:font-semibold [&_h6:first-child]:mt-0 [&_h6]:mb-4 [&_h6]:mt-6 [&_h6]:font-semibold [&_p:last-child]:mb-0 [&_p]:mb-4";
+  // Base prose typography with dark-mode-aware inversion. We override the
+  // default prose colors with `text-inherit` so chat-message bubble colors
+  // continue to drive text color, but we keep prose's structural styles
+  // (lists, tables, code) and explicitly re-affirm italic + bold so they
+  // remain visually distinct across both themes.
+  "prose dark:prose-invert min-w-0 max-w-full overflow-hidden break-words text-base leading-7 text-inherit " +
+  "prose-strong:font-semibold prose-strong:text-current " +
+  "prose-em:italic prose-em:text-current " +
+  "prose-code:text-current prose-headings:text-current prose-p:text-current prose-li:text-current " +
+  // Headings: tight top margin for first child, generous rhythm otherwise.
+  "[&_h1:first-child]:mt-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:font-semibold " +
+  "[&_h2:first-child]:mt-0 [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:font-semibold " +
+  "[&_h3:first-child]:mt-0 [&_h3]:mb-4 [&_h3]:mt-6 [&_h3]:font-semibold " +
+  "[&_h4:first-child]:mt-0 [&_h4]:mb-4 [&_h4]:mt-6 [&_h4]:font-semibold " +
+  "[&_h5:first-child]:mt-0 [&_h5]:mb-4 [&_h5]:mt-6 [&_h5]:font-semibold " +
+  "[&_h6:first-child]:mt-0 [&_h6]:mb-4 [&_h6]:mt-6 [&_h6]:font-semibold " +
+  "[&_p:last-child]:mb-0 [&_p]:mb-4 " +
+  // KaTeX: allow long display equations to scroll horizontally instead of
+  // bleeding out of the message bubble. Padding + sizing live in globals.css
+  // so all .katex-display instances share one source of truth.
+  "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden";
 
 const REMARK_PLUGINS = [remarkGfm, remarkMath];
 const REHYPE_PLUGINS: [typeof rehypeKatex, { strict: string }][] = [
