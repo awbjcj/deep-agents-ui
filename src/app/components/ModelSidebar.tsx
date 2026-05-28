@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import {
   Brain,
-  Cpu,
   Gauge,
   Leaf,
   Loader2,
@@ -12,7 +11,6 @@ import {
   Sliders,
   SlidersHorizontal,
   Sparkles,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
