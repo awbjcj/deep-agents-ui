@@ -89,7 +89,10 @@ export function normalizeDisplayMathDelimiters(content: string): string {
     const danglingMatch = DANGLING_DISPLAY_MATH_BRACKET_LINE.exec(line);
     if (danglingMatch && !line.includes("[")) {
       const [, indent, expression] = danglingMatch;
-      if (MATH_LIKE_CONTENT.test(expression)) {
+      if (
+        MATH_LIKE_CONTENT.test(expression) &&
+        !DATE_TIME_PATTERN.test(expression.trim())
+      ) {
         normalizedLines.push(renderDisplayMath(indent, expression));
         continue;
       }
