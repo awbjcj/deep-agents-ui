@@ -1040,6 +1040,23 @@ button {
   color: var(--slider-tick-active);
 }
 
+/* ─── KaTeX safety ──────────────────────────────────────────────────── */
+/* Long display equations can overflow narrow message bubbles. We expose
+   them as horizontally scrollable blocks rather than letting them clip
+   or push the layout. Inline math is left untouched. */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 4px;
+  scrollbar-width: thin;
+}
+.katex-display > .katex {
+  white-space: nowrap;
+}
+.katex {
+  font-size: 1.02em;
+}
+
 /* ─── Diff highlighting ─────────────────────────────────────────────── */
 .word-added {
   background-color: rgba(52, 211, 153, 0.25);
