@@ -547,12 +547,18 @@ body {
 }
 
 /* Laptop-friendly: keep body text at a comfortable 15px on ≤1440px
-   screens; bump to 16px on larger desktop displays. Using `body` only
-   (not `html`) preserves rem-based sizing for buttons, icons, and
-   layout throughout the app. */
+   screens; bump to 16px on larger desktop displays, and 17px on 27"+
+   monitors (≥1920px) where 16px starts to feel small at typical viewing
+   distance. Using `body` only (not `html`) preserves rem-based sizing
+   for buttons, icons, and layout throughout the app. */
 @media (min-width: 1600px) {
   body {
     font-size: 16px;
+  }
+}
+@media (min-width: 1920px) {
+  body {
+    font-size: 17px;
   }
 }
 
