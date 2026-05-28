@@ -38,11 +38,7 @@ function runModeDescription(mode: RunMode): string {
   }
 }
 
-interface ConnectivitySidebarProps {
-  onClose: () => void;
-}
-
-export function ConnectivitySidebar({ onClose }: ConnectivitySidebarProps) {
+export function ConnectivitySidebar() {
   const [data, setData] = useState<UserConnectivityResponse | null>(null);
   const [pendingMode, setPendingMode] = useState<RunMode>("gateway");
   const [proxyUrl, setProxyUrl] = useState("");
