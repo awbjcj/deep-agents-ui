@@ -18,6 +18,7 @@ function renderDisplayMath(indent: string, expression: string): string {
 function normalizeInlineMathBrackets(line: string): string {
   return line.replace(INLINE_MATH_BRACKETS, (match, prefix, expression) => {
     if (!MATH_LIKE_CONTENT.test(expression)) return match;
+    if (DATE_TIME_PATTERN.test(expression.trim())) return match;
     return `${prefix}$${expression.trim()}$`;
   });
 }
