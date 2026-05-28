@@ -30,6 +30,95 @@ interface AssistantOption {
   graphId: string;
 }
 
+const AGENT_INFO: Record<string, { description: string; tools: string[] }> = {
+  "VSDA Deep Agent": {
+    description:
+      "Supervisor agent that routes queries to specialized sub-agents for Jira, Teams, Email, Database, Polarion, and Confluence.",
+    tools: [
+      "record_user_history",
+      "save_user_preference",
+      "recall_user_history",
+      "list_user_preferences",
+      "save_scope_note",
+      "prepare_workspace",
+      "run_python",
+    ],
+  },
+  "VSDA Jira Agent": {
+    description:
+      "Specializes in retrieving and summarizing Jira tickets based on user queries.",
+    tools: [
+      "extract_jira_context",
+      "search_jira_tickets",
+      "get_jira_ticket",
+      "create_jql_query",
+      "grade_vsda_ticket",
+      "edit_jira_ticket",
+    ],
+  },
+  "VSDA Teams Agent": {
+    description:
+      "Specializes in retrieving, summarizing, and managing Microsoft Teams chat messages.",
+    tools: [
+      "list_chat_topics",
+      "get_chat_messages",
+      "send_chat_message",
+      "create_chat_with_user",
+      "get_user_id",
+    ],
+  },
+  "VSDA Email Agent": {
+    description:
+      "Specializes in retrieving, reading, and sending emails based on user queries.",
+    tools: [
+      "list_email_folders",
+      "list_emails",
+      "get_email_content",
+      "create_draft_email",
+      "send_draft_email",
+      "get_user_email_address",
+      "send_email",
+    ],
+  },
+  "VSDA Database Agent": {
+    description:
+      "Specializes in searching the Elasticsearch vector knowledge base to retrieve relevant documents with optional metadata filtering.",
+    tools: [
+      "list_database_indices",
+      "get_database_info",
+      "search_database",
+      "search_database_with_filter",
+      "rewrite_search_query",
+      "evaluate_search_results",
+    ],
+  },
+  "VSDA Polarion Agent": {
+    description:
+      "Specializes in retrieving and summarizing Polarion ALM work items and project information.",
+    tools: [
+      "resolve_polarion_project",
+      "create_polarion_query",
+      "search_polarion_work_items",
+      "get_polarion_work_item",
+      "get_polarion_project_info",
+    ],
+  },
+  "VSDA Confluence Agent": {
+    description:
+      "Retrieves and summarizes Confluence spaces, pages, and attachments for wiki and knowledge-base content.",
+    tools: [
+      "list_confluence_spaces",
+      "get_confluence_space",
+      "create_confluence_query",
+      "search_confluence_pages",
+      "get_confluence_page",
+      "get_confluence_page_by_title",
+      "list_confluence_child_pages",
+      "get_confluence_page_comments",
+    ],
+  },
+};
+
 interface ConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -136,26 +225,41 @@ export function ConfigDialog({
                 <SelectContent>
                   {assistants.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
-                      {a.name} ({a.graphId})
+                      {a.graphId}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="langsmithApiKey">
-              LangSmith API Key{" "}
-              <span className="text-muted-foreground">(Optional)</span>
-            </Label>
-            <Input
-              id="langsmithApiKey"
-              type="password"
-              value={langsmithApiKey ? "••••••••" : ""}
-              disabled
-              className="bg-muted"
-            />
-          </div>
+          {assistantId && (() => {
+            const selected = assistants.find((a) => a.id === assistantId);
+            const info = selected ? AGENT_INFO[selected.graphId] : undefined;
+            if (!info) return null;
+            return (
+              <div className="grid gap-2">
+                <Label>Agent Details</Label>
+                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-2">
+                  <p className="text-muted-foreground">{info.description}</p>
+                  <div>
+                    <span className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
+                      Tools
+                    </span>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {info.tools.map((tool) => (
+                        <span
+                          key={tool}
+                          className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

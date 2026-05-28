@@ -214,7 +214,7 @@ function HomePageInner({
                     Agent
                   </span>
                   <span className="max-w-[180px] truncate text-[12px] font-medium text-foreground/80">
-                    {assistant?.name || config.assistantId}
+                    {assistant?.graph_id || assistant?.name || config.assistantId}
                   </span>
                 </div>
               </TooltipTrigger>
