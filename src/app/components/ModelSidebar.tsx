@@ -38,9 +38,7 @@ import {
   type UserModelSelection,
 } from "@/lib/auth";
 
-interface ModelSidebarProps {
-  onClose: () => void;
-}
+
 
 type PresetOption =
   | {
