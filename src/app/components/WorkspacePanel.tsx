@@ -146,13 +146,10 @@ export function WorkspacePanel({
             aria-labelledby="workspace-tab-tokens"
             className="absolute inset-0"
           >
-            <PanelChrome>
-              <TokenManagementSidebar
-                onClose={onClose}
-                initialFocus={initialTokenFocus}
-                onFocusConsumed={onTokenFocusConsumed}
-              />
-            </PanelChrome>
+            <TokenManagementSidebar
+              initialFocus={initialTokenFocus}
+              onFocusConsumed={onTokenFocusConsumed}
+            />
           </div>
         )}
         {active === "connectivity" && (
