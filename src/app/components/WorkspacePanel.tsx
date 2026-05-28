@@ -136,9 +136,7 @@ export function WorkspacePanel({
             aria-labelledby="workspace-tab-models"
             className="absolute inset-0"
           >
-            <PanelChrome>
-              <ModelSidebar onClose={onClose} />
-            </PanelChrome>
+            <ModelSidebar />
           </div>
         )}
         {active === "tokens" && (
