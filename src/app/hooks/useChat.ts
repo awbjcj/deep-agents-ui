@@ -147,6 +147,13 @@ export function useChat({
           | Record<string, unknown>
           | undefined),
         ...(username ? { system_username: username } : {}),
+        // DO NOT enable `__event_streaming_v2` here. Migration deferred —
+        // see docs/superpowers/specs/2026-05-28-v3-stream-migration-design.md
+        // (status: DEFERRED) for the SDK-surface findings and revisit triggers.
+        // Short version: useStream's legacy frame decoder crashes on v3 message
+        // frames, and neither v3 client API (low-level client.runs.stream or
+        // high-level ThreadStream.submitRun) is a clean parity replacement for
+        // the submit options we use (interruptBefore/After, command.goto, etc.).
       };
       return {
         ...base,
