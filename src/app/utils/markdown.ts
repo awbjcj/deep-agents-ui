@@ -78,7 +78,8 @@ export function normalizeDisplayMathDelimiters(content: string): string {
     if (match) {
       const [, indent, expression] = match;
       normalizedLines.push(
-        MATH_LIKE_CONTENT.test(expression)
+        MATH_LIKE_CONTENT.test(expression) &&
+          !DATE_TIME_PATTERN.test(expression.trim())
           ? renderDisplayMath(indent, expression)
           : line
       );
