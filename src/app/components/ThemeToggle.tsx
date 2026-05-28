@@ -30,7 +30,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
           "absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full",
           "transition-all duration-300 ease-in-out",
           isDark
-            ? "left-[calc(100%-30px)] bg-[color:var(--color-primary)] text-white shadow-md"
+            ? "left-[calc(100%-32px)] bg-[color:var(--color-primary)] text-white shadow-md"
             : "left-1 bg-[color:var(--aptiv-orange)] text-white shadow-md"
         )}
       >
