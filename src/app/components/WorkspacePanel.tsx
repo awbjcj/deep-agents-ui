@@ -100,20 +100,22 @@ export function WorkspacePanel({
                 aria-controls={`workspace-panel-${tab.id}`}
                 onClick={() => setActive(tab.id)}
                 className={cn(
-                  "group relative inline-flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors",
+                  "group relative inline-flex items-center gap-1.5 rounded-t-md px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   isActive
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-background/60 text-foreground"
+                    : "text-muted-foreground hover:bg-background/30 hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {tab.label}
-                {/* Active indicator — Aptiv orange accent rail */}
+                {/* Active indicator — Aptiv orange accent rail, slightly
+                    thicker (2.5px) and edge-to-edge so it reads as a real
+                    underline rather than a hairline. */}
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "absolute -bottom-px left-1 right-1 h-[2px] rounded-full transition-opacity",
+                    "absolute -bottom-px left-0 right-0 h-[2.5px] rounded-t-full transition-opacity",
                     isActive ? "opacity-100" : "opacity-0",
                   )}
                   style={{ background: "var(--aptiv-orange)" }}
