@@ -40,6 +40,7 @@ export function ClientProvider({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useClient(): Client {
   const context = useContext(ClientContext);
 
