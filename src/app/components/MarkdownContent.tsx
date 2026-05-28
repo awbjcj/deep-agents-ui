@@ -59,13 +59,36 @@ const REHYPE_PLUGINS: [typeof rehypeKatex, { strict: string }][] = [
 // message, defeating React.memo on MarkdownContent.
 const COMPONENTS: Components = {
   code({ inline, className, children, ...props }: any) {
+    // True inline code — the common case during streaming. Bail out fast
+    // before doing the string conversion / regex used by the block paths.
+    if (inline) {
+      return (
+        <code
+          className="rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+
     const match = /language-(\w+)/.exec(className || "");
-    if (!inline && match) {
+    // react-markdown sometimes passes children as an array of text nodes
+    // (e.g. when content streams in chunks). Flatten safely so commas
+    // aren't injected between fragments — `String([a,b])` would yield
+    // "a,b" and corrupt the rendered code.
+    const text = (
+      Array.isArray(children) ? children.join("") : String(children)
+    ).replace(/\n$/, "");
+    const isMultiline = text.includes("\n");
+
+    // Fenced code with explicit language → Prism syntax highlighting.
+    if (match) {
       return (
         <Suspense
           fallback={
-            <pre className="my-2 max-w-full overflow-x-auto rounded-md bg-surface-alt p-3 text-sm">
-              <code>{String(children).replace(/\n$/, "")}</code>
+            <pre className="my-2 max-w-full overflow-x-auto rounded-md border border-border bg-secondary p-3 text-sm">
+              <code>{text}</code>
             </pre>
           }
         >
