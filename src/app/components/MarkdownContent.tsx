@@ -118,23 +118,36 @@ const COMPONENTS: Components = {
               margin: 0,
               maxWidth: "100%",
               overflowX: "auto",
-              fontSize: "1rem",
+              fontSize: "0.95em",
               fontFamily: "var(--font-family-mono)",
               fontWeight: 500,
               fontFeatureSettings: '"ss01", "cv11"',
             }}
           >
-            {String(children).replace(/\n$/, "")}
+            {text}
           </SyntaxHighlighter>
         </Suspense>
       );
     }
+
+    // Fenced code WITHOUT a language tag (or a streaming-time fragment that
+    // hasn't acquired its language yet). Render as a block so multi-line
+    // structure is preserved instead of being squashed onto one line.
+    if (isMultiline) {
+      return (
+        <pre className="my-2 max-w-full overflow-x-auto rounded-md border border-border bg-secondary p-3 text-[0.9em] leading-6">
+          <code className="font-mono text-current">{text}</code>
+        </pre>
+      );
+    }
+
+    // Non-inline single-line code without a language tag — render as-is.
     return (
       <code
-        className="bg-surface rounded-sm px-1 py-0.5 font-mono text-[0.95em]"
+        className="rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]"
         {...props}
       >
-        {children}
+        {text}
       </code>
     );
   },
