@@ -151,25 +151,7 @@ export function TokenManagementSidebar({
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Header */}
-      <div className="flex flex-shrink-0 items-center justify-between border-b border-border p-4">
-        <div className="flex items-center gap-2">
-          <Key className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold tracking-tight">
-            Token Management
-          </h2>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-8 w-8"
-          aria-label="Close token sidebar"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
+      {/* Title bar is supplied by parent WorkspacePanel. */}
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-6 p-4">
           {isLoading ? (
