@@ -70,7 +70,7 @@ export function AccountMenu() {
           <span className="hidden max-w-28 truncate text-sm sm:inline">
             {user.username}
           </span>
-          <span className="hidden rounded-sm border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-secondary-foreground md:inline">
+          <span className="hidden rounded-sm border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary-foreground md:inline">
             {user.role}
           </span>
           <ChevronDown
