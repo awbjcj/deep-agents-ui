@@ -85,7 +85,7 @@ export function WorkspacePanel({
         <div
           role="tablist"
           aria-label="Workspace sections"
-          className="flex items-end gap-1 px-4 pt-3"
+          className="flex items-end gap-1.5 px-4 pt-4"
         >
           {TABS.map((tab) => {
             const Icon = tab.icon;
