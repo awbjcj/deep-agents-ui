@@ -127,9 +127,7 @@ export function WorkspacePanel({
       </div>
 
       {/* Panel bodies. We mount only the active tab to avoid running fetches
-          for sections the user hasn't opened. Each existing sidebar component
-          already brings its own header bar; we hide that with `-mt-px` and
-          isolate via a wrapper so the tab strip remains the only header.   */}
+          for sections the user hasn't opened. */}
       <div className="relative min-h-0 flex-1">
         {active === "models" && (
           <div
