@@ -142,8 +142,8 @@ export function TokenManagementSidebar({
       setSavedIndicator(true);
       toast.success("Tokens updated successfully");
       setTimeout(() => setSavedIndicator(false), 2000);
-    } catch {
-      toast.error("Failed to update tokens");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update tokens");
     } finally {
       setIsSaving(false);
     }
