@@ -290,30 +290,9 @@ export function ModelSidebar() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <div className="flex flex-shrink-0 items-center justify-between border-b border-border bg-card/70 px-5 pb-4 pt-5 backdrop-blur-sm">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)] shadow-sm">
-            <Cpu className="h-4 w-4" />
-          </span>
-          <div className="flex flex-col leading-none">
-            <span className="aptiv-eyebrow">Model</span>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight">
-              Model &amp; Reasoning
-            </h2>
-            <span className="aptiv-rule" aria-hidden="true" />
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-8 w-8"
-          aria-label="Close model sidebar"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
+      {/* Title bar is supplied by parent WorkspacePanel. The previous local
+          header duplicated the eyebrow + title that WorkspacePanel already
+          shows; we keep only the content. */}
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-8 p-5">
           {usage && (
