@@ -114,7 +114,9 @@ export function ChangeProfileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Account</DialogTitle>
+          <span className="aptiv-eyebrow">Profile</span>
+          <DialogTitle className="mt-1">Account</DialogTitle>
+          <span className="aptiv-rule" aria-hidden="true" />
           <DialogDescription>Signed in as {user?.username}.</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="username">
