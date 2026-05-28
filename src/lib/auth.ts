@@ -234,9 +234,36 @@ export async function apiUpdateTokens(
     body: JSON.stringify(tokens),
   });
   if (!res.ok) {
-    throw new Error("Failed to update tokens");
+    throw new Error(await extractApiErrorMessage(res, "Failed to update tokens"));
   }
   return res.json();
+}
+
+// FastAPI returns either `{detail: "msg"}` (HTTPException) or
+// `{detail: [{loc, msg, type, ...}]}` (422 validation). Flatten both into a
+// single user-readable string so toasts surface the real cause instead of a
+// generic "Failed to ..." line.
+async function extractApiErrorMessage(
+  res: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const body = await res.clone().json();
+    const detail = body?.detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      const parts = detail
+        .map((e: { loc?: unknown[]; msg?: string }) => {
+          const field = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
+          return field ? `${field}: ${e.msg ?? ""}` : e.msg ?? "";
+        })
+        .filter(Boolean);
+      if (parts.length) return parts.join("; ");
+    }
+  } catch {
+    // Body wasn't JSON — fall through.
+  }
+  return fallback;
 }
 
 // --- User Notifications ---
