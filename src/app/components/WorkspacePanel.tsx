@@ -159,25 +159,10 @@ export function WorkspacePanel({
             aria-labelledby="workspace-tab-connectivity"
             className="absolute inset-0"
           >
-            <PanelChrome>
-              <ConnectivitySidebar onClose={onClose} />
-            </PanelChrome>
+            <ConnectivitySidebar />
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/**
- * Hides the legacy sidebar header (each sub-panel renders its own title row).
- * The host shell now owns title + close, so we crop the first row to keep
- * existing sub-panels untouched at the source level.
- */
-function PanelChrome({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="absolute inset-0 [&>div>div:first-child]:hidden">
-      {children}
     </div>
   );
 }
