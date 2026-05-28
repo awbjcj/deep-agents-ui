@@ -8,6 +8,8 @@ const OPENAI_INLINE_MATH_BRACKETS = /\\\[\s*(.+?)\s*\\\]/g;
 const INLINE_MATH_BRACKETS = /(^|[^!\\])\[\s*([^\]\n]+?)\s*\](?!\()/g;
 const MATH_LIKE_CONTENT =
   /(?:\\[a-zA-Z]+|\\[,;! ]|[=^_]|[+*/]|\d+\s*[{}(),]\s*\d+)/;
+const DATE_TIME_PATTERN =
+  /^\d{2,4}[/-]\d{1,2}([/-]\d{2,4})?([\sT]\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:?\d{2}|Z)?)?(\s*([APap][Mm]))?(\s*\(.*\))?$|^[A-Z][a-z]{2,8}\s+\d{1,2},?\s+\d{4}(\s+(at\s+)?\d{1,2}:\d{2}(:\d{2})?\s*([APap][Mm])?)?(\s*\(.*\))?$/;
 
 function renderDisplayMath(indent: string, expression: string): string {
   return `${indent}$$\n${expression.trim()}\n${indent}$$`;
