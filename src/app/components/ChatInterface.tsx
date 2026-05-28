@@ -620,7 +620,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isLoading ? "Running..." : "Write your message..."}
-                className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-primary outline-none placeholder:text-tertiary"
+                className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
                 rows={1}
               />
               <div className="flex items-center justify-between gap-2 p-3">
