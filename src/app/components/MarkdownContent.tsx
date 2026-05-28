@@ -172,7 +172,7 @@ const COMPONENTS: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="text-primary/50 my-4 border-l-4 border-border pl-4 italic">
+      <blockquote className="my-4 border-l-2 border-primary/50 bg-secondary/40 py-2 pl-4 pr-3 italic text-foreground/85">
         {children}
       </blockquote>
     );
