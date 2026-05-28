@@ -117,7 +117,7 @@ function usageBarClass(pct: number, isUnlimited: boolean): string {
   return "bg-[var(--color-success)]";
 }
 
-export function ModelSidebar({ onClose }: ModelSidebarProps) {
+export function ModelSidebar() {
   const [selection, setSelection] = useState<UserModelSelection | null>(null);
   const [allowed, setAllowed] = useState<ModelEntry[]>([]);
   const [draft, setDraft] = useState<DraftState | null>(null);
