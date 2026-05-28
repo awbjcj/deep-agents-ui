@@ -199,7 +199,24 @@ const COMPONENTS: Components = {
         aria-label="Markdown table"
         tabIndex={0}
       >
-        <table className="my-0 w-full border-collapse text-sm">{children}</table>
+        {/* Re-assert inline-text emphasis inside table cells. The `not-prose`
+            wrapper above strips ALL prose-internal styles (intentional, to
+            stop prose padding/margins from disrupting table layout), but
+            that also kills strong/em/code styling — so we explicitly opt
+            those back in for descendants of the table. */}
+        <table
+          className={
+            "my-0 w-full border-collapse text-sm " +
+            "[&_strong]:font-semibold [&_strong]:text-current " +
+            "[&_em]:italic [&_em]:text-current " +
+            "[&_code]:rounded-sm [&_code]:border [&_code]:border-border/60 " +
+            "[&_code]:bg-background [&_code]:px-1 [&_code]:py-0.5 " +
+            "[&_code]:font-mono [&_code]:text-[0.85em] [&_code]:font-medium " +
+            "[&_a]:text-primary [&_a:hover]:underline"
+          }
+        >
+          {children}
+        </table>
       </div>
     );
   },
