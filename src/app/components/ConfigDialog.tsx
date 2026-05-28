@@ -194,7 +194,9 @@ export function ConfigDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Configuration</DialogTitle>
+          <span className="aptiv-eyebrow">Settings</span>
+          <DialogTitle className="mt-1">Configuration</DialogTitle>
+          <span className="aptiv-rule" aria-hidden="true" />
           <DialogDescription>
             Deployment settings are configured via environment variables.
             Select an assistant to get started.
