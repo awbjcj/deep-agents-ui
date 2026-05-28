@@ -257,7 +257,15 @@ const COMPONENTS: Components = {
   },
   img({ src, alt, ...props }) {
     if (!src) return null;
-    return <img src={src as string} alt={alt ?? ""} {...props} />;
+    return (
+      <img
+        src={src as string}
+        alt={alt ?? ""}
+        loading="lazy"
+        className="my-4 h-auto max-w-full rounded-md border border-border"
+        {...props}
+      />
+    );
   },
 };
 
