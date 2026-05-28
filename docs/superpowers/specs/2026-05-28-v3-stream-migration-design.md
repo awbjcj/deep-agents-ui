@@ -1,6 +1,6 @@
 # v3 Event-Streaming Migration — Design
 
-**Status:** approved (brainstorming), pending implementation plan
+**Status:** **DEFERRED** (see "Deferral note" at the end of this document)
 **Author:** brainstorming session 2026-05-28
 **Scope:** parity migration — enable `__event_streaming_v2` on the server without breaking the chat UI. No new UI in this PR.
 
@@ -287,3 +287,47 @@ With `NEXT_PUBLIC_USE_V3_STREAM=true`:
 1. **Automated tests.** Should the implementation plan include Playwright+MSW coverage of the smoke matrix? Brainstorming session deferred this; recommend adding to the implementation plan.
 2. **Sunset timeline.** "One release cycle" is vague — fix during implementation planning based on the team's release cadence.
 3. **Messages-projection shape.** The `.messages` projection's exact yield type (assembled messages vs. raw deltas to feed through `StreamingMessageAssembler`) needs to be confirmed by reading `dist/client/stream/index.cjs` before implementation. If the SDK already assembles, the reducer is trivial; if it yields deltas, we instantiate `StreamingMessageAssembler` per message ID.
+
+---
+
+## Deferral note (added 2026-05-28 after SDK probe)
+
+Reading the SDK's actual v3 surface (`@langchain/langgraph-sdk@1.9.9 dist/client/stream/index.d.ts` and `dist/ui/orchestrator.cjs`) surfaced structural facts the design above did not account for. Migration is **deferred** until either the SDK ships a v3-aware React hook or the high-level `ThreadStream` API gains the missing submit options.
+
+### What we found
+
+The SDK exposes **two** v3 surfaces, neither a clean parity replacement for `useStream`:
+
+| Surface | API | Submit options | Frame decoder |
+|---|---|---|---|
+| Low-level (run-centric) | `client.runs.stream(threadId, assistantId, opts)` — still present, still accepts `interruptBefore/After`, `command.{goto,update,resume}`, `streamMode`, `checkpoint`, `streamSubgraphs`. Server upgrades the envelope to v3 when `configurable.__event_streaming_v2: true`. | All legacy options preserved | **We own it.** Need to write our own v3-envelope decoder (the SDK's `useStream` decoder is the broken one we're trying to leave). |
+| High-level (thread-centric) | `client.threads.stream(threadId, {assistantId}).submitRun({input, config, metadata, forkFrom, multitaskStrategy})` returning a `ThreadStream` with assembled projection handles (`messages: AsyncIterable<StreamingMessageHandle>`, `toolCalls: AsyncIterable<ClientAssembledToolCall>`, `subagents: AsyncIterable<SubagentHandle>`, `subgraphs: AsyncIterable<SubgraphHandle>`). HITL via `respondInput({namespace, interrupt_id, response})`. Idempotent join via `startLifecycleWatcher()`. | **Loses** `interruptBefore/After`, `command.goto`, `command.update`, `streamMode`. `checkpoint` becomes `forkFrom: {checkpointId}`. `command.resume` becomes `respondInput`. | SDK assembles for us. |
+
+### Why neither path is parity in a single PR
+
+- `useChat.ts:runSingleStep` (in `useChat.ts`) uses `interruptBefore: ["tools"]` and `interruptAfter: ["tools"]` for step-by-step tool approval. The high-level path has no equivalent.
+- `useChat.ts:markCurrentThreadAsResolved` uses `command: { goto: "__end__", update: null }` to force-end a thread. The high-level path has no equivalent.
+- The low-level path keeps every submit option but means we own a v3-envelope decoder indefinitely — exactly the SDK-internal logic we wanted to stop maintaining.
+
+### What this would actually take
+
+At minimum two follow-up specs before the migration can ship:
+
+1. Replace `runSingleStep`'s `interruptBefore/After` with the v3 HITL `respondInput` model. Requires UI/UX redesign — today's step-runner pauses *before* tool execution; the v3 model interrupts only when the agent explicitly raises an interrupt.
+2. Replace `markCurrentThreadAsResolved`'s `command.{goto, update}` with whatever v3 equivalent exists (not visible in the public d.ts — likely needs a non-streaming `client.threads.updateState` + run-cancel call).
+
+Once those two are done, the parity migration described in this document becomes writable.
+
+### Status quo cost
+
+Zero. The legacy `useStream` works correctly with `__event_streaming_v2: true` **absent** from `configurable`. The flag is currently disabled in `useChat.ts:buildConfig` (commit `<bug fix>`). Nothing in the UI depends on a v3-only feature. SDK is pinned at 1.9.9, which ships the v3 primitives we'll consume later but doesn't enable them via the React hook.
+
+### Revisit trigger
+
+Re-open this spec when **any** of:
+
+- `@langchain/langgraph-sdk` ships a v3-aware React hook (would obviate the whole migration — drop in, delete this spec).
+- `ThreadStream.submitRun` gains `interruptBefore/After` or an equivalent pause-on-node mechanism (unblocks the high-level path).
+- A product requirement (live subagent panels, live tool-call args, etc.) forces us off the legacy decoder, justifying the multi-PR cost.
+
+Until then, keep the legacy path, leave the flag off, and re-check the SDK changelog quarterly.
