@@ -65,10 +65,10 @@ export function WorkspacePanel({
     <div className="absolute inset-0 flex flex-col">
       {/* Shared shell header with tab strip */}
       <div className="flex flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-4 pt-3">
+        <div className="flex items-center justify-between px-4 pt-4">
           <div className="flex flex-col leading-none">
             <span className="aptiv-eyebrow">Workspace</span>
-            <h2 className="mt-1 text-base font-semibold tracking-tight">
+            <h2 className="mt-1.5 text-lg font-semibold tracking-tight">
               {TABS.find((t) => t.id === active)?.label ?? "Workspace"}
             </h2>
           </div>
