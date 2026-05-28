@@ -32,7 +32,6 @@ function hasUpdatedAt(value: string | null | undefined): value is string {
 }
 
 interface TokenManagementSidebarProps {
-  onClose: () => void;
   /** Service key ("graph" | "jira" | "polarion" | "confluence") to focus on mount. */
   initialFocus?: string | null;
   /** Called once after the initialFocus has been consumed so the parent
