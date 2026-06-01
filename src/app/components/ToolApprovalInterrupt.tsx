@@ -185,17 +185,15 @@ export function ToolApprovalInterrupt({
     <div
       className={cn(
         "relative w-full overflow-hidden rounded-xl border shadow-sm transition-shadow",
-        "border-amber-200/70 bg-gradient-to-br from-amber-50/80 via-background to-background",
-        "hover:shadow-md",
-        "dark:border-amber-400/15 dark:from-amber-950/25 dark:via-card dark:to-card dark:shadow-none"
+        "border-warning bg-secondary",
+        "hover:shadow-md dark:shadow-none"
       )}
     >
       <div
         aria-hidden
         className={cn(
           "absolute inset-y-0 left-0 w-1",
-          "bg-gradient-to-b from-amber-400 via-amber-500 to-amber-300",
-          "dark:from-amber-500/60 dark:via-amber-600/50 dark:to-amber-500/40"
+          "bg-warning-strong"
         )}
       />
 
@@ -206,13 +204,12 @@ export function ToolApprovalInterrupt({
             <span
               className={cn(
                 "relative inline-flex h-8 w-8 items-center justify-center rounded-full",
-                "bg-amber-100 text-amber-700 ring-1 ring-amber-300/50",
-                "dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/30"
+                "bg-warning-primary text-warning ring-1 ring-warning"
               )}
             >
               <span
                 aria-hidden
-                className="absolute inset-0 animate-ping rounded-full bg-amber-400/30 opacity-60 dark:bg-amber-400/20"
+                className="absolute inset-0 animate-ping rounded-full bg-warning-strong/25 opacity-60"
               />
               <ShieldAlert size={15} className="relative" strokeWidth={2.25} />
             </span>
@@ -220,7 +217,7 @@ export function ToolApprovalInterrupt({
               <span
                 className={cn(
                   "text-[10px] font-semibold uppercase tracking-[0.18em]",
-                  "text-amber-700/90 dark:text-amber-300/90"
+                  "text-warning"
                 )}
               >
                 Approval required

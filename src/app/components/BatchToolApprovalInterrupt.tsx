@@ -61,7 +61,7 @@ export function BatchToolApprovalInterrupt({
   };
 
   return (
-    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/60 via-background to-background p-5 shadow-sm dark:border-amber-400/12 dark:from-amber-950/20 dark:via-card dark:to-card dark:shadow-none">
+    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-warning bg-secondary p-5 shadow-sm dark:shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold tracking-tight text-foreground">
@@ -72,7 +72,7 @@ export function BatchToolApprovalInterrupt({
             Mark a decision for each item, then continue the run.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+        <span className="inline-flex items-center gap-1 rounded-full bg-warning-primary px-2.5 py-1 text-[11px] font-medium text-warning">
           {reviewedCount} / {actionRequests.length}
         </span>
       </div>

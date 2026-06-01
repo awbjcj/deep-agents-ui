@@ -527,9 +527,10 @@
     --sidebar: 0 0% 6%;
 
     /* Fenced code blocks: darker than oneDark's default so blocks blend with
-       the near-black chat surface instead of reading as a bright panel. */
-    --code-block-bg: #0d0f12;
-    --code-block-border: #21262d;
+       the near-black chat surface instead of reading as a bright panel.
+       Border matches the Aptiv dark border token (#2d2d2d). */
+    --code-block-bg: #111111;
+    --code-block-border: #2d2d2d;
   }
 }
 
