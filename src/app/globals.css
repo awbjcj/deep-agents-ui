@@ -337,6 +337,10 @@
     --chart-3: 175 100% 21%;
     --chart-4: 168 20% 77%;
     --chart-5: 30 100% 54%;
+
+    /* Fenced code blocks (oneDark-based, dark on light page is intentional) */
+    --code-block-bg: #282c34;
+    --code-block-border: #21252b;
   }
 
   /* ─── Aptiv brand tokens (dark mode) ──────────────────────────────── */
@@ -521,6 +525,11 @@
     --input: 0 0% 16%;
     --ring: 177 43% 44%;
     --sidebar: 0 0% 6%;
+
+    /* Fenced code blocks: darker than oneDark's default so blocks blend with
+       the near-black chat surface instead of reading as a bright panel. */
+    --code-block-bg: #0d0f12;
+    --code-block-border: #21262d;
   }
 }
 

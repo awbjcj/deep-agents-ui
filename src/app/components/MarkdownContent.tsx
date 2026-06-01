@@ -122,6 +122,8 @@ const COMPONENTS: Components = {
               fontFamily: "var(--font-family-mono)",
               fontWeight: 500,
               fontFeatureSettings: '"ss01", "cv11"',
+              background: "var(--code-block-bg)",
+              border: "1px solid var(--code-block-border)",
             }}
           >
             {text}

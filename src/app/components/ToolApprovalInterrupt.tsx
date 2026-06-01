@@ -187,7 +187,7 @@ export function ToolApprovalInterrupt({
         "relative w-full overflow-hidden rounded-xl border shadow-sm transition-shadow",
         "border-amber-200/70 bg-gradient-to-br from-amber-50/80 via-background to-background",
         "hover:shadow-md",
-        "dark:border-amber-400/20 dark:from-amber-500/10 dark:via-background dark:to-background"
+        "dark:border-amber-400/15 dark:from-amber-950/25 dark:via-card dark:to-card dark:shadow-none"
       )}
     >
       <div
@@ -195,7 +195,7 @@ export function ToolApprovalInterrupt({
         className={cn(
           "absolute inset-y-0 left-0 w-1",
           "bg-gradient-to-b from-amber-400 via-amber-500 to-amber-300",
-          "dark:from-amber-400/80 dark:via-amber-500/70 dark:to-amber-300/70"
+          "dark:from-amber-500/60 dark:via-amber-600/50 dark:to-amber-500/40"
         )}
       />
 

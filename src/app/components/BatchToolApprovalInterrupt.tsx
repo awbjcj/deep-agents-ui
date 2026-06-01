@@ -61,7 +61,7 @@ export function BatchToolApprovalInterrupt({
   };
 
   return (
-    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/60 via-background to-background p-5 shadow-sm dark:border-amber-400/15 dark:from-amber-500/5 dark:via-background dark:to-background">
+    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50/60 via-background to-background p-5 shadow-sm dark:border-amber-400/12 dark:from-amber-950/20 dark:via-card dark:to-card dark:shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold tracking-tight text-foreground">
