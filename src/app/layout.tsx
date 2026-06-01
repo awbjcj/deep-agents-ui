@@ -30,6 +30,27 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link
+          rel="preload"
+          href="/fonts/Formular.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/Formular-Medium.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/Formular-Bold.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <script
           // Applies the persisted theme before React hydrates to avoid a flash of the wrong theme.
           dangerouslySetInnerHTML={{ __html: themeInitScript }}

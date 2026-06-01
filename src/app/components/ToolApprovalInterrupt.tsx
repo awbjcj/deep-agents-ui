@@ -185,7 +185,7 @@ export function ToolApprovalInterrupt({
     <div
       className={cn(
         "relative w-full overflow-hidden rounded-xl border shadow-sm transition-shadow",
-        "border-warning bg-secondary",
+        "border-warning bg-card text-foreground",
         "hover:shadow-md dark:shadow-none"
       )}
     >
@@ -229,8 +229,8 @@ export function ToolApprovalInterrupt({
           </div>
           <code
             className={cn(
-              "rounded-md border border-border bg-background/80 px-2 py-1",
-              "font-mono text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm"
+              "rounded-md border border-border bg-muted/40 px-2 py-1",
+              "font-mono text-[11px] font-medium text-foreground shadow-sm"
             )}
             title={actionRequest.name}
           >
@@ -242,8 +242,7 @@ export function ToolApprovalInterrupt({
         {actionRequest.description ? (
           <div
             className={cn(
-              "mb-4 rounded-lg border border-border/70 bg-background/70 p-4",
-              "backdrop-blur-sm"
+              "mb-4 rounded-lg border border-border bg-muted/30 p-4 text-foreground"
             )}
           >
             <MarkdownContent
@@ -272,8 +271,8 @@ export function ToolApprovalInterrupt({
         )}
 
         {/* Arguments / Edit form */}
-        <section className="overflow-hidden rounded-lg border border-border/70 bg-background/80 backdrop-blur-sm">
-          <header className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/40 px-4 py-2">
+        <section className="overflow-hidden rounded-lg border border-border bg-muted/30 text-foreground">
+          <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-4 py-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {isEditing ? "Edit arguments" : "Arguments"}

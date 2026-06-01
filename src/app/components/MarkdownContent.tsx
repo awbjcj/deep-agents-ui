@@ -105,6 +105,10 @@ const COMPONENTS: Components = {
                 background: "transparent",
                 border: 0,
                 borderRadius: 0,
+                // oneDark sets an embossed text-shadow on its code/pre
+                // selectors that reads as a "shaded"/double-vision glyph.
+                // Strip it so code renders crisp on first and later paints.
+                textShadow: "none",
               },
             }}
             lineProps={{
@@ -124,6 +128,7 @@ const COMPONENTS: Components = {
               fontFeatureSettings: '"ss01", "cv11"',
               background: "var(--code-block-bg)",
               border: "1px solid var(--code-block-border)",
+              textShadow: "none",
             }}
           >
             {text}
