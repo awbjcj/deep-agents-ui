@@ -188,6 +188,29 @@ export function useChat({
   );
   const stream = useStream<StateType>(streamOptions);
 
+  // Recover from a stale or unreachable thread referenced in the URL. The SDK
+  // keeps `isThreadLoading` true until the thread's history resolves; if that
+  // request never settles (the thread was deleted, belongs to another
+  // deployment, or the backend hangs) the chat pane is stuck on "Loading…"
+  // forever. After a grace period we drop the bad threadId so the user falls
+  // back to a fresh conversation instead of an endless spinner.
+  const stuckThreadRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!threadId || !stream.isThreadLoading) {
+      stuckThreadRef.current = null;
+      return;
+    }
+    stuckThreadRef.current = threadId;
+    const timer = setTimeout(() => {
+      if (stuckThreadRef.current !== threadId) return;
+      toast.error("Couldn't load this conversation", {
+        description: "It may have been removed. Starting a new thread.",
+      });
+      void setThreadId(null);
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, [threadId, stream.isThreadLoading, setThreadId]);
+
   const sendMessage = useCallback(
     (content: string | Array<Record<string, unknown>>) => {
       const newMessage: Message = {

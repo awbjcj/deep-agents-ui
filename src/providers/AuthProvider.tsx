@@ -50,7 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
+    // A valid cached user is enough to render the app immediately. The profile
+    // call below only refreshes role/email, so we must NOT block `isLoading`
+    // on it — if `/user/profile` hangs or never settles (slow/unreachable
+    // backend after a refresh) the whole app would otherwise be stuck on a
+    // "Loading…" screen forever. Resolve loading now and update in background.
     setUser(stored);
+    setIsLoading(false);
     apiGetProfile()
       .then((profile) => {
         const updated: AuthUser = {
@@ -63,8 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         // Keep the stored role; protected backend routes still enforce access.
-      })
-      .finally(() => setIsLoading(false));
+      });
   }, []);
 
   useEffect(() => {

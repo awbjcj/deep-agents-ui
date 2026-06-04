@@ -85,9 +85,23 @@ function HomePageInner({
         config.assistantId
       );
 
+    // Guard against a hung request leaving `assistant` null forever (the chat
+    // input stays disabled with no recovery). On timeout we fall through to the
+    // synthetic-assistant fallback below so the UI stays usable.
+    const withTimeout = <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Assistant request timed out")),
+            ms
+          )
+        ),
+      ]);
+
     if (isUUID) {
       try {
-        const data = await client.assistants.get(config.assistantId);
+        const data = await withTimeout(client.assistants.get(config.assistantId));
         setAssistant(data);
       } catch (error) {
         console.error("Failed to fetch assistant:", error);
@@ -105,10 +119,12 @@ function HomePageInner({
       }
     } else {
       try {
-        const assistants = await client.assistants.search({
-          graphId: config.assistantId,
-          limit: 100,
-        });
+        const assistants = await withTimeout(
+          client.assistants.search({
+            graphId: config.assistantId,
+            limit: 100,
+          })
+        );
         const defaultAssistant = assistants.find(
           (assistant) => assistant.metadata?.["created_by"] === "system"
         );
