@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 // Three deployment profiles select which host/port the UI talks to:
 //   - dev    (`next dev`)             → http://localhost:2024
-//   - build  (`NEXT_STATIC_EXPORT=1`) → http://localhost:8123
-//   - deploy (`NEXT_STATIC_EXPORT=1`) → http://10.206.26.122:8123
+//   - build  (`NEXT_STATIC_EXPORT=1`) → http://localhost:8000
+//   - deploy (`NEXT_STATIC_EXPORT=1`) → http://10.206.26.122:8000
 //
 // For build/deploy the app is a static export and the API URL is baked in at
 // build time via NEXT_PUBLIC_DEPLOYMENT_URL (set by scripts/rebuild.sh). Static
