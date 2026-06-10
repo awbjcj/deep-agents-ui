@@ -78,7 +78,11 @@ export default {
         xs: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
       },
       backgroundColor: {
-        primary: "var(--bg-primary)",
+        // NOTE: `primary` intentionally falls through to `colors.primary`
+        // (hsl(var(--primary)) → Aptiv teal) so that `bg-primary` and its
+        // opacity modifiers (`bg-primary/10`, `bg-primary/90`) render the
+        // brand teal. Overriding it here previously mapped `bg-primary` to the
+        // app background and silently dropped all opacity variants.
         "primary-hover": "var(--bg-primary_hover)",
         secondary: "var(--bg-secondary)",
         "secondary-hover": "var(--bg-secondary_hover)",
@@ -122,6 +126,12 @@ export default {
       },
       textColor: {
         primary: "var(--text-primary)",
+        // shadcn pairings: white-on-teal / foreground-on-muted. These keys are
+        // required by `text-primary-foreground` / `text-secondary-foreground`
+        // (used on filled buttons, avatars and badges) and were previously
+        // absent because the `primary` override replaced the nested object.
+        "primary-foreground": "hsl(var(--primary-foreground))",
+        "secondary-foreground": "hsl(var(--secondary-foreground))",
         secondary: "var(--text-secondary)",
         tertiary: "var(--text-tertiary)",
         quaternary: "var(--text-quaternary)",

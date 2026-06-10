@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,6 +47,8 @@ export function ConnectivitySidebar() {
   const [saved, setSaved] = useState(false);
   const radioRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAutosavedModeRef = useRef<RunMode | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -73,6 +75,10 @@ export function ConnectivitySidebar() {
         clearTimeout(savedTimerRef.current);
         savedTimerRef.current = null;
       }
+      if (autosaveTimerRef.current !== null) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -80,38 +86,85 @@ export function ConnectivitySidebar() {
     data !== null &&
     (pendingMode !== data.run_mode || proxyUrl !== data.proxy_url);
 
-  const handleSave = async () => {
-    if (!dirty) return;
-    setIsSaving(true);
-    try {
-      const payload: { run_mode?: RunMode | null; proxy_url?: string | null } = {};
-      if (pendingMode !== data?.run_mode) {
-        payload.run_mode = pendingMode;
+  const applyUpdate = useCallback(
+    async (
+      payload: { run_mode?: RunMode | null; proxy_url?: string | null },
+      silent: boolean
+    ) => {
+      setIsSaving(true);
+      try {
+        const updated = await apiSetUserConnectivity(payload);
+        setData(updated);
+        setPendingMode(updated.run_mode);
+        setProxyUrl(updated.proxy_url);
+        setSaved(true);
+        if (!silent) {
+          toast.success("Connectivity saved");
+        }
+        if (savedTimerRef.current !== null) {
+          clearTimeout(savedTimerRef.current);
+        }
+        savedTimerRef.current = setTimeout(() => {
+          setSaved(false);
+          savedTimerRef.current = null;
+        }, 2000);
+      } catch (err) {
+        if (!silent) {
+          toast.error(err instanceof Error ? err.message : "Failed to save");
+        }
+      } finally {
+        setIsSaving(false);
       }
-      if (proxyUrl !== data?.proxy_url) {
-        payload.proxy_url = proxyUrl || null;
+    },
+    []
+  );
+
+  // Run mode is a single-tap control, so persist it automatically a beat after
+  // selection. The proxy URL is free-form text (a complex setting) and is left
+  // to the manual Save button. The guard ref stops a failed mode from looping.
+  useEffect(() => {
+    if (isLoading || isSaving || !data) return;
+    if (pendingMode === data.run_mode) return;
+    if (pendingMode === lastAutosavedModeRef.current) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      lastAutosavedModeRef.current = pendingMode;
+      void applyUpdate({ run_mode: pendingMode }, true);
+    }, 500);
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
       }
-      const updated = await apiSetUserConnectivity(payload);
-      setData(updated);
-      setPendingMode(updated.run_mode);
-      setProxyUrl(updated.proxy_url);
-      setSaved(true);
-      toast.success("Connectivity saved");
-      if (savedTimerRef.current !== null) {
-        clearTimeout(savedTimerRef.current);
-      }
-      savedTimerRef.current = setTimeout(() => {
-        setSaved(false);
-        savedTimerRef.current = null;
-      }, 2000);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save");
-    } finally {
-      setIsSaving(false);
+    };
+  }, [applyUpdate, data, isLoading, isSaving, pendingMode]);
+
+  const handleSave = () => {
+    if (!data) return;
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
     }
+    const payload: { run_mode?: RunMode | null; proxy_url?: string | null } = {};
+    if (pendingMode !== data.run_mode) {
+      lastAutosavedModeRef.current = pendingMode;
+      payload.run_mode = pendingMode;
+    }
+    if (proxyUrl !== data.proxy_url) {
+      payload.proxy_url = proxyUrl || null;
+    }
+    if (payload.run_mode === undefined && payload.proxy_url === undefined) {
+      return;
+    }
+    void applyUpdate(payload, false);
   };
 
   const handleReset = async () => {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
     setIsSaving(true);
     try {
       const updated = await apiSetUserConnectivity({
