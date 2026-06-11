@@ -212,11 +212,17 @@ export function useChat({
   }, [threadId, stream.isThreadLoading, setThreadId]);
 
   const sendMessage = useCallback(
-    (content: string | Array<Record<string, unknown>>) => {
+    (
+      content: string | Array<Record<string, unknown>>,
+      additionalKwargs?: Record<string, unknown>
+    ) => {
       const newMessage: Message = {
         id: uuidv4(),
         type: "human",
         content: content as Message["content"],
+        ...(additionalKwargs && Object.keys(additionalKwargs).length > 0
+          ? { additional_kwargs: additionalKwargs }
+          : {}),
       };
       stream.submit(
         { messages: [newMessage] },
@@ -313,9 +319,27 @@ export function useChat({
     async (next: Record<string, string>) => {
       if (!threadId) return;
       const previous = optimisticFiles ?? serverFiles;
+
+      // state.files is a delta-reduced channel that MERGES updates: omitting a
+      // key does NOT delete it (the old value is merged back on the next state
+      // load, so deleted files reappear when you revisit the thread). To remove
+      // a file we must send an explicit `null` tombstone for each key that
+      // disappeared. We send only the diff — added/changed entries plus
+      // tombstones — so we don't clobber untouched files written by the agent.
+      const delta: Record<string, unknown> = {};
+      for (const key of Object.keys(previous)) {
+        if (!(key in next)) delta[key] = null;
+      }
+      for (const key of Object.keys(next)) {
+        if (previous[key] !== next[key]) delta[key] = next[key];
+      }
+      if (Object.keys(delta).length === 0) return;
+
       setOptimisticFiles(next);
       try {
-        await client.threads.updateState(threadId, { values: { files: next } });
+        await client.threads.updateState(threadId, {
+          values: { files: delta },
+        });
       } catch (err) {
         // Roll back to whatever was being shown before the user edit.
         setOptimisticFiles(previous);

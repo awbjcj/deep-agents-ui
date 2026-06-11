@@ -26,6 +26,33 @@ export function extractStringFromMessageContent(message: Message): string {
     : "";
 }
 
+/**
+ * Collect inline image data URLs from a message's content blocks. Uploaded and
+ * referenced images are embedded as `{ type: "image_url", image_url: { url } }`
+ * blocks so multimodal models can view them; this surfaces those URLs so the UI
+ * can render the same previews in the chat bubble.
+ */
+export function extractImageUrlsFromMessage(message: Message): string[] {
+  if (!Array.isArray(message.content)) return [];
+  const urls: string[] = [];
+  for (const block of message.content) {
+    if (typeof block !== "object" || block === null) continue;
+    const typed = block as { type?: string; image_url?: unknown };
+    if (typed.type !== "image_url") continue;
+    const imageUrl = typed.image_url;
+    if (typeof imageUrl === "string") {
+      urls.push(imageUrl);
+    } else if (
+      typeof imageUrl === "object" &&
+      imageUrl !== null &&
+      typeof (imageUrl as { url?: unknown }).url === "string"
+    ) {
+      urls.push((imageUrl as { url: string }).url);
+    }
+  }
+  return urls;
+}
+
 export function extractSubAgentContent(data: unknown): string {
   if (typeof data === "string") {
     return data;

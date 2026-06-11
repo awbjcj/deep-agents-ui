@@ -3,6 +3,7 @@
 import React, {
   useState,
   useRef,
+  useEffect,
   useCallback,
   useMemo,
   FormEvent,
@@ -17,6 +18,8 @@ import {
   Circle,
   FileIcon,
   Paperclip,
+  Upload,
+  Link2,
   X,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
@@ -37,24 +40,14 @@ import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
+import { ReferenceFileDialog } from "@/app/components/ReferenceFileDialog";
 import { useAttachments } from "@/app/hooks/useAttachments";
 import { useQueryState } from "nuqs";
-import type { UploadImagePayload, UploadResponse } from "@/lib/uploads";
+import type { MessageAttachment } from "@/lib/uploads";
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
   userId?: string;
-}
-
-type UploadWithImagePayload = UploadResponse & {
-  kind: "image";
-  image: UploadImagePayload;
-};
-
-function hasImagePayload(
-  upload: UploadResponse
-): upload is UploadWithImagePayload {
-  return upload.kind === "image" && upload.image !== null;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -93,6 +86,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const [threadId] = useQueryState("threadId");
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+    const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
+    const attachMenuRef = useRef<HTMLDivElement | null>(null);
 
     const { scrollRef, contentRef } = useStickToBottom();
 
@@ -115,17 +111,40 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const {
       items: attachments,
       addFiles,
+      addReferences,
       remove: removeAttachment,
-      takeReady,
+      takeAttachments,
       hasUploading,
       accept: acceptAttr,
     } = useAttachments({ threadId, ensureThreadId });
+
+    // Close the attach menu on outside click / Escape (mirrors AccountMenu).
+    useEffect(() => {
+      if (!attachMenuOpen) return;
+      const handlePointerDown = (event: PointerEvent) => {
+        if (!attachMenuRef.current?.contains(event.target as Node)) {
+          setAttachMenuOpen(false);
+        }
+      };
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") setAttachMenuOpen(false);
+      };
+      document.addEventListener("pointerdown", handlePointerDown);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("pointerdown", handlePointerDown);
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }, [attachMenuOpen]);
 
     const submitDisabled = isLoading || !assistant;
     const sendDisabled =
       submitDisabled ||
       hasUploading ||
-      (!input.trim() && attachments.every((a) => a.phase !== "ready"));
+      (!input.trim() &&
+        attachments.every(
+          (a) => a.phase !== "ready" && a.phase !== "reference"
+        ));
 
     const handleSubmit = useCallback(
       (e?: FormEvent) => {
@@ -133,52 +152,51 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         if (hasUploading || submitDisabled) return;
 
         const messageText = input.trim();
-        const ready = takeReady();
-        if (!messageText && ready.length === 0) return;
+        const resolved = takeAttachments();
+        if (!messageText && resolved.length === 0) return;
 
-        const images = ready.filter(hasImagePayload);
+        // Images are embedded inline as image_url blocks so the model can view
+        // them. Every attachment (image or document) is also recorded on
+        // additional_kwargs.attachments; the backend middleware reads those and
+        // injects the artifact paths into the system prompt — no visible note
+        // is written into the message text.
+        const imageBlocks = resolved
+          .filter((r) => r.imageUrl)
+          .map((r) => ({
+            type: "image_url",
+            image_url: { url: r.imageUrl as string },
+          }));
+        const attachmentsKwarg: MessageAttachment[] = resolved.map((r) => ({
+          path: r.path,
+          name: r.filename,
+          kind: r.kind,
+          ...(r.detail ? { detail: r.detail } : {}),
+        }));
+        const additionalKwargs = attachmentsKwarg.length
+          ? { attachments: attachmentsKwarg }
+          : undefined;
 
-        // Every persisted upload (documents and images) gets a note line with
-        // its exact artifacts path so the supervisor — and any subagent it
-        // delegates to — can read it with read_file. Images are additionally
-        // embedded inline below for immediate viewing.
-        const persisted = ready.filter(
-          (r): r is UploadResponse & { artifact_path: string } =>
-            Boolean(r.artifact_path)
-        );
-        const noteLines = persisted.map((r) => {
-          const detail =
-            r.kind === "image"
-              ? "image"
-              : `${r.markdown_chars} chars` +
-                (r.engine ? `, engine=${r.engine}` : "");
-          return `- ${r.artifact_path}  (from ${r.filename}, ${detail})`;
-        });
-        const systemNote = noteLines.length
-          ? `[Uploaded files — read with read_file or grep_file]\n${noteLines.join(
-              "\n"
-            )}`
-          : "";
-        const combinedText = [messageText, systemNote]
-          .filter(Boolean)
-          .join("\n\n");
-
-        if (images.length === 0) {
-          sendMessage(combinedText);
+        if (imageBlocks.length === 0) {
+          // Documents-only or text-only. Keep a single space when the user sent
+          // attachments without any text so the model still receives a turn.
+          const text = messageText || (resolved.length ? " " : "");
+          sendMessage(text, additionalKwargs);
         } else {
-          sendMessage([
-            { type: "text", text: combinedText || " " },
-            ...images.map((img) => ({
-              type: "image_url",
-              image_url: {
-                url: `data:${img.image.media_type};base64,${img.image.data_b64}`,
-              },
-            })),
-          ]);
+          sendMessage(
+            [{ type: "text", text: messageText || " " }, ...imageBlocks],
+            additionalKwargs
+          );
         }
         setInput("");
       },
-      [input, hasUploading, sendMessage, setInput, submitDisabled, takeReady]
+      [
+        input,
+        hasUploading,
+        sendMessage,
+        setInput,
+        submitDisabled,
+        takeAttachments,
+      ]
     );
 
     const handleKeyDown = useCallback(
@@ -471,7 +489,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           >
                             <FileIcon size={16} />
                             Files (State)
-                            <span className="h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px] text-primary-foreground">
+                            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
                               {fileKeysCount}
                             </span>
                           </button>
@@ -517,7 +535,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           aria-expanded={metaOpen === "files"}
                         >
                           Files (State)
-                          <span className="h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px] text-primary-foreground">
+                          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
                             {fileKeysCount}
                           </span>
                         </button>
@@ -634,16 +652,60 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       e.target.value = "";
                     }}
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Attach files"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={submitDisabled}
+                  <div
+                    ref={attachMenuRef}
+                    className="relative"
                   >
-                    <Paperclip size={18} />
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Attach files"
+                      aria-haspopup="menu"
+                      aria-expanded={attachMenuOpen}
+                      onClick={() => setAttachMenuOpen((v) => !v)}
+                      disabled={submitDisabled}
+                    >
+                      <Paperclip size={18} />
+                    </Button>
+                    {attachMenuOpen && (
+                      <div
+                        role="menu"
+                        className="absolute bottom-full left-0 z-[80] mb-2 w-56 overflow-hidden rounded-md border border-border bg-card p-1 text-card-foreground shadow-lg"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setAttachMenuOpen(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Upload file
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={fileKeysCount === 0}
+                          onClick={() => {
+                            setAttachMenuOpen(false);
+                            setReferenceDialogOpen(true);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                          title={
+                            fileKeysCount === 0
+                              ? "No files in this conversation yet"
+                              : undefined
+                          }
+                        >
+                          <Link2 className="h-4 w-4" />
+                          Reference existing file
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <Button
                   type={isLoading ? "button" : "submit"}
@@ -677,6 +739,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             </form>
           </div>
         </div>
+        <ReferenceFileDialog
+          open={referenceDialogOpen}
+          onOpenChange={setReferenceDialogOpen}
+          files={files}
+          onConfirm={addReferences}
+        />
       </div>
     );
   }

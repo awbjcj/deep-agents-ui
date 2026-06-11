@@ -1,7 +1,13 @@
 "use client";
 
 import React from "react";
-import { File as FileIcon, Image as ImageIcon, Loader2, X } from "lucide-react";
+import {
+  File as FileIcon,
+  Image as ImageIcon,
+  Link2,
+  Loader2,
+  X,
+} from "lucide-react";
 import type { AttachmentState } from "@/app/hooks/useAttachments";
 
 interface Props {
@@ -16,18 +22,34 @@ function humanSize(bytes: number): string {
 }
 
 export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
-  const isImage =
-    item.phase === "ready"
-      ? item.meta.kind === "image"
-      : /\.(png|jpe?g|gif|webp)$/i.test(item.file.name);
+  const isReady = item.phase === "ready";
+  const isReference = item.phase === "reference";
 
-  const filename = item.phase === "ready" ? item.meta.filename : item.file.name;
-  const size = item.phase === "ready" ? item.meta.byte_size : item.file.size;
+  const filename = isReady
+    ? item.meta.filename
+    : isReference
+    ? item.filename
+    : item.file.name;
 
-  const thumbnailSrc =
-    item.phase === "ready" && item.meta.kind === "image" && item.meta.image
+  const isImage = isReady
+    ? item.meta.kind === "image"
+    : isReference
+    ? item.kind === "image"
+    : /\.(png|jpe?g|gif|webp)$/i.test(item.file.name);
+
+  const size = isReady
+    ? item.meta.byte_size
+    : isReference
+    ? null
+    : item.file.size;
+
+  const thumbnailSrc = isReady
+    ? item.meta.kind === "image" && item.meta.image
       ? `data:${item.meta.image.media_type};base64,${item.meta.image.data_b64}`
-      : null;
+      : null
+    : isReference
+    ? item.thumb ?? null
+    : null;
 
   return (
     <div
@@ -49,7 +71,17 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
         <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
       )}
       <span className="max-w-[160px] truncate font-medium">{filename}</span>
-      <span className="text-muted-foreground">{humanSize(size)}</span>
+      {size !== null ? (
+        <span className="text-muted-foreground">{humanSize(size)}</span>
+      ) : isReference ? (
+        <span
+          className="inline-flex items-center gap-1 text-muted-foreground"
+          title="References an existing thread file"
+        >
+          <Link2 className="h-3 w-3" />
+          linked
+        </span>
+      ) : null}
       {item.phase === "error" && (
         <span
           className="text-destructive"

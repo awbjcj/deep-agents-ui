@@ -11,13 +11,48 @@ import {
   UPLOAD_MAX_PER_SEND,
   deleteUpload,
   uploadFile,
+  type UploadKind,
   type UploadResponse,
 } from "@/lib/uploads";
 
 export type AttachmentState =
   | { phase: "uploading"; localId: string; file: File }
   | { phase: "ready"; localId: string; meta: UploadResponse; threadId: string }
+  | {
+      phase: "reference";
+      localId: string;
+      path: string;
+      filename: string;
+      kind: UploadKind;
+      thumb?: string;
+    }
   | { phase: "error"; localId: string; file: File; error: string };
+
+/**
+ * A new file the user wants to reference instead of uploading. `thumb` is a
+ * ready-to-render data URL for image references (used both for the chip
+ * preview and for inline embedding when the message is sent).
+ */
+export interface AttachmentReference {
+  path: string;
+  filename: string;
+  kind: UploadKind;
+  thumb?: string;
+}
+
+/**
+ * Normalized attachment ready to be sent. Covers both freshly uploaded files
+ * and references to existing thread files. `imageUrl` is the data URL to embed
+ * inline for multimodal viewing (null for documents); `detail` is a short
+ * human hint surfaced to the agent via the message's `additional_kwargs`.
+ */
+export interface ResolvedAttachment {
+  path: string;
+  filename: string;
+  kind: UploadKind;
+  detail?: string;
+  imageUrl: string | null;
+}
 
 interface UseAttachmentsOpts {
   threadId: string | null;
@@ -60,9 +95,11 @@ export function useAttachments({
       );
       readyItems.forEach((item) => {
         if (!item.meta.state_files_key) return;
-        void deleteUpload(item.threadId, item.meta.state_files_key).catch(() => {
-          // Best-effort cleanup; user already moved on.
-        });
+        void deleteUpload(item.threadId, item.meta.state_files_key).catch(
+          () => {
+            // Best-effort cleanup; user already moved on.
+          }
+        );
       });
       aborters.current.forEach((c) => c.abort());
       aborters.current.clear();
@@ -169,6 +206,47 @@ export function useAttachments({
     [beginUpload, items.length]
   );
 
+  const addReferences = useCallback(
+    (refs: AttachmentReference[]) => {
+      const remaining = UPLOAD_MAX_PER_SEND - items.length;
+      if (remaining <= 0) {
+        toast.warning(`Max ${UPLOAD_MAX_PER_SEND} attachments per message.`);
+        return;
+      }
+
+      const existingPaths = new Set(
+        itemsRef.current
+          .filter(
+            (it): it is Extract<AttachmentState, { phase: "reference" }> =>
+              it.phase === "reference"
+          )
+          .map((it) => it.path)
+      );
+
+      const accepted: AttachmentState[] = [];
+      for (const ref of refs) {
+        if (accepted.length >= remaining) {
+          toast.warning(`Max ${UPLOAD_MAX_PER_SEND} attachments per message.`);
+          break;
+        }
+        if (existingPaths.has(ref.path)) continue;
+        existingPaths.add(ref.path);
+        accepted.push({
+          phase: "reference",
+          localId: uuidv4(),
+          path: ref.path,
+          filename: ref.filename,
+          kind: ref.kind,
+          thumb: ref.thumb,
+        });
+      }
+
+      if (accepted.length === 0) return;
+      setItems((prev) => [...prev, ...accepted]);
+    },
+    [items.length]
+  );
+
   const remove = useCallback(
     (localId: string) => {
       const target = itemsRef.current.find((it) => it.localId === localId);
@@ -197,38 +275,57 @@ export function useAttachments({
     setItems([]);
   }, []);
 
-  const takeReady = useCallback(
-    (shouldConsume?: (item: UploadResponse) => boolean): UploadResponse[] => {
-      const current = itemsRef.current;
-      const readyItems = current.filter(
-        (it): it is Extract<AttachmentState, { phase: "ready" }> =>
-          it.phase === "ready"
-      );
-      if (readyItems.length === 0) return [];
+  const takeAttachments = useCallback((): ResolvedAttachment[] => {
+    const current = itemsRef.current;
+    const sendable = current.filter(
+      (it) => it.phase === "ready" || it.phase === "reference"
+    );
+    if (sendable.length === 0) return [];
 
-      if (!shouldConsume) {
-        setItems((prev) => prev.filter((it) => it.phase !== "ready"));
-        return readyItems.map((it) => it.meta);
-      }
+    const consumedIds = new Set(sendable.map((it) => it.localId));
+    setItems((prev) => prev.filter((it) => !consumedIds.has(it.localId)));
 
-      const consumed = readyItems.filter((it) => shouldConsume(it.meta));
-      if (consumed.length > 0) {
-        const consumedIds = new Set(consumed.map((it) => it.localId));
-        setItems((prev) => prev.filter((it) => !consumedIds.has(it.localId)));
+    return sendable.map((it): ResolvedAttachment => {
+      if (it.phase === "ready") {
+        const meta = it.meta;
+        const path =
+          meta.artifact_path ?? meta.state_files_key ?? meta.filename;
+        const detail =
+          meta.kind === "image"
+            ? undefined
+            : `${meta.markdown_chars} chars` +
+              (meta.engine ? `, engine=${meta.engine}` : "");
+        const imageUrl =
+          meta.kind === "image" && meta.image
+            ? `data:${meta.image.media_type};base64,${meta.image.data_b64}`
+            : null;
+        return {
+          path,
+          filename: meta.filename,
+          kind: meta.kind,
+          detail,
+          imageUrl,
+        };
       }
-      return consumed.map((it) => it.meta);
-    },
-    []
-  );
+      return {
+        path: it.path,
+        filename: it.filename,
+        kind: it.kind,
+        detail: undefined,
+        imageUrl: it.kind === "image" ? it.thumb ?? null : null,
+      };
+    });
+  }, []);
 
   const hasUploading = items.some((it) => it.phase === "uploading");
 
   return {
     items,
     addFiles,
+    addReferences,
     remove,
     clear,
-    takeReady,
+    takeAttachments,
     hasUploading,
     accept: ACCEPT_ATTR,
   };

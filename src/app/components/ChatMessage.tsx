@@ -14,7 +14,10 @@ import { Message } from "@langchain/langgraph-sdk";
 import {
   extractSubAgentContent,
   extractStringFromMessageContent,
+  extractImageUrlsFromMessage,
 } from "@/app/utils/utils";
+import type { MessageAttachment } from "@/lib/uploads";
+import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
@@ -45,6 +48,31 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     const messageContent = extractStringFromMessageContent(message);
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
+
+    // Human messages can carry attachments: images are embedded inline as
+    // image_url content blocks (for multimodal viewing) and documents are
+    // recorded on additional_kwargs.attachments. Surface both as a compact
+    // strip above the bubble so the user sees what they sent.
+    const attachmentImageUrls = useMemo(
+      () => (isUser ? extractImageUrlsFromMessage(message) : []),
+      [isUser, message]
+    );
+    const docAttachments = useMemo(() => {
+      if (!isUser) return [] as MessageAttachment[];
+      const raw = (message as { additional_kwargs?: Record<string, unknown> })
+        .additional_kwargs?.attachments;
+      if (!Array.isArray(raw)) return [] as MessageAttachment[];
+      return raw.filter(
+        (a): a is MessageAttachment =>
+          typeof a === "object" &&
+          a !== null &&
+          typeof (a as MessageAttachment).path === "string" &&
+          (a as MessageAttachment).kind !== "image"
+      );
+    }, [isUser, message]);
+    const hasAttachments =
+      attachmentImageUrls.length > 0 || docAttachments.length > 0;
+
     // Build a tool_call_id → ui-component index once instead of calling
     // ui?.find(...) inside the toolCalls.map below. Streaming re-renders this
     // component every token, so the previous O(toolCalls × ui_items) lookup
@@ -111,6 +139,33 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             isUser ? "max-w-[76%]" : "w-full"
           )}
         >
+          {hasAttachments && (
+            <div
+              className={cn(
+                "mt-4 flex flex-wrap gap-2",
+                isUser && "justify-end"
+              )}
+            >
+              {attachmentImageUrls.map((url, idx) => (
+                <img
+                  key={`img-${idx}`}
+                  src={url}
+                  alt="attachment"
+                  className="h-20 w-20 rounded-lg border border-border object-cover shadow-sm"
+                />
+              ))}
+              {docAttachments.map((doc, idx) => (
+                <span
+                  key={`doc-${idx}`}
+                  title={doc.path}
+                  className="inline-flex max-w-[220px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm"
+                >
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate font-medium">{doc.name}</span>
+                </span>
+              ))}
+            </div>
+          )}
           {hasContent && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
