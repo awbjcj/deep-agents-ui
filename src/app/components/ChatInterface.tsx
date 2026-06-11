@@ -136,21 +136,24 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         const ready = takeReady();
         if (!messageText && ready.length === 0) return;
 
-        const docs = ready.filter(
-          (
-            r
-          ): r is UploadResponse & {
-            state_files_key: string;
-          } => r.kind === "document" && Boolean(r.state_files_key)
-        );
         const images = ready.filter(hasImagePayload);
 
-        const noteLines = docs.map(
-          (d) =>
-            `- ${d.state_files_key}  (from ${d.filename}, ${d.markdown_chars} chars` +
-            (d.engine ? `, engine=${d.engine}` : "") +
-            `)`
+        // Every persisted upload (documents and images) gets a note line with
+        // its exact artifacts path so the supervisor — and any subagent it
+        // delegates to — can read it with read_file. Images are additionally
+        // embedded inline below for immediate viewing.
+        const persisted = ready.filter(
+          (r): r is UploadResponse & { artifact_path: string } =>
+            Boolean(r.artifact_path)
         );
+        const noteLines = persisted.map((r) => {
+          const detail =
+            r.kind === "image"
+              ? "image"
+              : `${r.markdown_chars} chars` +
+                (r.engine ? `, engine=${r.engine}` : "");
+          return `- ${r.artifact_path}  (from ${r.filename}, ${detail})`;
+        });
         const systemNote = noteLines.length
           ? `[Uploaded files — read with read_file or grep_file]\n${noteLines.join(
               "\n"
@@ -175,14 +178,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         }
         setInput("");
       },
-      [
-        input,
-        hasUploading,
-        sendMessage,
-        setInput,
-        submitDisabled,
-        takeReady,
-      ]
+      [input, hasUploading, sendMessage, setInput, submitDisabled, takeReady]
     );
 
     const handleKeyDown = useCallback(
@@ -475,7 +471,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           >
                             <FileIcon size={16} />
                             Files (State)
-                            <span className="text-primary-foreground h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px]">
+                            <span className="h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px] text-primary-foreground">
                               {fileKeysCount}
                             </span>
                           </button>
@@ -521,7 +517,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           aria-expanded={metaOpen === "files"}
                         >
                           Files (State)
-                          <span className="text-primary-foreground h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px]">
+                          <span className="h-4 min-w-4 rounded-full bg-primary px-0.5 text-center text-[10px] leading-[16px] text-primary-foreground">
                             {fileKeysCount}
                           </span>
                         </button>
@@ -670,7 +666,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   ) : (
                     <>
                       <span>Send</span>
-                      <ArrowUp size={16} strokeWidth={2.5} />
+                      <ArrowUp
+                        size={16}
+                        strokeWidth={2.5}
+                      />
                     </>
                   )}
                 </Button>

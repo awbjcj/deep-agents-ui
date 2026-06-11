@@ -24,6 +24,11 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
   const filename = item.phase === "ready" ? item.meta.filename : item.file.name;
   const size = item.phase === "ready" ? item.meta.byte_size : item.file.size;
 
+  const thumbnailSrc =
+    item.phase === "ready" && item.meta.kind === "image" && item.meta.image
+      ? `data:${item.meta.image.media_type};base64,${item.meta.image.data_b64}`
+      : null;
+
   return (
     <div
       role="listitem"
@@ -32,6 +37,12 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
     >
       {item.phase === "uploading" ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+      ) : thumbnailSrc ? (
+        <img
+          src={thumbnailSrc}
+          alt={filename}
+          className="h-8 w-8 shrink-0 rounded object-cover ring-1 ring-border"
+        />
       ) : isImage ? (
         <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
       ) : (

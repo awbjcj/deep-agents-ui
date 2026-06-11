@@ -13,12 +13,50 @@ import {
   Circle,
   Clock,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TodoItem, FileItem } from "@/app/types/types";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
+
+const IMAGE_MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+};
+
+/** Return the image MIME type for a path, or null when it isn't an image. */
+function imageMimeFor(path: string): string | null {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  return IMAGE_MIME[ext] ?? null;
+}
+
+/** Friendly label for a file key: basename with the upload id prefix stripped. */
+function fileDisplayName(path: string): string {
+  const base = path.split("/").pop() || path;
+  const sep = base.indexOf("__");
+  return sep >= 0 ? base.slice(sep + 2) : base;
+}
+
+/** Normalize a state.files value (FileData dict or raw string) to text. */
+function extractFileContent(rawContent: unknown): string {
+  if (
+    typeof rawContent === "object" &&
+    rawContent !== null &&
+    "content" in rawContent
+  ) {
+    const contentArray = (rawContent as { content: unknown }).content;
+    if (Array.isArray(contentArray)) {
+      return contentArray.join("\n");
+    }
+    return String(contentArray || "");
+  }
+  return String(rawContent || "");
+}
 
 export function FilesPopover({
   files,
@@ -39,6 +77,17 @@ export function FilesPopover({
     [files, setFiles]
   );
 
+  const handleDeleteFile = useCallback(
+    async (filePath: string) => {
+      if (editDisabled) return;
+      const next: Record<string, unknown> = { ...files };
+      delete next[filePath];
+      await setFiles(next as Record<string, string>);
+      setSelectedFile((cur) => (cur?.path === filePath ? null : cur));
+    },
+    [files, setFiles, editDisabled]
+  );
+
   return (
     <>
       {Object.keys(files).length === 0 ? (
@@ -49,51 +98,67 @@ export function FilesPopover({
         <div className="grid grid-cols-[repeat(auto-fill,minmax(256px,1fr))] gap-2">
           {Object.keys(files).map((file) => {
             const filePath = String(file);
-            const rawContent = files[file];
-            let fileContent: string;
-            if (
-              typeof rawContent === "object" &&
-              rawContent !== null &&
-              "content" in rawContent
-            ) {
-              const contentArray = (rawContent as { content: unknown }).content;
-              if (Array.isArray(contentArray)) {
-                fileContent = contentArray.join("\n");
-              } else {
-                fileContent = String(contentArray || "");
-              }
-            } else {
-              fileContent = String(rawContent || "");
-            }
+            const fileContent = extractFileContent(files[file]);
+            const mime = imageMimeFor(filePath);
+            const thumbnailSrc =
+              mime && fileContent ? `data:${mime};base64,${fileContent}` : null;
+            const label = fileDisplayName(filePath);
 
             return (
-              <button
+              <div
                 key={filePath}
-                type="button"
-                onClick={() =>
-                  setSelectedFile({ path: filePath, content: fileContent })
-                }
-                className="cursor-pointer space-y-1 truncate rounded-md border border-border px-2 py-3 shadow-sm transition-colors"
-                style={{
-                  backgroundColor: "var(--color-file-button)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--color-file-button-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--color-file-button)";
-                }}
+                className="group relative"
               >
-                <FileText
-                  size={24}
-                  className="mx-auto text-muted-foreground"
-                />
-                <span className="mx-auto block w-full truncate break-words text-center text-sm leading-relaxed text-foreground">
-                  {filePath}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedFile({ path: filePath, content: fileContent })
+                  }
+                  title={filePath}
+                  className="w-full cursor-pointer space-y-1 truncate rounded-md border border-border px-2 py-3 shadow-sm transition-colors"
+                  style={{
+                    backgroundColor: "var(--color-file-button)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      "var(--color-file-button-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      "var(--color-file-button)";
+                  }}
+                >
+                  {thumbnailSrc ? (
+                    <img
+                      src={thumbnailSrc}
+                      alt={label}
+                      className="mx-auto h-16 w-16 rounded object-cover ring-1 ring-border"
+                    />
+                  ) : (
+                    <FileText
+                      size={24}
+                      className="mx-auto text-muted-foreground"
+                    />
+                  )}
+                  <span className="mx-auto block w-full truncate break-words text-center text-sm leading-relaxed text-foreground">
+                    {label}
+                  </span>
+                </button>
+                {!editDisabled && (
+                  <button
+                    type="button"
+                    aria-label={`Delete ${label}`}
+                    title={`Delete ${label}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteFile(filePath);
+                    }}
+                    className="absolute right-1 top-1 rounded-md bg-card/80 p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -212,7 +277,10 @@ export const TasksFilesSidebar = React.memo<{
                 ) : (
                   <div className="ml-1 p-0.5">
                     {Object.entries(groupedTodos).map(([status, todos]) => (
-                      <div key={status} className="mb-4">
+                      <div
+                        key={status}
+                        className="mb-4"
+                      >
                         <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-tertiary">
                           {groupedLabels[status as keyof typeof groupedLabels]}
                         </h3>

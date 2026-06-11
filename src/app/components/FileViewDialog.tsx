@@ -27,7 +27,7 @@ import useSWRMutation from "swr/mutation";
 // Lazy: Prism + its theme together push ~300KB. We only need them when the
 // user opens a non-markdown file in the viewer.
 const SyntaxHighlighter = lazy(() =>
-  import("react-syntax-highlighter").then((m) => ({ default: m.Prism })),
+  import("react-syntax-highlighter").then((m) => ({ default: m.Prism }))
 );
 let oneDarkTheme: unknown = undefined;
 import("react-syntax-highlighter/dist/esm/styles/prism").then((m) => {
@@ -111,6 +111,18 @@ export const FileViewDialog = React.memo<{
     return fileExtension === "md" || fileExtension === "markdown";
   }, [fileExtension]);
 
+  const imageMime = useMemo<string | null>(() => {
+    const map: Record<string, string> = {
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      gif: "image/gif",
+      webp: "image/webp",
+    };
+    return map[fileExtension] ?? null;
+  }, [fileExtension]);
+  const isImage = imageMime !== null;
+
   const language = useMemo(() => {
     return LANGUAGE_MAP[fileExtension] || "text";
   }, [fileExtension]);
@@ -123,7 +135,19 @@ export const FileViewDialog = React.memo<{
 
   const handleDownload = useCallback(() => {
     if (fileContent && fileName) {
-      const blob = new Blob([fileContent], { type: "text/plain" });
+      let blob: Blob;
+      if (isImage && imageMime) {
+        // Image content is base64; decode to real bytes so the download is a
+        // valid image rather than a text file full of base64.
+        const byteChars = atob(fileContent);
+        const bytes = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          bytes[i] = byteChars.charCodeAt(i);
+        }
+        blob = new Blob([bytes], { type: imageMime });
+      } else {
+        blob = new Blob([fileContent], { type: "text/plain" });
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -133,7 +157,7 @@ export const FileViewDialog = React.memo<{
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-  }, [fileContent, fileName]);
+  }, [fileContent, fileName, isImage, imageMime]);
 
   const handleEdit = useCallback(() => {
     setIsEditingMode(true);
@@ -191,19 +215,21 @@ export const FileViewDialog = React.memo<{
           <div className="flex shrink-0 items-center gap-1">
             {!isEditingMode && (
               <>
-                <Button
-                  onClick={handleEdit}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2"
-                  disabled={editDisabled}
-                >
-                  <Edit
-                    size={16}
-                    className="mr-1"
-                  />
-                  Edit
-                </Button>
+                {!isImage && (
+                  <Button
+                    onClick={handleEdit}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                    disabled={editDisabled}
+                  >
+                    <Edit
+                      size={16}
+                      className="mr-1"
+                    />
+                    Edit
+                  </Button>
+                )}
                 <Button
                   onClick={handleCopy}
                   variant="ghost"
@@ -244,7 +270,15 @@ export const FileViewDialog = React.memo<{
             <ScrollArea className="bg-surface h-full rounded-md">
               <div className="p-4">
                 {fileContent ? (
-                  isMarkdown ? (
+                  isImage && imageMime ? (
+                    <div className="flex items-center justify-center p-4">
+                      <img
+                        src={`data:${imageMime};base64,${fileContent}`}
+                        alt={String(fileName)}
+                        className="max-h-[60vh] max-w-full rounded-md object-contain"
+                      />
+                    </div>
+                  ) : isMarkdown ? (
                     <div className="rounded-md p-6">
                       <MarkdownContent content={fileContent} />
                     </div>
@@ -330,14 +364,15 @@ const FileCodeView = React.memo<FileCodeViewProps>(({ content, language }) => {
   return (
     <>
       {isLarge && (
-        <div className="mb-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground/80">
+        <div className="border-warning/40 bg-warning/10 mb-3 rounded-md border px-3 py-2 text-xs text-foreground/80">
           File is {Math.round(content.length / 1024)} KB; showing the first{" "}
-          {Math.round(displayContent.length / 1024)} KB. Use Download to view in full.
+          {Math.round(displayContent.length / 1024)} KB. Use Download to view in
+          full.
         </div>
       )}
       <Suspense
         fallback={
-          <pre className="overflow-auto rounded-md bg-surface-alt p-4 font-mono text-sm">
+          <pre className="bg-surface-alt overflow-auto rounded-md p-4 font-mono text-sm">
             {displayContent}
           </pre>
         }
