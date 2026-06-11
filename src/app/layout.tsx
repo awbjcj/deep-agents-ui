@@ -1,6 +1,7 @@
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
+import { ConnectivityProvider } from "@/providers/ConnectivityProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ThemedToaster } from "@/app/components/ThemedToaster";
 import "./globals.css";
@@ -60,7 +61,9 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <NotificationsProvider>
-              <NuqsAdapter>{children}</NuqsAdapter>
+              <ConnectivityProvider>
+                <NuqsAdapter>{children}</NuqsAdapter>
+              </ConnectivityProvider>
               <ThemedToaster />
             </NotificationsProvider>
           </AuthProvider>

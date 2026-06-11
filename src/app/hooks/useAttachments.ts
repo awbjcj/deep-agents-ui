@@ -69,6 +69,18 @@ function extOf(name: string): string {
   return idx >= 0 ? name.slice(idx + 1).toLowerCase() : "";
 }
 
+/** Best display name for an attachment chip regardless of its phase. */
+function attachmentName(item: AttachmentState): string {
+  switch (item.phase) {
+    case "ready":
+      return item.meta.filename;
+    case "reference":
+      return item.filename;
+    default:
+      return item.file.name; // uploading | error
+  }
+}
+
 export function useAttachments({
   threadId,
   ensureThreadId,
@@ -254,16 +266,29 @@ export function useAttachments({
       aborters.current.get(localId)?.abort();
       aborters.current.delete(localId);
       update(localId, null);
+
+      const name = attachmentName(target);
+
       if (target.phase === "ready" && target.meta.state_files_key) {
+        // Already uploaded to the thread — delete it server-side and report the
+        // outcome so the user knows the file left the conversation.
         const stateFilesKey = target.meta.state_files_key;
         const cleanupThreadId = target.threadId;
         void (async () => {
           try {
             await deleteUpload(cleanupThreadId, stateFilesKey);
-          } catch {
-            // Best-effort cleanup; user already moved on.
+            toast.success(`Removed "${name}" from thread`);
+          } catch (err) {
+            toast.error(`Couldn't remove "${name}" from thread`, {
+              description: err instanceof Error ? err.message : undefined,
+            });
           }
         })();
+      } else if (target.phase === "uploading") {
+        toast.info(`Canceled upload "${name}"`);
+      } else {
+        // A reference chip or a failed upload — nothing is stored on the thread.
+        toast.success(`Removed "${name}"`);
       }
     },
     [update]

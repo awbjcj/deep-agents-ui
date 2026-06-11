@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TodoItem, FileItem } from "@/app/types/types";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
 
 const IMAGE_MIME: Record<string, string> = {
@@ -80,10 +81,18 @@ export function FilesPopover({
   const handleDeleteFile = useCallback(
     async (filePath: string) => {
       if (editDisabled) return;
+      const label = fileDisplayName(filePath);
       const next: Record<string, unknown> = { ...files };
       delete next[filePath];
-      await setFiles(next as Record<string, string>);
-      setSelectedFile((cur) => (cur?.path === filePath ? null : cur));
+      try {
+        await setFiles(next as Record<string, string>);
+        setSelectedFile((cur) => (cur?.path === filePath ? null : cur));
+        toast.success(`Deleted "${label}" from thread`);
+      } catch (err) {
+        toast.error(`Couldn't delete "${label}"`, {
+          description: err instanceof Error ? err.message : undefined,
+        });
+      }
     },
     [files, setFiles, editDisabled]
   );

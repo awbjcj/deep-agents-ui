@@ -42,6 +42,7 @@ import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
 import { ReferenceFileDialog } from "@/app/components/ReferenceFileDialog";
 import { useAttachments } from "@/app/hooks/useAttachments";
+import { useConnectivity } from "@/providers/ConnectivityProvider";
 import { useQueryState } from "nuqs";
 import type { MessageAttachment } from "@/lib/uploads";
 
@@ -118,6 +119,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       accept: acceptAttr,
     } = useAttachments({ threadId, ensureThreadId });
 
+    // File/image attachments are unavailable while routing through the local
+    // Proxy, so every entry point (button, menu, drag-and-drop) is gated on it.
+    const { isProxyMode } = useConnectivity();
+
     // Close the attach menu on outside click / Escape (mirrors AccountMenu).
     useEffect(() => {
       if (!attachMenuOpen) return;
@@ -137,7 +142,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       };
     }, [attachMenuOpen]);
 
+    // Switching to Proxy mode with the attach menu open would leave a dangling
+    // popover whose actions are all disabled — close it proactively.
+    useEffect(() => {
+      if (isProxyMode) setAttachMenuOpen(false);
+    }, [isProxyMode]);
+
     const submitDisabled = isLoading || !assistant;
+    // Adding attachments is blocked while a run is in flight, before an
+    // assistant is selected, or whenever Proxy mode is active.
+    const attachmentsDisabled = submitDisabled || isProxyMode;
     const sendDisabled =
       submitDisabled ||
       hasUploading ||
@@ -382,14 +396,19 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         <div className="pointer-events-none flex-shrink-0">
           <div
             className={cn(
-              "pointer-events-auto mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/85 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.35),0_6px_18px_-12px_rgba(15,23,42,0.18)] backdrop-blur-md",
+              // NOTE: intentionally NOT `overflow-hidden`. The attach menu opens
+              // upward (`bottom-full`) and, in the compact empty-thread state, it
+              // extends past the top edge of this box. Clipping here would hide it
+              // behind the chatbox; instead we round the inner top panel below so
+              // the corners stay clean while the menu can render on top.
+              "pointer-events-auto mx-4 mb-6 flex flex-shrink-0 flex-col rounded-2xl border border-border/60 bg-card/85 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.35),0_6px_18px_-12px_rgba(15,23,42,0.18)] backdrop-blur-md",
               "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-all duration-200 ease-in-out",
               "hover:border-primary/30 hover:shadow-[0_22px_55px_-22px_rgba(15,23,42,0.4),0_8px_22px_-12px_rgba(15,23,42,0.22)]",
               "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
             )}
           >
             {(hasTasks || hasFiles) && (
-              <div className="flex max-h-72 flex-col overflow-y-auto border-b border-border bg-sidebar empty:hidden">
+              <div className="flex max-h-72 flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-sidebar empty:hidden">
                 {!metaOpen && (
                   <>
                     {(() => {
@@ -611,6 +630,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 isDragging ? "ring-2 ring-primary/40" : ""
               }`}
               onDragOver={(e) => {
+                if (isProxyMode) return;
                 if (e.dataTransfer.types.includes("Files")) {
                   e.preventDefault();
                   setIsDragging(true);
@@ -618,6 +638,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={(e) => {
+                if (isProxyMode) return;
                 e.preventDefault();
                 setIsDragging(false);
                 const files = Array.from(e.dataTransfer.files);
@@ -664,7 +685,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       aria-haspopup="menu"
                       aria-expanded={attachMenuOpen}
                       onClick={() => setAttachMenuOpen((v) => !v)}
-                      disabled={submitDisabled}
+                      disabled={attachmentsDisabled}
+                      title={
+                        isProxyMode
+                          ? "Attachments are unavailable in Proxy mode"
+                          : undefined
+                      }
                     >
                       <Paperclip size={18} />
                     </Button>

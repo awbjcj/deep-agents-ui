@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useConnectivity } from "@/providers/ConnectivityProvider";
 
 const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
 
@@ -39,6 +40,7 @@ function runModeDescription(mode: RunMode): string {
 }
 
 export function ConnectivitySidebar() {
+  const { setRunModeLocal } = useConnectivity();
   const [data, setData] = useState<UserConnectivityResponse | null>(null);
   const [pendingMode, setPendingMode] = useState<RunMode>("gateway");
   const [proxyUrl, setProxyUrl] = useState("");
@@ -59,6 +61,7 @@ export function ConnectivitySidebar() {
         setData(res);
         setPendingMode(res.run_mode);
         setProxyUrl(res.proxy_url);
+        setRunModeLocal(res.run_mode);
       })
       .catch(() => {
         if (mounted) toast.error("Failed to load connectivity settings");
@@ -67,7 +70,7 @@ export function ConnectivitySidebar() {
         if (mounted) setIsLoading(false);
       });
     return () => { mounted = false; };
-  }, []);
+  }, [setRunModeLocal]);
 
   useEffect(() => {
     return () => {
@@ -97,6 +100,7 @@ export function ConnectivitySidebar() {
         setData(updated);
         setPendingMode(updated.run_mode);
         setProxyUrl(updated.proxy_url);
+        setRunModeLocal(updated.run_mode);
         setSaved(true);
         if (!silent) {
           toast.success("Connectivity saved");
@@ -116,7 +120,7 @@ export function ConnectivitySidebar() {
         setIsSaving(false);
       }
     },
-    []
+    [setRunModeLocal]
   );
 
   // Run mode is a single-tap control, so persist it automatically a beat after
@@ -174,6 +178,7 @@ export function ConnectivitySidebar() {
       setData(updated);
       setPendingMode(updated.run_mode);
       setProxyUrl(updated.proxy_url);
+      setRunModeLocal(updated.run_mode);
       toast.success("Reset to system defaults");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset");
