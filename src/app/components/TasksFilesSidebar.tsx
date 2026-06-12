@@ -20,44 +20,12 @@ import type { TodoItem, FileItem } from "@/app/types/types";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  attachmentDisplayName,
+  fileContentToText,
+  imageMimeForPath,
+} from "@/lib/uploads";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
-
-const IMAGE_MIME: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-};
-
-/** Return the image MIME type for a path, or null when it isn't an image. */
-function imageMimeFor(path: string): string | null {
-  const ext = path.split(".").pop()?.toLowerCase() ?? "";
-  return IMAGE_MIME[ext] ?? null;
-}
-
-/** Friendly label for a file key: basename with the upload id prefix stripped. */
-function fileDisplayName(path: string): string {
-  const base = path.split("/").pop() || path;
-  const sep = base.indexOf("__");
-  return sep >= 0 ? base.slice(sep + 2) : base;
-}
-
-/** Normalize a state.files value (FileData dict or raw string) to text. */
-function extractFileContent(rawContent: unknown): string {
-  if (
-    typeof rawContent === "object" &&
-    rawContent !== null &&
-    "content" in rawContent
-  ) {
-    const contentArray = (rawContent as { content: unknown }).content;
-    if (Array.isArray(contentArray)) {
-      return contentArray.join("\n");
-    }
-    return String(contentArray || "");
-  }
-  return String(rawContent || "");
-}
 
 export function FilesPopover({
   files,
@@ -81,7 +49,7 @@ export function FilesPopover({
   const handleDeleteFile = useCallback(
     async (filePath: string) => {
       if (editDisabled) return;
-      const label = fileDisplayName(filePath);
+      const label = attachmentDisplayName(filePath);
       const next: Record<string, unknown> = { ...files };
       delete next[filePath];
       try {
@@ -107,11 +75,11 @@ export function FilesPopover({
         <div className="grid grid-cols-[repeat(auto-fill,minmax(256px,1fr))] gap-2">
           {Object.keys(files).map((file) => {
             const filePath = String(file);
-            const fileContent = extractFileContent(files[file]);
-            const mime = imageMimeFor(filePath);
+            const fileContent = fileContentToText(files[file]);
+            const mime = imageMimeForPath(filePath);
             const thumbnailSrc =
               mime && fileContent ? `data:${mime};base64,${fileContent}` : null;
-            const label = fileDisplayName(filePath);
+            const label = attachmentDisplayName(filePath);
 
             return (
               <div
@@ -124,32 +92,20 @@ export function FilesPopover({
                     setSelectedFile({ path: filePath, content: fileContent })
                   }
                   title={filePath}
-                  className="w-full cursor-pointer space-y-1 truncate rounded-md border border-border px-2 py-3 shadow-sm transition-colors"
-                  style={{
-                    backgroundColor: "var(--color-file-button)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-file-button-hover)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "var(--color-file-button)";
-                  }}
+                  className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border border-border bg-[var(--color-file-button)] px-2 py-3 shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-primary/40 hover:bg-[var(--color-file-button-hover)] hover:shadow-md"
                 >
                   {thumbnailSrc ? (
                     <img
                       src={thumbnailSrc}
                       alt={label}
-                      className="mx-auto h-16 w-16 rounded object-cover ring-1 ring-border"
+                      className="h-16 w-16 rounded-md object-cover ring-1 ring-border"
                     />
                   ) : (
-                    <FileText
-                      size={24}
-                      className="mx-auto text-muted-foreground"
-                    />
+                    <span className="flex h-16 w-16 items-center justify-center rounded-md bg-primary/5 text-primary/70">
+                      <FileText size={22} />
+                    </span>
                   )}
-                  <span className="mx-auto block w-full truncate break-words text-center text-sm leading-relaxed text-foreground">
+                  <span className="block w-full truncate break-words text-center text-sm leading-relaxed text-foreground">
                     {label}
                   </span>
                 </button>

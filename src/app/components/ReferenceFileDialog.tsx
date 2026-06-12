@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   attachmentDisplayName,
   attachmentKindForPath,
+  fileContentToText,
   imageMimeForPath,
 } from "@/lib/uploads";
 import type { AttachmentReference } from "@/app/hooks/useAttachments";
@@ -25,22 +26,6 @@ interface Props {
   onConfirm: (refs: AttachmentReference[]) => void;
 }
 
-/** Normalize a state.files value (FileData dict or raw string) to text. */
-function extractFileContent(rawContent: unknown): string {
-  if (
-    typeof rawContent === "object" &&
-    rawContent !== null &&
-    "content" in rawContent
-  ) {
-    const contentArray = (rawContent as { content: unknown }).content;
-    if (Array.isArray(contentArray)) {
-      return contentArray.join("\n");
-    }
-    return String(contentArray || "");
-  }
-  return String(rawContent || "");
-}
-
 export const ReferenceFileDialog = React.memo<Props>(
   ({ open, onOpenChange, files, onConfirm }) => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -49,7 +34,7 @@ export const ReferenceFileDialog = React.memo<Props>(
       return Object.keys(files).map((path) => {
         const mime = imageMimeForPath(path);
         const thumb = mime
-          ? `data:${mime};base64,${extractFileContent(files[path])}`
+          ? `data:${mime};base64,${fileContentToText(files[path])}`
           : undefined;
         return {
           path,
@@ -99,8 +84,14 @@ export const ReferenceFileDialog = React.memo<Props>(
         onOpenChange={close}
       >
         <DialogContent className="flex h-[70vh] max-h-[70vh] min-w-[60vw] flex-col p-6">
-          <DialogTitle>Reference an existing file</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base font-semibold tracking-tight">
+            Reference an existing file
+          </DialogTitle>
+          <span
+            className="aptiv-rule"
+            aria-hidden="true"
+          />
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             Pick one or more files already in this conversation to attach to
             your next message. Referencing a file does not re-upload it.
           </DialogDescription>
@@ -125,21 +116,21 @@ export const ReferenceFileDialog = React.memo<Props>(
                         title={entry.path}
                         aria-pressed={isSelected}
                         className={cn(
-                          "relative flex items-center gap-2 rounded-md border px-2 py-2 text-left shadow-sm transition-colors",
+                          "relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left shadow-sm transition-all duration-150",
                           isSelected
-                            ? "border-primary ring-2 ring-primary/40"
-                            : "border-border hover:bg-foreground/5"
+                            ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                            : "border-border hover:-translate-y-px hover:border-primary/40 hover:bg-primary/5 hover:shadow-md"
                         )}
                       >
                         {entry.thumb ? (
                           <img
                             src={entry.thumb}
                             alt={entry.label}
-                            className="h-10 w-10 shrink-0 rounded object-cover ring-1 ring-border"
+                            className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border"
                           />
                         ) : (
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-muted">
-                            <FileText className="h-5 w-5 text-muted-foreground" />
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/5 text-primary/70">
+                            <FileText className="h-5 w-5" />
                           </span>
                         )}
                         <span className="min-w-0 flex-1">
