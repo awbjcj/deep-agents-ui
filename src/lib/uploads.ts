@@ -60,6 +60,26 @@ export function attachmentDisplayName(path: string): string {
   return sep >= 0 ? base.slice(sep + 2) : base;
 }
 
+/**
+ * Normalize a `state.files` value to plain text. Thread files can be stored
+ * either as a raw string or as a `FileData` dict (`{ content: string[] }`);
+ * this collapses both shapes to a single string for previews and downloads.
+ */
+export function fileContentToText(rawContent: unknown): string {
+  if (
+    typeof rawContent === "object" &&
+    rawContent !== null &&
+    "content" in rawContent
+  ) {
+    const contentArray = (rawContent as { content: unknown }).content;
+    if (Array.isArray(contentArray)) {
+      return contentArray.join("\n");
+    }
+    return String(contentArray || "");
+  }
+  return String(rawContent || "");
+}
+
 export const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 export const UPLOAD_MAX_PER_SEND = 5;
 
