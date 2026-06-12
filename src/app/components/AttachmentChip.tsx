@@ -54,7 +54,7 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
   return (
     <div
       role="listitem"
-      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-sm data-[state=error]:border-destructive/40 data-[state=error]:bg-destructive/5"
+      className="group inline-flex items-center gap-2 rounded-lg border border-border/80 bg-card px-2.5 py-1.5 text-xs shadow-sm transition-colors hover:border-primary/30 data-[state=error]:border-destructive/40 data-[state=error]:bg-destructive/5"
       data-state={item.phase}
     >
       {item.phase === "uploading" ? (
@@ -75,7 +75,7 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
         <span className="text-muted-foreground">{humanSize(size)}</span>
       ) : isReference ? (
         <span
-          className="inline-flex items-center gap-1 text-muted-foreground"
+          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[var(--color-primary)]"
           title="References an existing thread file"
         >
           <Link2 className="h-3 w-3" />
@@ -94,7 +94,7 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
         type="button"
         aria-label={`Remove ${filename}`}
         onClick={() => onRemove(item.localId)}
-        className="rounded-md p-0.5 hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="-mr-0.5 ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <X className="h-3 w-3" />
       </button>

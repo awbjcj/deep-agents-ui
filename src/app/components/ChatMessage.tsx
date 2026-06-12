@@ -151,16 +151,18 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   key={`img-${idx}`}
                   src={url}
                   alt="attachment"
-                  className="h-20 w-20 rounded-lg border border-border object-cover shadow-sm"
+                  className="h-20 w-20 rounded-xl border border-border object-cover shadow-sm ring-1 ring-black/5 transition-transform hover:scale-[1.02]"
                 />
               ))}
               {docAttachments.map((doc, idx) => (
                 <span
                   key={`doc-${idx}`}
                   title={doc.path}
-                  className="inline-flex max-w-[220px] items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm"
+                  className="inline-flex max-w-[220px] items-center gap-2 rounded-lg border border-border/80 bg-card px-3 py-2 text-xs shadow-sm"
                 >
-                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[var(--color-primary)]">
+                    <FileText className="h-3.5 w-3.5" />
+                  </span>
                   <span className="truncate font-medium">{doc.name}</span>
                 </span>
               ))}
