@@ -54,6 +54,13 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       };
     }, [toolCall]);
 
+    // Stable meta for the generative-UI artifact: a fresh object literal each
+    // render would re-render LoadExternalComponent even when nothing changed.
+    const meta = useMemo(
+      () => ({ status, args, result: result ?? "No Result Yet" }),
+      [status, args, result]
+    );
+
     const statusIcon = useMemo(() => {
       switch (status) {
         case "completed":
@@ -149,7 +156,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                   stream={stream}
                   message={uiComponent}
                   namespace={graphId}
-                  meta={{ status, args, result: result ?? "No Result Yet" }}
+                  meta={meta}
                 />
               </div>
             ) : actionRequest && onResume ? (
