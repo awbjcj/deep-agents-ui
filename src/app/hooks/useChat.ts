@@ -11,21 +11,16 @@ import {
 } from "@langchain/langgraph-sdk";
 import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
-import type { TodoItem, ToolCall } from "@/app/types/types";
-import { extractStringFromMessageContent } from "@/app/utils/utils";
+import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
+import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import {
   useNotifications,
   type StreamNotificationEvent,
 } from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
 
-export interface ProcessedMessage {
-  message: Message;
-  toolCalls: ToolCall[];
-  stableKey: string;
-  showAvatar: boolean;
-}
+export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
 export type StateType = {
   messages: Message[];
@@ -186,7 +181,51 @@ export function useChat({
     },
     { onCustomEvent: handleCustomEvent }
   );
-  const stream = useStream<StateType>(streamOptions);
+  const rawStream = useStream<StateType>(streamOptions);
+
+  // `useStream` returns a brand-new object literal on every render (it is not
+  // memoized), so `rawStream`'s identity churns on every streamed token. That
+  // churn breaks `React.memo` on every component the stream is threaded through
+  // (ChatMessage → ToolCallBox → the generative-UI artifacts) AND forces every
+  // stream-dependent `useCallback` below (sendMessage / stopStream /
+  // resumeInterrupt …) to be recreated each token. We expose a single
+  // referentially-stable handle: its identity is frozen (created once) while
+  // every access forwards to the latest stream, so memoized consumers see a
+  // constant identity yet always read live values.
+  const streamRef = useRef(rawStream);
+  streamRef.current = rawStream;
+  const stream = useMemo(
+    () =>
+      new Proxy({} as unknown as typeof rawStream, {
+        get(_target, prop) {
+          const target = streamRef.current as unknown as Record<
+            string | symbol,
+            unknown
+          >;
+          const value = Reflect.get(target, prop, target);
+          return typeof value === "function"
+            ? (value as (...args: unknown[]) => unknown).bind(target)
+            : value;
+        },
+        has(_target, prop) {
+          return Reflect.has(streamRef.current as object, prop);
+        },
+        ownKeys() {
+          return Reflect.ownKeys(streamRef.current as object);
+        },
+        getOwnPropertyDescriptor(_target, prop) {
+          const desc = Reflect.getOwnPropertyDescriptor(
+            streamRef.current as object,
+            prop
+          );
+          // The throwaway target has no own properties, so the Proxy invariant
+          // requires any descriptor we report to be configurable.
+          if (desc) desc.configurable = true;
+          return desc;
+        },
+      }),
+    []
+  );
 
   // Recover from a stale or unreachable thread referenced in the URL. The SDK
   // keeps `isThreadLoading` true until the thread's history resolves; if that
@@ -384,101 +423,14 @@ export function useChat({
     stream.stop();
   }, [stream]);
 
-  // Tool-call reconciliation.
-  //
-  // For each AI message, gather its tool calls into a flat record. For each
-  // tool message, fold the result back into the originating tool call. A
-  // single side-map keyed by tool_call_id makes the second step O(1) per
-  // tool result instead of O(n_messages × n_tool_calls) as in the previous
-  // implementation that lived inside ChatInterface.
+  // Conversation Projection (see CONTEXT.md): the identity-stable transform
+  // from the raw stream into render-ready messages. Tool-call reconciliation
+  // (fold each tool result back into its originating call) now lives in the
+  // projection, which additionally preserves per-message and per-tool-call
+  // references so a streamed token re-renders only the live message instead of
+  // every artifact in the thread.
   const isInterrupted = stream.interrupt !== undefined;
-  const processedMessages = useMemo<ProcessedMessage[]>(() => {
-    type Bucket = {
-      message: Message;
-      toolCalls: ToolCall[];
-      stableKey: string;
-    };
-    const messageMap = new Map<string, Bucket>();
-    const toolCallIndex = new Map<
-      string,
-      { messageKey: string; index: number }
-    >();
-
-    stream.messages.forEach((message: Message, idx: number) => {
-      if (message.type === "ai") {
-        const rawToolCalls: Array<{
-          id?: string;
-          function?: { name?: string; arguments?: unknown };
-          name?: string;
-          type?: string;
-          args?: unknown;
-          input?: unknown;
-        }> = [];
-        if (
-          message.additional_kwargs?.tool_calls &&
-          Array.isArray(message.additional_kwargs.tool_calls)
-        ) {
-          rawToolCalls.push(...message.additional_kwargs.tool_calls);
-        } else if (message.tool_calls && Array.isArray(message.tool_calls)) {
-          rawToolCalls.push(
-            ...message.tool_calls.filter(
-              (tc: { name?: string }) => tc.name !== ""
-            )
-          );
-        } else if (Array.isArray(message.content)) {
-          const toolUseBlocks = message.content.filter(
-            (block: { type?: string }) => block.type === "tool_use"
-          );
-          rawToolCalls.push(...toolUseBlocks);
-        }
-
-        const messageKey = message.id || `ai-${idx}`;
-        const toolCalls: ToolCall[] = rawToolCalls.map((tc, tcIdx) => {
-          const name = tc.function?.name || tc.name || tc.type || "unknown";
-          const args = tc.function?.arguments || tc.args || tc.input || {};
-          const id = tc.id || `tool-${idx}-${tcIdx}-${name}`;
-          toolCallIndex.set(id, { messageKey, index: tcIdx });
-          return {
-            id,
-            name,
-            args,
-            status: isInterrupted ? "interrupted" : ("pending" as const),
-          } as ToolCall;
-        });
-
-        messageMap.set(messageKey, {
-          message,
-          toolCalls,
-          stableKey: messageKey,
-        });
-      } else if (message.type === "tool") {
-        const toolCallId = message.tool_call_id;
-        if (!toolCallId) return;
-        const location = toolCallIndex.get(toolCallId);
-        if (!location) return;
-        const bucket = messageMap.get(location.messageKey);
-        if (!bucket) return;
-        bucket.toolCalls[location.index] = {
-          ...bucket.toolCalls[location.index],
-          status: "completed" as const,
-          result: extractStringFromMessageContent(message),
-        };
-      } else if (message.type === "human") {
-        const humanKey = message.id || `human-${idx}`;
-        messageMap.set(humanKey, {
-          message,
-          toolCalls: [],
-          stableKey: humanKey,
-        });
-      }
-    });
-
-    const arr = Array.from(messageMap.values());
-    return arr.map((bucket, i) => ({
-      ...bucket,
-      showAvatar: bucket.message.type !== arr[i - 1]?.message.type,
-    }));
-  }, [stream.messages, isInterrupted]);
+  const processedMessages = useProcessedMessages(stream.messages, isInterrupted);
 
   return {
     stream,
