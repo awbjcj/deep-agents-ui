@@ -697,7 +697,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     {attachMenuOpen && (
                       <div
                         role="menu"
-                        className="absolute bottom-full left-0 z-[80] mb-2 w-56 overflow-hidden rounded-md border border-border bg-card p-1 text-card-foreground shadow-lg"
+                        className="absolute bottom-full left-0 z-[80] mb-2 w-64 overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[0_16px_40px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-150"
                       >
                         <button
                           type="button"
@@ -706,10 +706,19 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                             setAttachMenuOpen(false);
                             fileInputRef.current?.click();
                           }}
-                          className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+                          className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-primary/5 focus-visible:bg-primary/5"
                         >
-                          <Upload className="h-4 w-4" />
-                          Upload file
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)] transition-colors group-hover:bg-primary/15">
+                            <Upload className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-foreground">
+                              Upload file
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              From your computer
+                            </span>
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -719,15 +728,28 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                             setAttachMenuOpen(false);
                             setReferenceDialogOpen(true);
                           }}
-                          className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                          className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                           title={
                             fileKeysCount === 0
                               ? "No files in this conversation yet"
                               : undefined
                           }
                         >
-                          <Link2 className="h-4 w-4" />
-                          Reference existing file
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)] transition-colors group-hover:bg-primary/15">
+                            <Link2 className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium text-foreground">
+                              Reference existing file
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {fileKeysCount === 0
+                                ? "No files in this chat yet"
+                                : `Reuse one of ${fileKeysCount} file${
+                                    fileKeysCount > 1 ? "s" : ""
+                                  } in this chat`}
+                            </span>
+                          </span>
                         </button>
                       </div>
                     )}
