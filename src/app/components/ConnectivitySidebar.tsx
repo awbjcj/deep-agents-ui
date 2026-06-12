@@ -179,6 +179,9 @@ export function ConnectivitySidebar() {
       setPendingMode(updated.run_mode);
       setProxyUrl(updated.proxy_url);
       setRunModeLocal(updated.run_mode);
+      // Clear the autosave guard so re-selecting the just-reset mode still
+      // triggers an autosave (the guard only exists to stop failed-save loops).
+      lastAutosavedModeRef.current = updated.run_mode;
       toast.success("Reset to system defaults");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to reset");
