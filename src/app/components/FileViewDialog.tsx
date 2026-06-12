@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import type { FileItem } from "@/app/types/types";
+import { imageMimeForPath } from "@/lib/uploads";
 import useSWRMutation from "swr/mutation";
 
 // Lazy: Prism + its theme together push ~300KB. We only need them when the
@@ -111,16 +112,10 @@ export const FileViewDialog = React.memo<{
     return fileExtension === "md" || fileExtension === "markdown";
   }, [fileExtension]);
 
-  const imageMime = useMemo<string | null>(() => {
-    const map: Record<string, string> = {
-      png: "image/png",
-      jpg: "image/jpeg",
-      jpeg: "image/jpeg",
-      gif: "image/gif",
-      webp: "image/webp",
-    };
-    return map[fileExtension] ?? null;
-  }, [fileExtension]);
+  const imageMime = useMemo<string | null>(
+    () => imageMimeForPath(fileName),
+    [fileName]
+  );
   const isImage = imageMime !== null;
 
   const language = useMemo(() => {
@@ -196,8 +191,10 @@ export const FileViewDialog = React.memo<{
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
         <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <FileText className="text-primary/50 h-5 w-5 shrink-0" />
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)]">
+              <FileText className="h-4 w-4" />
+            </span>
             {isEditingMode && file === null ? (
               <Input
                 value={fileName}
