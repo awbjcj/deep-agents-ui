@@ -259,7 +259,7 @@ export function ConfigDialog({
                     </ul>
                   </div>
                   {info.isSupervisor && (
-                    <p className="rounded-md border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                    <p className="rounded-md border-l-2 border-primary/40 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
                       <span className="font-medium text-foreground">Tip:</span>{" "}
                       If your task is simple and only needs one source, select
                       that sub-agent directly instead of the supervisor — it's
