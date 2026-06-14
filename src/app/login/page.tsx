@@ -42,12 +42,12 @@ export default function LoginPage() {
         : "Sign in";
   const supportingCopy =
     mode === "register"
-      ? "Use your Aptiv email to request access."
+      ? "Register a new account with your Aptiv email. No Aptiv network login (NetID) required — you'll set your own username and password."
       : mode === "verify"
         ? `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
             expiresInMinutes ?? 15
           } minutes.`
-        : "Use your Aptiv credentials to continue.";
+        : "Sign in with the VSDA Deep Agent account you registered — not your Aptiv NetID.";
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());

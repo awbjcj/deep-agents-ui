@@ -30,91 +30,80 @@ interface AssistantOption {
   graphId: string;
 }
 
-const AGENT_INFO: Record<string, { description: string; tools: string[] }> = {
+interface AgentInfo {
+  /** One-line summary of what the agent is for. */
+  description: string;
+  /** Concrete tasks the agent handles well — written as user goals, not tool names. */
+  useCases: string[];
+  /** True for the orchestrating supervisor that routes across every source. */
+  isSupervisor?: boolean;
+}
+
+const AGENT_INFO: Record<string, AgentInfo> = {
   "VSDA Deep Agent": {
     description:
-      "Supervisor agent that routes queries to specialized sub-agents for Jira, Teams, Email, Database, Polarion, and Confluence.",
-    tools: [
-      "record_user_history",
-      "save_user_preference",
-      "recall_user_history",
-      "list_user_preferences",
-      "save_scope_note",
-      "prepare_workspace",
-      "run_python",
+      "The supervisor. Plans multi-step work and coordinates the specialized sub-agents below, combining results from several sources into a single answer.",
+    isSupervisor: true,
+    useCases: [
+      "Cross-reference a Jira ticket with its related Confluence documentation and summarize both together.",
+      "Investigate an issue that spans Polarion requirements, Teams discussions, and email threads.",
+      "Research a topic in the knowledge base, then draft and send a summary email about it.",
+      "Any request that needs more than one source, or several steps coordinated in order.",
     ],
   },
   "VSDA Jira Agent": {
     description:
-      "Specializes in retrieving and summarizing Jira tickets based on user queries.",
-    tools: [
-      "extract_jira_context",
-      "search_jira_tickets",
-      "get_jira_ticket",
-      "create_jql_query",
-      "grade_vsda_ticket",
-      "edit_jira_ticket",
+      "Reads, searches, summarizes, and edits Jira tickets.",
+    useCases: [
+      "Summarize the status, blockers, and recent activity of a specific ticket (e.g. CADM-1234).",
+      "Find all open tickets matching a query — by assignee, sprint, priority, or label.",
+      "Build a JQL query from a plain-language description of what you're looking for.",
+      "Grade a VSDA ticket for completeness, or apply edits to a ticket's fields.",
     ],
   },
   "VSDA Teams Agent": {
     description:
-      "Specializes in retrieving, summarizing, and managing Microsoft Teams chat messages.",
-    tools: [
-      "list_chat_topics",
-      "get_chat_messages",
-      "send_chat_message",
-      "create_chat_with_user",
-      "get_user_id",
+      "Reads, summarizes, and sends Microsoft Teams chat messages.",
+    useCases: [
+      "Catch up on the latest messages in a specific chat or channel.",
+      "Find what was decided or discussed in a recent group conversation.",
+      "Send a message or status update to a teammate or group chat.",
     ],
   },
   "VSDA Email Agent": {
     description:
-      "Specializes in retrieving, reading, and sending emails based on user queries.",
-    tools: [
-      "list_email_folders",
-      "list_emails",
-      "get_email_content",
-      "create_draft_email",
-      "send_draft_email",
-      "get_user_email_address",
-      "send_email",
+      "Reads, summarizes, drafts, and sends email from your mailbox.",
+    useCases: [
+      "Summarize unread or recent emails in a folder.",
+      "Draft a reply to a specific message, or a follow-up to a stakeholder.",
+      "Send a new email or a saved draft on your behalf.",
     ],
   },
   "VSDA Database Agent": {
     description:
-      "Specializes in searching the Elasticsearch vector knowledge base to retrieve relevant documents with optional metadata filtering.",
-    tools: [
-      "list_database_indices",
-      "get_database_info",
-      "search_database",
-      "search_database_with_filter",
-      "rewrite_search_query",
-      "evaluate_search_results",
+      "Searches the Elasticsearch vector knowledge base of internal documents.",
+    useCases: [
+      "Find internal documentation or reference material on a topic.",
+      "Retrieve the most relevant documents for a question, with optional metadata filters (date, source, type).",
+      "Answer a question grounded strictly in indexed knowledge-base content.",
     ],
   },
   "VSDA Polarion Agent": {
     description:
-      "Specializes in retrieving and summarizing Polarion ALM work items and project information.",
-    tools: [
-      "resolve_polarion_project",
-      "create_polarion_query",
-      "search_polarion_work_items",
-      "get_polarion_work_item",
-      "get_polarion_project_info",
+      "Reads and summarizes Polarion ALM work items and project information.",
+    useCases: [
+      "Retrieve and summarize a specific Polarion work item.",
+      "List requirements, test cases, or other work items for a project.",
+      "Look up project metadata or build a query against a Polarion project.",
     ],
   },
   "VSDA Confluence Agent": {
     description:
-      "Retrieves and summarizes Confluence spaces, pages, and attachments for wiki and knowledge-base content.",
-    tools: [
-      "list_confluence_spaces",
-      "get_confluence_space",
-      "create_confluence_query",
-      "search_confluence_pages",
-      "get_confluence_page",
-      "get_confluence_page_by_title",
-      "list_confluence_child_pages",
-      "get_confluence_page_comments",
+      "Reads and summarizes Confluence spaces, pages, and attachments.",
+    useCases: [
+      "Find and summarize a wiki page by title or topic within a space.",
+      "List the pages or child pages under a given space or parent page.",
+      "Pull comments or attachments tied to a specific Confluence page.",
     ],
   },
 };
@@ -187,6 +176,13 @@ export function ConfigDialog({
       assistantId,
       langsmithApiKey: langsmithApiKey || undefined,
     });
+
+    const selected = assistants.find((a) => a.id === assistantId);
+    toast.success(
+      selected
+        ? `Configuration saved — using ${selected.graphId}`
+        : "Configuration saved"
+    );
     onOpenChange(false);
   };
 
@@ -241,23 +237,36 @@ export function ConfigDialog({
             return (
               <div className="grid gap-2">
                 <Label>Agent Details</Label>
-                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-2">
+                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-3">
                   <p className="text-muted-foreground">{info.description}</p>
                   <div>
                     <span className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
-                      Tools
+                      What it's good for
                     </span>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {info.tools.map((tool) => (
-                        <span
-                          key={tool}
-                          className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground"
+                    <ul className="mt-1.5 space-y-1.5">
+                      {info.useCases.map((useCase) => (
+                        <li
+                          key={useCase}
+                          className="flex gap-2 text-muted-foreground"
                         >
-                          {tool}
-                        </span>
+                          <span
+                            aria-hidden="true"
+                            className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
+                          />
+                          <span>{useCase}</span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
+                  {info.isSupervisor && (
+                    <p className="rounded-md border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Tip:</span>{" "}
+                      If your task is simple and only needs one source, select
+                      that sub-agent directly instead of the supervisor — it's
+                      faster and more focused. Use VSDA Deep Agent when the work
+                      spans multiple sources or several steps.
+                    </p>
+                  )}
                 </div>
               </div>
             );
