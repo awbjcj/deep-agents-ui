@@ -106,6 +106,16 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Pull comments or attachments tied to a specific Confluence page.",
     ],
   },
+  "VSDA Jenkins Agent": {
+    description:
+      "Monitors, queries, and triggers Jenkins CI/CD build jobs.",
+    useCases: [
+      "Check the current status or recent build history of a Jenkins job.",
+      "List available jobs or look up the parameters a job accepts.",
+      "Retrieve the console output of a build to diagnose a failure.",
+      "Trigger a Jenkins build job with specific parameters.",
+    ],
+  },
 };
 
 interface ConfigDialogProps {
