@@ -1,93 +1,128 @@
-# 🚀🧠 Deep Agents UI
+# Deep Agents UI — VSDA
 
-[Deep Agents](https://github.com/langchain-ai/deepagents) is a simple, open source agent harness that implements a few generally useful tools, including planning (prior to task execution), computer access (giving the able access to a shell and a filesystem), and sub-agent delegation (isolated task execution). This is a UI for interacting with deepagents.
+The chat frontend for the [VSDA Deep Agent](../vsda-deep-agent). A
+Next.js (App Router) / React application that connects to the VSDA LangGraph
+deployment via [`@langchain/langgraph-sdk`](https://www.npmjs.com/package/@langchain/langgraph-sdk)
+and authenticates against the project's FastAPI backend.
 
-## 🚀 Quickstart
+This is a customized fork of
+[`langchain-ai/deep-agents-ui`](https://github.com/langchain-ai/deep-agents-ui).
+On top of the upstream chat surface it adds JWT authentication, role-based
+access (`user` / `developer` / `admin`), per-user model and connectivity
+selection, weekly token budgets, an admin panel, human-in-the-loop tool
+approvals, file/workspace views, and Aptiv branding.
 
-**Install dependencies and run the app**
+## Quick Start
 
 ```bash
-git clone https://github.com/langchain-ai/deep-agents-ui.git
-cd deep-agents-ui
+# 1. Use the pinned Node version (20)
+nvm use                       # reads .nvmrc
+
+# 2. Install dependencies (Yarn 1.x — the repo is yarn-locked)
 yarn install
+
+# 3. Configure the deployment URL
+cp .env.example .env          # set NEXT_PUBLIC_DEPLOYMENT_URL
+
+# 4. Run the dev server (http://localhost:3000)
 yarn dev
 ```
 
-**Deploy a Deep Agent**
+In development the app proxies `/api/*` to the LangGraph + FastAPI runtime at
+`http://localhost:2024` (override with `LANGGRAPH_API_URL`), so start the backend
+(`make dev` in [`../vsda-deep-agent`](../vsda-deep-agent)) alongside the UI.
 
-As an example, see our [Deep Agents quickstarts](https://github.com/langchain-ai/deepagents/tree/main/examples) for examples and run the `deep_research` example.
+Open <http://localhost:3000>, register or log in, and start a chat. Account,
+model, connectivity, and (for admins) user-management controls live behind the
+header menu and sidebars.
 
-The `langgraph.json` file has the assistant ID as the key:
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `yarn dev` | Dev server with Turbopack on `localhost:3000` |
+| `yarn build` | Production build (static export when `NEXT_STATIC_EXPORT=1`) |
+| `yarn start` | Serve a non-export production build |
+| `yarn lint` / `yarn lint:fix` | ESLint |
+| `yarn format` / `yarn format:check` | Prettier |
+| `yarn test` | Node test runner over `tests/**/*.mjs` |
+
+## Configuration
+
+Environment variables (see `.env.example`):
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `NEXT_PUBLIC_DEPLOYMENT_URL` | Yes | LangGraph deployment URL the UI connects to |
+| `NEXT_PUBLIC_LANGSMITH_API_KEY` | No | LangSmith key for tracing/deployed graphs |
+| `LANGGRAPH_API_URL` | No | Dev-only override for the `/api/*` proxy target |
+
+The assistant ID is selected in the UI and stored in `localStorage`; the JWT from
+login is also kept client-side and attached to backend requests.
+
+### Deployment profiles
+
+`next.config.ts` selects behavior by build mode:
+
+- **dev** (`next dev`) — talks to `http://localhost:2024`; rewrites proxy `/api/*`.
+- **build / deploy** (`NEXT_STATIC_EXPORT=1`) — a **static export** served under
+  `basePath: /chat`, with the API URL baked in at build time from
+  `NEXT_PUBLIC_DEPLOYMENT_URL`. Static exports ignore rewrites, so there is no
+  dev proxy in this mode.
+
+Production builds are orchestrated from the backend repo: `make build` /
+`make deploy` in [`../vsda-deep-agent`](../vsda-deep-agent) run
+`scripts/rebuild.sh`, which builds this UI, copies the export into the backend's
+static-files directory, and serves it from the FastAPI app on port 8000.
+
+## Architecture
+
+App Router layout under `src/`:
 
 ```
-  "graphs": {
-    "research": "./agent.py:agent"
-  },
+src/
+  app/
+    page.tsx                 Main chat experience
+    login/, forgot-password/ Auth screens
+    components/              Chat UI, sidebars, dialogs, approvals
+    hooks/                   useChat, useThreads, useTokenUsage, ...
+    types/                   Shared TS types
+    utils/                   Stream modes, markdown helpers
+  providers/                 Auth, Chat, Client, Connectivity, Notifications, Theme
+  lib/                       auth, config, uploads, utils
+  components/ui/             Reusable primitives (Radix-based)
 ```
 
-Kick off the local LangGraph deployment:
+Key pieces:
 
-```bash
-cd deepagents-quickstarts/deep_research
-langgraph dev
-```
+- **Auth & roles** — `providers/AuthProvider.tsx` + `lib/auth.ts`. JWTs are
+  decoded client-side for role/expiry; role gates which sidebars and tools appear.
+- **Chat streaming** — `hooks/useChat.ts` drives the LangGraph stream;
+  `ChatInterface` / `ChatMessage` render it. `buildConfig()` injects the
+  `system_username` the backend uses to resolve per-user tokens.
+- **Conversation Projection** — an identity-stable transform
+  (`hooks/internal/conversationProjection.ts`) that reconciles tool results into
+  their calls and preserves referential identity so memoized renderers skip work
+  during streaming. See [`CONTEXT.md`](./CONTEXT.md) for the rationale.
+- **Markdown** — `MarkdownContent` renders GitHub-flavored Markdown
+  (`remark-gfm`), LaTeX (`remark-math` + `rehype-katex`), and highlighted code.
+- **Human-in-the-loop** — `ToolApprovalInterrupt` / `BatchToolApprovalInterrupt`
+  surface approve / edit / reject prompts for write-capable tools.
+- **Model, connectivity & budgets** — `ModelSelector` / `ModelSidebar`,
+  `ConnectivitySidebar`, and `TokenManagementSidebar` / `useTokenUsage` map to
+  the backend's per-user model selection and weekly token-budget endpoints.
+- **Admin** — `AdminPanel` / `UserManagementSidebar` for user and role
+  management (admin role only).
 
-You will see the local LangGraph deployment log to terminal:
+## Tech Stack
 
-```
-╦  ┌─┐┌┐┌┌─┐╔═╗┬─┐┌─┐┌─┐┬ ┬
-║  ├─┤││││ ┬║ ╦├┬┘├─┤├─┘├─┤
-╩═╝┴ ┴┘└┘└─┘╚═╝┴└─┴ ┴┴  ┴ ┴
+- Next.js 16 (App Router) · React 19 · TypeScript 5
+- Tailwind CSS 3.4 with Radix UI primitives
+- `@langchain/langgraph-sdk` for streaming
+- Node 20 (`.nvmrc`) · Yarn 1.22 (`packageManager`)
 
-- 🚀 API: http://127.0.0.1:2024
-- 🎨 Studio UI: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
-- 📚 API Docs: http://127.0.0.1:2024/docs
-...
-```
+## Related
 
-You can get the Deployment URL and Assistant ID from the terminal output and `langgraph.json` file, respectively:
-
-- Deployment URL: <http://127.0.1:2024>
-- Assistant ID: `research`
-
-**Open Deep Agents UI** at [http://localhost:3000](http://localhost:3000) and input the Deployment URL and Assistant ID:
-
-- **Deployment URL**: The URL for the LangGraph deployment you are connecting to
-- **Assistant ID**: The ID of the assistant or agent you want to use
-- [Optional] **LangSmith API Key**: Your LangSmith API key (format: `lsv2_pt_...`). This may be required for accessing deployed LangGraph applications. You can also provide this via the `NEXT_PUBLIC_LANGSMITH_API_KEY` environment variable.
-
-**Usage**
-
-You can interact with the deployment via the chat interface and can edit settings at any time by clicking on the Settings button in the header.
-
-<img width="2039" height="1495" alt="Screenshot 2025-11-17 at 1 11 27 PM" src="https://github.com/user-attachments/assets/50e1b5f3-a626-4461-9ad9-90347e471e8c" />
-
-As the deepagent runs, you can see its files in LangGraph state.
-
-<img width="2039" height="1495" alt="Screenshot 2025-11-17 at 1 11 36 PM" src="https://github.com/user-attachments/assets/86cc6228-5414-4cf0-90f5-d206d30c005e" />
-
-You can click on any file to view it.
-
-<img width="2039" height="1495" alt="Screenshot 2025-11-17 at 1 11 40 PM" src="https://github.com/user-attachments/assets/9883677f-e365-428d-b941-992bdbfa79dd" />
-
-### Optional: Environment Variables
-
-You can optionally set environment variables instead of using the settings dialog:
-
-```env
-NEXT_PUBLIC_LANGSMITH_API_KEY="lsv2_xxxx"
-```
-
-**Note:** Settings configured in the UI take precedence over environment variables.
-
-### Usage
-
-You can run your Deep Agents in Debug Mode, which will execute the agent step by step. This will allow you to re-run the specific steps of the agent. This is intended to be used alongside the optimizer.
-
-You can also turn off Debug Mode to run the full agent end-to-end.
-
-### 📚 Resources
-
-If the term "Deep Agents" is new to you, check out these videos!
-[What are Deep Agents?](https://www.youtube.com/watch?v=433SmtTc0TA)
-[Implementing Deep Agents](https://www.youtube.com/watch?v=TTMYJAw5tiA&t=701s)
+- Backend & agent graphs: [`../vsda-deep-agent`](../vsda-deep-agent)
+- Upstream project: https://github.com/langchain-ai/deep-agents-ui
+- Deep Agents: https://github.com/langchain-ai/deepagents
