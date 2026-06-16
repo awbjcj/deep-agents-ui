@@ -7,6 +7,12 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiGetTokens, apiUpdateTokens, UserTokens } from "@/lib/auth";
 import { useNotifications } from "@/app/hooks/useNotifications";
+import { useAuth } from "@/providers/AuthProvider";
+import {
+  getTokenGuide,
+  OPEN_TOKEN_WIZARD_EVENT,
+} from "@/app/components/tokenServiceGuides";
+import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import {
   CheckCircle,
   Clock,
@@ -14,6 +20,7 @@ import {
   EyeOff,
   Loader2,
   Save,
+  Wand2,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -44,6 +51,8 @@ export function TokenManagementSidebar({
   onFocusConsumed,
 }: TokenManagementSidebarProps) {
   const { applyClearedNotifications } = useNotifications();
+  const { user } = useAuth();
+  const username = user?.username ?? "";
   const [graphToken, setGraphToken] = useState("");
   const [jiraToken, setJiraToken] = useState("");
   // Track whether the user has edited each token field since load.
@@ -160,6 +169,49 @@ export function TokenManagementSidebar({
             </div>
           ) : (
             <>
+              {/* Guided setup entry point. Highlights when one or more
+                  services have no token stored yet so first-time users are
+                  nudged to finish setup; always available as a refresher. */}
+              {(() => {
+                const missingCount = [
+                  tokenMeta?.graph_api_token_preview,
+                  tokenMeta?.jira_api_token_preview,
+                  tokenMeta?.polarion_asux_api_token_preview,
+                  tokenMeta?.polarion_prod1_api_token_preview,
+                  tokenMeta?.confluence_api_token_preview,
+                ].filter((preview) => !preview).length;
+                const launchWizard = () =>
+                  window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT));
+                return (
+                  <div className="rounded-md border border-border bg-muted/40 p-3">
+                    <div className="flex items-start gap-2">
+                      <Wand2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">
+                          {missingCount > 0
+                            ? "Finish setting up your access tokens"
+                            : "Token setup guide"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {missingCount > 0
+                            ? `${missingCount} service${missingCount === 1 ? "" : "s"} still need a token. Add them so the assistant can reach Graph, Jira, Polarion, and Confluence on your behalf.`
+                            : "Step through each integration to refresh a token or check where to find it."}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant={missingCount > 0 ? "default" : "outline"}
+                          onClick={launchWizard}
+                          className="h-8"
+                        >
+                          <Wand2 className="mr-2 h-3.5 w-3.5" />
+                          Open guided setup
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Graph API Token */}
               <div className="space-y-2">
                 <Label htmlFor="graphToken" className="text-sm font-medium">
@@ -217,6 +269,10 @@ export function TokenManagementSidebar({
                     )}
                   </button>
                 </div>
+                <TokenSetupGuide
+                  guide={getTokenGuide("graph")}
+                  username={username}
+                />
               </div>
 
               {/* JIRA API Token */}
@@ -276,6 +332,10 @@ export function TokenManagementSidebar({
                     )}
                   </button>
                 </div>
+                <TokenSetupGuide
+                  guide={getTokenGuide("jira")}
+                  username={username}
+                />
               </div>
 
               {/* Polarion ASUX Token */}
@@ -338,6 +398,10 @@ export function TokenManagementSidebar({
                     )}
                   </button>
                 </div>
+                <TokenSetupGuide
+                  guide={getTokenGuide("polarion_asux")}
+                  username={username}
+                />
               </div>
 
               {/* Polarion Prod1 Token */}
@@ -400,6 +464,10 @@ export function TokenManagementSidebar({
                     )}
                   </button>
                 </div>
+                <TokenSetupGuide
+                  guide={getTokenGuide("polarion_prod1")}
+                  username={username}
+                />
               </div>
 
               {/* Confluence API Token */}
@@ -462,6 +530,10 @@ export function TokenManagementSidebar({
                     )}
                   </button>
                 </div>
+                <TokenSetupGuide
+                  guide={getTokenGuide("confluence")}
+                  username={username}
+                />
               </div>
 
               {/* Save Button */}

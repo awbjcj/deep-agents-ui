@@ -7,6 +7,7 @@ import { getConfig, saveConfig, getDeploymentUrl, getLangsmithApiKey, Standalone
 import { AccountMenu } from "@/app/components/AccountMenu";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { TokenSetupWizard } from "@/app/components/TokenSetupWizard";
 import {
   WorkspacePanel,
   type WorkspaceTab,
@@ -164,6 +165,7 @@ function HomePageInner({
         onSave={handleSaveConfig}
         initialConfig={config}
       />
+      <TokenSetupWizard />
       <div className="flex h-screen flex-col">
         {/* Header */}
         <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
