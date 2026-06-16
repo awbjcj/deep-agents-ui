@@ -71,16 +71,13 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
     payloadField: "polarion_asux_api_token",
     previewField: "polarion_asux_api_token_preview",
     expiry: "Valid for up to 90 days.",
-    url: (username) =>
-      `https://polarion.asux.aptiv.com/polarion/#/project/FORD_DAT2.5_ADAS_ECU/user_tokens?id=${encodeURIComponent(
-        username,
-      )}`,
+    url: () => "https://polarion.asux.aptiv.com/polarion/#/home",
     steps: [
-      "Open your Polarion ASUX user tokens page (link below).",
+      "Open the Polarion ASUX home page (link below) and sign in.",
+      "Go to Settings → My Account → Personal Access Token.",
       "Create a new token and copy its value.",
       "Paste the token into the field above.",
     ],
-    note: "The project segment in the link depends on your Polarion project — swap it for one you can access if needed.",
   },
   {
     key: "polarion_prod1",
@@ -88,16 +85,13 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
     payloadField: "polarion_prod1_api_token",
     previewField: "polarion_prod1_api_token_preview",
     expiry: "Valid for up to 90 days.",
-    url: (username) =>
-      `https://polarionprod1.aptiv.com/polarion/#/project/10032494_MY21_FCA_WL_Domain_Controller/user_tokens?id=${encodeURIComponent(
-        username,
-      )}`,
+    url: () => "https://polarionprod1.aptiv.com/polarion/#/home",
     steps: [
-      "Open your Polarion Prod1 user tokens page (link below).",
+      "Open the Polarion Prod1 home page (link below) and sign in.",
+      "Go to Settings → My Account → Personal Access Token.",
       "Create a new token and copy its value.",
       "Paste the token into the field above.",
     ],
-    note: "The project segment in the link depends on your Polarion project — swap it for one you can access if needed.",
   },
   {
     key: "confluence",

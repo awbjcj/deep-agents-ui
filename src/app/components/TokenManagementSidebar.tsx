@@ -183,30 +183,34 @@ export function TokenManagementSidebar({
                 const launchWizard = () =>
                   window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT));
                 return (
-                  <div className="rounded-md border border-border bg-muted/40 p-3">
-                    <div className="flex items-start gap-2">
-                      <Wand2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">
-                          {missingCount > 0
-                            ? "Finish setting up your access tokens"
-                            : "Token setup guide"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {missingCount > 0
-                            ? `${missingCount} service${missingCount === 1 ? "" : "s"} still need a token. Add them so the assistant can reach Graph, Jira, Polarion, and Confluence on your behalf.`
-                            : "Step through each integration to refresh a token or check where to find it."}
-                        </p>
-                        <Button
-                          size="sm"
-                          variant={missingCount > 0 ? "default" : "outline"}
-                          onClick={launchWizard}
-                          className="h-8"
-                        >
-                          <Wand2 className="mr-2 h-3.5 w-3.5" />
-                          Open guided setup
-                        </Button>
-                      </div>
+                  <div className="relative flex items-start gap-3 overflow-hidden rounded-lg border border-border bg-card pl-4 pr-3 py-3 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                    {/* Aptiv orange accent stripe — onboarding is a brand touchpoint. */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-0 h-full w-[3px]"
+                      style={{ background: "var(--aptiv-orange)" }}
+                    />
+                    <Wand2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                      <p className="text-sm font-semibold leading-tight">
+                        {missingCount > 0
+                          ? "Finish setting up your access tokens"
+                          : "Token setup guide"}
+                      </p>
+                      <p className="text-sm leading-snug text-foreground/80">
+                        {missingCount > 0
+                          ? `${missingCount} service${missingCount === 1 ? "" : "s"} still need a token. Add them so the assistant can reach Graph, Jira, Polarion, and Confluence on your behalf.`
+                          : "Step through each integration to refresh a token or check where to find it."}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant={missingCount > 0 ? "default" : "outline"}
+                        onClick={launchWizard}
+                        className="mt-0.5 h-8 w-fit gap-1.5 px-3 text-xs font-semibold"
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        Open guided setup
+                      </Button>
                     </div>
                   </div>
                 );

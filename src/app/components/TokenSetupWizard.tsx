@@ -261,7 +261,7 @@ export function TokenSetupWizard() {
             size="sm"
             onClick={handleClose}
             disabled={isSaving}
-            className="sm:mr-auto"
+            className="h-8 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:mr-auto"
           >
             Set up later
           </Button>
@@ -272,26 +272,32 @@ export function TokenSetupWizard() {
                 size="sm"
                 onClick={goBack}
                 disabled={isSaving}
+                className="h-8 gap-1.5 px-3 text-xs font-semibold"
               >
-                <ChevronLeft className="mr-1 h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
                 Back
               </Button>
             )}
-            <Button size="sm" onClick={goNext} disabled={isSaving}>
+            <Button
+              size="sm"
+              onClick={goNext}
+              disabled={isSaving}
+              className="h-8 gap-1.5 px-3 text-xs font-semibold"
+            >
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Saving...
                 </>
               ) : isLast ? (
                 <>
-                  <Check className="mr-1 h-4 w-4" />
+                  <Check className="h-3.5 w-3.5" />
                   {enteredCount > 0 ? "Save & finish" : "Finish"}
                 </>
               ) : (
                 <>
                   {values[current.key]?.trim() ? "Next" : "Skip"}
-                  <ChevronRight className="ml-1 h-4 w-4" />
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </>
               )}
             </Button>
