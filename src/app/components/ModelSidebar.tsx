@@ -123,7 +123,6 @@ type UsageMeterProps = {
   limit: number;
   pct: number;
   isUnlimited: boolean;
-  enforced: boolean;
   ariaLabel: string;
 };
 
@@ -134,7 +133,6 @@ function UsageMeter({
   limit,
   pct,
   isUnlimited,
-  enforced,
   ariaLabel,
 }: UsageMeterProps) {
   const clampedPct = Math.min(Math.max(pct, 0), 100);
@@ -151,11 +149,6 @@ function UsageMeter({
               <span className="text-sm font-semibold text-foreground">
                 {label}
               </span>
-              {enforced && (
-                <span className="rounded-full bg-[var(--color-primary)]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
-                  Enforced
-                </span>
-              )}
             </div>
             <div className="truncate text-xs tabular-nums text-muted-foreground">
               {detail}
@@ -383,24 +376,25 @@ export function ModelSidebar() {
                   {resetLabel}
                 </span>
               </div>
-              <UsageMeter
-                label="Weekly token budget"
-                used={usage.used}
-                limit={usage.limit}
-                pct={usage.pct}
-                isUnlimited={usage.is_unlimited}
-                enforced={usage.enforced === "tokens"}
-                ariaLabel="Weekly token budget usage"
-              />
-              <UsageMeter
-                label="Weekly call budget"
-                used={usage.calls_used}
-                limit={usage.calls_limit}
-                pct={usage.calls_pct}
-                isUnlimited={usage.calls_is_unlimited}
-                enforced={usage.enforced === "calls"}
-                ariaLabel="Weekly call budget usage"
-              />
+              {usage.enforced === "calls" ? (
+                <UsageMeter
+                  label="Weekly call budget"
+                  used={usage.calls_used}
+                  limit={usage.calls_limit}
+                  pct={usage.calls_pct}
+                  isUnlimited={usage.calls_is_unlimited}
+                  ariaLabel="Weekly call budget usage"
+                />
+              ) : (
+                <UsageMeter
+                  label="Weekly token budget"
+                  used={usage.used}
+                  limit={usage.limit}
+                  pct={usage.pct}
+                  isUnlimited={usage.is_unlimited}
+                  ariaLabel="Weekly token budget usage"
+                />
+              )}
             </section>
           )}
 
