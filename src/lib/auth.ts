@@ -616,6 +616,11 @@ export interface AdminUserUsage {
   pct: number;
   is_unlimited: boolean;
   display_reset: string;
+  calls_used: number;
+  calls_limit: number;
+  calls_pct: number;
+  calls_is_unlimited: boolean;
+  enforced: "tokens" | "calls";
 }
 
 export async function apiGetUserUsage(

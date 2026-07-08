@@ -117,6 +117,89 @@ function usageBarClass(pct: number, isUnlimited: boolean): string {
   return "bg-[var(--color-success)]";
 }
 
+type UsageMeterProps = {
+  label: string;
+  used: number;
+  limit: number;
+  pct: number;
+  isUnlimited: boolean;
+  enforced: boolean;
+  ariaLabel: string;
+};
+
+/** One labelled usage meter (token budget or call budget). */
+function UsageMeter({
+  label,
+  used,
+  limit,
+  pct,
+  isUnlimited,
+  enforced,
+  ariaLabel,
+}: UsageMeterProps) {
+  const clampedPct = Math.min(Math.max(pct, 0), 100);
+  const detail = isUnlimited
+    ? "Unlimited"
+    : `${Math.round(used).toLocaleString()} / ${limit.toLocaleString()}`;
+  return (
+    <div className="aptiv-glass-soft rounded-lg p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Gauge className="h-4 w-4 flex-shrink-0 text-[var(--color-primary)]" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">
+                {label}
+              </span>
+              {enforced && (
+                <span className="rounded-full bg-[var(--color-primary)]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+                  Enforced
+                </span>
+              )}
+            </div>
+            <div className="truncate text-xs tabular-nums text-muted-foreground">
+              {detail}
+            </div>
+          </div>
+        </div>
+        <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+          {isUnlimited ? "∞" : `${Math.round(pct)}%`}
+        </span>
+      </div>
+      <div
+        role="meter"
+        aria-label={ariaLabel}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={isUnlimited ? undefined : Math.round(clampedPct)}
+        aria-valuetext={isUnlimited ? "Unlimited" : `${Math.round(pct)}% used`}
+        className="mt-3 h-2 overflow-hidden rounded-full bg-muted/70"
+      >
+        <div
+          className={[
+            "h-full rounded-full transition-[width] duration-200 ease-out",
+            usageBarClass(pct, isUnlimited),
+          ].join(" ")}
+          style={{ width: isUnlimited ? "100%" : `${clampedPct.toFixed(1)}%` }}
+        />
+      </div>
+      {!isUnlimited && pct >= 80 && (
+        <div className="mt-2 flex items-center justify-end text-[11px]">
+          <span
+            className={
+              pct >= 100
+                ? "font-semibold text-destructive"
+                : "font-semibold text-[var(--color-warning)]"
+            }
+          >
+            {pct >= 100 ? "Limit reached" : "Approaching limit"}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ModelSidebar() {
   const [selection, setSelection] = useState<UserModelSelection | null>(null);
   const [allowed, setAllowed] = useState<ModelEntry[]>([]);
@@ -273,16 +356,6 @@ export function ModelSidebar() {
       ? currentModelEntry.efforts
       : ["low", "medium", "high"];
 
-  const usagePct = usage ? Math.min(Math.max(usage.pct, 0), 100) : 0;
-  const usageLabel = usage?.is_unlimited
-    ? "Unlimited budget"
-    : usage
-      ? `${Math.round(usage.pct)}% used`
-      : "";
-  const usageDetail =
-    usage && !usage.is_unlimited
-      ? `${Math.round(usage.used).toLocaleString()} / ${usage.limit.toLocaleString()}`
-      : null;
   const resetLabel =
     usage?.display_reset && usage.display_reset !== "-"
       ? `Resets in ${usage.display_reset}`
@@ -310,66 +383,24 @@ export function ModelSidebar() {
                   {resetLabel}
                 </span>
               </div>
-              <div className="aptiv-glass-soft rounded-lg p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Gauge className="h-4 w-4 flex-shrink-0 text-[var(--color-primary)]" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-foreground">
-                        Weekly token budget
-                      </div>
-                      <div className="truncate text-xs tabular-nums text-muted-foreground">
-                        {usageDetail ?? usageLabel}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {usage.is_unlimited ? "∞" : `${Math.round(usage.pct)}%`}
-                  </span>
-                </div>
-                <div
-                  role="meter"
-                  aria-label="Weekly token budget usage"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={
-                    usage.is_unlimited ? undefined : Math.round(usagePct)
-                  }
-                  aria-valuetext={
-                    usage.is_unlimited
-                      ? "Unlimited budget"
-                      : `${Math.round(usage.pct)}% used`
-                  }
-                  className="mt-3 h-2 overflow-hidden rounded-full bg-muted/70"
-                >
-                  <div
-                    className={[
-                      "h-full rounded-full transition-[width] duration-200 ease-out",
-                      usageBarClass(usage.pct, usage.is_unlimited),
-                    ].join(" ")}
-                    style={{
-                      width: usage.is_unlimited
-                        ? "100%"
-                        : `${usagePct.toFixed(1)}%`,
-                    }}
-                  />
-                </div>
-                {!usage.is_unlimited && usage.pct >= 80 && (
-                  <div className="mt-2 flex items-center justify-end text-[11px]">
-                    <span
-                      className={
-                        usage.pct >= 100
-                          ? "font-semibold text-destructive"
-                          : "font-semibold text-[var(--color-warning)]"
-                      }
-                    >
-                      {usage.pct >= 100
-                        ? "Limit reached"
-                        : "Approaching limit"}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <UsageMeter
+                label="Weekly token budget"
+                used={usage.used}
+                limit={usage.limit}
+                pct={usage.pct}
+                isUnlimited={usage.is_unlimited}
+                enforced={usage.enforced === "tokens"}
+                ariaLabel="Weekly token budget usage"
+              />
+              <UsageMeter
+                label="Weekly call budget"
+                used={usage.calls_used}
+                limit={usage.calls_limit}
+                pct={usage.calls_pct}
+                isUnlimited={usage.calls_is_unlimited}
+                enforced={usage.enforced === "calls"}
+                ariaLabel="Weekly call budget usage"
+              />
             </section>
           )}
 

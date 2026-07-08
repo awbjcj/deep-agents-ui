@@ -448,6 +448,19 @@ function UsersSection() {
                         ? `${Math.round(u_usage.used).toLocaleString()} · ∞`
                         : `${Math.round(u_usage.pct)}%`}
                     </span>
+                    <span
+                      className="whitespace-nowrap font-mono tabular-nums"
+                      title={
+                        u_usage.enforced === "calls"
+                          ? "Call limit is enforced (proxy mode)"
+                          : "Call usage (not enforced in this mode)"
+                      }
+                    >
+                      {u_usage.enforced === "calls" ? "▶ " : ""}
+                      {u_usage.calls_is_unlimited
+                        ? `${u_usage.calls_used.toLocaleString()}·∞`
+                        : `${u_usage.calls_used.toLocaleString()}/${u_usage.calls_limit.toLocaleString()} calls`}
+                    </span>
                   </div>
                 )}
 

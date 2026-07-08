@@ -11,6 +11,11 @@ export type TokenUsageSnapshot = {
   cycle_resets_at: string | null;
   display_reset: string;
   is_unlimited: boolean;
+  calls_used: number;
+  calls_limit: number;
+  calls_pct: number;
+  calls_is_unlimited: boolean;
+  enforced: "tokens" | "calls";
 };
 
 const POLL_MS = 30_000;
