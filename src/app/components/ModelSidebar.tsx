@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import {
   Brain,
+  CheckCircle,
   Gauge,
   Leaf,
   Loader2,
@@ -28,9 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
 import {
   apiGetAllowedModels,
-  apiGetImageFetching,
   apiGetUserModel,
-  apiSetImageFetching,
   apiSetUserModel,
   type EffectiveModelSelection,
   type ModelEntry,
@@ -203,9 +202,9 @@ export function ModelSidebar() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<ModelPreset | null>(null);
-  const [imageFetching, setImageFetching] = useState<boolean>(false);
-  const [imageFetchingDisabledByAdmin, setImageFetchingDisabledByAdmin] =
-    useState(false);
+  const [saved, setSaved] = useState(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const usage = useTokenUsage();
 
   useEffect(() => {
@@ -233,14 +232,6 @@ export function ModelSidebar() {
         if (mounted) setIsLoading(false);
       });
 
-    apiGetImageFetching()
-      .then((status) => {
-        if (!mounted) return;
-        setImageFetching(status.effective);
-        setImageFetchingDisabledByAdmin(!status.effective && status.enabled === true);
-      })
-      .catch(() => {});
-
     return () => {
       mounted = false;
     };
@@ -264,6 +255,40 @@ export function ModelSidebar() {
     draft !== null && baseline !== null && !draftsEqual(draft, baseline);
   const isCustom = serverCustom || dirty || customManuallySelected;
 
+  // Auto-save the custom configuration a beat after the user stops tweaking
+  // controls, mirroring the connectivity panel's debounced autosave. The
+  // manual Save button (frozen at the bottom) still commits immediately.
+  useEffect(() => {
+    if (isLoading || isSaving || !dirty || !draft?.provider || !draft?.model) {
+      return;
+    }
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      handleSave(true);
+    }, 800);
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, dirty, isLoading, isSaving]);
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      if (savedTimerRef.current) {
+        clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = null;
+      }
+    };
+  }, []);
+
   function applyPreset(preset: ModelPreset) {
     if (isSaving) return;
     setIsSaving(true);
@@ -286,8 +311,12 @@ export function ModelSidebar() {
       });
   }
 
-  function handleSave() {
+  function handleSave(silent = false) {
     if (!draft || !dirty || !draft.provider || !draft.model) return;
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
     setIsSaving(true);
     apiSetUserModel({
       provider: draft.provider,
@@ -302,11 +331,19 @@ export function ModelSidebar() {
         setActivePreset(null);
         setServerCustom(true);
         setCustomManuallySelected(false);
-        toast.success("Saved custom configuration");
+        setSaved(true);
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = setTimeout(() => {
+          setSaved(false);
+          savedTimerRef.current = null;
+        }, 2000);
+        if (!silent) toast.success("Saved custom configuration");
       })
-      .catch((err) =>
-        toast.error(err instanceof Error ? err.message : "Failed to save")
-      )
+      .catch((err) => {
+        if (!silent) {
+          toast.error(err instanceof Error ? err.message : "Failed to save");
+        }
+      })
       .finally(() => setIsSaving(false));
   }
 
@@ -669,61 +706,36 @@ export function ModelSidebar() {
                   <span className="aptiv-slider-tick">32k</span>
                 </div>
               </section>
-
-              <section className="space-y-2">
-                <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-sm font-medium text-foreground">
-                      Image attachments
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {imageFetchingDisabledByAdmin
-                        ? "Disabled by administrator"
-                        : "Include images from tickets and pages"}
-                    </span>
-                  </div>
-                  <Switch
-                    checked={imageFetching}
-                    onCheckedChange={(checked) => {
-                      setImageFetching(checked);
-                      apiSetImageFetching(checked)
-                        .then((status) => {
-                          setImageFetching(status.effective);
-                          setImageFetchingDisabledByAdmin(
-                            !status.effective && status.enabled === true
-                          );
-                        })
-                        .catch(() => {
-                          setImageFetching(!checked);
-                          toast.error("Failed to update image fetching");
-                        });
-                    }}
-                    disabled={imageFetchingDisabledByAdmin || isSaving}
-                  />
-                </div>
-              </section>
-
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || !dirty || !draft.provider || !draft.model}
-                className="w-full"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save custom configuration
-                  </>
-                )}
-              </Button>
             </>
           )}
         </div>
       </ScrollArea>
+      {!isLoading && draft && allowed.length > 0 && (
+        <div className="flex-shrink-0 border-t border-border bg-card/70 p-4 backdrop-blur-sm">
+          <Button
+            onClick={() => handleSave()}
+            disabled={isSaving || !dirty || !draft.provider || !draft.model}
+            className="w-full"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : saved ? (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Saved
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save custom configuration
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

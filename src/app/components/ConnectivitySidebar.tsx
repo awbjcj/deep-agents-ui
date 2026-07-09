@@ -4,9 +4,12 @@ import { useState, useEffect, useRef, useCallback, type KeyboardEvent as ReactKe
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { CheckCircle, Clock, Loader2, RotateCcw, Save } from "lucide-react";
 import {
+  apiGetImageFetching,
   apiGetUserConnectivity,
+  apiSetImageFetching,
   apiSetUserConnectivity,
   RunMode,
   UserConnectivityResponse,
@@ -47,6 +50,10 @@ export function ConnectivitySidebar() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [imageFetching, setImageFetching] = useState(false);
+  const [imageFetchingDisabledByAdmin, setImageFetchingDisabledByAdmin] =
+    useState(false);
+  const [imageFetchingLoaded, setImageFetchingLoaded] = useState(false);
   const radioRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,6 +76,20 @@ export function ConnectivitySidebar() {
       .finally(() => {
         if (mounted) setIsLoading(false);
       });
+
+    apiGetImageFetching()
+      .then((status) => {
+        if (!mounted) return;
+        setImageFetching(status.effective);
+        setImageFetchingDisabledByAdmin(
+          !status.effective && status.enabled === true
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setImageFetchingLoaded(true);
+      });
+
     return () => { mounted = false; };
   }, [setRunModeLocal]);
 
@@ -349,45 +370,84 @@ export function ConnectivitySidebar() {
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 pt-2">
-                <Button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving || !dirty}
-                  className="w-full"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving
-                    </>
-                  ) : saved ? (
-                    <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Saved
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save connectivity
-                    </>
-                  )}
-                </Button>
-
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  disabled={isSaving}
-                  className="inline-flex w-full items-center justify-center gap-1.5 text-center text-[10px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Reset to system defaults
-                </button>
-              </div>
+              {imageFetchingLoaded && !imageFetchingDisabledByAdmin && (
+                <div className="space-y-2 border-t border-border/40 pt-4">
+                  <header className="space-y-1">
+                    <h3 className="text-sm font-semibold tracking-tight">
+                      Image attachments
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground">
+                      Include images from tickets and pages
+                    </p>
+                  </header>
+                  <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
+                    <span className="text-sm font-medium text-foreground">
+                      Enable image attachments
+                    </span>
+                    <Switch
+                      checked={imageFetching}
+                      onCheckedChange={(checked) => {
+                        setImageFetching(checked);
+                        apiSetImageFetching(checked)
+                          .then((status) => {
+                            setImageFetching(status.effective);
+                            setImageFetchingDisabledByAdmin(
+                              !status.effective && status.enabled === true
+                            );
+                          })
+                          .catch(() => {
+                            setImageFetching(!checked);
+                            toast.error("Failed to update image fetching");
+                          });
+                      }}
+                      disabled={isSaving}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
       </ScrollArea>
+      {!isLoading && (
+        <div className="flex-shrink-0 border-t border-border bg-card/70 p-4 backdrop-blur-sm">
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || !dirty}
+              className="w-full"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving
+                </>
+              ) : saved ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Saved
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save connectivity
+                </>
+              )}
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isSaving}
+              className="inline-flex w-full items-center justify-center gap-1.5 text-center text-[10px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Reset to system defaults
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

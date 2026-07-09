@@ -224,20 +224,30 @@ function HomePageInner({
 
           <div className="flex items-center gap-1.5">
             {/* Assistant name surfaced over its raw ID — full ID is in tooltip
-                for power users who need to copy it. */}
+                for power users who need to copy it. Clicking opens the
+                config dialog so the agent can be switched directly from
+                the top bar. */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="hidden cursor-default items-center gap-1.5 text-xs text-muted-foreground lg:inline-flex">
+                <button
+                  type="button"
+                  onClick={() => setConfigDialogOpen(true)}
+                  aria-label="Switch agent"
+                  className="hidden items-center gap-1.5 rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground lg:inline-flex"
+                >
                   <span className="font-semibold uppercase tracking-[0.1em]">
                     Agent
                   </span>
                   <span className="max-w-[180px] truncate text-[12px] font-medium text-foreground/80">
                     {assistant?.graph_id || assistant?.name || config.assistantId}
                   </span>
-                </div>
+                </button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="font-mono text-[11px]">{config.assistantId}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Click to switch agent
+                </div>
               </TooltipContent>
             </Tooltip>
             <span className="mx-1 hidden h-6 w-px bg-border md:block" />
