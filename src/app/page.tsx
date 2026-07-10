@@ -245,7 +245,7 @@ function HomePageInner({
               </TooltipTrigger>
               <TooltipContent>
                 <div className="font-mono text-[11px]">{config.assistantId}</div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-[10px] text-primary-foreground/70">
                   Click to switch agent
                 </div>
               </TooltipContent>
