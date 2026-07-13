@@ -38,6 +38,7 @@ import {
 } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
+import { RoleBadge } from "@/app/utils/roles";
 import { ModelSelector } from "./ModelSelector";
 
 interface UserManagementSidebarProps {
@@ -384,9 +385,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-semibold">{user?.username}</p>
-                <p className="truncate text-xs text-muted-foreground uppercase">
-                  Role: {user?.role || "user"}
-                </p>
+                <div className="mt-0.5">
+                  <RoleBadge role={user?.role || "user"} />
+                </div>
                 {profileEmail && (
                   <p className="truncate text-xs text-muted-foreground">
                     {profileEmail}
@@ -643,6 +644,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                           className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2"
                         >
                           <div className="flex items-center gap-2">
+                            <RoleBadge role={u.role} />
                             <span className="flex-1 truncate text-sm">{u.username}</span>
                             <select
                               value={u.role}

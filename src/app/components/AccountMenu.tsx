@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { RoleBadge, roleVisual } from "@/app/utils/roles";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -63,9 +64,7 @@ export function AccountMenu() {
           <span className="hidden max-w-28 truncate text-sm sm:inline">
             {user.username}
           </span>
-          <span className="hidden rounded-sm border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary-foreground md:inline">
-            {user.role}
-          </span>
+          <RoleBadge role={user.role} className="hidden md:inline-flex" />
           <ChevronDown
             className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")}
             aria-hidden="true"
@@ -82,7 +81,11 @@ export function AccountMenu() {
           >
             <div className="border-b border-border px-3 py-2">
               <p className="truncate text-sm font-medium">{user.username}</p>
-              <p className="text-xs capitalize text-muted-foreground">
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
+                {(() => {
+                  const { Icon, color } = roleVisual(user.role);
+                  return <Icon className="h-3.5 w-3.5" style={{ color }} />;
+                })()}
                 {user.role}
               </p>
             </div>

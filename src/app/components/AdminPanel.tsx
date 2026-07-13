@@ -15,7 +15,6 @@ import {
   CheckCircle,
   ChevronRight,
   Clock,
-  Code2,
   Download,
   Eye,
   Globe,
@@ -29,7 +28,6 @@ import {
   Shield,
   Sliders,
   Trash2,
-  User,
   UserPlus,
   Users,
   X,
@@ -50,6 +48,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatTimestamp } from "@/app/utils/utils";
+import { RoleBadge, roleVisual } from "@/app/utils/roles";
 import { cn } from "@/lib/utils";
 import {
   AdminConnectivityResponse,
@@ -94,20 +93,6 @@ import {
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
-}
-
-function roleVisual(role: Role): {
-  Icon: ComponentType<{ className?: string }>;
-  color: string;
-} {
-  switch (role) {
-    case "admin":
-      return { Icon: Shield, color: "var(--aptiv-orange)" };
-    case "developer":
-      return { Icon: Code2, color: "var(--aptiv-turquoise)" };
-    default:
-      return { Icon: User, color: "var(--aptiv-slate)" };
-  }
 }
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -403,14 +388,23 @@ function UsersSection() {
           {users.map((u) => {
             const u_usage = usage[u.username];
             const isSelf = u.user_id === user?.user_id;
+            const { Icon: RoleIcon, color: roleColor } = roleVisual(u.role);
             return (
               <article
                 key={u.user_id}
                 className="aptiv-glass-soft rounded-lg p-3 shadow-sm transition-colors hover:bg-muted/50"
               >
                 <header className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold uppercase text-primary">
-                    {rolePrefix(u.role)}
+                  <div
+                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border"
+                    style={{
+                      color: roleColor,
+                      borderColor: `color-mix(in srgb, ${roleColor} 40%, transparent)`,
+                      background: `color-mix(in srgb, ${roleColor} 12%, transparent)`,
+                    }}
+                    title={u.role}
+                  >
+                    <RoleIcon className="h-3.5 w-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -436,11 +430,21 @@ function UsersSection() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ROLES.map((role) => (
-                        <SelectItem key={role} value={role} className="text-xs">
-                          {role}
-                        </SelectItem>
-                      ))}
+                      {ROLES.map((role) => {
+                        const { Icon: OptIcon } = roleVisual(role);
+                        return (
+                          <SelectItem
+                            key={role}
+                            value={role}
+                            className="text-xs"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <OptIcon className="h-3.5 w-3.5" />
+                              {role}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </header>
@@ -1163,23 +1167,12 @@ function ScopeCard({
               <ul className="space-y-1">
                 {members.map((m) => {
                   const role = userRoles[m.username] ?? "user";
-                  const { Icon: RoleIcon, color: roleColor } = roleVisual(role);
                   return (
                     <li
                       key={m.username}
                       className="flex items-center gap-2 rounded-md border border-border/60 bg-card/40 px-2.5 py-1.5"
                     >
-                      <span
-                        className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
-                        style={{
-                          color: roleColor,
-                          borderColor: `color-mix(in srgb, ${roleColor} 40%, transparent)`,
-                          background: `color-mix(in srgb, ${roleColor} 12%, transparent)`,
-                        }}
-                      >
-                        <RoleIcon className="h-3 w-3" />
-                        {role}
-                      </span>
+                      <RoleBadge role={role} />
                       <span className="flex-1 truncate text-xs font-medium">
                         {m.username}
                       </span>
@@ -1998,17 +1991,6 @@ function runModeBlurb(mode: RunMode): string {
       return "Via gateway";
     case "proxy":
       return "Via proxy";
-  }
-}
-
-function rolePrefix(role: Role): string {
-  switch (role) {
-    case "admin":
-      return "AD";
-    case "developer":
-      return "DE";
-    case "user":
-      return "US";
   }
 }
 
