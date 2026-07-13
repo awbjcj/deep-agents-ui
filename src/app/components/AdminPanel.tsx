@@ -15,7 +15,9 @@ import {
   CheckCircle,
   ChevronRight,
   Clock,
+  Code2,
   Download,
+  Eye,
   Globe,
   KeyRound,
   Layers,
@@ -27,6 +29,7 @@ import {
   Shield,
   Sliders,
   Trash2,
+  User,
   UserPlus,
   Users,
   X,
@@ -91,6 +94,20 @@ import {
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
+}
+
+function roleVisual(role: Role): {
+  Icon: ComponentType<{ className?: string }>;
+  color: string;
+} {
+  switch (role) {
+    case "admin":
+      return { Icon: Shield, color: "var(--aptiv-orange)" };
+    case "developer":
+      return { Icon: Code2, color: "var(--aptiv-turquoise)" };
+    default:
+      return { Icon: User, color: "var(--aptiv-slate)" };
+  }
 }
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -522,6 +539,7 @@ function ScopesSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [userRoles, setUserRoles] = useState<Record<string, Role>>({});
   const countRefreshRef = useRef<AbortController | null>(null);
 
   const fetchScopes = useCallback(async () => {
@@ -547,6 +565,20 @@ function ScopesSection() {
       countRefreshRef.current?.abort();
     };
   }, [fetchScopes]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    apiListUsers(controller.signal)
+      .then((list) => {
+        const map: Record<string, Role> = {};
+        for (const u of list) map[u.username] = u.role;
+        setUserRoles(map);
+      })
+      .catch(() => {
+        // Role labels are a display nicety; silently ignore load failures.
+      });
+    return () => controller.abort();
+  }, []);
 
   const handleDelete = async (scope: MemoryScope) => {
     if (
@@ -645,6 +677,7 @@ function ScopesSection() {
                         key={key}
                         scope={scope}
                         isOpen={isOpen}
+                        userRoles={userRoles}
                         onToggle={() => setExpanded(isOpen ? null : key)}
                         onDelete={() => handleDelete(scope)}
                         onUpdated={(next) =>
@@ -843,12 +876,14 @@ function ScopeCard({
   onToggle,
   onDelete,
   onUpdated,
+  userRoles,
 }: {
   scope: MemoryScope;
   isOpen: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onUpdated: (next: MemoryScope) => void;
+  userRoles: Record<string, Role>;
 }) {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(scope.display_name ?? "");
@@ -1126,45 +1161,63 @@ function ScopeCard({
               </p>
             ) : (
               <ul className="space-y-1">
-                {members.map((m) => (
-                  <li
-                    key={m.username}
-                    className="flex items-center gap-2 rounded-md border border-border/60 bg-card/40 px-2.5 py-1.5"
-                  >
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold uppercase text-muted-foreground">
-                      {m.username.slice(0, 2)}
-                    </span>
-                    <span className="flex-1 truncate text-xs font-medium">
-                      {m.username}
-                    </span>
-                    <Select
-                      value={m.access}
-                      onValueChange={(v) =>
-                        handleMemberAccessChange(m.username, v as ScopeAccess)
-                      }
+                {members.map((m) => {
+                  const role = userRoles[m.username] ?? "user";
+                  const { Icon: RoleIcon, color: roleColor } = roleVisual(role);
+                  return (
+                    <li
+                      key={m.username}
+                      className="flex items-center gap-2 rounded-md border border-border/60 bg-card/40 px-2.5 py-1.5"
                     >
-                      <SelectTrigger className="h-7 w-[78px] gap-1 px-2 text-[11px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="read" className="text-xs">
-                          read
-                        </SelectItem>
-                        <SelectItem value="write" className="text-xs">
-                          write
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMember(m.username)}
-                      className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      aria-label={`Remove ${m.username}`}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                ))}
+                      <span
+                        className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]"
+                        style={{
+                          color: roleColor,
+                          borderColor: `color-mix(in srgb, ${roleColor} 40%, transparent)`,
+                          background: `color-mix(in srgb, ${roleColor} 12%, transparent)`,
+                        }}
+                      >
+                        <RoleIcon className="h-3 w-3" />
+                        {role}
+                      </span>
+                      <span className="flex-1 truncate text-xs font-medium">
+                        {m.username}
+                      </span>
+                      <Select
+                        value={m.access}
+                        onValueChange={(v) =>
+                          handleMemberAccessChange(m.username, v as ScopeAccess)
+                        }
+                      >
+                        <SelectTrigger className="h-7 w-[92px] gap-1 px-2 text-[11px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="read" className="text-xs">
+                            <span className="flex items-center gap-1.5">
+                              <Eye className="h-3.5 w-3.5" />
+                              read
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="write" className="text-xs">
+                            <span className="flex items-center gap-1.5">
+                              <Pencil className="h-3.5 w-3.5" />
+                              write
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(m.username)}
+                        className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Remove ${m.username}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
 
@@ -1185,15 +1238,21 @@ function ScopeCard({
                 value={newMemberAccess}
                 onValueChange={(v) => setNewMemberAccess(v as ScopeAccess)}
               >
-                <SelectTrigger className="h-8 w-[78px] gap-1 px-2 text-[11px]">
+                <SelectTrigger className="h-8 w-[92px] gap-1 px-2 text-[11px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="read" className="text-xs">
-                    read
+                    <span className="flex items-center gap-1.5">
+                      <Eye className="h-3.5 w-3.5" />
+                      read
+                    </span>
                   </SelectItem>
                   <SelectItem value="write" className="text-xs">
-                    write
+                    <span className="flex items-center gap-1.5">
+                      <Pencil className="h-3.5 w-3.5" />
+                      write
+                    </span>
                   </SelectItem>
                 </SelectContent>
               </Select>

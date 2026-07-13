@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogOut, UserCircle } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
-import { ChangeProfileDialog } from "./ChangeProfileDialog";
 
 export function AccountMenu() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -39,11 +37,6 @@ export function AccountMenu() {
   if (!user) return null;
 
   const initial = user.username.slice(0, 1).toUpperCase();
-
-  const openProfile = () => {
-    setOpen(false);
-    setProfileOpen(true);
-  };
 
   const signOut = () => {
     setOpen(false);
@@ -97,16 +90,6 @@ export function AccountMenu() {
               type="button"
               role="menuitem"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={openProfile}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
-            >
-              <UserCircle className="h-4 w-4" />
-              Account
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onPointerDown={(e) => e.stopPropagation()}
               onClick={signOut}
               className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm text-destructive outline-none hover:bg-destructive/10 focus-visible:bg-destructive/10"
             >
@@ -116,7 +99,6 @@ export function AccountMenu() {
           </div>
         )}
       </div>
-      <ChangeProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </>
   );
 }

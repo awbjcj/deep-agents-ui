@@ -5,6 +5,7 @@ import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
 import { getConfig, saveConfig, getDeploymentUrl, getLangsmithApiKey, StandaloneConfig } from "@/lib/config";
 import { AccountMenu } from "@/app/components/AccountMenu";
+import { ChangeProfileDialog } from "@/app/components/ChangeProfileDialog";
 import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { TokenSetupWizard } from "@/app/components/TokenSetupWizard";
@@ -21,9 +22,9 @@ import { useTheme } from "@/providers/ThemeProvider";
 import {
   LayoutPanelLeft,
   MessagesSquare,
-  Settings,
   Shield,
   SquarePen,
+  UserCog,
 } from "lucide-react";
 import {
   Tooltip,
@@ -67,6 +68,7 @@ function HomePageInner({
     undefined,
   );
   const [adminOpen, setAdminOpen] = useState(false);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const isAdmin = user?.role === "admin";
   const { pendingTokenFocus, requestTokenFocus } = useNotifications();
 
@@ -164,6 +166,10 @@ function HomePageInner({
         onOpenChange={setConfigDialogOpen}
         onSave={handleSaveConfig}
         initialConfig={config}
+      />
+      <ChangeProfileDialog
+        open={accountDialogOpen}
+        onOpenChange={setAccountDialogOpen}
       />
       <TokenSetupWizard />
       <div className="flex h-screen flex-col">
@@ -315,13 +321,14 @@ function HomePageInner({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setConfigDialogOpen(true)}
-                  aria-label="Settings"
+                  onClick={() => setAccountDialogOpen(true)}
+                  aria-label="Account settings"
+                  className="rounded-full border border-border bg-card text-foreground hover:border-primary/40 hover:text-primary"
                 >
-                  <Settings className="h-4 w-4" />
+                  <UserCog className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Settings</TooltipContent>
+              <TooltipContent>Account settings</TooltipContent>
             </Tooltip>
             <Button
               variant="default"
