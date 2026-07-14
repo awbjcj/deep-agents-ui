@@ -105,6 +105,7 @@ export async function apiRegisterInit(payload: {
   username: string;
   email: string;
   password: string;
+  invitation_code?: string | null;
 }): Promise<RegisterInitResponse> {
   const res = await apiFetch("/auth/register/init", {
     method: "POST",
@@ -113,6 +114,18 @@ export async function apiRegisterInit(payload: {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(extractErrorMessage(data.detail, "Registration failed"));
+  }
+  return res.json();
+}
+
+export interface RegistrationPolicy {
+  require_invitation_code: boolean;
+}
+
+export async function apiGetRegistrationPolicy(): Promise<RegistrationPolicy> {
+  const res = await apiFetch("/auth/registration-policy");
+  if (!res.ok) {
+    throw new Error("Failed to fetch registration policy");
   }
   return res.json();
 }
@@ -895,6 +908,97 @@ export async function apiSetTierImageFetching(
     throw new Error("Failed to update tier image fetching");
   }
   return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Registration gating & invitation codes (admin)
+// ---------------------------------------------------------------------------
+
+export interface RegistrationSettings {
+  require_invitation_code: boolean;
+}
+
+export type InvitationCodeStatus = "active" | "used" | "expired";
+
+export interface InvitationCode {
+  id: string;
+  code_prefix: string;
+  note: string | null;
+  created_by: string;
+  created_at: string;
+  expires_at: string | null;
+  used_at: string | null;
+  used_by: string | null;
+  status: InvitationCodeStatus;
+}
+
+export interface CreatedInvitationCode extends InvitationCode {
+  code: string;
+}
+
+export async function apiGetRegistrationSettings(): Promise<RegistrationSettings> {
+  const res = await apiFetch("/admin/registration-settings");
+  if (!res.ok) {
+    throw new Error("Failed to fetch registration settings");
+  }
+  return res.json();
+}
+
+export async function apiSetRegistrationSettings(
+  requireInvitationCode: boolean
+): Promise<RegistrationSettings> {
+  const res = await apiFetch("/admin/registration-settings", {
+    method: "PUT",
+    body: JSON.stringify({ require_invitation_code: requireInvitationCode }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to update registration settings"
+    );
+  }
+  return res.json();
+}
+
+export async function apiListInvitationCodes(): Promise<InvitationCode[]> {
+  const res = await apiFetch("/admin/invitation-codes");
+  if (!res.ok) {
+    throw new Error("Failed to fetch invitation codes");
+  }
+  const data: { codes: InvitationCode[] } = await res.json();
+  return data.codes;
+}
+
+export async function apiCreateInvitationCode(payload: {
+  note?: string | null;
+  expires_in_days?: number | null;
+}): Promise<CreatedInvitationCode> {
+  const res = await apiFetch("/admin/invitation-codes", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage(
+        (data as { detail?: unknown }).detail,
+        "Failed to create invitation code"
+      )
+    );
+  }
+  return res.json();
+}
+
+export async function apiRevokeInvitationCode(codeId: string): Promise<void> {
+  const res = await apiFetch(`/admin/invitation-codes/${codeId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to revoke invitation code"
+    );
+  }
 }
 
 // --- Connectivity settings ---

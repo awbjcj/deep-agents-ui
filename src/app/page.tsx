@@ -417,9 +417,9 @@ function HomePageInner({
                 <ResizablePanel
                   id="admin-panel"
                   order={4}
-                  defaultSize={30}
-                  minSize={24}
-                  className="relative min-w-[380px]"
+                  defaultSize={34}
+                  minSize={28}
+                  className="relative min-w-[460px]"
                 >
                   <AdminPanel onClose={() => setAdminOpen(false)} />
                 </ResizablePanel>

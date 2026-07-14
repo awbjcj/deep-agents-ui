@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
+import { apiGetRegistrationPolicy } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [invitationCode, setInvitationCode] = useState("");
+  const [requireInvitationCode, setRequireInvitationCode] = useState(false);
   const [pendingRegistrationId, setPendingRegistrationId] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
   const [expiresInMinutes, setExpiresInMinutes] = useState<number | null>(null);
@@ -53,6 +56,21 @@ export default function LoginPage() {
     setCurrentYear(new Date().getFullYear());
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    apiGetRegistrationPolicy()
+      .then((policy) => {
+        if (active) setRequireInvitationCode(policy.require_invitation_code);
+      })
+      .catch(() => {
+        // Non-fatal: fall back to no invitation requirement in the UI. The
+        // backend still enforces the real policy on submit.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const switchMode = (next: Mode) => {
     setMode(next);
     setError("");
@@ -60,6 +78,7 @@ export default function LoginPage() {
     if (next === "login") {
       setEmail("");
       setConfirmPassword("");
+      setInvitationCode("");
       setPendingRegistrationId("");
       setPendingEmail("");
       setExpiresInMinutes(null);
@@ -105,12 +124,19 @@ export default function LoginPage() {
         setError("Password must be at least 8 characters");
         return;
       }
+      if (requireInvitationCode && !invitationCode.trim()) {
+        setError("An invitation code is required to register");
+        return;
+      }
       setIsSubmitting(true);
       try {
         const result = await registerInit({
           username: username.trim(),
           email: normalizedEmail,
           password,
+          invitation_code: requireInvitationCode
+            ? invitationCode.trim()
+            : undefined,
         });
         setPendingRegistrationId(result.pending_registration_id);
         setPendingEmail(result.email);
@@ -280,6 +306,27 @@ export default function LoginPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
+
+          {mode === "register" && requireInvitationCode && (
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="invitationCode"
+                className="text-[13px] font-medium"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                Invitation code
+              </Label>
+              <Input
+                id="invitationCode"
+                type="text"
+                placeholder="Enter your invitation code"
+                value={invitationCode}
+                onChange={(e) => setInvitationCode(e.target.value)}
+                autoComplete="off"
                 disabled={isSubmitting}
               />
             </div>

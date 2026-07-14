@@ -29,6 +29,7 @@ interface AuthContextValue {
     username: string;
     email: string;
     password: string;
+    invitation_code?: string | null;
   }) => Promise<RegisterInitResponse>;
   registerVerify: (payload: {
     pending_registration_id: string;
@@ -88,8 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const registerInit = useCallback(
-    async (payload: { username: string; email: string; password: string }) =>
-      apiRegisterInit(payload),
+    async (payload: {
+      username: string;
+      email: string;
+      password: string;
+      invitation_code?: string | null;
+    }) => apiRegisterInit(payload),
     [],
   );
 
