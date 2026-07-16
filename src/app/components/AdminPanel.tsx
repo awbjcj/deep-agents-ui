@@ -1537,13 +1537,15 @@ function RunModeSection() {
             subtitle="Override environment URLs for each provider and mode. Empty = use .env default."
           />
 
-          {(["openai", "anthropic"] as const).map((provider) => (
-            <div key={provider} className="space-y-2">
-              <p className="aptiv-eyebrow">{provider === "openai" ? "OpenAI" : "Anthropic"}</p>
+          {([
+            { id: "openai", label: "OpenAI", prefix: "openai_base_url" },
+            { id: "anthropic", label: "Anthropic", prefix: "claude_base_url" },
+            { id: "gemini", label: "Gemini", prefix: "gemini_base_url" },
+          ] as const).map((provider) => (
+            <div key={provider.id} className="space-y-2">
+              <p className="aptiv-eyebrow">{provider.label}</p>
               {(["remote", "gateway", "proxy"] as const).map((mode) => {
-                const key = provider === "openai"
-                  ? `openai_base_url${mode === "remote" ? "" : `_${mode}`}`
-                  : `claude_base_url${mode === "remote" ? "" : `_${mode}`}`;
+                const key = `${provider.prefix}${mode === "remote" ? "" : `_${mode}`}`;
                 const info = connectivity.urls[key];
                 return (
                   <div key={key} className="space-y-1">

@@ -1024,6 +1024,9 @@ export interface AdminConnectivityUpdatePayload {
   claude_base_url?: string;
   claude_base_url_gateway?: string;
   claude_base_url_proxy?: string;
+  gemini_base_url?: string;
+  gemini_base_url_gateway?: string;
+  gemini_base_url_proxy?: string;
 }
 
 export async function apiGetAdminConnectivity(): Promise<AdminConnectivityResponse> {
