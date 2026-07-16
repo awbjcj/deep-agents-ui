@@ -1540,7 +1540,7 @@ function RunModeSection() {
           {([
             { id: "openai", label: "OpenAI", prefix: "openai_base_url" },
             { id: "anthropic", label: "Anthropic", prefix: "claude_base_url" },
-            { id: "gemini", label: "Gemini", prefix: "gemini_base_url" },
+            { id: "gemini", label: "Gemini", prefix: "google_base_url" },
           ] as const).map((provider) => (
             <div key={provider.id} className="space-y-2">
               <p className="aptiv-eyebrow">{provider.label}</p>
