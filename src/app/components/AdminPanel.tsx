@@ -2121,10 +2121,11 @@ function EmptyState({
 type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
 
 /**
- * Per-user weekly usage strip. Renders the selected cap (`override`, from the
- * panel's Tokens/Calls switch — defaulting to the enforced dimension) as the
- * primary bar + labelled percentage marked with ▶, and the other cap as dimmed
- * secondary context. Both caps are enforced; the switch only changes the view.
+ * Per-user weekly usage strip. Renders a single meter for the selected cap
+ * (`override`, from the panel's Tokens/Calls switch — defaulting to the enforced
+ * dimension): a progress bar plus the dimension-labelled value. Both caps are
+ * enforced server-side; the switch only chooses which one this bar shows. The
+ * Tokens tab shows the token cap, the Calls tab shows the call cap — never both.
  */
 function UsageStrip({
   usage,
@@ -2133,7 +2134,7 @@ function UsageStrip({
   usage: AdminUserUsage;
   override?: EnforcedDimension;
 }) {
-  const { primary, secondary } = splitUsageByEnforcement(usage, override);
+  const { primary } = splitUsageByEnforcement(usage, override);
   return (
     <div className="mt-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
       <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
@@ -2157,20 +2158,12 @@ function UsageStrip({
       </div>
       <span
         className="whitespace-nowrap font-mono tabular-nums text-foreground"
-        title={`Weekly ${primary.dimension} cap (shown)`}
+        title={`Weekly ${primary.dimension} cap`}
       >
-        ▶ {primary.dimension}{" "}
+        {primary.dimension}{" "}
         {primary.isUnlimited
           ? `${Math.round(primary.used).toLocaleString()} · ∞`
           : `${Math.round(primary.pct)}%`}
-      </span>
-      <span
-        className="whitespace-nowrap font-mono tabular-nums text-muted-foreground/70"
-        title={`Weekly ${secondary.dimension} cap (context)`}
-      >
-        {secondary.isUnlimited
-          ? `${Math.round(secondary.used).toLocaleString()}·∞ ${secondary.dimension}`
-          : `${Math.round(secondary.used).toLocaleString()}/${secondary.limit.toLocaleString()} ${secondary.dimension}`}
       </span>
     </div>
   );
