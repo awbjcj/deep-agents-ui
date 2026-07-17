@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
+import { splitUsageByEnforcement } from "@/lib/usage";
+import {
+  UsageDimensionToggle,
+  usageViewOverride,
+  type UsageView,
+} from "@/app/components/UsageDimensionToggle";
 import {
   apiGetAllowedModels,
   apiGetUserModel,
@@ -206,6 +212,7 @@ export function ModelSidebar() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const usage = useTokenUsage();
+  const [usageView, setUsageView] = useState<UsageView>("auto");
 
   useEffect(() => {
     let mounted = true;
@@ -413,25 +420,30 @@ export function ModelSidebar() {
                   {resetLabel}
                 </span>
               </div>
-              {usage.enforced === "calls" ? (
-                <UsageMeter
-                  label="Weekly call budget"
-                  used={usage.calls_used}
-                  limit={usage.calls_limit}
-                  pct={usage.calls_pct}
-                  isUnlimited={usage.calls_is_unlimited}
-                  ariaLabel="Weekly call budget usage"
-                />
-              ) : (
-                <UsageMeter
-                  label="Weekly token budget"
-                  used={usage.used}
-                  limit={usage.limit}
-                  pct={usage.pct}
-                  isUnlimited={usage.is_unlimited}
-                  ariaLabel="Weekly token budget usage"
-                />
-              )}
+              <div className="flex justify-end">
+                <UsageDimensionToggle value={usageView} onChange={setUsageView} />
+              </div>
+              {(() => {
+                const { primary } = splitUsageByEnforcement(
+                  usage,
+                  usageViewOverride(usageView)
+                );
+                const isCalls = primary.dimension === "calls";
+                return (
+                  <UsageMeter
+                    label={isCalls ? "Weekly call budget" : "Weekly token budget"}
+                    used={primary.used}
+                    limit={primary.limit}
+                    pct={primary.pct}
+                    isUnlimited={primary.isUnlimited}
+                    ariaLabel={
+                      isCalls
+                        ? "Weekly call budget usage"
+                        : "Weekly token budget usage"
+                    }
+                  />
+                );
+              })()}
             </section>
           )}
 

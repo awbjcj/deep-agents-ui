@@ -67,3 +67,46 @@ test("unlimited flags follow the enforced dimension", () => {
   assert.equal(primary.isUnlimited, false);
   assert.equal(primary.pct, 8.4);
 });
+
+// The local per-view display switch: an explicit dimension override makes that
+// dimension the primary meter regardless of which one the backend enforces, so
+// a viewer can inspect either cap without changing enforcement.
+test("an explicit override flips the primary meter regardless of enforced", () => {
+  const base = {
+    used: 190_000,
+    limit: 1_000_000,
+    pct: 19,
+    is_unlimited: false,
+    calls_used: 3,
+    calls_limit: 500,
+    calls_pct: 0.6,
+    calls_is_unlimited: false,
+    enforced: "calls",
+  };
+
+  // enforced === "calls", but override forces the token meter primary.
+  const t = splitUsageByEnforcement(base, "tokens");
+  assert.equal(t.primary.dimension, "tokens");
+  assert.equal(t.primary.pct, 19);
+  assert.equal(t.secondary.dimension, "calls");
+
+  // override "calls" on an enforced === "tokens" summary.
+  const c = splitUsageByEnforcement({ ...base, enforced: "tokens" }, "calls");
+  assert.equal(c.primary.dimension, "calls");
+  assert.equal(c.primary.pct, 0.6);
+});
+
+test("an undefined override falls back to the enforced dimension", () => {
+  const base = {
+    used: 190_000,
+    limit: 1_000_000,
+    pct: 19,
+    is_unlimited: false,
+    calls_used: 3,
+    calls_limit: 500,
+    calls_pct: 0.6,
+    calls_is_unlimited: false,
+    enforced: "calls",
+  };
+  assert.equal(splitUsageByEnforcement(base, undefined).primary.dimension, "calls");
+});

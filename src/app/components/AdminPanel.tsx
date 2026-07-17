@@ -98,7 +98,15 @@ import {
   TempPassword,
   TierModelEntry,
 } from "@/lib/auth";
-import { splitUsageByEnforcement } from "@/lib/usage";
+import {
+  splitUsageByEnforcement,
+  type EnforcedDimension,
+} from "@/lib/usage";
+import {
+  UsageDimensionToggle,
+  usageViewOverride,
+  type UsageView,
+} from "@/app/components/UsageDimensionToggle";
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
@@ -220,6 +228,7 @@ function UsersSection() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usage, setUsage] = useState<Record<string, AdminUserUsage>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [usageView, setUsageView] = useState<UsageView>("auto");
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -393,10 +402,15 @@ function UsersSection() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
-        title="People"
-        subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"} in this workspace`}
-      />
+      <div className="flex items-start justify-between gap-3">
+        <SectionHeader
+          title="People"
+          subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"} in this workspace`}
+        />
+        <div className="pt-0.5" title="Which weekly cap the usage bars show">
+          <UsageDimensionToggle value={usageView} onChange={setUsageView} />
+        </div>
+      </div>
 
       {isLoading ? (
         <LoadingRow />
@@ -466,7 +480,12 @@ function UsersSection() {
                   </Select>
                 </header>
 
-                {u_usage && <UsageStrip usage={u_usage} />}
+                {u_usage && (
+                  <UsageStrip
+                    usage={u_usage}
+                    override={usageViewOverride(usageView)}
+                  />
+                )}
 
                 <div className="mt-2.5 grid grid-cols-3 gap-1.5">
                   <ActionPill
@@ -2107,9 +2126,17 @@ type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
  * Per-user weekly usage strip. Renders the actively-enforced cap (token- or
  * call-based, per `RUN_MODE`) as the primary bar + percentage, marked with ▶,
  * and the other tracked-but-not-enforced cap as dimmed secondary context.
+ * `override` (from the panel-level toggle) forces which cap is primary,
+ * independent of enforcement.
  */
-function UsageStrip({ usage }: { usage: AdminUserUsage }) {
-  const { primary, secondary } = splitUsageByEnforcement(usage);
+function UsageStrip({
+  usage,
+  override,
+}: {
+  usage: AdminUserUsage;
+  override?: EnforcedDimension;
+}) {
+  const { primary, secondary } = splitUsageByEnforcement(usage, override);
   return (
     <div className="mt-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
       <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">

@@ -43,9 +43,17 @@ export interface SplitUsageView {
 
 /**
  * Split a usage summary into the enforced (primary) and non-enforced
- * (secondary) meters based on its `enforced` marker.
+ * (secondary) meters.
+ *
+ * By default the actively-enforced dimension (`u.enforced`) drives the primary
+ * meter. Pass `override` to force a specific dimension primary instead — this
+ * backs the local, per-view display switch, letting a viewer inspect either cap
+ * without altering which one the backend enforces.
  */
-export function splitUsageByEnforcement(u: EnforcedUsageFields): SplitUsageView {
+export function splitUsageByEnforcement(
+  u: EnforcedUsageFields,
+  override?: EnforcedDimension,
+): SplitUsageView {
   const tokens: UsageMeterView = {
     used: u.used,
     limit: u.limit,
@@ -60,7 +68,8 @@ export function splitUsageByEnforcement(u: EnforcedUsageFields): SplitUsageView 
     isUnlimited: u.calls_is_unlimited,
     dimension: "calls",
   };
-  return u.enforced === "calls"
+  const primaryDimension = override ?? u.enforced;
+  return primaryDimension === "calls"
     ? { primary: calls, secondary: tokens }
     : { primary: tokens, secondary: calls };
 }
