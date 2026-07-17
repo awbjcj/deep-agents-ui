@@ -102,11 +102,7 @@ import {
   splitUsageByEnforcement,
   type EnforcedDimension,
 } from "@/lib/usage";
-import {
-  UsageDimensionToggle,
-  usageViewOverride,
-  type UsageView,
-} from "@/app/components/UsageDimensionToggle";
+import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
@@ -228,7 +224,7 @@ function UsersSection() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usage, setUsage] = useState<Record<string, AdminUserUsage>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [usageView, setUsageView] = useState<UsageView>("auto");
+  const [usageView, setUsageView] = useState<EnforcedDimension | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -400,6 +396,11 @@ function UsersSection() {
     }
   };
 
+  // Default the meter to the enforced dimension of the loaded users (uniform in
+  // single-mode deployments); the toggle lets an admin force either dimension.
+  const usageDim: EnforcedDimension =
+    usageView ?? Object.values(usage).find(Boolean)?.enforced ?? "tokens";
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
@@ -408,7 +409,7 @@ function UsersSection() {
           subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"} in this workspace`}
         />
         <div className="pt-0.5" title="Which weekly cap the usage bars show">
-          <UsageDimensionToggle value={usageView} onChange={setUsageView} />
+          <UsageDimensionToggle value={usageDim} onChange={setUsageView} />
         </div>
       </div>
 
@@ -481,10 +482,7 @@ function UsersSection() {
                 </header>
 
                 {u_usage && (
-                  <UsageStrip
-                    usage={u_usage}
-                    override={usageViewOverride(usageView)}
-                  />
+                  <UsageStrip usage={u_usage} override={usageDim} />
                 )}
 
                 <div className="mt-2.5 grid grid-cols-3 gap-1.5">
@@ -2123,11 +2121,10 @@ function EmptyState({
 type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
 
 /**
- * Per-user weekly usage strip. Renders the actively-enforced cap (token- or
- * call-based, per `RUN_MODE`) as the primary bar + percentage, marked with ▶,
- * and the other tracked-but-not-enforced cap as dimmed secondary context.
- * `override` (from the panel-level toggle) forces which cap is primary,
- * independent of enforcement.
+ * Per-user weekly usage strip. Renders the selected cap (`override`, from the
+ * panel's Tokens/Calls switch — defaulting to the enforced dimension) as the
+ * primary bar + labelled percentage marked with ▶, and the other cap as dimmed
+ * secondary context. Both caps are enforced; the switch only changes the view.
  */
 function UsageStrip({
   usage,
@@ -2160,16 +2157,16 @@ function UsageStrip({
       </div>
       <span
         className="whitespace-nowrap font-mono tabular-nums text-foreground"
-        title={`Enforced: weekly ${primary.dimension} cap`}
+        title={`Weekly ${primary.dimension} cap (shown)`}
       >
-        ▶{" "}
+        ▶ {primary.dimension}{" "}
         {primary.isUnlimited
           ? `${Math.round(primary.used).toLocaleString()} · ∞`
           : `${Math.round(primary.pct)}%`}
       </span>
       <span
         className="whitespace-nowrap font-mono tabular-nums text-muted-foreground/70"
-        title={`Tracked (not enforced): weekly ${secondary.dimension} cap`}
+        title={`Weekly ${secondary.dimension} cap (context)`}
       >
         {secondary.isUnlimited
           ? `${Math.round(secondary.used).toLocaleString()}·∞ ${secondary.dimension}`

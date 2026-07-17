@@ -3,38 +3,23 @@
 import { cn } from "@/lib/utils";
 import type { EnforcedDimension } from "@/lib/usage";
 
-/**
- * Local, per-view display selection for a usage meter. `"auto"` follows the
- * backend-enforced cap (proxy → calls, remote/gateway → tokens); the explicit
- * dimensions force that meter regardless of enforcement. This only changes what
- * is displayed — enforcement is unaffected.
- */
-export type UsageView = "auto" | EnforcedDimension;
-
-const OPTIONS: { value: UsageView; label: string; title: string }[] = [
-  {
-    value: "auto",
-    label: "Auto",
-    title: "Follow the enforced cap (per connectivity mode)",
-  },
+const OPTIONS: { value: EnforcedDimension; label: string; title: string }[] = [
   { value: "tokens", label: "Tokens", title: "Show the weekly token cap" },
   { value: "calls", label: "Calls", title: "Show the weekly call cap" },
 ];
 
-/** Resolve a {@link UsageView} into the `override` arg for `splitUsageByEnforcement`. */
-// eslint-disable-next-line react-refresh/only-export-components
-export function usageViewOverride(view: UsageView): EnforcedDimension | undefined {
-  return view === "auto" ? undefined : view;
-}
-
-/** Compact segmented control that switches which weekly cap a meter displays. */
+/**
+ * Two-state switch selecting which weekly cap a usage meter displays. It only
+ * changes what is shown — enforcement is unaffected. Callers default `value` to
+ * the backend-enforced dimension (proxy → calls, remote/gateway → tokens).
+ */
 export function UsageDimensionToggle({
   value,
   onChange,
   className,
 }: {
-  value: UsageView;
-  onChange: (v: UsageView) => void;
+  value: EnforcedDimension;
+  onChange: (v: EnforcedDimension) => void;
   className?: string;
 }) {
   return (

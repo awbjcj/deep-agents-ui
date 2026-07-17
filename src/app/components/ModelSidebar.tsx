@@ -27,12 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
-import { splitUsageByEnforcement } from "@/lib/usage";
-import {
-  UsageDimensionToggle,
-  usageViewOverride,
-  type UsageView,
-} from "@/app/components/UsageDimensionToggle";
+import { splitUsageByEnforcement, type EnforcedDimension } from "@/lib/usage";
+import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import {
   apiGetAllowedModels,
   apiGetUserModel,
@@ -212,7 +208,7 @@ export function ModelSidebar() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const usage = useTokenUsage();
-  const [usageView, setUsageView] = useState<UsageView>("auto");
+  const [usageView, setUsageView] = useState<EnforcedDimension | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -421,12 +417,15 @@ export function ModelSidebar() {
                 </span>
               </div>
               <div className="flex justify-end">
-                <UsageDimensionToggle value={usageView} onChange={setUsageView} />
+                <UsageDimensionToggle
+                  value={usageView ?? usage.enforced}
+                  onChange={setUsageView}
+                />
               </div>
               {(() => {
                 const { primary } = splitUsageByEnforcement(
                   usage,
-                  usageViewOverride(usageView)
+                  usageView ?? usage.enforced
                 );
                 const isCalls = primary.dimension === "calls";
                 return (
