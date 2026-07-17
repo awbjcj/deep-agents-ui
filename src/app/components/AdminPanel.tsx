@@ -98,6 +98,7 @@ import {
   TempPassword,
   TierModelEntry,
 } from "@/lib/auth";
+import { splitUsageByEnforcement } from "@/lib/usage";
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
@@ -343,7 +344,13 @@ function UsersSection() {
       setUsage((prev) => {
         const next = { ...prev };
         if (next[target.username]) {
-          next[target.username] = { ...next[target.username], used: 0, pct: 0 };
+          next[target.username] = {
+            ...next[target.username],
+            used: 0,
+            pct: 0,
+            calls_used: 0,
+            calls_pct: 0,
+          };
         }
         return next;
       });
@@ -374,7 +381,7 @@ function UsersSection() {
       setUsage((prev) => {
         const next: Record<string, AdminUserUsage> = {};
         for (const [k, v] of Object.entries(prev)) {
-          next[k] = { ...v, used: 0, pct: 0 };
+          next[k] = { ...v, used: 0, pct: 0, calls_used: 0, calls_pct: 0 };
         }
         return next;
       });
@@ -459,41 +466,7 @@ function UsersSection() {
                   </Select>
                 </header>
 
-                {u_usage && (
-                  <div className="mt-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all",
-                          u_usage.pct >= 90
-                            ? "bg-destructive"
-                            : u_usage.pct >= 70
-                              ? "bg-[var(--color-warning)]"
-                              : "bg-primary"
-                        )}
-                        style={{ width: `${Math.min(u_usage.pct, 100)}%` }}
-                      />
-                    </div>
-                    <span className="whitespace-nowrap font-mono tabular-nums">
-                      {u_usage.is_unlimited
-                        ? `${Math.round(u_usage.used).toLocaleString()} · ∞`
-                        : `${Math.round(u_usage.pct)}%`}
-                    </span>
-                    <span
-                      className="whitespace-nowrap font-mono tabular-nums"
-                      title={
-                        u_usage.enforced === "calls"
-                          ? "Call limit is enforced (proxy mode)"
-                          : "Call usage (not enforced in this mode)"
-                      }
-                    >
-                      {u_usage.enforced === "calls" ? "▶ " : ""}
-                      {u_usage.calls_is_unlimited
-                        ? `${u_usage.calls_used.toLocaleString()}·∞`
-                        : `${u_usage.calls_used.toLocaleString()}/${u_usage.calls_limit.toLocaleString()} calls`}
-                    </span>
-                  </div>
-                )}
+                {u_usage && <UsageStrip usage={u_usage} />}
 
                 <div className="mt-2.5 grid grid-cols-3 gap-1.5">
                   <ActionPill
@@ -2129,6 +2102,55 @@ function EmptyState({
 }
 
 type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
+
+/**
+ * Per-user weekly usage strip. Renders the actively-enforced cap (token- or
+ * call-based, per `RUN_MODE`) as the primary bar + percentage, marked with ▶,
+ * and the other tracked-but-not-enforced cap as dimmed secondary context.
+ */
+function UsageStrip({ usage }: { usage: AdminUserUsage }) {
+  const { primary, secondary } = splitUsageByEnforcement(usage);
+  return (
+    <div className="mt-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            primary.isUnlimited
+              ? "bg-muted-foreground/40"
+              : primary.pct >= 90
+                ? "bg-destructive"
+                : primary.pct >= 70
+                  ? "bg-[var(--color-warning)]"
+                  : "bg-primary"
+          )}
+          style={{
+            width: primary.isUnlimited
+              ? "100%"
+              : `${Math.min(primary.pct, 100)}%`,
+          }}
+        />
+      </div>
+      <span
+        className="whitespace-nowrap font-mono tabular-nums text-foreground"
+        title={`Enforced: weekly ${primary.dimension} cap`}
+      >
+        ▶{" "}
+        {primary.isUnlimited
+          ? `${Math.round(primary.used).toLocaleString()} · ∞`
+          : `${Math.round(primary.pct)}%`}
+      </span>
+      <span
+        className="whitespace-nowrap font-mono tabular-nums text-muted-foreground/70"
+        title={`Tracked (not enforced): weekly ${secondary.dimension} cap`}
+      >
+        {secondary.isUnlimited
+          ? `${Math.round(secondary.used).toLocaleString()}·∞ ${secondary.dimension}`
+          : `${Math.round(secondary.used).toLocaleString()}/${secondary.limit.toLocaleString()} ${secondary.dimension}`}
+      </span>
+    </div>
+  );
+}
 
 function ActionPill({
   icon: Icon,
