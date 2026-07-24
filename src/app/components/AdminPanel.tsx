@@ -2162,8 +2162,8 @@ function UsageStrip({
       >
         {primary.dimension}{" "}
         {primary.isUnlimited
-          ? `${Math.round(primary.used).toLocaleString()} · ∞`
-          : `${Math.round(primary.pct)}%`}
+          ? `${Math.round(primary.used).toLocaleString()} / ∞`
+          : `${Math.round(primary.used).toLocaleString()} / ${primary.limit.toLocaleString()} · ${Math.round(primary.pct)}%`}
       </span>
     </div>
   );
