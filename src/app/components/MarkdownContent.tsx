@@ -54,6 +54,34 @@ const REHYPE_PLUGINS: [typeof rehypeKatex, { strict: string }][] = [
   [rehypeKatex, { strict: "ignore" }],
 ];
 
+// Markdown here is agent output, i.e. untrusted. react-markdown strips unsafe
+// URL schemes on its own, but the `a`/`img` renderers below take href/src as
+// plain props, so re-check the scheme here to keep `javascript:`-style payloads
+// out even if the pipeline later gains rehype-raw or a custom urlTransform.
+const SAFE_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
+const SAFE_IMAGE_DATA_URL = /^data:image\/(png|jpeg|gif|webp);base64,/i;
+
+function safeUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  // Fragment / relative URLs carry no scheme to abuse.
+  if (/^[#/?.]/.test(trimmed)) return trimmed;
+  try {
+    const { protocol } = new URL(trimmed, "https://invalid.local");
+    return SAFE_URL_PROTOCOLS.has(protocol) ? trimmed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function safeImageSrc(value: unknown): string | undefined {
+  if (typeof value === "string" && SAFE_IMAGE_DATA_URL.test(value.trim())) {
+    return value.trim();
+  }
+  return safeUrl(value);
+}
+
 // Hoisted outside render so ReactMarkdown's child-rendering memoization works.
 // Previously the components object was rebuilt on every render of every
 // message, defeating React.memo on MarkdownContent.
@@ -166,9 +194,11 @@ const COMPONENTS: Components = {
     );
   },
   a({ href, children }) {
+    const safeHref = safeUrl(href);
+    if (!safeHref) return <>{children}</>;
     return (
       <a
-        href={href}
+        href={safeHref}
         target="_blank"
         rel="noopener noreferrer"
         className="text-primary no-underline hover:underline"
@@ -263,10 +293,11 @@ const COMPONENTS: Components = {
     );
   },
   img({ src, alt, ...props }) {
-    if (!src) return null;
+    const safeSrc = safeImageSrc(src);
+    if (!safeSrc) return null;
     return (
       <img
-        src={src as string}
+        src={safeSrc}
         alt={alt ?? ""}
         loading="lazy"
         className="my-4 h-auto max-w-full rounded-md border border-border"
