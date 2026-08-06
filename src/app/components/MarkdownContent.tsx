@@ -7,7 +7,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
-import { normalizeDisplayMathDelimiters } from "@/app/utils/markdown";
+import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 
 // Lazy-load Prism only when the user actually views code. The full Prism
 // languages bundle is ~300KB minified — keeping it out of the initial chunk
@@ -23,7 +23,7 @@ const SyntaxHighlighter = lazy(() =>
   ]).then(([sh, themes]) => {
     oneDarkTheme = themes.oneDark;
     return { default: sh.Prism };
-  }),
+  })
 );
 
 const PROSE_CLASS =
@@ -44,15 +44,23 @@ const PROSE_CLASS =
   "[&_h5:first-child]:mt-0 [&_h5]:mb-4 [&_h5]:mt-6 [&_h5]:font-semibold " +
   "[&_h6:first-child]:mt-0 [&_h6]:mb-4 [&_h6]:mt-6 [&_h6]:font-semibold " +
   "[&_p:last-child]:mb-0 [&_p]:mb-4 " +
+  // GFM footnotes render as a trailing <section>; set it apart from the body
+  // text with a rule and a smaller type size.
+  "[&_.footnotes]:mt-6 [&_.footnotes]:border-t [&_.footnotes]:border-border " +
+  "[&_.footnotes]:pt-3 [&_.footnotes]:text-sm [&_.footnotes]:text-foreground/75 " +
   // KaTeX: allow long display equations to scroll horizontally instead of
   // bleeding out of the message bubble. Padding + sizing live in globals.css
   // so all .katex-display instances share one source of truth.
   "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden";
 
 const REMARK_PLUGINS = [remarkGfm, remarkMath];
-const REHYPE_PLUGINS: [typeof rehypeKatex, { strict: string }][] = [
-  [rehypeKatex, { strict: "ignore" }],
-];
+// KaTeX renders unparseable math inline in `errorColor` rather than throwing.
+// Pointing that at the theme token keeps malformed math legible on both themes
+// instead of KaTeX's hard-coded #cc0000.
+const REHYPE_PLUGINS: [
+  typeof rehypeKatex,
+  { strict: string; errorColor: string }
+][] = [[rehypeKatex, { strict: "ignore", errorColor: "var(--text-error)" }]];
 
 // Markdown here is agent output, i.e. untrusted. react-markdown strips unsafe
 // URL schemes on its own, but the `a`/`img` renderers below take href/src as
@@ -82,125 +90,151 @@ function safeImageSrc(value: unknown): string | undefined {
   return safeUrl(value);
 }
 
+const INLINE_CODE_CLASS =
+  "rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono " +
+  "text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]";
+
+/**
+ * Collects the raw text of a markdown subtree.
+ *
+ * `pre` is handed the not-yet-rendered `code` element, so block code text has
+ * to be pulled back out of the React children. Arrays are joined with an empty
+ * separator on purpose: `String([a, b])` would inject a comma between the text
+ * fragments a streaming response arrives in and corrupt the rendered code.
+ */
+function flattenText(node: React.ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean")
+    return "";
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(flattenText).join("");
+  if (React.isValidElement(node)) {
+    return flattenText((node.props as { children?: React.ReactNode }).children);
+  }
+  return "";
+}
+
+/** Reads the `language-*` hint off the `code` element nested inside a `pre`. */
+function codeLanguage(children: React.ReactNode): string | undefined {
+  for (const child of React.Children.toArray(children)) {
+    if (!React.isValidElement(child)) continue;
+    const { className } = child.props as { className?: string };
+    const match = /language-([\w+#.-]+)/.exec(className ?? "");
+    if (match) return match[1];
+  }
+  return undefined;
+}
+
+/**
+ * Unhighlighted block code. Horizontally scrollable, so it is also a focusable
+ * labelled region — otherwise keyboard users cannot reach the overflow
+ * (WCAG 2.1.1).
+ */
+function PlainCodeBlock({ text, label }: { text: string; label: string }) {
+  return (
+    <pre
+      role="region"
+      aria-label={label}
+      tabIndex={0}
+      className="my-0 max-w-full overflow-x-auto rounded-md border border-border bg-secondary p-3 text-[0.9em] leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      <code className="font-mono text-current">{text}</code>
+    </pre>
+  );
+}
+
 // Hoisted outside render so ReactMarkdown's child-rendering memoization works.
 // Previously the components object was rebuilt on every render of every
 // message, defeating React.memo on MarkdownContent.
 const COMPONENTS: Components = {
-  code({ inline, className, children, ...props }: any) {
-    // True inline code — the common case during streaming. Bail out fast
-    // before doing the string conversion / regex used by the block paths.
-    if (inline) {
-      return (
-        <code
-          className="rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]"
-          {...props}
-        >
-          {children}
-        </code>
-      );
-    }
-
-    const match = /language-(\w+)/.exec(className || "");
-    // react-markdown sometimes passes children as an array of text nodes
-    // (e.g. when content streams in chunks). Flatten safely so commas
-    // aren't injected between fragments — `String([a,b])` would yield
-    // "a,b" and corrupt the rendered code.
-    const text = (
-      Array.isArray(children) ? children.join("") : String(children)
-    ).replace(/\n$/, "");
-    const isMultiline = text.includes("\n");
-
-    // Fenced code with explicit language → Prism syntax highlighting.
-    if (match) {
-      return (
-        <Suspense
-          fallback={
-            <pre className="my-2 max-w-full overflow-x-auto rounded-md border border-border bg-secondary p-3 text-sm">
-              <code>{text}</code>
-            </pre>
-          }
-        >
-          <SyntaxHighlighter
-            style={oneDarkTheme as any}
-            language={match[1]}
-            PreTag="div"
-            className="max-w-full rounded-md text-base"
-            wrapLines={true}
-            wrapLongLines={true}
-            codeTagProps={{
-              style: {
-                padding: 0,
-                background: "transparent",
-                border: 0,
-                borderRadius: 0,
-                // oneDark sets an embossed text-shadow on its code/pre
-                // selectors that reads as a "shaded"/double-vision glyph.
-                // Strip it so code renders crisp on first and later paints.
-                textShadow: "none",
-              },
-            }}
-            lineProps={{
-              style: {
-                wordBreak: "break-all",
-                whiteSpace: "pre-wrap",
-                overflowWrap: "break-word",
-              },
-            }}
-            customStyle={{
-              margin: 0,
-              maxWidth: "100%",
-              overflowX: "auto",
-              fontSize: "0.95em",
-              fontFamily: "var(--font-family-mono)",
-              fontWeight: 500,
-              fontFeatureSettings: '"ss01", "cv11"',
-              background: "var(--code-block-bg)",
-              border: "1px solid var(--code-block-border)",
-              textShadow: "none",
-            }}
-          >
-            {text}
-          </SyntaxHighlighter>
-        </Suspense>
-      );
-    }
-
-    // Fenced code WITHOUT a language tag (or a streaming-time fragment that
-    // hasn't acquired its language yet). Render as a block so multi-line
-    // structure is preserved instead of being squashed onto one line.
-    if (isMultiline) {
-      return (
-        <pre className="my-2 max-w-full overflow-x-auto rounded-md border border-border bg-secondary p-3 text-[0.9em] leading-6">
-          <code className="font-mono text-current">{text}</code>
-        </pre>
-      );
-    }
-
-    // Non-inline single-line code without a language tag — render as-is.
-    return (
-      <code
-        className="rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]"
-        {...props}
-      >
-        {text}
-      </code>
-    );
-  },
+  // react-markdown v9 dropped the `inline` prop, so block code is detected
+  // structurally instead: whatever `pre` wraps is a block, everything else is
+  // inline. Owning the block path here also fixes single-line fences and
+  // indented code blocks, which the previous newline heuristic mis-rendered as
+  // inline chips.
   pre({ children }) {
+    const text = flattenText(children).replace(/\n$/, "");
+    const language = codeLanguage(children);
+    const label = language ? `Code block (${language})` : "Code block";
+
     return (
       <div className="not-prose my-4 max-w-full overflow-hidden last:mb-0">
-        {children}
+        {language ? (
+          <Suspense
+            fallback={
+              <PlainCodeBlock
+                text={text}
+                label={label}
+              />
+            }
+          >
+            <SyntaxHighlighter
+              style={oneDarkTheme as any}
+              language={language}
+              PreTag="div"
+              className="max-w-full rounded-md text-base"
+              wrapLines={true}
+              // Long lines wrap rather than scroll, so this block needs no
+              // focusable scroll region the way PlainCodeBlock does.
+              wrapLongLines={true}
+              codeTagProps={{
+                style: {
+                  padding: 0,
+                  background: "transparent",
+                  border: 0,
+                  borderRadius: 0,
+                  // oneDark sets an embossed text-shadow on its code/pre
+                  // selectors that reads as a "shaded"/double-vision glyph.
+                  // Strip it so code renders crisp on first and later paints.
+                  textShadow: "none",
+                },
+              }}
+              lineProps={{
+                style: {
+                  wordBreak: "break-all",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "break-word",
+                },
+              }}
+              customStyle={{
+                margin: 0,
+                maxWidth: "100%",
+                overflowX: "auto",
+                fontSize: "0.95em",
+                fontFamily: "var(--font-family-mono)",
+                fontWeight: 500,
+                fontFeatureSettings: '"ss01", "cv11"',
+                background: "var(--code-block-bg)",
+                border: "1px solid var(--code-block-border)",
+                textShadow: "none",
+              }}
+            >
+              {text}
+            </SyntaxHighlighter>
+          </Suspense>
+        ) : (
+          <PlainCodeBlock
+            text={text}
+            label={label}
+          />
+        )}
       </div>
     );
+  },
+  code({ children }) {
+    return <code className={INLINE_CODE_CLASS}>{children}</code>;
   },
   a({ href, children }) {
     const safeHref = safeUrl(href);
     if (!safeHref) return <>{children}</>;
+    // Fragment links are in-document (GFM footnote refs and back-references),
+    // so they must stay in the current tab.
+    const isInDocument = safeHref.startsWith("#");
     return (
       <a
         href={safeHref}
-        target="_blank"
-        rel="noopener noreferrer"
+        target={isInDocument ? undefined : "_blank"}
+        rel={isInDocument ? undefined : "noopener noreferrer"}
         className="text-primary no-underline hover:underline"
       >
         {children}
@@ -209,23 +243,69 @@ const COMPONENTS: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="my-4 border-l-2 border-primary/50 bg-secondary/40 py-2 pl-4 pr-3 italic text-foreground/85">
+      <blockquote className="border-primary/50 bg-secondary/40 my-4 border-l-2 py-2 pl-4 pr-3 italic text-foreground/85">
         {children}
       </blockquote>
     );
   },
-  ul({ children }) {
+  hr() {
+    return <hr className="my-6 border-0 border-t border-border" />;
+  },
+  del({ children }) {
     return (
-      <ul className="my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1">
+      <del className="text-foreground/60 line-through decoration-foreground/40">
+        {children}
+      </del>
+    );
+  },
+  // GFM task lists. The checkbox is read-only (agent output is not an editable
+  // form) but stays in the accessibility tree so screen readers still announce
+  // the checked/unchecked state of each item.
+  input({ type, checked }) {
+    if (type !== "checkbox") return null;
+    return (
+      <input
+        type="checkbox"
+        checked={Boolean(checked)}
+        readOnly
+        disabled
+        className="mr-2 h-3.5 w-3.5 translate-y-[1px] cursor-default accent-primary"
+      />
+    );
+  },
+  // `className` is forwarded because remark-gfm marks task lists with
+  // `contains-task-list` / `task-list-item`; dropping it would leave a bullet
+  // sitting next to every checkbox.
+  ul({ className, children }) {
+    return (
+      <ul
+        className={cn(
+          "my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1",
+          "[&.contains-task-list]:list-none [&.contains-task-list]:pl-1",
+          className
+        )}
+      >
         {children}
       </ul>
     );
   },
-  ol({ children }) {
+  ol({ className, children }) {
     return (
-      <ol className="my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1">
+      <ol
+        className={cn(
+          "my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1",
+          className
+        )}
+      >
         {children}
       </ol>
+    );
+  },
+  li({ className, children }) {
+    return (
+      <li className={cn("[&.task-list-item]:list-none", className)}>
+        {children}
+      </li>
     );
   },
   table({ children }) {
@@ -249,7 +329,7 @@ const COMPONENTS: Components = {
             "[&_code]:rounded-sm [&_code]:border [&_code]:border-border/60 " +
             "[&_code]:bg-background [&_code]:px-1 [&_code]:py-0.5 " +
             "[&_code]:font-mono [&_code]:text-[0.85em] [&_code]:font-medium " +
-            "[&_a]:text-primary [&_a:hover]:underline"
+            "[&_a:hover]:underline [&_a]:text-primary"
           }
         >
           {children}
@@ -262,7 +342,7 @@ const COMPONENTS: Components = {
   },
   tbody({ children }) {
     return (
-      <tbody className="[&>tr:nth-child(even)]:bg-tertiary [&>tr:hover]:bg-quaternary">
+      <tbody className="[&>tr:hover]:bg-quaternary [&>tr:nth-child(even)]:bg-tertiary">
         {children}
       </tbody>
     );
@@ -276,7 +356,7 @@ const COMPONENTS: Components = {
     return (
       <th
         style={style}
-        className="border-b border-border px-3 py-2 font-semibold whitespace-nowrap"
+        className="whitespace-nowrap border-b border-border px-3 py-2 font-semibold"
       >
         {children}
       </th>
@@ -319,8 +399,8 @@ const LARGE_CONTENT_THRESHOLD = 200_000;
 export const MarkdownContent = React.memo<MarkdownContentProps>(
   ({ content, className = "" }) => {
     const normalizedContent = useMemo(
-      () => normalizeDisplayMathDelimiters(content),
-      [content],
+      () => normalizeAssistantMarkdown(content),
+      [content]
     );
 
     const isLarge = normalizedContent.length > LARGE_CONTENT_THRESHOLD;
@@ -328,9 +408,10 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
     return (
       <div className={cn(PROSE_CLASS, className)}>
         {isLarge && (
-          <div className="not-prose mb-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground/80">
-            Rendering a large document ({Math.round(normalizedContent.length / 1024)} KB).
-            Math and syntax highlighting may render incrementally.
+          <div className="not-prose border-warning/40 bg-warning/10 mb-3 rounded-md border px-3 py-2 text-xs text-foreground/80">
+            Rendering a large document (
+            {Math.round(normalizedContent.length / 1024)} KB). Math and syntax
+            highlighting may render incrementally.
           </div>
         )}
         <ReactMarkdown
@@ -342,7 +423,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         </ReactMarkdown>
       </div>
     );
-  },
+  }
 );
 
 MarkdownContent.displayName = "MarkdownContent";

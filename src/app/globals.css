@@ -1081,6 +1081,21 @@ button {
 .katex {
   font-size: 1.02em;
 }
+/* Malformed math. The common case is recoloured via rehype-katex's `errorColor`
+   option; this rule covers the hard-failure path, where rehype-katex emits a
+   `.katex-error` span containing the original source. Present it as a legible
+   inline chip rather than KaTeX's hard-coded red. */
+.katex-error {
+  color: var(--text-error) !important;
+  background-color: var(--bg-error-secondary);
+  border: 1px solid var(--border-error);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 /* ─── Diff highlighting ─────────────────────────────────────────────── */
 .word-added {
