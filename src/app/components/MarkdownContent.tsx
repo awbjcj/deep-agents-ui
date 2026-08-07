@@ -15,14 +15,28 @@ import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 // loose top-level `import().then(...)` side effect that fired on module load
 // for every chat (~80KB parse cost) even if no code block ever rendered;
 // folding it into the same dynamic import makes the cost truly conditional.
-let oneDarkTheme: unknown = undefined;
+//
+// The theme must be applied *inside* this same lazily-resolved module rather
+// than stashed in an outer mutable variable and read via `style={oneDarkTheme}`
+// from the caller. That prop value is evaluated once, when the caller's JSX is
+// created (before the dynamic import has resolved), and Suspense's retry after
+// the import resolves does not re-evaluate the caller's props — so the prop
+// stayed frozen at `undefined` forever, silently falling back to Prism's
+// default *light* theme (black text) while our `customStyle` still forced a
+// dark background, rendering permanently unreadable "black on black" code
+// blocks. Wrapping `style={oneDark}` in the same async factory guarantees the
+// theme is already known by the time this component itself ever renders.
 const SyntaxHighlighter = lazy(() =>
   Promise.all([
     import("react-syntax-highlighter"),
     import("react-syntax-highlighter/dist/esm/styles/prism"),
   ]).then(([sh, themes]) => {
-    oneDarkTheme = themes.oneDark;
-    return { default: sh.Prism };
+    const Prism = sh.Prism;
+    const oneDark = themes.oneDark;
+    function ThemedPrism(props: React.ComponentProps<typeof Prism>) {
+      return <Prism style={oneDark} {...props} />;
+    }
+    return { default: ThemedPrism };
   })
 );
 
@@ -169,7 +183,6 @@ const COMPONENTS: Components = {
             }
           >
             <SyntaxHighlighter
-              style={oneDarkTheme as any}
               language={language}
               PreTag="div"
               className="max-w-full rounded-md text-base"
