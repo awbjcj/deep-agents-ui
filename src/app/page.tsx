@@ -1,18 +1,21 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  Suspense,
+  lazy,
+} from "react";
 import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
 import { getConfig, saveConfig, getDeploymentUrl, getLangsmithApiKey, StandaloneConfig } from "@/lib/config";
 import { AccountMenu } from "@/app/components/AccountMenu";
-import { ChangeProfileDialog } from "@/app/components/ChangeProfileDialog";
-import { ConfigDialog } from "@/app/components/ConfigDialog";
-import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { TokenSetupWizard } from "@/app/components/TokenSetupWizard";
-import {
-  WorkspacePanel,
-  type WorkspaceTab,
-} from "@/app/components/WorkspacePanel";
+import { LoadingScreen } from "@/app/components/LoadingScreen";
+import { useHasBeenTrue } from "@/app/hooks/useHasBeenTrue";
+import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
@@ -37,15 +40,53 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ThreadList } from "@/app/components/ThreadList";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { ChatProvider } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
-import { AdminPanel } from "@/app/components/AdminPanel";
+
+// Heavy, rarely-opened surfaces are code-split out of the initial chunk. The
+// admin console alone is the largest component in the app and is only reachable
+// by admins; the workspace panel pulls in three independent sidebars; the
+// dialogs are closed on first paint. Keeping them out of the critical path cuts
+// the JS the chat view has to parse before it becomes interactive.
+const AdminPanel = lazy(() =>
+  import("@/app/components/AdminPanel").then((m) => ({ default: m.AdminPanel })),
+);
+const WorkspacePanel = lazy(() =>
+  import("@/app/components/WorkspacePanel").then((m) => ({
+    default: m.WorkspacePanel,
+  })),
+);
+const ConfigDialog = lazy(() =>
+  import("@/app/components/ConfigDialog").then((m) => ({
+    default: m.ConfigDialog,
+  })),
+);
+const ChangeProfileDialog = lazy(() =>
+  import("@/app/components/ChangeProfileDialog").then((m) => ({
+    default: m.ChangeProfileDialog,
+  })),
+);
+const TokenSetupWizard = lazy(() =>
+  import("@/app/components/TokenSetupWizard").then((m) => ({
+    default: m.TokenSetupWizard,
+  })),
+);
 
 interface HomePageInnerProps {
   config: StandaloneConfig;
   configDialogOpen: boolean;
   setConfigDialogOpen: (open: boolean) => void;
   handleSaveConfig: (config: StandaloneConfig) => void;
+}
+
+/** Placeholder shown while a lazily-loaded side panel's chunk is fetched. */
+function PanelFallback({ label }: { label: string }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-card/40">
+      <p className="text-sm text-muted-foreground">Loading {label}…</p>
+    </div>
+  );
 }
 
 function HomePageInner({
@@ -60,7 +101,6 @@ function HomePageInner({
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
 
-  const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
@@ -72,6 +112,39 @@ function HomePageInner({
   const isAdmin = user?.role === "admin";
   const { pendingTokenFocus, requestTokenFocus } = useNotifications();
 
+  // `mutateThreads` is swapped in by ThreadList after it mounts. Reading it
+  // through a ref keeps `handleHistoryRevalidate` referentially stable, so
+  // ChatProvider (and every memoized consumer below it) is not torn down and
+  // re-created the moment the thread list finishes loading.
+  const mutateThreadsRef = useRef<(() => void) | null>(null);
+  const handleMutateReady = useCallback((fn: () => void) => {
+    mutateThreadsRef.current = fn;
+  }, []);
+  const handleHistoryRevalidate = useCallback(() => {
+    mutateThreadsRef.current?.();
+  }, []);
+  const handleThreadSelect = useCallback(
+    (id: string | null) => {
+      void setThreadId(id);
+    },
+    [setThreadId],
+  );
+  const handleSidebarClose = useCallback(() => {
+    void setSidebar(null);
+  }, [setSidebar]);
+  const handleWorkspaceClose = useCallback(() => {
+    setWorkspaceOpen(false);
+    setWorkspaceTab(undefined);
+  }, []);
+  const handleTokenFocusConsumed = useCallback(
+    () => requestTokenFocus(null),
+    [requestTokenFocus],
+  );
+  const handleAdminClose = useCallback(() => setAdminOpen(false), []);
+
+  const configDialogEverOpened = useHasBeenTrue(configDialogOpen);
+  const accountDialogEverOpened = useHasBeenTrue(accountDialogOpen);
+
   // Notification-banner deep link: open the workspace pinned to Tokens and
   // pass the service key through so the matching input scrolls into focus.
   useEffect(() => {
@@ -82,96 +155,127 @@ function HomePageInner({
     }
   }, [pendingTokenFocus]);
 
-  const fetchAssistant = useCallback(async () => {
-    const isUUID =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        config.assistantId
-      );
+  useEffect(() => {
+    // Cancellation guard: `config.assistantId`/`client` can change (or the page
+    // can unmount) while a request is in flight. Without this, a slow response
+    // for the *previous* assistant could land after the new one and overwrite
+    // it. The timeout handle is cleared explicitly so we don't keep a 15s timer
+    // alive per request.
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const synthesizeAssistant = (name: string): Assistant => ({
+      assistant_id: config.assistantId,
+      graph_id: config.assistantId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      config: {},
+      metadata: {},
+      version: 1,
+      name,
+      context: {},
+    });
 
     // Guard against a hung request leaving `assistant` null forever (the chat
     // input stays disabled with no recovery). On timeout we fall through to the
     // synthetic-assistant fallback below so the UI stays usable.
-    const withTimeout = <T,>(promise: Promise<T>, ms = 15000): Promise<T> =>
-      Promise.race([
+    const withTimeout = <T,>(promise: Promise<T>, ms = 15000): Promise<T> => {
+      let timer: ReturnType<typeof setTimeout>;
+      return Promise.race([
         promise,
-        new Promise<T>((_, reject) =>
-          setTimeout(
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(
             () => reject(new Error("Assistant request timed out")),
-            ms
-          )
-        ),
-      ]);
+            ms,
+          );
+        }),
+      ]).finally(() => clearTimeout(timer));
+    };
 
-    if (isUUID) {
-      try {
-        const data = await withTimeout(client.assistants.get(config.assistantId));
-        setAssistant(data);
-      } catch (error) {
-        console.error("Failed to fetch assistant:", error);
-        setAssistant({
-          assistant_id: config.assistantId,
-          graph_id: config.assistantId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          config: {},
-          metadata: {},
-          version: 1,
-          name: "Assistant",
-          context: {},
-        });
+    const isUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        config.assistantId,
+      );
+
+    const run = async () => {
+      if (isUUID) {
+        try {
+          const data = await withTimeout(
+            client.assistants.get(config.assistantId, {
+              signal: controller.signal,
+            }),
+          );
+          if (!cancelled) setAssistant(data);
+        } catch (error) {
+          if (cancelled) return;
+          console.error("Failed to fetch assistant:", error);
+          setAssistant(synthesizeAssistant("Assistant"));
+        }
+        return;
       }
-    } else {
+
       try {
         const assistants = await withTimeout(
           client.assistants.search({
             graphId: config.assistantId,
             limit: 100,
-          })
+            signal: controller.signal,
+          }),
         );
         const defaultAssistant = assistants.find(
-          (assistant) => assistant.metadata?.["created_by"] === "system"
+          (candidate) => candidate.metadata?.["created_by"] === "system",
         );
         if (defaultAssistant === undefined) {
           throw new Error("No default assistant found");
         }
-        setAssistant(defaultAssistant);
+        if (!cancelled) setAssistant(defaultAssistant);
       } catch (error) {
+        if (cancelled) return;
         console.error(
           "Failed to find default assistant from graph_id: try setting the assistant_id directly:",
-          error
+          error,
         );
-        setAssistant({
-          assistant_id: config.assistantId,
-          graph_id: config.assistantId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          config: {},
-          metadata: {},
-          version: 1,
-          name: config.assistantId,
-          context: {},
-        });
+        setAssistant(synthesizeAssistant(config.assistantId));
       }
-    }
-  }, [client, config.assistantId]);
+    };
 
-  useEffect(() => {
-    fetchAssistant();
-  }, [fetchAssistant]);
+    void run();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [client, config.assistantId]);
 
   return (
     <>
-      <ConfigDialog
-        open={configDialogOpen}
-        onOpenChange={setConfigDialogOpen}
-        onSave={handleSaveConfig}
-        initialConfig={config}
-      />
-      <ChangeProfileDialog
-        open={accountDialogOpen}
-        onOpenChange={setAccountDialogOpen}
-      />
-      <TokenSetupWizard />
+      {/* Dialogs are lazily mounted on first open (so their chunks stay off the
+          initial load path) and then kept mounted — see useHasBeenTrue for why
+          unmounting a Radix dialog on close is unsafe. */}
+      {configDialogEverOpened && (
+        <Suspense fallback={null}>
+          <ConfigDialog
+            open={configDialogOpen}
+            onOpenChange={setConfigDialogOpen}
+            onSave={handleSaveConfig}
+            initialConfig={config}
+          />
+        </Suspense>
+      )}
+      {accountDialogEverOpened && (
+        <Suspense fallback={null}>
+          <ChangeProfileDialog
+            open={accountDialogOpen}
+            onOpenChange={setAccountDialogOpen}
+          />
+        </Suspense>
+      )}
+      {/* Self-managing: owns its own open state and listens for a global
+          re-open event, so it stays mounted — but its chunk loads lazily
+          after first paint instead of blocking it. */}
+      <Suspense fallback={null}>
+        <TokenSetupWizard />
+      </Suspense>
       <div className="flex h-screen flex-col">
         {/* Header */}
         <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
@@ -358,11 +462,9 @@ function HomePageInner({
                   className="relative min-w-[380px]"
                 >
                   <ThreadList
-                    onThreadSelect={async (id) => {
-                      await setThreadId(id);
-                    }}
-                    onMutateReady={(fn) => setMutateThreads(() => fn)}
-                    onClose={() => setSidebar(null)}
+                    onThreadSelect={handleThreadSelect}
+                    onMutateReady={handleMutateReady}
+                    onClose={handleSidebarClose}
                     onInterruptCountChange={setInterruptCount}
                     userId={user?.user_id}
                   />
@@ -378,7 +480,7 @@ function HomePageInner({
             >
               <ChatProvider
                 activeAssistant={assistant}
-                onHistoryRevalidate={() => mutateThreads?.()}
+                onHistoryRevalidate={handleHistoryRevalidate}
                 userId={user?.user_id}
                 username={user?.username}
               >
@@ -399,15 +501,14 @@ function HomePageInner({
                   minSize={22}
                   className="relative min-w-[360px]"
                 >
-                  <WorkspacePanel
-                    initialTab={workspaceTab}
-                    initialTokenFocus={pendingTokenFocus}
-                    onTokenFocusConsumed={() => requestTokenFocus(null)}
-                    onClose={() => {
-                      setWorkspaceOpen(false);
-                      setWorkspaceTab(undefined);
-                    }}
-                  />
+                  <Suspense fallback={<PanelFallback label="Workspace" />}>
+                    <WorkspacePanel
+                      initialTab={workspaceTab}
+                      initialTokenFocus={pendingTokenFocus}
+                      onTokenFocusConsumed={handleTokenFocusConsumed}
+                      onClose={handleWorkspaceClose}
+                    />
+                  </Suspense>
                 </ResizablePanel>
               </>
             )}
@@ -421,7 +522,9 @@ function HomePageInner({
                   minSize={28}
                   className="relative min-w-[460px]"
                 >
-                  <AdminPanel onClose={() => setAdminOpen(false)} />
+                  <Suspense fallback={<PanelFallback label="Admin console" />}>
+                    <AdminPanel onClose={handleAdminClose} />
+                  </Suspense>
                 </ResizablePanel>
               </>
             )}
@@ -469,25 +572,33 @@ function HomePageContent() {
     setConfig(newConfig);
   }, []);
 
-  const langsmithApiKey = getLangsmithApiKey();
+  // Both values come from build-time env vars, so read them once instead of on
+  // every render — `deploymentUrl`/`apiKey` identity churn would otherwise
+  // rebuild the LangGraph client inside ClientProvider.
+  const deploymentUrl = useMemo(() => getDeploymentUrl(), []);
+  const langsmithApiKey = useMemo(() => getLangsmithApiKey(), []);
+  const configDialogEverOpened = useHasBeenTrue(configDialogOpen);
 
   if (authLoading || !user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading…</p>
-      </div>
-    );
+    // Redirect to /login is in flight (or auth is still resolving). The
+    // recoverable variant is used deliberately: if the redirect ever fails to
+    // land, the user gets a reload affordance instead of a permanent spinner.
+    return <LoadingScreen />;
   }
 
   if (!config || !config.assistantId) {
     return (
       <>
-        <ConfigDialog
-          open={configDialogOpen}
-          onOpenChange={setConfigDialogOpen}
-          onSave={handleSaveConfig}
-          initialConfig={config || undefined}
-        />
+        {configDialogEverOpened && (
+          <Suspense fallback={null}>
+            <ConfigDialog
+              open={configDialogOpen}
+              onOpenChange={setConfigDialogOpen}
+              onSave={handleSaveConfig}
+              initialConfig={config || undefined}
+            />
+          </Suspense>
+        )}
         <div className="flex h-screen items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Welcome to VSDA Deep Agent</h1>
@@ -508,7 +619,7 @@ function HomePageContent() {
 
   return (
     <ClientProvider
-      deploymentUrl={getDeploymentUrl()}
+      deploymentUrl={deploymentUrl}
       apiKey={langsmithApiKey}
     >
       <HomePageInner
@@ -523,13 +634,7 @@ function HomePageContent() {
 
 export default function HomePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading…</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<LoadingScreen />}>
       <HomePageContent />
     </Suspense>
   );

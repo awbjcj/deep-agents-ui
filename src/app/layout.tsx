@@ -4,6 +4,8 @@ import { NotificationsProvider } from "@/providers/NotificationsProvider";
 import { ConnectivityProvider } from "@/providers/ConnectivityProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ThemedToaster } from "@/app/components/ThemedToaster";
+import { AppReadyBeacon } from "@/app/components/AppReadyBeacon";
+import { bootRecoveryScript } from "@/app/bootRecovery";
 import "./globals.css";
 
 const themeInitScript = `
@@ -56,8 +58,16 @@ export default function RootLayout({
           // Applies the persisted theme before React hydrates to avoid a flash of the wrong theme.
           dangerouslySetInnerHTML={{ __html: themeInitScript }}
         />
+        <script
+          // Detects a wedged boot (stale cached HTML pointing at chunks that no
+          // longer exist after a redeploy) and recovers automatically instead of
+          // leaving the user on the prerendered "Loading…" screen until they
+          // press Ctrl+F5. See src/app/bootRecovery.ts.
+          dangerouslySetInnerHTML={{ __html: bootRecoveryScript }}
+        />
       </head>
       <body suppressHydrationWarning>
+        <AppReadyBeacon />
         <ThemeProvider>
           <AuthProvider>
             <NotificationsProvider>

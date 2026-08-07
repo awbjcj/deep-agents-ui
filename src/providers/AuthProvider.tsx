@@ -6,6 +6,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import {
@@ -116,21 +117,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updated);
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login,
-        registerInit,
-        registerVerify,
-        logout,
-        updateUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  // Memoized so the context identity only changes when auth state actually
+  // changes. An unmemoized object literal here re-renders every consumer in the
+  // app (chat, thread list, admin panel) on any AuthProvider render.
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      isLoading,
+      login,
+      registerInit,
+      registerVerify,
+      logout,
+      updateUser,
+    }),
+    [user, isLoading, login, registerInit, registerVerify, logout, updateUser],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
