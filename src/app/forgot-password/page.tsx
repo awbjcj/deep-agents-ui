@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiForgotPassword } from "@/lib/auth";
+import {
+  ALLOWED_EMAIL_ERROR_MESSAGE,
+  isAllowedRegistrationEmail,
+} from "@/lib/email";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Loader2, MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-
-const APTIV_EMAIL_RE = /^[a-zA-Z0-9._%+-]+@aptiv\.com$/i;
 
 export default function ForgotPasswordPage() {
   const { theme } = useTheme();
@@ -25,8 +27,8 @@ export default function ForgotPasswordPage() {
     setError("");
 
     const normalizedEmail = email.trim().toLowerCase();
-    if (!APTIV_EMAIL_RE.test(normalizedEmail)) {
-      setError("Email must be a valid @aptiv.com address");
+    if (!isAllowedRegistrationEmail(normalizedEmail)) {
+      setError(ALLOWED_EMAIL_ERROR_MESSAGE);
       return;
     }
 
