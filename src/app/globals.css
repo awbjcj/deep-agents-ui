@@ -87,6 +87,8 @@
     --aptiv-night: #383942;
     --aptiv-sky: #3bc6eb;
     --aptiv-sky-strong: #1aa6cc;
+    /* aptiv-slate is too pale to read on light surfaces; use a darker tone for role badges */
+    --role-badge-user: #5c7c7a;
 
     /* App color tokens */
     --color-primary: #2f6868;
@@ -345,6 +347,8 @@
 
   /* ─── Aptiv brand tokens (dark mode) ──────────────────────────────── */
   .dark {
+    --role-badge-user: var(--aptiv-slate);
+
     --color-primary: #3fa09a;
     --color-primary-dark: #2f6868;
     --color-primary-hover: #4db4ae;
