@@ -15,6 +15,7 @@ import {
   CheckCircle,
   ChevronRight,
   Clock,
+  Database,
   Download,
   Eye,
   Globe,
@@ -103,6 +104,7 @@ import {
   type EnforcedDimension,
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
+import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibrarySection";
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
@@ -115,7 +117,13 @@ const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
 type TierMap = Record<Role, TierModelEntry[]>;
 type TierTextMap = Record<Role, string>;
 
-type AdminTab = "users" | "scopes" | "runmode" | "tiers" | "registration";
+type AdminTab =
+  | "users"
+  | "scopes"
+  | "library"
+  | "runmode"
+  | "tiers"
+  | "registration";
 
 interface AdminTabDef {
   id: AdminTab;
@@ -126,6 +134,7 @@ interface AdminTabDef {
 const TABS: AdminTabDef[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "scopes", label: "Memories", icon: Layers },
+  { id: "library", label: "Search", icon: Database },
   { id: "runmode", label: "Run mode", icon: Globe },
   { id: "tiers", label: "Models", icon: Sliders },
   { id: "registration", label: "Invites", icon: Ticket },
@@ -208,6 +217,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
         <div className="space-y-6 p-5">
           {active === "users" && <UsersSection />}
           {active === "scopes" && <ScopesSection />}
+          {active === "library" && <OpenSearchLibrarySection />}
           {active === "runmode" && <RunModeSection />}
           {active === "tiers" && <TiersSection />}
           {active === "registration" && <RegistrationSection />}

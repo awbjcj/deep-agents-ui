@@ -228,7 +228,7 @@ function HomePageInner({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5 max-sm:gap-1">
             {/* Assistant name surfaced over its raw ID — full ID is in tooltip
                 for power users who need to copy it. Clicking opens the
                 config dialog so the agent can be switched directly from
@@ -257,7 +257,9 @@ function HomePageInner({
               </TooltipContent>
             </Tooltip>
             <span className="mx-1 hidden h-6 w-px bg-border md:block" />
-            <ThemeToggle />
+            <span className="max-sm:hidden">
+              <ThemeToggle />
+            </span>
             <span className="mx-0.5 hidden h-5 w-px bg-border md:block" />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -276,8 +278,8 @@ function HomePageInner({
                   aria-pressed={workspaceOpen}
                   className={
                     workspaceOpen
-                      ? "rounded-full border border-primary/40 bg-primary/10 px-3 text-primary hover:bg-primary/15"
-                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-primary/40 hover:bg-accent"
+                      ? "rounded-full border border-primary/40 bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:hidden"
+                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-primary/40 hover:bg-accent max-sm:hidden"
                   }
                 >
                   <LayoutPanelLeft className="mr-2 h-4 w-4" />
@@ -323,7 +325,7 @@ function HomePageInner({
                   size="icon"
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="rounded-full border border-border bg-card text-foreground hover:border-primary/40 hover:text-primary"
+                  className="rounded-full border border-border bg-card text-foreground hover:border-primary/40 hover:text-primary max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
                 </Button>
@@ -335,6 +337,7 @@ function HomePageInner({
               size="sm"
               onClick={() => setThreadId(null)}
               disabled={!threadId}
+              className="max-sm:hidden"
             >
               <SquarePen className="h-4 w-4" />
               New Thread
@@ -343,7 +346,7 @@ function HomePageInner({
           </div>
         </header>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="relative flex-1 overflow-hidden">
           <ResizablePanelGroup
             direction="horizontal"
             autoSaveId="standalone-chat"
@@ -413,13 +416,13 @@ function HomePageInner({
             )}
             {adminOpen && isAdmin && (
               <>
-                <ResizableHandle />
+                <ResizableHandle className="max-sm:hidden" />
                 <ResizablePanel
                   id="admin-panel"
                   order={4}
                   defaultSize={34}
                   minSize={28}
-                  className="relative min-w-[460px]"
+                  className="relative min-w-[460px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0"
                 >
                   <AdminPanel onClose={() => setAdminOpen(false)} />
                 </ResizablePanel>

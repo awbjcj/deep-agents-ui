@@ -67,7 +67,7 @@ export function clearAuthUser(): void {
 
 const API_BASE = "/api";
 
-async function apiFetch(
+export async function apiFetch(
   path: string,
   options: RequestInit = {}
 ): Promise<Response> {
@@ -86,7 +86,7 @@ async function apiFetch(
   return res;
 }
 
-function extractErrorMessage(detail: unknown, fallback: string): string {
+export function extractErrorMessage(detail: unknown, fallback: string): string {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail) && detail.length > 0) {
     // FastAPI Pydantic validation error format: [{loc, msg, type}]
