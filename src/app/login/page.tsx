@@ -7,14 +7,16 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { apiGetRegistrationPolicy } from "@/lib/auth";
+import {
+  ALLOWED_EMAIL_ERROR_MESSAGE,
+  isAllowedRegistrationEmail,
+} from "@/lib/email";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Mode = "login" | "register" | "verify";
-
-const APTIV_EMAIL_RE = /^[a-zA-Z0-9._%+-]+@aptiv\.com$/i;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -112,8 +114,8 @@ export default function LoginPage() {
         setError("Username, Aptiv email, and password are required");
         return;
       }
-      if (!APTIV_EMAIL_RE.test(normalizedEmail)) {
-        setError("Email must be a valid @aptiv.com address");
+      if (!isAllowedRegistrationEmail(normalizedEmail)) {
+        setError(ALLOWED_EMAIL_ERROR_MESSAGE);
         return;
       }
       if (password !== confirmPassword) {

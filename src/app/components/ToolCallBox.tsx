@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -38,12 +38,24 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     onResume,
     isLoading,
   }) => {
-    const [isExpanded, setIsExpanded] = useState(
-      () => !!uiComponent || !!actionRequest
-    );
+    const [isExpanded, setIsExpanded] = useState(() => !!actionRequest);
     const [expandedArgs, setExpandedArgs] = useState<Record<string, boolean>>(
       {}
     );
+
+    // actionRequest (a pending human-approval request) often arrives
+    // asynchronously after this box's initial mount (the tool call streams
+    // in before the interrupt data resolves), so the useState initializer
+    // above can lock in `false`. Force-expand the first time it becomes
+    // available so approval boxes are never hidden by default. Other tool
+    // calls (including GenUI) remain collapsed by default.
+    const hasAutoExpandedRef = useRef(!!actionRequest);
+    useEffect(() => {
+      if (!hasAutoExpandedRef.current && actionRequest) {
+        hasAutoExpandedRef.current = true;
+        setIsExpanded(true);
+      }
+    }, [actionRequest]);
 
     const { name, args, result, status } = useMemo(() => {
       return {

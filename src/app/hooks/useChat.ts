@@ -46,6 +46,10 @@ const STREAM_MODES: StreamMode[] = [
   "custom",
 ];
 
+// Stable empty array so an absent `todos` channel doesn't hand consumers a new
+// reference (and a needless re-render) on every streamed token.
+const EMPTY_TODOS: TodoItem[] = [];
+
 export function useChat({
   activeAssistant,
   onHistoryRevalidate,
@@ -432,25 +436,63 @@ export function useChat({
   const isInterrupted = stream.interrupt !== undefined;
   const processedMessages = useProcessedMessages(stream.messages, isInterrupted);
 
-  return {
-    stream,
-    todos: stream.values.todos ?? [],
-    files,
-    email: stream.values.email,
-    ui: stream.values.ui,
-    setFiles,
-    messages: stream.messages,
-    processedMessages,
-    isLoading: stream.isLoading,
-    isThreadLoading: stream.isThreadLoading,
-    interrupt: stream.interrupt,
-    getMessagesMetadata: stream.getMessagesMetadata,
-    sendMessage,
-    ensureThreadId,
-    runSingleStep,
-    continueStream,
-    stopStream,
-    markCurrentThreadAsResolved,
-    resumeInterrupt,
-  };
+  // Read the live stream values once per render. `stream` is a Proxy that
+  // forwards to the latest raw stream, so each property access is a trap
+  // invocation — pulling them out here keeps the memo deps cheap and explicit.
+  const todos = stream.values.todos ?? EMPTY_TODOS;
+  const email = stream.values.email;
+  const ui = stream.values.ui;
+  const messages = stream.messages;
+  const isLoading = stream.isLoading;
+  const isThreadLoading = stream.isThreadLoading;
+  const interrupt = stream.interrupt;
+  const getMessagesMetadata = stream.getMessagesMetadata;
+
+  // The returned object is the ChatProvider context value. Leaving it as a bare
+  // object literal invalidated every chat consumer whenever an unrelated parent
+  // re-rendered (opening the workspace panel, toggling the thread sidebar, …).
+  return useMemo(
+    () => ({
+      stream,
+      todos,
+      files,
+      email,
+      ui,
+      setFiles,
+      messages,
+      processedMessages,
+      isLoading,
+      isThreadLoading,
+      interrupt,
+      getMessagesMetadata,
+      sendMessage,
+      ensureThreadId,
+      runSingleStep,
+      continueStream,
+      stopStream,
+      markCurrentThreadAsResolved,
+      resumeInterrupt,
+    }),
+    [
+      stream,
+      todos,
+      files,
+      email,
+      ui,
+      setFiles,
+      messages,
+      processedMessages,
+      isLoading,
+      isThreadLoading,
+      interrupt,
+      getMessagesMetadata,
+      sendMessage,
+      ensureThreadId,
+      runSingleStep,
+      continueStream,
+      stopStream,
+      markCurrentThreadAsResolved,
+      resumeInterrupt,
+    ],
+  );
 }

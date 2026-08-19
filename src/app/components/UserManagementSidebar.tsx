@@ -40,13 +40,16 @@ import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { RoleBadge } from "@/app/utils/roles";
 import { ModelSelector } from "./ModelSelector";
+import {
+  ALLOWED_EMAIL_ERROR_MESSAGE,
+  isAllowedRegistrationEmail,
+} from "@/lib/email";
 
 interface UserManagementSidebarProps {
   onClose: () => void;
 }
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]+$/;
-const APTIV_EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@aptiv\.com$/i;
 const ROLES: Role[] = ["user", "developer", "admin"];
 
 export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
@@ -156,8 +159,8 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const emailValidationError =
     trimmedEmail.length === 0
       ? ""
-      : !APTIV_EMAIL_PATTERN.test(trimmedEmail)
-      ? "Email must be a valid @aptiv.com address"
+      : !isAllowedRegistrationEmail(trimmedEmail)
+      ? ALLOWED_EMAIL_ERROR_MESSAGE
       : "";
 
   const handleRoleChange = async (targetUserId: string, role: Role) => {

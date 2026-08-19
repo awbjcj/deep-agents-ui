@@ -15,7 +15,7 @@ export function roleVisual(role: Role): RoleVisual {
     case "developer":
       return { Icon: Code2, color: "var(--aptiv-turquoise)" };
     default:
-      return { Icon: User, color: "var(--aptiv-slate)" };
+      return { Icon: User, color: "var(--role-badge-user)" };
   }
 }
 
