@@ -233,9 +233,11 @@ export function LibraryShelves({
                         tone={status.tone}
                       />
                     </div>
-                    <p className="mt-0.5 font-mono text-[10px] text-muted-foreground break-anywhere">
-                      {shelf.index_name}
-                    </p>
+                    {shelf.index_name !== shelf.shelf_id && (
+                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground break-anywhere">
+                        {shelf.index_name}
+                      </p>
+                    )}
                     {shelf.description && (
                       <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                         {shelf.description}
