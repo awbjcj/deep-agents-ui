@@ -30,6 +30,10 @@ const shelfAuditSchema = z.object({
   shelf_id: z.string(),
   source_type: z.string(),
   index_exists: z.boolean(),
+  // MISSING | LEGACY | MAPPING_DRIFT | MANAGED | ERROR. Kept as a string so a
+  // status added server-side degrades to a label rather than a parse failure.
+  status: z.string().default(""),
+  error: z.string().nullable().default(null),
   is_managed: z.boolean().default(false),
   live_chunks: z.number().int().nonnegative().default(0),
   tombstoned: z.number().int().nonnegative().default(0),

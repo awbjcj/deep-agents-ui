@@ -44,8 +44,10 @@ export function LibraryConfirmDialog({
               aria-hidden="true"
             />
           </div>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="leading-relaxed">
+          <DialogTitle className="break-anywhere">{title}</DialogTitle>
+          {/* Shelf ids are 60+ characters with no spaces, so the description
+              must be allowed to break mid-token or it overflows the dialog. */}
+          <DialogDescription className="leading-relaxed break-anywhere">
             {description}
           </DialogDescription>
         </DialogHeader>

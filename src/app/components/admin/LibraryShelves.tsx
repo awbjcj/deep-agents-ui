@@ -43,6 +43,12 @@ type ConfirmOperation = {
 function shelfStatus(audit?: ShelfAudit, drift?: DriftReport) {
   if (!audit?.index_exists)
     return { label: "Missing", tone: "critical" as const };
+  // Mapping drift is distinct from legacy: a legacy shelf can be ingested into,
+  // a drifted one must be reindexed because OpenSearch field types are immutable.
+  if (audit.status === "ERROR")
+    return { label: "Error", tone: "critical" as const };
+  if (audit.status === "MAPPING_DRIFT")
+    return { label: "Mapping drift", tone: "critical" as const };
   if (!audit.is_managed) return { label: "Legacy", tone: "warning" as const };
   if (drift?.has_drift) return { label: "Drift", tone: "warning" as const };
   return { label: "Ready", tone: "healthy" as const };
