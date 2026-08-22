@@ -27,7 +27,8 @@ test("passes through a successful body", async () => {
 
 test("uses the backend detail when the error body is JSON", async () => {
   await assert.rejects(
-    () => responseJson(jsonResponse(409, { detail: "already running" }), "nope"),
+    () =>
+      responseJson(jsonResponse(409, { detail: "already running" }), "nope"),
     /already running/
   );
 });

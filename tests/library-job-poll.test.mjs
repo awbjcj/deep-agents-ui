@@ -67,7 +67,16 @@ test("describeJob surfaces the real error, never a generic string", () => {
 });
 
 test("the badge names the operation in flight, not the status enum", () => {
-  assert.equal(jobStatusLabel({ operation: "rebuild", status: "running" }), "Rebuilding");
-  assert.equal(jobStatusLabel({ operation: "sync", status: "running" }), "Syncing");
-  assert.equal(jobStatusLabel({ operation: "sync", status: "queued" }), "Queued");
+  assert.equal(
+    jobStatusLabel({ operation: "rebuild", status: "running" }),
+    "Rebuilding"
+  );
+  assert.equal(
+    jobStatusLabel({ operation: "sync", status: "running" }),
+    "Syncing"
+  );
+  assert.equal(
+    jobStatusLabel({ operation: "sync", status: "queued" }),
+    "Queued"
+  );
 });
