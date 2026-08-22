@@ -7,10 +7,12 @@ import { IndexInventory } from "@/app/components/admin/IndexInventory";
 import { LibraryShelves } from "@/app/components/admin/LibraryShelves";
 import {
   apiAuditLibrary,
+  apiListActiveLibraryJobs,
   apiListLibraryIndices,
   apiListLibraryShelves,
   type DriftReport,
   type LibraryIndexSummary,
+  type LibraryJob,
   type LibraryShelf,
   type ShelfAudit,
 } from "@/lib/library-admin";
@@ -29,6 +31,7 @@ export function OpenSearchLibrarySection() {
   const [shelvesLoading, setShelvesLoading] = useState(true);
   const [indicesError, setIndicesError] = useState<string | null>(null);
   const [shelvesError, setShelvesError] = useState<string | null>(null);
+  const [initialJobs, setInitialJobs] = useState<LibraryJob[]>([]);
 
   const reloadIndices = useCallback(async () => {
     setIndicesLoading(true);
@@ -82,6 +85,25 @@ export function OpenSearchLibrarySection() {
   useEffect(() => {
     void reloadShelves();
   }, [reloadShelves]);
+
+  // Discover work already in flight so a browser reload mid-rebuild reattaches
+  // to it instead of showing an idle shelf. Runs once: later jobs are the ones
+  // this session started, and LibraryShelves already tracks those.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const jobs = await apiListActiveLibraryJobs();
+        if (!cancelled) setInitialJobs(jobs);
+      } catch {
+        // A failed discovery call must not block the panel from rendering;
+        // the shelves list and audit are independent of job state.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const summary = useMemo(() => {
     const documentCount = indices.reduce(
@@ -211,6 +233,7 @@ export function OpenSearchLibrarySection() {
             drift={drift}
             isLoading={shelvesLoading}
             error={shelvesError}
+            initialJobs={initialJobs}
             onReload={reloadShelves}
           />
         )}

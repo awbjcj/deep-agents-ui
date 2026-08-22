@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArchiveRestore,
   BookOpen,
   Clock3,
+  Loader2,
   RefreshCw,
   ShieldCheck,
   Trash2,
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 
 import { LibraryConfirmDialog } from "@/app/components/admin/LibraryConfirmDialog";
 import { LibraryStatus } from "@/app/components/admin/LibraryStatus";
+import { useLibraryJobs } from "@/app/components/admin/use-library-job";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -21,9 +23,15 @@ import {
   apiRebuildLibraryShelf,
   apiSyncLibraryShelf,
   type DriftReport,
+  type LibraryJob,
   type LibraryShelf,
   type ShelfAudit,
 } from "@/lib/library-admin";
+import {
+  describeJob,
+  isTerminal,
+  jobStatusLabel,
+} from "@/lib/library-job-poll";
 import { cn } from "@/lib/utils";
 
 interface LibraryShelvesProps {
@@ -32,6 +40,8 @@ interface LibraryShelvesProps {
   drift: DriftReport[];
   isLoading: boolean;
   error: string | null;
+  /** Jobs already in flight when the panel mounted, discovered by the parent. */
+  initialJobs: LibraryJob[];
   onReload: () => Promise<void>;
 }
 
@@ -76,11 +86,13 @@ export function LibraryShelves({
   drift,
   isLoading,
   error,
+  initialJobs,
   onReload,
 }: LibraryShelvesProps) {
   const [pending, setPending] = useState<string | null>(null);
   const [confirmOperation, setConfirmOperation] =
     useState<ConfirmOperation | null>(null);
+  const { jobsByShelf, track, adopt } = useLibraryJobs(onReload);
   const auditsByShelf = useMemo(
     () => Object.fromEntries(audits.map((item) => [item.shelf_id, item])),
     [audits]
@@ -89,6 +101,12 @@ export function LibraryShelves({
     () => Object.fromEntries(drift.map((item) => [item.shelf_id, item])),
     [drift]
   );
+
+  // Reattach to work started before this mount — a browser reload mid-rebuild
+  // must not look like nothing is happening.
+  useEffect(() => {
+    if (initialJobs.length > 0) adopt(initialJobs);
+  }, [initialJobs, adopt]);
 
   const run = async (key: string, action: () => Promise<void>) => {
     setPending(key);
@@ -103,41 +121,50 @@ export function LibraryShelves({
     }
   };
 
-  const deltaSync = (shelf: LibraryShelf) =>
-    run(`delta:${shelf.shelf_id}`, async () => {
-      const result = await apiSyncLibraryShelf(shelf.shelf_id, {
-        mode: "delta",
-      });
-      toast.success(
-        `${shelf.shelf_id}: ${result.upserts} upserts, ${result.metadata_updates} metadata updates`
+  /**
+   * Start a job. The response is only a receipt that the submission was
+   * accepted, so nothing is claimed about the outcome here — the poller owns
+   * the success and failure toasts.
+   */
+  const submit = async (key: string, action: () => Promise<LibraryJob>) => {
+    setPending(key);
+    try {
+      track(await action());
+      setConfirmOperation(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not start the library job"
       );
-      await onReload();
-    });
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const deltaSync = (shelf: LibraryShelf) =>
+    submit(`delta:${shelf.shelf_id}`, () =>
+      apiSyncLibraryShelf(shelf.shelf_id, { mode: "delta" })
+    );
 
   const confirm = () => {
     if (!confirmOperation) return;
-    const operation = confirmOperation;
-    const key = `${operation.kind}:${operation.shelf.shelf_id}`;
-    void run(key, async () => {
-      if (operation.kind === "rebuild") {
-        const result = await apiRebuildLibraryShelf(operation.shelf.shelf_id);
-        toast.success(
-          `Rebuilt ${operation.shelf.shelf_id} with ${result.upserts} upserts`
-        );
-      } else if (operation.kind === "full") {
-        const result = await apiSyncLibraryShelf(operation.shelf.shelf_id, {
-          mode: "full",
-        });
-        toast.success(
-          `Synchronized ${operation.shelf.shelf_id}; ${result.tombstones} tombstones`
-        );
-      } else {
-        const result = await apiPruneLibraryShelf(operation.shelf.shelf_id);
+    const { kind, shelf } = confirmOperation;
+    const key = `${kind}:${shelf.shelf_id}`;
+    if (kind === "prune") {
+      // Retention still runs inline: it is a single bounded update-by-query,
+      // not an extract-and-reindex, so it has no job to poll.
+      void run(key, async () => {
+        const result = await apiPruneLibraryShelf(shelf.shelf_id);
         toast.success(`Tombstoned ${result.tombstoned} expired chunks`);
-      }
-      setConfirmOperation(null);
-      await onReload();
-    });
+        setConfirmOperation(null);
+        await onReload();
+      });
+      return;
+    }
+    void submit(key, () =>
+      kind === "rebuild"
+        ? apiRebuildLibraryShelf(shelf.shelf_id)
+        : apiSyncLibraryShelf(shelf.shelf_id, { mode: "full" })
+    );
   };
 
   return (
@@ -205,6 +232,14 @@ export function LibraryShelves({
             const audit = auditsByShelf[shelf.shelf_id];
             const driftReport = driftByShelf[shelf.shelf_id];
             const status = shelfStatus(audit, driftReport);
+            const trackedJob = jobsByShelf[shelf.shelf_id];
+            const activeJob =
+              trackedJob && !isTerminal(trackedJob.status)
+                ? trackedJob
+                : undefined;
+            // One job at a time per shelf is a server-side rule, so the row
+            // disables every control rather than inviting the 409.
+            const locked = pending !== null || activeJob !== undefined;
             const findings = [
               ...(driftReport?.missing_fields ?? []).map(
                 (field) => `Missing ${field}`
@@ -238,6 +273,12 @@ export function LibraryShelves({
                         label={status.label}
                         tone={status.tone}
                       />
+                      {activeJob && (
+                        <LibraryStatus
+                          label={jobStatusLabel(activeJob)}
+                          tone="active"
+                        />
+                      )}
                     </div>
                     {shelf.index_name !== shelf.shelf_id && (
                       <p className="mt-0.5 font-mono text-[10px] text-muted-foreground break-anywhere">
@@ -280,13 +321,29 @@ export function LibraryShelves({
                   </div>
                 )}
 
+                {activeJob && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="border-status-orange/35 mt-2.5 flex items-center gap-2 rounded-md border bg-[var(--aptiv-glass-bg)] px-2.5 py-2 duration-200 animate-in fade-in slide-in-from-top-1"
+                  >
+                    <Loader2
+                      className="h-3 w-3 flex-shrink-0 animate-spin text-status-orange"
+                      aria-hidden="true"
+                    />
+                    <span className="text-[11px] font-medium tabular-nums">
+                      {describeJob(activeJob)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() => void deltaSync(shelf)}
-                    disabled={pending !== null}
+                    disabled={locked}
                   >
                     <Zap
                       className={cn(
@@ -300,7 +357,7 @@ export function LibraryShelves({
                     size="sm"
                     variant="ghost"
                     onClick={() => setConfirmOperation({ kind: "full", shelf })}
-                    disabled={pending !== null}
+                    disabled={locked}
                   >
                     <RefreshCw />
                     Full sync
@@ -313,9 +370,7 @@ export function LibraryShelves({
                       onClick={() =>
                         setConfirmOperation({ kind: "prune", shelf })
                       }
-                      disabled={
-                        pending !== null || (audit?.at_risk_count ?? 0) === 0
-                      }
+                      disabled={locked || (audit?.at_risk_count ?? 0) === 0}
                     >
                       <Trash2 />
                       Retention
@@ -329,7 +384,7 @@ export function LibraryShelves({
                     onClick={() =>
                       setConfirmOperation({ kind: "rebuild", shelf })
                     }
-                    disabled={pending !== null}
+                    disabled={locked}
                   >
                     <ArchiveRestore />
                     Rebuild
