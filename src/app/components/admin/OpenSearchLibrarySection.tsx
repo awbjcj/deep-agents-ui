@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { BookOpen, Database, FileStack, HardDrive } from "lucide-react";
 
 import { IndexInventory } from "@/app/components/admin/IndexInventory";
@@ -125,10 +131,46 @@ export function OpenSearchLibrarySection() {
     label: string;
     count: number;
     icon: typeof Database;
-  }> = [
-    { id: "indices", label: "Indices", count: indices.length, icon: Database },
-    { id: "shelves", label: "Shelves", count: shelves.length, icon: BookOpen },
-  ];
+  }> = useMemo(
+    () => [
+      {
+        id: "indices",
+        label: "Indices",
+        count: indices.length,
+        icon: Database,
+      },
+      {
+        id: "shelves",
+        label: "Shelves",
+        count: shelves.length,
+        icon: BookOpen,
+      },
+    ],
+    [indices.length, shelves.length]
+  );
+
+  // `role="tablist"` promises arrow-key navigation; without it a keyboard user
+  // can reach the tabs but not move between them.
+  const onTabKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
+      const step =
+        event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      let nextIndex = -1;
+      if (step !== 0) {
+        nextIndex = (currentIndex + step + views.length) % views.length;
+      } else if (event.key === "Home") {
+        nextIndex = 0;
+      } else if (event.key === "End") {
+        nextIndex = views.length - 1;
+      }
+      if (nextIndex === -1) return;
+      event.preventDefault();
+      const next = views[nextIndex];
+      setView(next.id);
+      document.getElementById(`search-library-tab-${next.id}`)?.focus();
+    },
+    [views]
+  );
 
   return (
     <div className="space-y-5">
@@ -183,13 +225,16 @@ export function OpenSearchLibrarySection() {
         aria-label="Search library views"
         className="grid grid-cols-2 rounded-md border border-border bg-muted/35 p-1"
       >
-        {views.map(({ id, label, count, icon: Icon }) => (
+        {views.map(({ id, label, count, icon: Icon }, tabIndex) => (
           <button
             key={id}
             type="button"
             role="tab"
+            id={`search-library-tab-${id}`}
             aria-selected={view === id}
             aria-controls={`search-library-panel-${id}`}
+            tabIndex={view === id ? 0 : -1}
+            onKeyDown={(event) => onTabKeyDown(event, tabIndex)}
             onClick={() => setView(id)}
             className={cn(
               "flex h-8 items-center justify-center gap-1.5 rounded-sm px-3 text-xs font-semibold transition-colors",
@@ -214,6 +259,7 @@ export function OpenSearchLibrarySection() {
       <div
         id={`search-library-panel-${view}`}
         role="tabpanel"
+        aria-labelledby={`search-library-tab-${view}`}
         tabIndex={0}
         className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
       >

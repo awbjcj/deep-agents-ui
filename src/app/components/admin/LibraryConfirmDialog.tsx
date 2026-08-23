@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,12 @@ interface LibraryConfirmDialogProps {
   description: string;
   confirmationLabel: string;
   isPending?: boolean;
+  /**
+   * Optional block rendered under the description. Long enumerations (every
+   * index a prune would remove) belong here, where they can scroll, rather
+   * than joined into the description as an unreadable paragraph.
+   */
+  details?: ReactNode;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }
@@ -28,6 +35,7 @@ export function LibraryConfirmDialog({
   description,
   confirmationLabel,
   isPending = false,
+  details,
   onOpenChange,
   onConfirm,
 }: LibraryConfirmDialogProps) {
@@ -51,6 +59,7 @@ export function LibraryConfirmDialog({
             {description}
           </DialogDescription>
         </DialogHeader>
+        {details}
         <DialogFooter>
           <Button
             type="button"

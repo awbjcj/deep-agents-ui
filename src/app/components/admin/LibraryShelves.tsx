@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArchiveRestore,
   BookOpen,
@@ -89,7 +89,9 @@ export function LibraryShelves({
   initialJobs,
   onReload,
 }: LibraryShelvesProps) {
-  const [pending, setPending] = useState<string | null>(null);
+  // Keyed by `${operation}:${shelfId}`. A single `pending` string used to lock
+  // every control in the panel, so syncing one shelf froze all the others.
+  const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmOperation, setConfirmOperation] =
     useState<ConfirmOperation | null>(null);
   const { jobsByShelf, track, adopt } = useLibraryJobs(onReload);
@@ -108,8 +110,16 @@ export function LibraryShelves({
     if (initialJobs.length > 0) adopt(initialJobs);
   }, [initialJobs, adopt]);
 
+  const release = useCallback((key: string) => {
+    setBusy((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
   const run = async (key: string, action: () => Promise<void>) => {
-    setPending(key);
+    setBusy((current) => new Set(current).add(key));
     try {
       await action();
     } catch (err) {
@@ -117,7 +127,7 @@ export function LibraryShelves({
         err instanceof Error ? err.message : "Library operation failed"
       );
     } finally {
-      setPending(null);
+      release(key);
     }
   };
 
@@ -127,7 +137,7 @@ export function LibraryShelves({
    * the success and failure toasts.
    */
   const submit = async (key: string, action: () => Promise<LibraryJob>) => {
-    setPending(key);
+    setBusy((current) => new Set(current).add(key));
     try {
       track(await action());
       setConfirmOperation(null);
@@ -136,7 +146,7 @@ export function LibraryShelves({
         err instanceof Error ? err.message : "Could not start the library job"
       );
     } finally {
-      setPending(null);
+      release(key);
     }
   };
 
@@ -189,7 +199,7 @@ export function LibraryShelves({
           size="sm"
           variant="outline"
           onClick={() => void onReload()}
-          disabled={isLoading || pending !== null}
+          disabled={isLoading}
         >
           <ShieldCheck className="h-3.5 w-3.5" />
           Audit
@@ -239,7 +249,10 @@ export function LibraryShelves({
                 : undefined;
             // One job at a time per shelf is a server-side rule, so the row
             // disables every control rather than inviting the 409.
-            const locked = pending !== null || activeJob !== undefined;
+            const isSubmitting = ["delta", "full", "prune", "rebuild"].some(
+              (kind) => busy.has(`${kind}:${shelf.shelf_id}`)
+            );
+            const locked = isSubmitting || activeJob !== undefined;
             const findings = [
               ...(driftReport?.missing_fields ?? []).map(
                 (field) => `Missing ${field}`
@@ -265,10 +278,16 @@ export function LibraryShelves({
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h5 className="text-sm font-semibold tracking-tight break-anywhere">
-                        {shelf.shelf_id}
-                      </h5>
+                    {/* The id owns its own line: shelf ids run past 60
+                        characters, and sharing a row with the badges pushed
+                        them out of sight below the fold of the card header. */}
+                    <h5
+                      className="text-sm font-semibold leading-snug tracking-tight break-anywhere"
+                      title={shelf.shelf_id}
+                    >
+                      {shelf.shelf_id}
+                    </h5>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <LibraryStatus
                         label={status.label}
                         tone={status.tone}
@@ -347,7 +366,7 @@ export function LibraryShelves({
                   >
                     <Zap
                       className={cn(
-                        pending === `delta:${shelf.shelf_id}` && "animate-pulse"
+                        busy.has(`delta:${shelf.shelf_id}`) && "animate-pulse"
                       )}
                     />
                     Delta sync
@@ -432,10 +451,10 @@ export function LibraryShelves({
             : "Run full sync"
         }
         isPending={
-          confirmOperation
-            ? pending ===
-              `${confirmOperation.kind}:${confirmOperation.shelf.shelf_id}`
-            : false
+          confirmOperation !== null &&
+          busy.has(
+            `${confirmOperation.kind}:${confirmOperation.shelf.shelf_id}`
+          )
         }
         onConfirm={confirm}
       />
