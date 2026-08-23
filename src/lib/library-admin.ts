@@ -56,20 +56,6 @@ const driftReportSchema = z.object({
   has_drift: z.boolean(),
 });
 
-const syncResultSchema = z.object({
-  shelf_id: z.string(),
-  index: z.string(),
-  mode: z.string(),
-  dry_run: z.boolean(),
-  extracted_records: z.number().int().nonnegative(),
-  upserts: z.number().int().nonnegative(),
-  metadata_updates: z.number().int().nonnegative(),
-  tombstones: z.number().int().nonnegative(),
-  unchanged: z.number().int().nonnegative(),
-  started_at: z.string(),
-  finished_at: z.string(),
-});
-
 const pruneResultSchema = z.object({
   shelf_id: z.string(),
   index: z.string(),
@@ -80,21 +66,54 @@ const pruneResultSchema = z.object({
   tombstoned: z.number().int().nonnegative(),
 });
 
+const libraryJobSchema = z.object({
+  job_id: z.string(),
+  shelf_id: z.string(),
+  operation: z.string(),
+  mode: z.string(),
+  dry_run: z.boolean(),
+  // status and phase stay z.string() rather than enums, matching the choice
+  // made for shelfAuditSchema.status above: a value added server-side must
+  // degrade to a label, not a parse failure that blanks the whole panel.
+  status: z.string(),
+  phase: z.string(),
+  extracted_records: z.number().int().nonnegative().default(0),
+  upserts: z.number().int().nonnegative().default(0),
+  metadata_updates: z.number().int().nonnegative().default(0),
+  tombstones: z.number().int().nonnegative().default(0),
+  error: z.string().nullable().default(null),
+  result: z.record(z.string(), z.unknown()).nullable().default(null),
+  created_by: z.string(),
+  created_at: z.string().nullable().default(null),
+  started_at: z.string().nullable().default(null),
+  finished_at: z.string().nullable().default(null),
+});
+
+export type LibraryJob = z.infer<typeof libraryJobSchema>;
+
 export type LibraryIndexSummary = z.infer<typeof indexSummarySchema>;
 export type LibraryIndexDetail = z.infer<typeof indexDetailSchema>;
 export type LibraryShelf = z.infer<typeof shelfSchema>;
 export type ShelfAudit = z.infer<typeof shelfAuditSchema>;
 export type DriftReport = z.infer<typeof driftReportSchema>;
-export type ShelfSyncResult = z.infer<typeof syncResultSchema>;
 export type ShelfPruneResult = z.infer<typeof pruneResultSchema>;
 
-async function responseJson(res: Response, fallback: string): Promise<unknown> {
-  const data = await res.json().catch(() => ({}));
+export async function responseJson(
+  res: Response,
+  fallback: string
+): Promise<unknown> {
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
+    // A proxy or gateway returns an HTML error page, not JSON, so `detail` is
+    // absent and the caller used to see only the hardcoded fallback -- which
+    // hid the difference between a real backend rejection and a timed-out hop.
+    if (data === null) {
+      throw new Error(`${fallback} (HTTP ${res.status} ${res.statusText})`);
+    }
     const detail = (data as { detail?: unknown }).detail;
     throw new Error(extractErrorMessage(detail, fallback));
   }
-  return data;
+  return data ?? {};
 }
 
 export async function apiListLibraryIndices(
@@ -196,7 +215,7 @@ export async function apiAuditLibrary(signal?: AbortSignal): Promise<{
 export async function apiSyncLibraryShelf(
   shelfId: string,
   options: { mode: "full" | "delta"; dryRun?: boolean }
-): Promise<ShelfSyncResult> {
+): Promise<LibraryJob> {
   const params = new URLSearchParams({
     mode: options.mode,
     dry_run: String(options.dryRun ?? false),
@@ -206,21 +225,42 @@ export async function apiSyncLibraryShelf(
       `/library/shelves/${encodeURIComponent(shelfId)}/sync?${params}`,
       { method: "POST" }
     ),
-    "Failed to synchronize shelf"
+    "Failed to submit shelf synchronization"
   );
-  return syncResultSchema.parse(data);
+  return libraryJobSchema.parse(data);
 }
 
 export async function apiRebuildLibraryShelf(
   shelfId: string
-): Promise<ShelfSyncResult> {
+): Promise<LibraryJob> {
   const data = await responseJson(
     await apiFetch(`/library/shelves/${encodeURIComponent(shelfId)}/rebuild`, {
       method: "POST",
     }),
-    "Failed to rebuild shelf"
+    "Failed to submit shelf rebuild"
   );
-  return syncResultSchema.parse(data);
+  return libraryJobSchema.parse(data);
+}
+
+export async function apiGetLibraryJob(
+  jobId: string,
+  signal?: AbortSignal
+): Promise<LibraryJob> {
+  const data = await responseJson(
+    await apiFetch(`/library/jobs/${encodeURIComponent(jobId)}`, { signal }),
+    "Failed to read library job status"
+  );
+  return libraryJobSchema.parse(data);
+}
+
+export async function apiListActiveLibraryJobs(
+  signal?: AbortSignal
+): Promise<LibraryJob[]> {
+  const data = await responseJson(
+    await apiFetch("/library/jobs?active=true", { signal }),
+    "Failed to list active library jobs"
+  );
+  return z.object({ jobs: z.array(libraryJobSchema) }).parse(data).jobs;
 }
 
 export async function apiPruneLibraryShelf(
