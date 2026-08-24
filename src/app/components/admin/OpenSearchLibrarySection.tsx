@@ -11,6 +11,7 @@ import { BookOpen, Database, FileStack, HardDrive } from "lucide-react";
 
 import { IndexInventory } from "@/app/components/admin/IndexInventory";
 import { LibraryShelves } from "@/app/components/admin/LibraryShelves";
+import { useLibraryJobs } from "@/app/components/admin/use-library-job";
 import {
   apiAuditLibrary,
   apiListActiveLibraryJobs,
@@ -18,7 +19,6 @@ import {
   apiListLibraryShelves,
   type DriftReport,
   type LibraryIndexSummary,
-  type LibraryJob,
   type LibraryShelf,
   type ShelfAudit,
 } from "@/lib/library-admin";
@@ -37,7 +37,6 @@ export function OpenSearchLibrarySection() {
   const [shelvesLoading, setShelvesLoading] = useState(true);
   const [indicesError, setIndicesError] = useState<string | null>(null);
   const [shelvesError, setShelvesError] = useState<string | null>(null);
-  const [initialJobs, setInitialJobs] = useState<LibraryJob[]>([]);
 
   const reloadIndices = useCallback(async () => {
     setIndicesLoading(true);
@@ -84,6 +83,10 @@ export function OpenSearchLibrarySection() {
     setShelvesLoading(false);
   }, []);
 
+  // The tab panels unmount when the operator changes views. Keep job polling
+  // here so accepting a job is not coupled to which panel happens to be open.
+  const { jobsByShelf, track: trackJob, adopt } = useLibraryJobs(reloadShelves);
+
   useEffect(() => {
     void reloadIndices();
   }, [reloadIndices]);
@@ -93,14 +96,14 @@ export function OpenSearchLibrarySection() {
   }, [reloadShelves]);
 
   // Discover work already in flight so a browser reload mid-rebuild reattaches
-  // to it instead of showing an idle shelf. Runs once: later jobs are the ones
-  // this session started, and LibraryShelves already tracks those.
+  // to it instead of showing an idle shelf. The parent owns that tracking so
+  // it continues while the operator views the index inventory.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const jobs = await apiListActiveLibraryJobs();
-        if (!cancelled) setInitialJobs(jobs);
+        if (!cancelled) adopt(jobs);
       } catch {
         // A failed discovery call must not block the panel from rendering;
         // the shelves list and audit are independent of job state.
@@ -109,7 +112,7 @@ export function OpenSearchLibrarySection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [adopt]);
 
   const summary = useMemo(() => {
     const documentCount = indices.reduce(
@@ -279,7 +282,8 @@ export function OpenSearchLibrarySection() {
             drift={drift}
             isLoading={shelvesLoading}
             error={shelvesError}
-            initialJobs={initialJobs}
+            jobsByShelf={jobsByShelf}
+            onTrackJob={trackJob}
             onReload={reloadShelves}
           />
         )}

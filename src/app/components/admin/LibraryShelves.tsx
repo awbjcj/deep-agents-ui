@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ArchiveRestore,
   BookOpen,
@@ -15,7 +15,6 @@ import { toast } from "sonner";
 
 import { LibraryConfirmDialog } from "@/app/components/admin/LibraryConfirmDialog";
 import { LibraryStatus } from "@/app/components/admin/LibraryStatus";
-import { useLibraryJobs } from "@/app/components/admin/use-library-job";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -40,8 +39,9 @@ interface LibraryShelvesProps {
   drift: DriftReport[];
   isLoading: boolean;
   error: string | null;
-  /** Jobs already in flight when the panel mounted, discovered by the parent. */
-  initialJobs: LibraryJob[];
+  /** Owned by the tab-stable parent so polling survives view changes. */
+  jobsByShelf: Record<string, LibraryJob>;
+  onTrackJob: (job: LibraryJob) => void;
   onReload: () => Promise<void>;
 }
 
@@ -86,7 +86,8 @@ export function LibraryShelves({
   drift,
   isLoading,
   error,
-  initialJobs,
+  jobsByShelf,
+  onTrackJob,
   onReload,
 }: LibraryShelvesProps) {
   // Keyed by `${operation}:${shelfId}`. A single `pending` string used to lock
@@ -94,7 +95,6 @@ export function LibraryShelves({
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmOperation, setConfirmOperation] =
     useState<ConfirmOperation | null>(null);
-  const { jobsByShelf, track, adopt } = useLibraryJobs(onReload);
   const auditsByShelf = useMemo(
     () => Object.fromEntries(audits.map((item) => [item.shelf_id, item])),
     [audits]
@@ -103,12 +103,6 @@ export function LibraryShelves({
     () => Object.fromEntries(drift.map((item) => [item.shelf_id, item])),
     [drift]
   );
-
-  // Reattach to work started before this mount — a browser reload mid-rebuild
-  // must not look like nothing is happening.
-  useEffect(() => {
-    if (initialJobs.length > 0) adopt(initialJobs);
-  }, [initialJobs, adopt]);
 
   const release = useCallback((key: string) => {
     setBusy((current) => {
@@ -139,7 +133,7 @@ export function LibraryShelves({
   const submit = async (key: string, action: () => Promise<LibraryJob>) => {
     setBusy((current) => new Set(current).add(key));
     try {
-      track(await action());
+      onTrackJob(await action());
       setConfirmOperation(null);
     } catch (err) {
       toast.error(
