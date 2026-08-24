@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   isTerminal,
@@ -79,4 +80,29 @@ test("the badge names the operation in flight, not the status enum", () => {
     jobStatusLabel({ operation: "sync", status: "queued" }),
     "Queued"
   );
+});
+
+test("the tab-stable section owns job polling", async () => {
+  const [section, shelves] = await Promise.all([
+    readFile(
+      new URL(
+        "../src/app/components/admin/OpenSearchLibrarySection.tsx",
+        import.meta.url
+      ),
+      "utf8"
+    ),
+    readFile(
+      new URL(
+        "../src/app/components/admin/LibraryShelves.tsx",
+        import.meta.url
+      ),
+      "utf8"
+    ),
+  ]);
+
+  assert.match(section, /useLibraryJobs\(reloadShelves\)/);
+  assert.match(section, /adopt\(jobs\)/);
+  assert.match(section, /onTrackJob=\{trackJob\}/);
+  assert.doesNotMatch(shelves, /useLibraryJobs/);
+  assert.match(shelves, /onTrackJob\(await action\(\)\)/);
 });
