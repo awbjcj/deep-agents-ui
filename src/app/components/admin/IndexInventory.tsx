@@ -273,36 +273,38 @@ export function IndexInventory({
         </div>
       </div>
 
-      {/* Two distinct narrowing controls: the pattern is a round trip to the
-          cluster, the filter below is instant and local. */}
-      <form
-        onSubmit={submitPattern}
-        className="flex gap-2"
-      >
-        <div className="relative min-w-0 flex-1">
-          <Database className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={patternDraft}
-            onChange={(event) => setPatternDraft(event.target.value)}
-            className="h-9 pl-9 font-mono text-xs"
-            aria-label="OpenSearch index pattern"
-            placeholder="vsda_*"
-            spellCheck={false}
-          />
-        </div>
-        <Button
-          type="submit"
-          size="sm"
-          variant="secondary"
-          className="h-9"
-          disabled={patternDraft.trim() === pattern || !patternDraft.trim()}
+      {/* Two distinct narrowing controls sharing one row: the pattern is a
+          round trip to the cluster, the filter + sort beside it are instant
+          and local. Stacking them as separate full-width bars read as a
+          duplicated search field, so they're combined here. */}
+      <div className="flex flex-wrap gap-2">
+        <form
+          onSubmit={submitPattern}
+          className="flex min-w-[12rem] flex-1 gap-2 sm:flex-none sm:basis-56"
         >
-          Apply
-        </Button>
-      </form>
+          <div className="relative min-w-0 flex-1">
+            <Database className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={patternDraft}
+              onChange={(event) => setPatternDraft(event.target.value)}
+              className="h-9 pl-9 font-mono text-xs"
+              aria-label="OpenSearch index pattern"
+              placeholder="vsda_*"
+              spellCheck={false}
+            />
+          </div>
+          <Button
+            type="submit"
+            size="sm"
+            variant="secondary"
+            className="h-9"
+            disabled={patternDraft.trim() === pattern || !patternDraft.trim()}
+          >
+            Apply
+          </Button>
+        </form>
 
-      <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-w-[10rem] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
