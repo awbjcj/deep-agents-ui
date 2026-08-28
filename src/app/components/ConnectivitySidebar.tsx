@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle, Clock, Loader2, RotateCcw, Save } from "lucide-react";
+import {
+  CheckCircle,
+  Clock,
+  Image as ImageIcon,
+  Loader2,
+  RotateCcw,
+  Save,
+} from "lucide-react";
 import {
   apiGetImageFetching,
   apiGetUserConnectivity,
@@ -51,6 +58,7 @@ export function ConnectivitySidebar() {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [imageFetching, setImageFetching] = useState(false);
+  const [isSavingImageFetching, setIsSavingImageFetching] = useState(false);
   const [imageFetchingDisabledByAdmin, setImageFetchingDisabledByAdmin] =
     useState(false);
   const [imageFetchingLoaded, setImageFetchingLoaded] = useState(false);
@@ -208,6 +216,24 @@ export function ConnectivitySidebar() {
       toast.error(err instanceof Error ? err.message : "Failed to reset");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleImageFetchingChange = async (checked: boolean) => {
+    const previous = imageFetching;
+    setImageFetching(checked);
+    setIsSavingImageFetching(true);
+    try {
+      const status = await apiSetImageFetching(checked);
+      setImageFetching(status.effective);
+      setImageFetchingDisabledByAdmin(
+        !status.effective && status.enabled === true
+      );
+    } catch {
+      setImageFetching(previous);
+      toast.error("Failed to update source image attachments");
+    } finally {
+      setIsSavingImageFetching(false);
     }
   };
 
@@ -370,38 +396,56 @@ export function ConnectivitySidebar() {
                 </div>
               )}
 
-              {imageFetchingLoaded && !imageFetchingDisabledByAdmin && (
-                <div className="space-y-2 border-t border-border/40 pt-4">
+              {imageFetchingLoaded && (
+                <div className="space-y-3 border-t border-border/40 pt-4">
                   <header className="space-y-1">
                     <h3 className="text-sm font-semibold tracking-tight">
-                      Image attachments
+                      Source images
                     </h3>
-                    <p className="text-[10px] text-muted-foreground">
-                      Include images from tickets and pages
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Choose whether connected tickets and pages may include
+                      their images in agent context. This does not control chat
+                      uploads.
                     </p>
                   </header>
-                  <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
-                    <span className="text-sm font-medium text-foreground">
-                      Enable image attachments
-                    </span>
-                    <Switch
-                      checked={imageFetching}
-                      onCheckedChange={(checked) => {
-                        setImageFetching(checked);
-                        apiSetImageFetching(checked)
-                          .then((status) => {
-                            setImageFetching(status.effective);
-                            setImageFetchingDisabledByAdmin(
-                              !status.effective && status.enabled === true
-                            );
-                          })
-                          .catch(() => {
-                            setImageFetching(!checked);
-                            toast.error("Failed to update image fetching");
-                          });
-                      }}
-                      disabled={isSaving}
-                    />
+                  <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+                    <div className="flex items-start gap-3 p-3.5">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                        <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <label
+                          htmlFor="source-image-attachments"
+                          className="text-sm font-semibold text-foreground"
+                        >
+                          Include source images
+                        </label>
+                        <p
+                          id="source-image-attachments-description"
+                          className="text-[11px] leading-relaxed text-muted-foreground"
+                        >
+                          {imageFetchingDisabledByAdmin
+                            ? "Unavailable because image fetching is disabled by an administrator."
+                            : imageFetching
+                              ? "Supported images may be added when agents read connected content."
+                              : "Agents will read connected text without fetching its images."}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                        {isSavingImageFetching && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+                        )}
+                        <Switch
+                          id="source-image-attachments"
+                          checked={imageFetching}
+                          onCheckedChange={handleImageFetchingChange}
+                          disabled={
+                            isSavingImageFetching || imageFetchingDisabledByAdmin
+                          }
+                          aria-describedby="source-image-attachments-description"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

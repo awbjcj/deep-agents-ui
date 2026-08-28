@@ -150,8 +150,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 <img
                   key={`img-${idx}`}
                   src={url}
-                  alt="attachment"
-                  className="h-20 w-20 rounded-xl border border-border object-cover shadow-sm ring-1 ring-black/5 transition-transform hover:scale-[1.02]"
+                  alt={`Attached image ${idx + 1}`}
+                  className="h-20 w-20 rounded-xl border border-border bg-muted object-cover shadow-sm ring-1 ring-black/5"
                 />
               ))}
               {docAttachments.map((doc, idx) => (

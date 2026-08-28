@@ -22,6 +22,7 @@ import {
   KeyRound,
   Layers,
   Loader2,
+  Paperclip,
   Pencil,
   Plus,
   RotateCcw,
@@ -1569,34 +1570,52 @@ function RunModeSection() {
             subtitle="File and image uploads in the chat composer"
           />
 
-          <div className="aptiv-glass-soft flex items-start justify-between gap-4 rounded-lg p-4 shadow-sm">
-            <div className="min-w-0 space-y-1.5">
-              <p className="text-sm font-semibold text-foreground">
-                Allow attachments in Proxy mode
-              </p>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                When off, users routed through the local proxy cannot upload
-                files or images. Remote and gateway modes are never affected.
-              </p>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                  connectivity.proxy_attachments_enabled_source === "database"
-                    ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
-                    : "bg-muted text-muted-foreground"
+          <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+            <div className="flex items-start gap-3 p-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                <Paperclip className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Label
+                    htmlFor="proxy-chat-attachments"
+                    className="text-sm font-semibold text-foreground"
+                  >
+                    Chat file and image uploads
+                  </Label>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                    Proxy only
+                  </span>
+                </div>
+                <p
+                  id="proxy-chat-attachments-description"
+                  className="text-xs leading-relaxed text-muted-foreground"
+                >
+                  Controls uploads from the chat composer for users routed
+                  through the local proxy. Remote and gateway modes are not
+                  affected.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                {isTogglingAttachments && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
                 )}
-              >
-                <Database className="h-2.5 w-2.5" />
+                <Switch
+                  id="proxy-chat-attachments"
+                  checked={connectivity.proxy_attachments_enabled}
+                  disabled={isTogglingAttachments}
+                  onCheckedChange={handleToggleAttachments}
+                  aria-describedby="proxy-chat-attachments-description"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 border-t border-border/60 bg-muted/20 px-4 py-2 text-[10px] text-muted-foreground">
+              <Database className="h-3 w-3" aria-hidden="true" />
+              <span className="font-medium">Policy source:</span>
+              <span>
                 {settingSourceLabel(connectivity.proxy_attachments_enabled_source)}
               </span>
             </div>
-            <Switch
-              checked={connectivity.proxy_attachments_enabled}
-              disabled={isTogglingAttachments}
-              onCheckedChange={handleToggleAttachments}
-              aria-label="Allow chat attachments while in Proxy mode"
-              className="mt-0.5 shrink-0"
-            />
           </div>
         </div>
       )}

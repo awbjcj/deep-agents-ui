@@ -51,14 +51,27 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
     ? item.thumb ?? null
     : null;
 
+  const status =
+    item.phase === "uploading"
+      ? "Uploading…"
+      : item.phase === "error"
+      ? item.error
+      : isReference
+      ? "Linked from this conversation"
+      : size !== null
+      ? humanSize(size)
+      : "Ready";
+
   return (
     <div
       role="listitem"
-      className="group inline-flex items-center gap-2 rounded-lg border border-border/80 bg-card px-2.5 py-1.5 text-xs shadow-sm transition-colors hover:border-primary/30 data-[state=error]:border-destructive/40 data-[state=error]:bg-destructive/5"
+      className="hover:border-primary/30 group inline-flex max-w-full items-center gap-2 rounded-lg border border-border/80 bg-card p-2 text-xs shadow-sm transition-[border-color,background-color] duration-150 data-[state=error]:border-destructive/40 data-[state=error]:bg-destructive/5"
       data-state={item.phase}
     >
       {item.phase === "uploading" ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </span>
       ) : thumbnailSrc ? (
         <img
           src={thumbnailSrc}
@@ -66,35 +79,43 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
           className="h-8 w-8 shrink-0 rounded object-cover ring-1 ring-border"
         />
       ) : isImage ? (
-        <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[var(--color-primary)]">
+          <ImageIcon className="h-4 w-4" />
+        </span>
       ) : (
-        <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />
-      )}
-      <span className="max-w-[160px] truncate font-medium">{filename}</span>
-      {size !== null ? (
-        <span className="text-muted-foreground">{humanSize(size)}</span>
-      ) : isReference ? (
-        <span
-          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[var(--color-primary)]"
-          title="References an existing thread file"
-        >
-          <Link2 className="h-3 w-3" />
-          linked
-        </span>
-      ) : null}
-      {item.phase === "error" && (
-        <span
-          className="text-destructive"
-          title={item.error}
-        >
-          error
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <FileIcon className="h-4 w-4" />
         </span>
       )}
+      <span className="min-w-0 max-w-[180px] leading-tight">
+        <span
+          className="block truncate font-medium text-foreground"
+          title={filename}
+        >
+          {filename}
+        </span>
+        <span
+          className={
+            item.phase === "error"
+              ? "mt-1 block truncate text-[10px] text-destructive"
+              : "mt-1 flex items-center gap-1 truncate text-[10px] text-muted-foreground"
+          }
+          title={status}
+        >
+          {isReference && (
+            <Link2
+              className="h-2.5 w-2.5 shrink-0"
+              aria-hidden="true"
+            />
+          )}
+          {status}
+        </span>
+      </span>
       <button
         type="button"
         aria-label={`Remove ${filename}`}
         onClick={() => onRemove(item.localId)}
-        className="-mr-0.5 ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="ml-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
       >
         <X className="h-3 w-3" />
       </button>

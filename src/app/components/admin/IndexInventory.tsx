@@ -273,94 +273,110 @@ export function IndexInventory({
         </div>
       </div>
 
-      {/* Two distinct narrowing controls sharing one row: the pattern is a
-          round trip to the cluster, the filter + sort beside it are instant
-          and local. Stacking them as separate full-width bars read as a
-          duplicated search field, so they're combined here. */}
-      <div className="flex flex-wrap gap-2">
-        <form
-          onSubmit={submitPattern}
-          className="flex min-w-[12rem] flex-1 gap-2 sm:flex-none sm:basis-56"
-        >
-          <div className="relative min-w-0 flex-1">
-            <Database className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={patternDraft}
-              onChange={(event) => setPatternDraft(event.target.value)}
-              className="h-9 pl-9 font-mono text-xs"
-              aria-label="OpenSearch index pattern"
-              placeholder="vsda_*"
-              spellCheck={false}
-            />
-          </div>
-          <Button
-            type="submit"
-            size="sm"
-            variant="secondary"
-            className="h-9"
-            disabled={patternDraft.trim() === pattern || !patternDraft.trim()}
-          >
-            Apply
-          </Button>
-        </form>
-
-        <div className="relative min-w-[10rem] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            // The custom clear button below would otherwise sit next to
-            // WebKit's built-in one.
-            className="h-9 pl-9 pr-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
-            onKeyDown={(event) => event.key === "Escape" && setQuery("")}
-            aria-label="Filter listed indices by name"
-            placeholder={`Filter ${indices.length.toLocaleString()} listed ${
-              indices.length === 1 ? "index" : "indices"
-            }…`}
-            spellCheck={false}
-            disabled={indices.length === 0}
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              aria-label="Clear filter"
-              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+      {/* The cluster pattern changes the server-side inventory; the filter and
+          sort only shape the current result set. Separate rows make that scope
+          difference legible without presenting two competing search boxes. */}
+      <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+        <div className="space-y-1.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <label
+              htmlFor="index-pattern"
+              className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
             >
-              <X
-                className="h-3.5 w-3.5"
-                aria-hidden="true"
+              Cluster pattern
+            </label>
+            <span className="text-[10px] text-muted-foreground/80">
+              Reloads from OpenSearch
+            </span>
+          </div>
+          <form onSubmit={submitPattern} className="flex min-w-0 gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Database className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="index-pattern"
+                value={patternDraft}
+                onChange={(event) => setPatternDraft(event.target.value)}
+                className="h-9 pl-9 font-mono text-xs"
+                placeholder="vsda_*"
+                spellCheck={false}
               />
-            </button>
-          )}
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              variant="secondary"
+              className="h-9"
+              disabled={patternDraft.trim() === pattern || !patternDraft.trim()}
+            >
+              Apply pattern
+            </Button>
+          </form>
         </div>
-        <Select
-          value={sortKey}
-          onValueChange={(value) => setSortKey(value as IndexSortKey)}
-        >
-          <SelectTrigger
-            className="h-9 w-[9.5rem] gap-2 text-xs [&>span]:flex-1 [&>span]:text-left"
-            aria-label="Sort indices"
-          >
-            <SlidersHorizontal
-              className="h-3.5 w-3.5 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {INDEX_SORT_OPTIONS.map((option) => (
-              <SelectItem
-                key={option.value}
-                value={option.value}
-                className="text-xs"
+
+        <div className="grid gap-2 border-t border-border/60 pt-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="index-name-filter"
+              className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+            >
+              Filter results
+            </label>
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="index-name-filter"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                // The custom clear button below would otherwise sit next to
+                // WebKit's built-in one.
+                className="h-9 pl-9 pr-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
+                onKeyDown={(event) => event.key === "Escape" && setQuery("")}
+                placeholder="Search index names…"
+                spellCheck={false}
+                disabled={indices.length === 0}
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear filter"
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Sort by
+            </span>
+            <Select
+              value={sortKey}
+              onValueChange={(value) => setSortKey(value as IndexSortKey)}
+            >
+              <SelectTrigger
+                className="h-9 w-full gap-2 text-xs [&>span]:flex-1 [&>span]:text-left"
+                aria-label="Sort indices"
               >
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INDEX_SORT_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className="text-xs"
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {error && (

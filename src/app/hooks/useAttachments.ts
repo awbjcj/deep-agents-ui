@@ -131,10 +131,16 @@ export function useAttachments({
   const update = useCallback(
     (localId: string, next: AttachmentState | null) => {
       setItems((prev) => {
+        let updated: AttachmentState[];
         if (next === null) {
-          return prev.filter((it) => it.localId !== localId);
+          updated = prev.filter((it) => it.localId !== localId);
+        } else {
+          updated = prev.map((it) => (it.localId === localId ? next : it));
         }
-        return prev.map((it) => (it.localId === localId ? next : it));
+        // Keep event handlers in the same tick from observing a removed chip.
+        // The effect remains the general render-to-ref synchronisation path.
+        itemsRef.current = updated;
+        return updated;
       });
     },
     []
@@ -261,7 +267,10 @@ export function useAttachments({
 
   const remove = useCallback(
     (localId: string) => {
-      const target = itemsRef.current.find((it) => it.localId === localId);
+      const targetIndex = itemsRef.current.findIndex(
+        (it) => it.localId === localId
+      );
+      const target = itemsRef.current[targetIndex];
       if (!target) return;
       aborters.current.get(localId)?.abort();
       aborters.current.delete(localId);
@@ -279,6 +288,24 @@ export function useAttachments({
             await deleteUpload(cleanupThreadId, stateFilesKey);
             toast.success(`Removed "${name}" from thread`);
           } catch (err) {
+            // The server still owns the artifact, so put the chip back instead
+            // of leaving the composer in a falsely-clean state. Do not restore
+            // it after the user has moved to another conversation.
+            if (previousThreadId.current === cleanupThreadId) {
+              setItems((prev) => {
+                if (prev.some((item) => item.localId === target.localId)) {
+                  return prev;
+                }
+                const restored = [...prev];
+                restored.splice(
+                  Math.min(targetIndex, restored.length),
+                  0,
+                  target
+                );
+                itemsRef.current = restored;
+                return restored;
+              });
+            }
             toast.error(`Couldn't remove "${name}" from thread`, {
               description: err instanceof Error ? err.message : undefined,
             });

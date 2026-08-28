@@ -244,7 +244,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 {attachMenuOpen && (
                   <div
                     role="menu"
-                    className="absolute bottom-full left-0 z-[80] mb-2 w-64 overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[0_16px_40px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md duration-150 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1"
+                    className="absolute bottom-full left-0 z-[80] mb-2 w-64 origin-bottom-left overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[0_16px_40px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md motion-safe:duration-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-1"
                   >
                     <button
                       type="button"
@@ -309,7 +309,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               onClick={isLoading ? stopStream : handleSubmit}
               aria-label={isLoading ? "Stop" : "Send message"}
               className={cn(
-                "rounded-full px-4 font-medium transition-all duration-150",
+                "rounded-full px-4 font-medium transition-[color,background-color,box-shadow,transform] duration-150",
                 !isLoading &&
                   "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               )}

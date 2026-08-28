@@ -521,9 +521,9 @@ function HomePageInner({
                 <ResizablePanel
                   id="admin-panel"
                   order={4}
-                  defaultSize={34}
-                  minSize={28}
-                  className="relative min-w-[460px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0"
+                  defaultSize={40}
+                  minSize={34}
+                  className="relative min-w-[560px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0"
                 >
                   <Suspense fallback={<PanelFallback label="Admin console" />}>
                     <AdminPanel onClose={handleAdminClose} />
