@@ -110,6 +110,7 @@ function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
 }
 import { useAuth } from "@/providers/AuthProvider";
+import { useConnectivity } from "@/providers/ConnectivityProvider";
 
 const ROLES: Role[] = ["user", "developer", "admin"];
 const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
@@ -1420,6 +1421,37 @@ function RunModeSection() {
     }
   };
 
+  // --- Proxy attachments switch ---
+  // Saved on toggle rather than behind the URL "Save" button: it is a single
+  // boolean policy, and admins expect it to take effect immediately.
+  const [isTogglingAttachments, setIsTogglingAttachments] = useState(false);
+  const { refresh: refreshConnectivity } = useConnectivity();
+
+  const handleToggleAttachments = async (checked: boolean) => {
+    setIsTogglingAttachments(true);
+    try {
+      const updated = await apiSetAdminConnectivity({
+        proxy_attachments_enabled: checked,
+      });
+      setConnectivity(updated);
+      // Re-pull the admin's own connectivity so their composer reflects the new
+      // policy without a reload. Other sessions pick it up on their next fetch;
+      // the upload endpoint enforces it in the meantime.
+      void refreshConnectivity();
+      toast.success(
+        checked
+          ? "Attachments enabled in Proxy mode"
+          : "Attachments disabled in Proxy mode"
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update attachment policy"
+      );
+    } finally {
+      setIsTogglingAttachments(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <SectionHeader
@@ -1527,6 +1559,45 @@ function RunModeSection() {
               </>
             )}
           </Button>
+        </div>
+      )}
+
+      {connectivity && (
+        <div className="space-y-3 border-t border-border/40 pt-5">
+          <SectionHeader
+            title="Attachments"
+            subtitle="File and image uploads in the chat composer"
+          />
+
+          <div className="aptiv-glass-soft flex items-start justify-between gap-4 rounded-lg p-4 shadow-sm">
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-sm font-semibold text-foreground">
+                Allow attachments in Proxy mode
+              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                When off, users routed through the local proxy cannot upload
+                files or images. Remote and gateway modes are never affected.
+              </p>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                  connectivity.proxy_attachments_enabled_source === "database"
+                    ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                <Database className="h-2.5 w-2.5" />
+                {settingSourceLabel(connectivity.proxy_attachments_enabled_source)}
+              </span>
+            </div>
+            <Switch
+              checked={connectivity.proxy_attachments_enabled}
+              disabled={isTogglingAttachments}
+              onCheckedChange={handleToggleAttachments}
+              aria-label="Allow chat attachments while in Proxy mode"
+              className="mt-0.5 shrink-0"
+            />
+          </div>
         </div>
       )}
 
@@ -2331,6 +2402,21 @@ function runModeBlurb(mode: RunMode): string {
       return "Via gateway";
     case "proxy":
       return "Via proxy";
+  }
+}
+
+// Backend setting sources are the literal strings "database" (an admin has
+// saved an override) or "env" (falling back to the .env-configured default).
+// Surface them as a plain-language label instead of the raw enum value so an
+// admin doesn't have to guess what "database" means in this context.
+function settingSourceLabel(source: string): string {
+  switch (source) {
+    case "database":
+      return "Custom override saved by an admin";
+    case "env":
+      return "Environment default (.env)";
+    default:
+      return source;
   }
 }
 

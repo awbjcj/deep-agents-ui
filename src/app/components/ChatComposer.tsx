@@ -67,9 +67,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       accept: acceptAttr,
     } = useAttachments({ threadId, ensureThreadId });
 
-    // File/image attachments are unavailable while routing through the local
-    // Proxy, so every entry point (button, menu, drag-and-drop) is gated on it.
-    const { isProxyMode } = useConnectivity();
+    // Attachments are available in every run mode; under Proxy they follow an
+    // admin switch surfaced by the connectivity endpoint. Every entry point
+    // (button, menu, drag-and-drop) is gated on the same resolved flag.
+    const { attachmentsEnabled } = useConnectivity();
 
     const fileKeysCount = Object.keys(files).length;
 
@@ -92,16 +93,17 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       };
     }, [attachMenuOpen]);
 
-    // Switching to Proxy mode with the attach menu open would leave a dangling
+    // Disabling attachments with the attach menu open would leave a dangling
     // popover whose actions are all disabled — close it proactively.
     useEffect(() => {
-      if (isProxyMode) setAttachMenuOpen(false);
-    }, [isProxyMode]);
+      if (!attachmentsEnabled) setAttachMenuOpen(false);
+    }, [attachmentsEnabled]);
 
     const submitDisabled = isLoading || !assistant;
     // Adding attachments is blocked while a run is in flight, before an
-    // assistant is selected, or whenever Proxy mode is active.
-    const attachmentsDisabled = submitDisabled || isProxyMode;
+    // assistant is selected, or when an admin has turned uploads off for the
+    // user's current run mode.
+    const attachmentsDisabled = submitDisabled || !attachmentsEnabled;
     const sendDisabled =
       submitDisabled ||
       hasUploading ||
@@ -175,7 +177,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             isDragging ? "ring-2 ring-primary/40" : ""
           }`}
           onDragOver={(e) => {
-            if (isProxyMode) return;
+            if (!attachmentsEnabled) return;
             if (e.dataTransfer.types.includes("Files")) {
               e.preventDefault();
               setIsDragging(true);
@@ -183,7 +185,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => {
-            if (isProxyMode) return;
+            if (!attachmentsEnabled) return;
             e.preventDefault();
             setIsDragging(false);
             const dropped = Array.from(e.dataTransfer.files);
@@ -232,8 +234,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   onClick={() => setAttachMenuOpen((v) => !v)}
                   disabled={attachmentsDisabled}
                   title={
-                    isProxyMode
-                      ? "Attachments are unavailable in Proxy mode"
+                    !attachmentsEnabled
+                      ? "Attachments have been disabled by an administrator"
                       : undefined
                   }
                 >

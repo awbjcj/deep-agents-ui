@@ -1014,6 +1014,9 @@ export interface AdminConnectivityResponse {
   run_mode: RunMode;
   run_mode_source: "database" | "env";
   urls: Record<string, UrlSettingInfo>;
+  /** Whether chat attachments/images may be uploaded while in Proxy mode. */
+  proxy_attachments_enabled: boolean;
+  proxy_attachments_enabled_source: "database" | "env";
 }
 
 export interface AdminConnectivityUpdatePayload {
@@ -1027,6 +1030,7 @@ export interface AdminConnectivityUpdatePayload {
   google_base_url?: string;
   google_base_url_gateway?: string;
   google_base_url_proxy?: string;
+  proxy_attachments_enabled?: boolean;
 }
 
 export async function apiGetAdminConnectivity(): Promise<AdminConnectivityResponse> {
@@ -1060,6 +1064,14 @@ export interface UserConnectivityResponse {
   proxy_url: string;
   proxy_url_source: "user" | "admin" | "env";
   available_modes: RunMode[];
+  /**
+   * Whether this user may upload chat attachments under their effective run
+   * mode. Always true outside Proxy mode; under Proxy it follows the admin
+   * switch. Optional so an older backend degrades to "enabled".
+   */
+  attachments_enabled?: boolean;
+  /** The raw admin switch, independent of the user's current run mode. */
+  proxy_attachments_enabled?: boolean;
 }
 
 export interface UserConnectivityUpdatePayload {
