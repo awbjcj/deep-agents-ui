@@ -18,13 +18,13 @@ import {
   toggleSelection,
 } from "../src/lib/library-batch-view.ts";
 
-function target(shelfId, { busy = false } = {}) {
+function target(shelfId, { busy = false, retention = false } = {}) {
   return {
     shelf_id: shelfId,
     index: shelfId,
     source_types: ["jira_problem"],
     has_active_job: busy,
-    retention_enabled: false,
+    retention_enabled: retention,
   };
 }
 
@@ -75,6 +75,18 @@ test("busy shelves are not selectable", () => {
 test("a fresh preview selects everything selectable", () => {
   const targets = [target("a"), target("b", { busy: true })];
   assert.deepEqual([...defaultSelection(targets)], ["a"]);
+});
+
+test("a prune excludes shelves without an enabled retention policy", () => {
+  const targets = [
+    target("retained", { retention: true }),
+    target("no-policy"),
+  ];
+  assert.deepEqual(
+    selectableTargets(targets, "prune").map((row) => row.shelf_id),
+    ["retained"]
+  );
+  assert.deepEqual([...defaultSelection(targets, "prune")], ["retained"]);
 });
 
 test("reconcile drops shelves that became busy or vanished", () => {
@@ -193,6 +205,19 @@ test("a batch cancelled before anything ran says so", () => {
     batch({ status: "cancelled", cancelled_jobs: 6, succeeded_jobs: 0 })
   );
   assert.match(text, /Cancelled before any shelf ran/);
+});
+
+test("a zero-job batch explains that every requested shelf was busy", () => {
+  const text = describeBatch(
+    batch({
+      status: "completed",
+      skipped: [
+        { shelf_id: "a", reason: "busy" },
+        { shelf_id: "b", reason: "busy" },
+      ],
+    })
+  );
+  assert.equal(text, "No jobs started; 2 shelves were already busy");
 });
 
 test("toast tone distinguishes partial failure from total failure", () => {

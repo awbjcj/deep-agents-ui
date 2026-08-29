@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  apiGetLibraryBatch,
-  type LibraryBatch,
-} from "@/lib/library-batch";
+import { apiGetLibraryBatch, type LibraryBatch } from "@/lib/library-batch";
 import {
   batchToastTone,
   describeBatch,
@@ -90,9 +87,13 @@ export function useLibraryBatches(onSettled: () => Promise<void>) {
   );
 
   /** Replace a batch without restarting its loop, e.g. after cancelling. */
-  const replace = useCallback((batch: LibraryBatch) => {
-    setBatches((current) => ({ ...current, [batch.batch_id]: batch }));
-  }, []);
+  const replace = useCallback(
+    (batch: LibraryBatch) => {
+      setBatches((current) => ({ ...current, [batch.batch_id]: batch }));
+      if (isBatchTerminal(batch.status)) stop(batch.batch_id);
+    },
+    [stop]
+  );
 
   const dismiss = useCallback(
     (batchId: string) => {

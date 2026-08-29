@@ -62,14 +62,18 @@ interface LibraryBatchProps {
 /** Row in the refined target list. */
 function TargetRow({
   target,
+  operation,
   checked,
   onToggle,
 }: {
   target: LibraryBatchTarget;
+  operation: BatchOperation;
   checked: boolean;
   onToggle: () => void;
 }) {
-  const blocked = target.has_active_job;
+  const retentionUnavailable =
+    operation === "prune" && !target.retention_enabled;
+  const blocked = target.has_active_job || retentionUnavailable;
   return (
     <li>
       <button
@@ -80,7 +84,7 @@ function TargetRow({
         disabled={blocked}
         onClick={onToggle}
         className={cn(
-          "flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+          "flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-[background-color,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
           blocked
             ? "cursor-not-allowed opacity-55"
             : "hover:bg-[var(--aptiv-glass-bg)]"
@@ -98,12 +102,14 @@ function TargetRow({
           />
         )}
         <span className="min-w-0 flex-1">
-          <span className="block break-anywhere font-mono text-xs">
+          <span className="block font-mono text-xs break-anywhere">
             {target.shelf_id}
           </span>
           <span className="mt-0.5 block text-xs text-muted-foreground">
             {blocked
-              ? "A job is already running for this shelf"
+              ? target.has_active_job
+                ? "A job is already running for this shelf"
+                : "Retention is not enabled for this shelf"
               : target.source_types.join(", ")}
           </span>
         </span>
@@ -127,6 +133,11 @@ function BatchCard({
   const progress = batchProgress(batch);
   const cancellable = canCancelBatch(batch);
   const running = batch.status === "running" || batch.status === "queued";
+  const outcomeTone = running
+    ? "active"
+    : batch.failed_jobs || batch.interrupted_jobs || batch.cancelled_jobs
+    ? "warning"
+    : "healthy";
 
   return (
     <article className="aptiv-glass-soft rounded-lg border border-[var(--aptiv-glass-border)] p-3">
@@ -139,13 +150,7 @@ function BatchCard({
         </span>
         <LibraryStatus
           label={running ? "In progress" : batch.status}
-          tone={
-            batch.failed_jobs || batch.interrupted_jobs
-              ? "warning"
-              : running
-                ? "active"
-                : "healthy"
-          }
+          tone={outcomeTone}
         />
         <span className="text-xs text-muted-foreground">
           {progress.finished} of {progress.total} shelves
@@ -180,8 +185,8 @@ function BatchCard({
         </span>
       </header>
 
-      {/* Hand-rolled bar: this project has no Progress primitive, and the
-          existing usage strip in AdminPanel is built the same way. */}
+      {/* Transform-based progress keeps the transition on the compositor and
+          avoids relayout on every poll update. */}
       <div
         className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--aptiv-glass-bg)]"
         role="progressbar"
@@ -191,8 +196,8 @@ function BatchCard({
         aria-label="Batch progress"
       >
         <div
-          className="h-full rounded-full bg-[var(--aptiv-turquoise)] transition-[width] duration-500"
-          style={{ width: `${progress.percent}%` }}
+          className="h-full origin-left rounded-full bg-[var(--aptiv-turquoise)] transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+          style={{ transform: `scaleX(${progress.percent / 100})` }}
         />
       </div>
 
@@ -219,15 +224,15 @@ function BatchCard({
           {batch.jobs.map((job) => (
             <li
               key={job.job_id}
-              className="flex items-start gap-2 text-xs"
+              className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5 text-xs sm:grid-cols-[minmax(0,1fr)_auto_12rem]"
             >
-              <span className="min-w-0 flex-1 break-anywhere font-mono">
+              <span className="min-w-0 flex-1 font-mono break-anywhere">
                 {job.shelf_id}
               </span>
               <span className="shrink-0 text-muted-foreground">
                 {jobStatusLabel(job)}
               </span>
-              <span className="w-48 shrink-0 truncate text-right text-muted-foreground">
+              <span className="col-span-2 min-w-0 truncate text-muted-foreground sm:col-span-1 sm:text-right">
                 {describeJob(job)}
               </span>
             </li>
@@ -257,25 +262,26 @@ export function LibraryBatch({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const summary = useMemo(
-    () => summarizeSelection(selected, targets ?? []),
-    [selected, targets]
+    () => summarizeSelection(selected, targets ?? [], operation),
+    [operation, selected, targets]
   );
 
   const preview = useCallback(async () => {
     setIsPreviewing(true);
+    // Remove the previous result before starting. If this request fails, the
+    // controls must not keep offering shelves resolved from an older scope.
+    setTargets(null);
+    setSelected(new Set());
     try {
       const result = await apiPreviewLibraryBatch(
         scopeKind === "all"
           ? { scopeAll: true }
           : scopeKind === "index"
-            ? { scopeIndex: scopeValue.trim() || "vsda_*" }
-            : { scopeSource: scopeValue.trim() }
+          ? { scopeIndex: scopeValue.trim() || "vsda_*" }
+          : { scopeSource: scopeValue.trim() }
       );
       setTargets(result.targets);
-      setSelected(defaultSelection(result.targets));
-      if (result.targets.length === 0) {
-        toast.warning("That scope matched no shelves");
-      }
+      setSelected(defaultSelection(result.targets, operation));
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to preview targets"
@@ -283,10 +289,12 @@ export function LibraryBatch({
     } finally {
       setIsPreviewing(false);
     }
-  }, [scopeKind, scopeValue]);
+  }, [operation, scopeKind, scopeValue]);
 
   const submit = useCallback(async () => {
-    const shelfIds = [...reconcileSelection(selected, targets ?? [])];
+    const shelfIds = [
+      ...reconcileSelection(selected, targets ?? [], operation),
+    ];
     setIsSubmitting(true);
     try {
       const batch = await apiSubmitLibraryBatch({
@@ -295,18 +303,25 @@ export function LibraryBatch({
         mode: operation === "sync" ? mode : undefined,
       });
       onTrackBatch(batch);
-      toast.success(
-        `Batch submitted: ${batch.total_jobs} shelf${
-          batch.total_jobs === 1 ? "" : "s"
-        } queued`
-      );
+      const submittedMessage = `${batch.total_jobs} shelf${
+        batch.total_jobs === 1 ? "" : "s"
+      } queued`;
+      if (batch.skipped.length) {
+        toast.warning(
+          `Batch submitted: ${submittedMessage}; ${batch.skipped.length} skipped`
+        );
+      } else {
+        toast.success(`Batch submitted: ${submittedMessage}`);
+      }
       setConfirmOpen(false);
       // Re-preview so shelves now holding a job show as unavailable.
       setTargets(null);
       setSelected(new Set());
       await onReload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit batch");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to submit batch"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -346,7 +361,13 @@ export function LibraryBatch({
             <span className="aptiv-eyebrow">Operation</span>
             <Select
               value={operation}
-              onValueChange={(value) => setOperation(value as BatchOperation)}
+              onValueChange={(value) => {
+                const nextOperation = value as BatchOperation;
+                setOperation(nextOperation);
+                if (targets) {
+                  setSelected(defaultSelection(targets, nextOperation));
+                }
+              }}
             >
               <SelectTrigger className="w-44">
                 <SelectValue />
@@ -381,9 +402,11 @@ export function LibraryBatch({
             <span className="aptiv-eyebrow">Scope</span>
             <Select
               value={scopeKind}
+              disabled={isPreviewing}
               onValueChange={(value) => {
                 setScopeKind(value as ScopeKind);
                 setTargets(null);
+                setSelected(new Set());
               }}
             >
               <SelectTrigger className="w-40">
@@ -404,7 +427,12 @@ export function LibraryBatch({
               </span>
               <Input
                 value={scopeValue}
-                onChange={(event) => setScopeValue(event.target.value)}
+                onChange={(event) => {
+                  setScopeValue(event.target.value);
+                  setTargets(null);
+                  setSelected(new Set());
+                }}
+                disabled={isPreviewing}
                 placeholder={
                   scopeKind === "index" ? "vsda_jira_*" : "jira_features"
                 }
@@ -416,7 +444,10 @@ export function LibraryBatch({
             type="button"
             variant="outline"
             onClick={preview}
-            disabled={isPreviewing}
+            disabled={
+              isPreviewing ||
+              (scopeKind === "source" && scopeValue.trim().length === 0)
+            }
           >
             {isPreviewing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -443,7 +474,7 @@ export function LibraryBatch({
             </span>
             {summary.blocked ? (
               <span className="text-xs text-amber-600 dark:text-amber-300">
-                {summary.blocked} unavailable (job already running)
+                {summary.blocked} unavailable for this operation
               </span>
             ) : null}
             <span className="ml-auto flex gap-2">
@@ -451,7 +482,9 @@ export function LibraryBatch({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={() => setSelected(defaultSelection(targets))}
+                onClick={() =>
+                  setSelected(defaultSelection(targets, operation))
+                }
                 disabled={summary.allSelected}
               >
                 Select all
@@ -473,6 +506,7 @@ export function LibraryBatch({
               <TargetRow
                 key={target.shelf_id}
                 target={target}
+                operation={operation}
                 checked={selected.has(target.shelf_id)}
                 onToggle={() =>
                   setSelected((current) =>
@@ -520,12 +554,11 @@ export function LibraryBatch({
         title={`${operationLabel(operation, mode)} · ${summary.selected} shelf${
           summary.selected === 1 ? "" : "s"
         }`}
-        description={confirmationDescription(
-          operation,
-          summary.selected,
-          mode
-        )}
+        description={confirmationDescription(operation, summary.selected, mode)}
         confirmationLabel={`Run on ${summary.selected}`}
+        confirmVariant={
+          operation === "sync" && mode === "delta" ? "default" : "destructive"
+        }
         requiredPhrase={
           requiresTypedConfirmation(operation)
             ? confirmationPhrase(operation, summary.selected)
@@ -534,14 +567,16 @@ export function LibraryBatch({
         isPending={isSubmitting}
         details={
           <ul className="max-h-40 overflow-y-auto rounded-md border border-[var(--aptiv-glass-border)] p-2 text-xs">
-            {[...reconcileSelection(selected, targets ?? [])].map((shelfId) => (
-              <li
-                key={shelfId}
-                className="break-anywhere font-mono"
-              >
-                {shelfId}
-              </li>
-            ))}
+            {[...reconcileSelection(selected, targets ?? [], operation)].map(
+              (shelfId) => (
+                <li
+                  key={shelfId}
+                  className="font-mono break-anywhere"
+                >
+                  {shelfId}
+                </li>
+              )
+            )}
           </ul>
         }
         onOpenChange={setConfirmOpen}

@@ -111,10 +111,10 @@ function IndexRowImpl({
             aria-label={`Select ${index.name}`}
             onClick={() => onToggleSelect(index.name)}
             className={cn(
-              "group flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border transition-colors",
+              "group flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border transition-[border-color,background-color,color,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
               isSelected
-                ? "border-[var(--aptiv-turquoise)] bg-[var(--aptiv-turquoise)]/12 text-[var(--aptiv-turquoise)]"
-                : "border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)] hover:border-[var(--aptiv-turquoise)]/60"
+                ? "bg-[var(--aptiv-turquoise)]/12 border-[var(--aptiv-turquoise)] text-[var(--aptiv-turquoise)]"
+                : "hover:border-[var(--aptiv-turquoise)]/60 border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)]"
             )}
           >
             {isSelected ? (

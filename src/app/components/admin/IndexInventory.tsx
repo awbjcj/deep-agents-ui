@@ -14,6 +14,7 @@ import {
   Search,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -142,6 +143,10 @@ export function IndexInventory({
   const runBulk = useCallback(async () => {
     if (!bulkAction) return;
     const names = selectedVisible.map((index) => index.name);
+    if (!names.length) {
+      setBulkAction(null);
+      return;
+    }
     setIsBulkPending(true);
     try {
       const result = await apiBatchIndexMaintenance(bulkAction, names);
@@ -151,14 +156,21 @@ export function IndexInventory({
           `${result.succeeded} of ${result.results.length} succeeded — ` +
             `${firstFailure?.index}: ${firstFailure?.detail}`
         );
+        // Keep only the failures selected so retrying the remaining work is a
+        // single action; successful rows no longer belong in the next request.
+        setSelected(
+          new Set(
+            result.results.filter((row) => !row.ok).map((row) => row.index)
+          )
+        );
       } else {
         toast.success(
           `${result.succeeded} ${
             bulkAction === "delete" ? "deleted" : "refreshed"
           }`
         );
+        setSelected(new Set());
       }
-      setSelected(new Set());
       setBulkAction(null);
       await onReload();
     } catch (err) {
@@ -347,7 +359,10 @@ export function IndexInventory({
               Reloads from OpenSearch
             </span>
           </div>
-          <form onSubmit={submitPattern} className="flex min-w-0 gap-2">
+          <form
+            onSubmit={submitPattern}
+            className="flex min-w-0 gap-2"
+          >
             <div className="relative min-w-0 flex-1">
               <Database className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -399,9 +414,12 @@ export function IndexInventory({
                   type="button"
                   onClick={() => setQuery("")}
                   aria-label="Clear filter"
-                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95"
                 >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  <X
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  />
                 </button>
               )}
             </div>
@@ -418,7 +436,10 @@ export function IndexInventory({
                 className="h-9 w-full gap-2 text-xs [&>span]:flex-1 [&>span]:text-left"
                 aria-label="Sort indices"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                <SlidersHorizontal
+                  className="h-3.5 w-3.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -526,7 +547,7 @@ export function IndexInventory({
         >
           {selectedVisible.length ? (
             <div
-              className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--aptiv-turquoise)]/40 bg-[var(--aptiv-glass-bg)] px-3 py-2 backdrop-blur"
+              className="border-[var(--aptiv-turquoise)]/40 sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-[var(--aptiv-glass-bg)] px-3 py-2 backdrop-blur"
               role="toolbar"
               aria-label="Selected index actions"
             >
@@ -541,11 +562,12 @@ export function IndexInventory({
               >
                 Clear
               </Button>
-              <span className="ml-auto flex gap-2">
+              <span className="flex w-full gap-2 sm:ml-auto sm:w-auto">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
+                  className="min-w-0 flex-1 sm:flex-none"
                   onClick={() => setBulkAction("refresh")}
                 >
                   <RefreshCw
@@ -558,6 +580,7 @@ export function IndexInventory({
                   type="button"
                   size="sm"
                   variant="destructive"
+                  className="min-w-0 flex-1 sm:flex-none"
                   onClick={() => setBulkAction("delete")}
                 >
                   <Trash2
@@ -683,6 +706,7 @@ export function IndexInventory({
         confirmationLabel={
           bulkAction === "delete" ? "Delete selected" : "Refresh selected"
         }
+        confirmVariant={bulkAction === "refresh" ? "default" : "destructive"}
         isPending={isBulkPending}
         onConfirm={runBulk}
       />

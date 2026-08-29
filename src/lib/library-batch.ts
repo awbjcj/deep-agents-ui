@@ -5,8 +5,11 @@ import { responseJson } from "@/lib/library-admin";
 import { libraryJobSchema } from "@/lib/library-admin";
 import type { LibraryJob } from "@/lib/library-admin";
 
+const batchOperationSchema = z.enum(["sync", "rebuild", "prune"]);
+const batchModeSchema = z.enum(["full", "delta", ""]);
+
 /** Operations a batch can apply across many shelves. */
-export type BatchOperation = "sync" | "rebuild" | "prune";
+export type BatchOperation = z.infer<typeof batchOperationSchema>;
 
 const batchTargetSchema = z.object({
   shelf_id: z.string(),
@@ -30,8 +33,8 @@ const batchSkippedSchema = z.object({
 
 const libraryBatchSchema = z.object({
   batch_id: z.string(),
-  operation: z.string(),
-  mode: z.string(),
+  operation: batchOperationSchema,
+  mode: batchModeSchema,
   dry_run: z.boolean(),
   scope_kind: z.string().default("explicit"),
   scope_value: z.string().default(""),
@@ -60,7 +63,7 @@ const indexBatchResultSchema = z.object({
 });
 
 const indexBatchResponseSchema = z.object({
-  action: z.string(),
+  action: z.enum(["delete", "refresh"]),
   results: z.array(indexBatchResultSchema).default([]),
   succeeded: z.number().int().nonnegative().default(0),
   failed: z.number().int().nonnegative().default(0),
@@ -70,7 +73,9 @@ export type LibraryBatchTarget = z.infer<typeof batchTargetSchema>;
 export type LibraryBatchPreview = z.infer<typeof batchPreviewSchema>;
 export type LibraryBatch = z.infer<typeof libraryBatchSchema>;
 export type LibraryBatchSkipped = z.infer<typeof batchSkippedSchema>;
-export type LibraryIndexBatchResponse = z.infer<typeof indexBatchResponseSchema>;
+export type LibraryIndexBatchResponse = z.infer<
+  typeof indexBatchResponseSchema
+>;
 
 /** A scope selector. Exactly one field may be set. */
 export interface BatchScope {
@@ -80,6 +85,14 @@ export interface BatchScope {
 }
 
 function scopeBody(scope: BatchScope): Record<string, unknown> {
+  const selectorCount = [
+    scope.scopeAll === true,
+    Boolean(scope.scopeIndex),
+    Boolean(scope.scopeSource),
+  ].filter(Boolean).length;
+  if (selectorCount !== 1) {
+    throw new Error("Choose exactly one batch scope");
+  }
   if (scope.scopeAll) return { scope_all: true };
   if (scope.scopeIndex) return { scope_index: scope.scopeIndex };
   if (scope.scopeSource) return { scope_source: scope.scopeSource };
@@ -115,6 +128,15 @@ export async function apiSubmitLibraryBatch(options: {
   mode?: "full" | "delta";
   dryRun?: boolean;
 }): Promise<LibraryBatch> {
+  if (!options.shelfIds.length) {
+    throw new Error("Select at least one shelf before submitting a batch");
+  }
+  if (options.operation === "rebuild" && options.dryRun) {
+    throw new Error("Rebuild batches do not support dry-run mode");
+  }
+  if (options.operation !== "sync" && options.mode) {
+    throw new Error(`${options.operation} batches do not accept a sync mode`);
+  }
   const body: Record<string, unknown> = {
     operation: options.operation,
     shelf_ids: options.shelfIds,
@@ -136,7 +158,9 @@ export async function apiGetLibraryBatch(
   signal?: AbortSignal
 ): Promise<LibraryBatch> {
   const data = await responseJson(
-    await apiFetch(`/library/batches/${encodeURIComponent(batchId)}`, { signal }),
+    await apiFetch(`/library/batches/${encodeURIComponent(batchId)}`, {
+      signal,
+    }),
     "Failed to read batch status"
   );
   return libraryBatchSchema.parse(data);

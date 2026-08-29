@@ -25,6 +25,7 @@ import {
   type ShelfAudit,
 } from "@/lib/library-admin";
 import { apiListActiveLibraryBatches } from "@/lib/library-batch";
+import { isBatchTerminal } from "@/lib/library-batch-view";
 import { cn } from "@/lib/utils";
 
 type LibraryView = "indices" | "shelves" | "batch";
@@ -184,7 +185,9 @@ export function OpenSearchLibrarySection() {
         label: "Batch",
         // Counts batches in flight, not shelves: this tab's subject is the
         // grouped operation, and a zero here means nothing is running.
-        count: Object.keys(batches).length,
+        count: Object.values(batches).filter(
+          (batch) => !isBatchTerminal(batch.status)
+        ).length,
         icon: Layers,
       },
     ],
@@ -265,7 +268,7 @@ export function OpenSearchLibrarySection() {
       <div
         role="tablist"
         aria-label="Search library views"
-        className="grid grid-cols-2 rounded-md border border-border bg-muted/35 p-1"
+        className="grid grid-cols-3 rounded-md border border-border bg-muted/35 p-1"
       >
         {views.map(({ id, label, count, icon: Icon }, tabIndex) => (
           <button

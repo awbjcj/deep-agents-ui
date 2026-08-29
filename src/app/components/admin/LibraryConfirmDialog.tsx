@@ -36,6 +36,8 @@ interface LibraryConfirmDialogProps {
    * looks identical in both cases.
    */
   requiredPhrase?: string;
+  /** Defaults to destructive to preserve the existing delete/rebuild dialogs. */
+  confirmVariant?: "default" | "destructive";
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }
@@ -48,6 +50,7 @@ export function LibraryConfirmDialog({
   isPending = false,
   details,
   requiredPhrase,
+  confirmVariant = "destructive",
   onOpenChange,
   onConfirm,
 }: LibraryConfirmDialogProps) {
@@ -108,7 +111,7 @@ export function LibraryConfirmDialog({
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
             onClick={onConfirm}
             disabled={isPending || !phraseSatisfied}
           >

@@ -24,9 +24,14 @@ export function isBatchTerminal(status: string): boolean {
  * reported as skipped.
  */
 export function selectableTargets(
-  targets: LibraryBatchTarget[]
+  targets: LibraryBatchTarget[],
+  operation: BatchOperation = "sync"
 ): LibraryBatchTarget[] {
-  return targets.filter((target) => !target.has_active_job);
+  return targets.filter(
+    (target) =>
+      !target.has_active_job &&
+      (operation !== "prune" || target.retention_enabled)
+  );
 }
 
 /**
@@ -36,8 +41,13 @@ export function selectableTargets(
  * the common case is "yes, all of these" and the checkboxes exist to remove
  * the exceptions.
  */
-export function defaultSelection(targets: LibraryBatchTarget[]): Set<string> {
-  return new Set(selectableTargets(targets).map((target) => target.shelf_id));
+export function defaultSelection(
+  targets: LibraryBatchTarget[],
+  operation: BatchOperation = "sync"
+): Set<string> {
+  return new Set(
+    selectableTargets(targets, operation).map((target) => target.shelf_id)
+  );
 }
 
 /**
@@ -48,10 +58,11 @@ export function defaultSelection(targets: LibraryBatchTarget[]): Set<string> {
  */
 export function reconcileSelection(
   selected: Set<string>,
-  targets: LibraryBatchTarget[]
+  targets: LibraryBatchTarget[],
+  operation: BatchOperation = "sync"
 ): Set<string> {
   const allowed = new Set(
-    selectableTargets(targets).map((target) => target.shelf_id)
+    selectableTargets(targets, operation).map((target) => target.shelf_id)
   );
   return new Set([...selected].filter((shelfId) => allowed.has(shelfId)));
 }
@@ -77,10 +88,11 @@ export interface SelectionSummary {
 /** Counts behind the "N of M selected" line and the select-all checkbox. */
 export function summarizeSelection(
   selected: Set<string>,
-  targets: LibraryBatchTarget[]
+  targets: LibraryBatchTarget[],
+  operation: BatchOperation = "sync"
 ): SelectionSummary {
-  const selectable = selectableTargets(targets);
-  const count = reconcileSelection(selected, targets).size;
+  const selectable = selectableTargets(targets, operation);
+  const count = reconcileSelection(selected, targets, operation).size;
   return {
     selected: count,
     selectable: selectable.length,
@@ -200,6 +212,10 @@ export function canCancelBatch(batch: LibraryBatch): boolean {
 
 /** One line summarizing a batch for a toast or a header. */
 export function describeBatch(batch: LibraryBatch): string {
+  if (batch.total_jobs === 0 && batch.skipped.length) {
+    const shelves = batch.skipped.length === 1 ? "shelf was" : "shelves were";
+    return `No jobs started; ${batch.skipped.length} ${shelves} already busy`;
+  }
   if (batch.status === "cancelled" && batch.succeeded_jobs === 0) {
     return `Cancelled before any shelf ran (${batch.cancelled_jobs} skipped)`;
   }
