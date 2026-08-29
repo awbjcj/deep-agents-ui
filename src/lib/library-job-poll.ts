@@ -1,6 +1,14 @@
 import type { LibraryJob } from "@/lib/library-admin";
 
-const TERMINAL_STATUSES = new Set(["succeeded", "failed", "interrupted"]);
+// "cancelled" must be here. A cancelled job never changes again, and a poller
+// that did not recognise it as terminal would keep requesting the same row
+// forever and never fire its settle callback.
+const TERMINAL_STATUSES = new Set([
+  "succeeded",
+  "failed",
+  "interrupted",
+  "cancelled",
+]);
 
 const FAST_POLL_MS = 2000;
 const SLOW_POLL_MS = 5000;
@@ -33,6 +41,14 @@ export function describeJob(job: Partial<LibraryJob>): string {
   if (job.status === "failed" || job.status === "interrupted") {
     return job.error || "Library operation failed";
   }
+  if (job.status === "cancelled") {
+    // Deliberately not phrased as a failure: a cancelled job never started, so
+    // its shelf was not touched and needs no audit.
+    return job.error || "Cancelled before it started";
+  }
+  if (job.status === "succeeded" && job.operation === "prune") {
+    return `${job.tombstones ?? 0} chunks retired`;
+  }
   if (job.status === "succeeded") {
     return (
       `${job.upserts ?? 0} upserts, ` +
@@ -55,5 +71,8 @@ export function describeJob(job: Partial<LibraryJob>): string {
  */
 export function jobStatusLabel(job: Partial<LibraryJob>): string {
   if (job.status === "queued") return "Queued";
-  return job.operation === "rebuild" ? "Rebuilding" : "Syncing";
+  if (job.status === "cancelled") return "Cancelled";
+  if (job.operation === "rebuild") return "Rebuilding";
+  if (job.operation === "prune") return "Pruning";
+  return "Syncing";
 }

@@ -66,7 +66,9 @@ const pruneResultSchema = z.object({
   tombstoned: z.number().int().nonnegative(),
 });
 
-const libraryJobSchema = z.object({
+// Exported so `library-batch.ts` can embed child jobs in a batch payload
+// without redeclaring the shape and letting the two drift apart.
+export const libraryJobSchema = z.object({
   job_id: z.string(),
   shelf_id: z.string(),
   operation: z.string(),

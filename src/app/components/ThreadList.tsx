@@ -2,6 +2,10 @@
 
 import type { ThreadItem } from "@/app/hooks/useThreads";
 import { useThreads } from "@/app/hooks/useThreads";
+import {
+  deleteThreadsBatch,
+  findNextThreadId,
+} from "@/app/utils/threadBatchActions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,7 +31,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useClient } from "@/providers/ClientProvider";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, Pencil, Trash2, X } from "lucide-react";
+import {
+  Check,
+  ListChecks,
+  Loader2,
+  MessageSquare,
+  Minus,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -123,6 +136,58 @@ function EmptyState() {
   );
 }
 
+function SelectionControl({
+  checked,
+  indeterminate = false,
+  label,
+  onToggle,
+  showLabel = false,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  label: string;
+  onToggle: () => void;
+  showLabel?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? "mixed" : checked}
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+      onKeyDown={(event) => event.stopPropagation()}
+      className={cn(
+        "inline-flex min-w-0 items-center gap-2 rounded-md text-xs font-medium text-muted-foreground outline-none",
+        "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "transition-[color,transform] duration-150 active:scale-[0.97]",
+        showLabel && "px-1 py-1 hover:text-foreground"
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-flex size-4 shrink-0 items-center justify-center rounded border",
+          "transition-[background-color,border-color,color] duration-150",
+          checked || indeterminate
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border bg-card text-transparent"
+        )}
+      >
+        {indeterminate ? (
+          <Minus className="size-3" />
+        ) : (
+          <Check className="size-3" />
+        )}
+      </span>
+      {showLabel && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
 interface ThreadListProps {
   onThreadSelect: (id: string | null) => void;
   onMutateReady?: (mutate: () => void) => void;
@@ -141,6 +206,10 @@ export function ThreadList({
   const client = useClient();
   const [currentThreadId] = useQueryState("threadId");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [isManaging, setIsManaging] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [isBatchDeleteOpen, setIsBatchDeleteOpen] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -158,6 +227,13 @@ export function ThreadList({
   });
 
   const flattened = useMemo(() => threads.data?.flat() ?? [], [threads.data]);
+  const selectedThreads = useMemo(
+    () => flattened.filter((thread) => selectedIds.has(thread.id)),
+    [flattened, selectedIds]
+  );
+  const allLoadedSelected =
+    flattened.length > 0 && selectedThreads.length === flattened.length;
+  const someLoadedSelected = selectedThreads.length > 0 && !allLoadedSelected;
 
   const grouped = useMemo(() => {
     const now = new Date();
@@ -213,6 +289,52 @@ export function ThreadList({
   useEffect(() => {
     onInterruptCountChange?.(interruptedCount);
   }, [interruptedCount, onInterruptCountChange]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setIsBatchDeleteOpen(false);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    const loadedIds = new Set(flattened.map((thread) => thread.id));
+    setSelectedIds((previous) => {
+      const next = new Set(
+        [...previous].filter((threadId) => loadedIds.has(threadId))
+      );
+      if (next.size === previous.size) return previous;
+      return next;
+    });
+  }, [flattened]);
+
+  const handleToggleManaging = useCallback(() => {
+    setIsManaging((current) => {
+      if (current) {
+        setSelectedIds(new Set());
+        setIsBatchDeleteOpen(false);
+      }
+      return !current;
+    });
+  }, []);
+
+  const handleToggleThread = useCallback((threadId: string) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(threadId)) next.delete(threadId);
+      else next.add(threadId);
+      return next;
+    });
+  }, []);
+
+  const handleToggleAllLoaded = useCallback(() => {
+    setSelectedIds((previous) => {
+      const isEverythingSelected =
+        flattened.length > 0 &&
+        flattened.every((thread) => previous.has(thread.id));
+      return isEverythingSelected
+        ? new Set()
+        : new Set(flattened.map((thread) => thread.id));
+    });
+  }, [flattened]);
 
   const handleStartRename = useCallback(
     (thread: ThreadItem, e: React.MouseEvent) => {
@@ -278,6 +400,59 @@ export function ThreadList({
     }
   }, [deleteTargetId, currentThreadId, flattened, client, onThreadSelect]);
 
+  const handleBatchDelete = useCallback(async () => {
+    const threadIds = selectedThreads.map((thread) => thread.id);
+    if (threadIds.length === 0) return;
+
+    setIsBatchDeleting(true);
+    try {
+      const result = await deleteThreadsBatch(client, { threadIds });
+      if (
+        result.deletedCount === result.requestedCount &&
+        currentThreadId &&
+        selectedIds.has(currentThreadId)
+      ) {
+        onThreadSelect(
+          findNextThreadId(
+            flattened.map((thread) => thread.id),
+            selectedIds,
+            currentThreadId
+          )
+        );
+      }
+
+      await mutateRef.current();
+      setSelectedIds(new Set());
+      setIsBatchDeleteOpen(false);
+
+      if (result.deletedCount === result.requestedCount) {
+        toast.success(
+          `${result.deletedCount} ${
+            result.deletedCount === 1 ? "thread" : "threads"
+          } deleted`
+        );
+      } else {
+        toast.warning(
+          `Deleted ${result.deletedCount} of ${result.requestedCount} threads`
+        );
+      }
+    } catch (error) {
+      toast.error("Failed to delete selected threads", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  }, [
+    client,
+    currentThreadId,
+    flattened,
+    onThreadSelect,
+    selectedIds,
+    selectedThreads,
+  ]);
+
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Header */}
@@ -328,6 +503,16 @@ export function ThreadList({
               </SelectGroup>
             </SelectContent>
           </Select>
+          <Button
+            variant={isManaging ? "secondary" : "ghost"}
+            size="sm"
+            onClick={handleToggleManaging}
+            aria-pressed={isManaging}
+            className="transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.97]"
+          >
+            <ListChecks className="size-4" />
+            {isManaging ? "Done" : "Manage"}
+          </Button>
           {onClose && (
             <Button
               variant="ghost"
@@ -341,6 +526,35 @@ export function ThreadList({
           )}
         </div>
       </div>
+
+      {isManaging && flattened.length > 0 && (
+        <div
+          role="toolbar"
+          aria-label="Batch thread actions"
+          className="flex flex-shrink-0 items-center gap-2 border-b border-border bg-muted/35 px-3 py-2"
+        >
+          <SelectionControl
+            checked={allLoadedSelected}
+            indeterminate={someLoadedSelected}
+            label={allLoadedSelected ? "Clear selection" : "Select loaded"}
+            onToggle={handleToggleAllLoaded}
+            showLabel
+          />
+          <span className="ml-auto text-[11px] font-medium tabular-nums text-muted-foreground">
+            {selectedThreads.length} selected
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={selectedThreads.length === 0}
+            onClick={() => setIsBatchDeleteOpen(true)}
+            className="h-7 transition-[background-color,transform] duration-150 active:scale-[0.97]"
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </Button>
+        </div>
+      )}
 
       <ScrollArea className="h-0 flex-1">
         {threads.error && <ErrorState message={threads.error.message} />}
@@ -385,21 +599,28 @@ export function ThreadList({
                         aria-current={
                           currentThreadId === thread.id ? true : undefined
                         }
-                        onClick={() =>
-                          editingId !== thread.id && onThreadSelect(thread.id)
-                        }
+                        onClick={() => {
+                          if (editingId === thread.id) return;
+                          if (isManaging) handleToggleThread(thread.id);
+                          else onThreadSelect(thread.id);
+                        }}
                         onKeyDown={(e) => {
                           if (
                             (e.key === "Enter" || e.key === " ") &&
                             editingId !== thread.id
                           ) {
                             e.preventDefault();
-                            onThreadSelect(thread.id);
+                            if (isManaging) handleToggleThread(thread.id);
+                            else onThreadSelect(thread.id);
                           }
                         }}
                         className={cn(
-                          "group relative cursor-pointer rounded-md py-2 pl-3 pr-2 transition-colors duration-150",
+                          "group relative cursor-pointer rounded-md py-2 pr-2 transition-colors duration-150",
                           "hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60",
+                          isManaging ? "pl-10" : "pl-3",
+                          isManaging &&
+                            selectedIds.has(thread.id) &&
+                            "bg-primary/10 ring-1 ring-inset ring-primary/25",
                           currentThreadId === thread.id
                             ? "bg-accent"
                             : "bg-transparent",
@@ -417,6 +638,20 @@ export function ThreadList({
                           )}
                           style={{ background: "var(--aptiv-orange)" }}
                         />
+
+                        {isManaging && (
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                            <SelectionControl
+                              checked={selectedIds.has(thread.id)}
+                              label={`${
+                                selectedIds.has(thread.id)
+                                  ? "Deselect"
+                                  : "Select"
+                              } ${thread.title}`}
+                              onToggle={() => handleToggleThread(thread.id)}
+                            />
+                          </span>
+                        )}
 
                         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1">
                           {/* Title row */}
@@ -440,7 +675,7 @@ export function ThreadList({
                                   }
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className="h-auto w-full min-w-0 rounded-none border-0 border-b border-primary/40 bg-transparent p-0 text-[13px] font-semibold leading-tight tracking-tight shadow-none focus-visible:border-primary focus-visible:ring-0"
+                                className="border-primary/40 h-auto w-full min-w-0 rounded-none border-0 border-b bg-transparent p-0 text-[13px] font-semibold leading-tight tracking-tight shadow-none focus-visible:border-primary focus-visible:ring-0"
                               />
                             ) : (
                               <h3
@@ -471,12 +706,13 @@ export function ThreadList({
                               className={cn(
                                 "absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background/40 transition-opacity duration-150",
                                 getThreadColor(thread.status),
-                                editingId !== thread.id &&
-                                  "group-hover:opacity-0 group-focus-within:opacity-0"
+                                !isManaging &&
+                                  editingId !== thread.id &&
+                                  "group-focus-within:opacity-0 group-hover:opacity-0"
                               )}
                             />
-                            {editingId !== thread.id && (
-                              <div className="absolute inset-0 flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                            {!isManaging && editingId !== thread.id && (
+                              <div className="absolute inset-0 flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -565,10 +801,66 @@ export function ThreadList({
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isBatchDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isBatchDeleting) setIsBatchDeleteOpen(open);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={false}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              Delete {selectedThreads.length}{" "}
+              {selectedThreads.length === 1 ? "thread" : "threads"}?
+            </DialogTitle>
+            <DialogDescription>
+              These conversation sessions and their complete history will be
+              permanently removed. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border border-border bg-muted/35 p-3">
+            <ul className="m-0 list-none space-y-1 p-0">
+              {selectedThreads.slice(0, 3).map((thread) => (
+                <li
+                  key={thread.id}
+                  className="m-0 truncate text-xs font-medium text-foreground"
+                >
+                  {thread.title}
+                </li>
+              ))}
+            </ul>
+            {selectedThreads.length > 3 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                +{selectedThreads.length - 3} more
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsBatchDeleteOpen(false)}
+              disabled={isBatchDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBatchDelete}
+              disabled={isBatchDeleting || selectedThreads.length === 0}
+              className="transition-[background-color,transform] duration-150 active:scale-[0.97]"
+            >
+              {isBatchDeleting && <Loader2 className="size-4 animate-spin" />}
+              Delete {selectedThreads.length}
             </Button>
           </DialogFooter>
         </DialogContent>
