@@ -709,6 +709,7 @@ export async function apiUpdateProfile(
 
 export type ScopeType = "project" | "vehicle" | "feature";
 export type ScopeAccess = "read" | "write";
+export type ScopeDefaultAccess = "none" | "read" | "tier";
 
 export const SCOPE_TYPES: ScopeType[] = ["project", "vehicle", "feature"];
 
@@ -717,6 +718,7 @@ export interface MemoryScope {
   scope_id: string;
   display_name: string | null;
   aliases: string[];
+  default_access: ScopeDefaultAccess;
   member_count?: number;
 }
 
@@ -736,6 +738,7 @@ export async function apiCreateScope(payload: {
   scope_id: string;
   display_name?: string | null;
   aliases?: string[];
+  default_access?: ScopeDefaultAccess;
 }): Promise<MemoryScope> {
   const res = await apiFetch("/admin/scopes", {
     method: "POST",
@@ -753,7 +756,11 @@ export async function apiCreateScope(payload: {
 export async function apiUpdateScope(
   scope_type: ScopeType,
   scope_id: string,
-  payload: { display_name?: string | null; aliases?: string[] }
+  payload: {
+    display_name?: string | null;
+    aliases?: string[];
+    default_access?: ScopeDefaultAccess;
+  }
 ): Promise<MemoryScope> {
   const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}`, {
     method: "PATCH",
@@ -847,6 +854,24 @@ export async function apiRemoveScopeMember(
     const body = await res.json().catch(() => ({}));
     throw new Error(
       extractErrorMessage((body as { detail?: unknown }).detail, "Failed to remove member")
+    );
+  }
+}
+
+export async function apiSetScopeMembers(
+  scope_type: ScopeType,
+  scope_id: string,
+  members: ScopeMember[],
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await apiFetch(
+    `/admin/scopes/${scope_type}/${scope_id}/members`,
+    { method: "PUT", body: JSON.stringify({ members }), signal }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to set members")
     );
   }
 }

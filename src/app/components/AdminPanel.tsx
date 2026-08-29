@@ -84,6 +84,7 @@ import {
   apiSetAllTierModels,
   apiSetRegistrationSettings,
   apiSetRunMode,
+  apiSetScopeMembers,
   apiSetTierImageFetching,
   apiUpdateScope,
   apiUpdateScopeMember,
@@ -97,6 +98,7 @@ import {
   RunModeInfo,
   SCOPE_TYPES,
   ScopeAccess,
+  ScopeDefaultAccess,
   ScopeMember,
   ScopeType,
   TempPassword,
@@ -109,10 +111,16 @@ import {
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibrarySection";
 import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
+import {
+  ScopeImportCard,
+  type ScopeImportResult,
+} from "@/app/components/admin/ScopeImportCard";
+import {
+  mergeScopeMembers,
+  roleAccessMembers,
+  type ScopeManifestEntry,
+} from "@/lib/scope-manifest";
 
-function defaultAccessForRole(role: Role): ScopeAccess {
-  return role === "admin" || role === "developer" ? "write" : "read";
-}
 import { useAuth } from "@/providers/AuthProvider";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
 
@@ -560,6 +568,7 @@ function ScopesSection() {
   const [scopes, setScopes] = useState<MemoryScope[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [applyingRoleAccess, setApplyingRoleAccess] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [userRoles, setUserRoles] = useState<Record<string, Role>>({});
   const countRefreshRef = useRef<AbortController | null>(null);
@@ -624,6 +633,106 @@ function ScopesSection() {
     }
   };
 
+  const handleManifestApply = async (
+    entries: ScopeManifestEntry[]
+  ): Promise<ScopeImportResult> => {
+    const currentByKey = new Map(scopes.map((scope) => [scopeKey(scope), scope]));
+    let applied = 0;
+    let failed = 0;
+
+    await runWithConcurrency(entries, 4, async (entry) => {
+      try {
+        const key = scopeKey(entry);
+        const existing = currentByKey.get(key);
+        const payload = {
+          display_name: entry.display_name,
+          aliases: entry.aliases,
+          default_access: entry.default_access,
+        };
+        const saved = existing
+          ? await apiUpdateScope(entry.scope_type, entry.scope_id, payload)
+          : await apiCreateScope({
+              scope_type: entry.scope_type,
+              scope_id: entry.scope_id,
+              ...payload,
+            });
+
+        if (entry.members.length > 0) {
+          const currentMembers = await apiListScopeMembers(
+            entry.scope_type,
+            entry.scope_id
+          );
+          const merged = mergeScopeMembers(currentMembers, entry.members);
+          await apiSetScopeMembers(
+            entry.scope_type,
+            entry.scope_id,
+            merged
+          );
+          saved.member_count = merged.length;
+        }
+        applied += 1;
+      } catch {
+        failed += 1;
+      }
+    });
+
+    await fetchScopes();
+    if (failed === 0) {
+      toast.success(`Applied ${applied} knowledge scope${applied === 1 ? "" : "s"}`);
+    } else {
+      toast.warning(`Applied ${applied}/${entries.length} scopes; ${failed} failed`);
+    }
+    return { applied, failed };
+  };
+
+  const handleApplyRoleAccess = async () => {
+    if (scopes.length === 0 || applyingRoleAccess) return;
+    if (
+      !confirm(
+        `Apply role-based access to all ${scopes.length} scopes? ` +
+          "All users will receive read access and developers/admins will receive write access."
+      )
+    )
+      return;
+
+    setApplyingRoleAccess(true);
+    let applied = 0;
+    let failed = 0;
+    try {
+      const users = await apiListUsers();
+      await runWithConcurrency(scopes, 4, async (scope) => {
+        try {
+          const currentMembers = await apiListScopeMembers(
+            scope.scope_type,
+            scope.scope_id
+          );
+          const merged = roleAccessMembers(currentMembers, users);
+          await apiUpdateScope(scope.scope_type, scope.scope_id, {
+            default_access: "tier",
+          });
+          await apiSetScopeMembers(
+            scope.scope_type,
+            scope.scope_id,
+            merged
+          );
+          applied += 1;
+        } catch {
+          failed += 1;
+        }
+      });
+      await fetchScopes();
+      if (failed === 0) {
+        toast.success(`Applied role access to all ${applied} scopes`);
+      } else {
+        toast.warning(`Applied role access to ${applied}/${scopes.length} scopes`);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load users");
+    } finally {
+      setApplyingRoleAccess(false);
+    }
+  };
+
   const grouped = useMemo(() => {
     const out: Record<ScopeType, MemoryScope[]> = {
       project: [],
@@ -644,14 +753,38 @@ function ScopesSection() {
         subtitle="Shared knowledge containers (project / vehicle / feature) with per-user read or write access"
       />
 
-      <Button
-        type="button"
-        onClick={() => setCreating((v) => !v)}
-        className="w-full"
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        {creating ? "Cancel new scope" : "New scope"}
-      </Button>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Button
+          type="button"
+          onClick={() => setCreating((v) => !v)}
+          className="w-full"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          {creating ? "Cancel new scope" : "New scope"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => void handleApplyRoleAccess()}
+          disabled={isLoading || scopes.length === 0 || applyingRoleAccess}
+        >
+          {applyingRoleAccess ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Users className="mr-2 h-4 w-4" />
+          )}
+          {applyingRoleAccess ? "Applying access" : "Apply access to all scopes"}
+        </Button>
+      </div>
+
+      <div className="aptiv-glass-soft space-y-2 rounded-lg p-3">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Role access grants read to users and write to developers/admins. Existing
+          custom write grants are preserved, and future users inherit access by role.
+        </p>
+        <ScopeImportCard onApply={handleManifestApply} />
+      </div>
 
       {creating && (
         <CreateScopeCard
@@ -733,6 +866,8 @@ function CreateScopeCard({
   const [scopeId, setScopeId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [aliases, setAliases] = useState("");
+  const [defaultAccess, setDefaultAccess] =
+    useState<ScopeDefaultAccess>("tier");
   const [submitting, setSubmitting] = useState(false);
   const aliveRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
@@ -762,45 +897,11 @@ function CreateScopeCard({
         scope_id: scopeId.trim(),
         display_name: displayName.trim() || null,
         aliases: aliasList,
+        default_access: defaultAccess,
       });
       if (!aliveRef.current) return;
       toast.success(`Created ${result.scope_type}/${result.scope_id}`);
-
-      let finalScope = result;
-      try {
-        const allUsers = await apiListUsers(controller.signal);
-        if (controller.signal.aborted) return;
-        // Cap concurrency: a workspace with many users would otherwise blast
-        // the backend with N parallel POSTs and saturate per-host connections.
-        const granted = await runWithConcurrency(
-          allUsers,
-          6,
-          (u) =>
-            apiAddScopeMember(
-              result.scope_type,
-              result.scope_id,
-              {
-                username: u.username,
-                access: defaultAccessForRole(u.role),
-              },
-              controller.signal
-            ),
-          controller.signal
-        );
-        if (controller.signal.aborted) return;
-        finalScope = { ...result, member_count: granted };
-        if (granted === allUsers.length) {
-          toast.success(`Granted access to ${granted} user${granted === 1 ? "" : "s"}`);
-        } else {
-          toast.warning(
-            `Granted access to ${granted}/${allUsers.length} users (some failed)`
-          );
-        }
-      } catch {
-        if (controller.signal.aborted) return;
-        toast.warning("Created scope, but failed to auto-grant member access");
-      }
-      if (aliveRef.current) onCreated(finalScope);
+      if (aliveRef.current) onCreated({ ...result, member_count: 1 });
     } catch (err) {
       if (controller.signal.aborted) return;
       toast.error(err instanceof Error ? err.message : "Failed to create scope");
@@ -865,6 +966,26 @@ function CreateScopeCard({
           className="h-9"
         />
       </div>
+      <div className="space-y-1.5">
+        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Default access
+        </Label>
+        <Select
+          value={defaultAccess}
+          onValueChange={(value) =>
+            setDefaultAccess(value as ScopeDefaultAccess)
+          }
+        >
+          <SelectTrigger className="h-9" aria-label="Default scope access">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tier">By role · user read, developer/admin write</SelectItem>
+            <SelectItem value="read">Read only · everyone</SelectItem>
+            <SelectItem value="none">Private · explicit members only</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <div className="flex gap-2 pt-1">
         <Button type="button" variant="ghost" onClick={onCancel} className="flex-1">
           Cancel
@@ -910,6 +1031,9 @@ function ScopeCard({
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(scope.display_name ?? "");
   const [aliases, setAliases] = useState((scope.aliases ?? []).join(", "));
+  const [defaultAccess, setDefaultAccess] = useState<ScopeDefaultAccess>(
+    scope.default_access ?? "tier"
+  );
   const [saving, setSaving] = useState(false);
 
   const [members, setMembers] = useState<ScopeMember[]>([]);
@@ -963,6 +1087,7 @@ function ScopeCard({
       const result = await apiUpdateScope(scope.scope_type, scope.scope_id, {
         display_name: displayName.trim() || null,
         aliases: aliasList,
+        default_access: defaultAccess,
       });
       onUpdated(result);
       setEditing(false);
@@ -1069,6 +1194,8 @@ function ScopeCard({
             <span className="font-semibold uppercase tracking-wider">
               {scope.member_count ?? 0} member{(scope.member_count ?? 0) === 1 ? "" : "s"}
             </span>
+            <span aria-hidden="true">·</span>
+            <span>{scopeDefaultAccessLabel(scope.default_access)}</span>
             {(scope.aliases?.length ?? 0) > 0 && (
               <>
                 <span aria-hidden="true">·</span>
@@ -1136,6 +1263,26 @@ function ScopeCard({
                   placeholder="comma-separated"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Default access
+                </Label>
+                <Select
+                  value={defaultAccess}
+                  onValueChange={(value) =>
+                    setDefaultAccess(value as ScopeDefaultAccess)
+                  }
+                >
+                  <SelectTrigger className="h-9" aria-label="Default scope access">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tier">By role</SelectItem>
+                    <SelectItem value="read">Read only</SelectItem>
+                    <SelectItem value="none">Explicit members only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex gap-2 pt-0.5">
                 <Button
                   type="button"
@@ -1146,6 +1293,7 @@ function ScopeCard({
                     setEditing(false);
                     setDisplayName(scope.display_name ?? "");
                     setAliases((scope.aliases ?? []).join(", "));
+                    setDefaultAccess(scope.default_access ?? "tier");
                   }}
                 >
                   Cancel
@@ -2531,6 +2679,18 @@ function scopeTypeColor(type: ScopeType): string {
       return "var(--aptiv-turquoise)";
     case "feature":
       return "var(--aptiv-slate)";
+  }
+}
+
+function scopeDefaultAccessLabel(access: ScopeDefaultAccess | undefined): string {
+  switch (access) {
+    case "none":
+      return "private";
+    case "read":
+      return "read only";
+    case "tier":
+    default:
+      return "role access";
   }
 }
 
