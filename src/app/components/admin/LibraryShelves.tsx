@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import {
   ArchiveRestore,
   BookOpen,
   Clock3,
   Loader2,
   RefreshCw,
+  Search,
   ShieldCheck,
   Trash2,
+  X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +18,7 @@ import { toast } from "sonner";
 import { LibraryConfirmDialog } from "@/app/components/admin/LibraryConfirmDialog";
 import { LibraryStatus } from "@/app/components/admin/LibraryStatus";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   apiPruneLibraryShelf,
@@ -31,6 +34,7 @@ import {
   isTerminal,
   jobStatusLabel,
 } from "@/lib/library-job-poll";
+import { filterShelves } from "@/lib/library-shelf-view";
 import { cn } from "@/lib/utils";
 
 interface LibraryShelvesProps {
@@ -95,6 +99,12 @@ export function LibraryShelves({
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
   const [confirmOperation, setConfirmOperation] =
     useState<ConfirmOperation | null>(null);
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const visibleShelves = useMemo(
+    () => filterShelves(shelves, deferredQuery),
+    [deferredQuery, shelves]
+  );
   const auditsByShelf = useMemo(
     () => Object.fromEntries(audits.map((item) => [item.shelf_id, item])),
     [audits]
@@ -176,7 +186,7 @@ export function LibraryShelves({
       aria-labelledby="library-shelves-title"
       className="space-y-3"
     >
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h4
             id="library-shelves-title"
@@ -200,6 +210,47 @@ export function LibraryShelves({
         </Button>
       </div>
 
+      <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label
+            htmlFor="shelf-filter"
+            className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-muted-foreground"
+          >
+            Filter results
+          </label>
+          <div className="relative min-w-0">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              id="shelf-filter"
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => event.key === "Escape" && setQuery("")}
+              className="h-9 pl-9 pr-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
+              placeholder="Search shelves, indices, or sources…"
+              spellCheck={false}
+              disabled={shelves.length === 0}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear shelf filter"
+                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95"
+              >
+                <X
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {error && (
         <div
           role="alert"
@@ -207,6 +258,20 @@ export function LibraryShelves({
         >
           <p className="text-xs font-medium text-destructive">{error}</p>
         </div>
+      )}
+
+      {!isLoading && shelves.length > 0 && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="px-0.5 text-[11px] tabular-nums text-muted-foreground"
+        >
+          Showing{" "}
+          <strong className="font-semibold text-foreground">
+            {visibleShelves.length.toLocaleString()}
+          </strong>{" "}
+          of {shelves.length.toLocaleString()}
+        </p>
       )}
 
       {isLoading ? (
@@ -230,9 +295,17 @@ export function LibraryShelves({
             Add manifests to the configured library manifest directory.
           </p>
         </div>
+      ) : visibleShelves.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border bg-muted/25 px-4 py-8 text-center">
+          <Search className="mx-auto h-5 w-5 text-muted-foreground" />
+          <p className="mt-2 text-sm font-semibold">No matching shelves</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Try a shelf ID, index name, source type, or description.
+          </p>
+        </div>
       ) : (
         <div className="space-y-2.5">
-          {shelves.map((shelf) => {
+          {visibleShelves.map((shelf) => {
             const audit = auditsByShelf[shelf.shelf_id];
             const driftReport = driftByShelf[shelf.shelf_id];
             const status = shelfStatus(audit, driftReport);

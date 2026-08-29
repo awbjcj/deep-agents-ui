@@ -386,11 +386,11 @@ export function IndexInventory({
           </form>
         </div>
 
-        <div className="grid gap-2 border-t border-border/60 pt-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
-          <div className="space-y-1.5">
+        <div className="grid items-end gap-2 border-t border-border/60 pt-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+          <div className="flex min-w-0 flex-col gap-1.5">
             <label
               htmlFor="index-name-filter"
-              className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+              className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-muted-foreground"
             >
               Filter results
             </label>
@@ -424,16 +424,20 @@ export function IndexInventory({
               )}
             </div>
           </div>
-          <div className="space-y-1.5">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label
+              htmlFor="index-sort"
+              className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-muted-foreground"
+            >
               Sort by
-            </span>
+            </label>
             <Select
               value={sortKey}
               onValueChange={(value) => setSortKey(value as IndexSortKey)}
             >
               <SelectTrigger
-                className="h-9 w-full gap-2 text-xs [&>span]:flex-1 [&>span]:text-left"
+                id="index-sort"
+                className="h-9 w-full gap-2 rounded-lg px-3.5 text-xs [&>span:first-child]:flex-1 [&>span:first-child]:text-left"
                 aria-label="Sort indices"
               >
                 <SlidersHorizontal
