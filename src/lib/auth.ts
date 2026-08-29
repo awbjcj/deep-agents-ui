@@ -672,6 +672,39 @@ export async function apiResetAllUsage(): Promise<{ reset: number }> {
   return res.json();
 }
 
+export interface WeeklyLimitSettings {
+  token_enabled: boolean;
+  call_enabled: boolean;
+  cost_enabled: boolean;
+}
+
+export async function apiGetWeeklyLimitSettings(
+  signal?: AbortSignal
+): Promise<WeeklyLimitSettings> {
+  const res = await apiFetch("/admin/weekly-limit-settings", { signal });
+  if (!res.ok) {
+    throw new Error("Failed to load weekly limit settings");
+  }
+  return res.json();
+}
+
+export async function apiSetWeeklyLimitSettings(
+  settings: WeeklyLimitSettings
+): Promise<WeeklyLimitSettings> {
+  const res = await apiFetch("/admin/weekly-limit-settings", {
+    method: "PUT",
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      (data as { detail?: string }).detail ||
+        "Failed to update weekly limit settings"
+    );
+  }
+  return res.json();
+}
+
 // --- Profile update ---
 
 export interface UpdateProfileData {

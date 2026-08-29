@@ -70,6 +70,7 @@ import {
   apiGetTierImageFetching,
   apiGetTierModels,
   apiGetUserUsage,
+  apiGetWeeklyLimitSettings,
   apiListInvitationCodes,
   apiListScopeMembers,
   apiListScopes,
@@ -86,6 +87,7 @@ import {
   apiSetRunMode,
   apiSetScopeMembers,
   apiSetTierImageFetching,
+  apiSetWeeklyLimitSettings,
   apiUpdateScope,
   apiUpdateScopeMember,
   apiUpdateUserRole,
@@ -103,6 +105,7 @@ import {
   ScopeType,
   TempPassword,
   TierModelEntry,
+  WeeklyLimitSettings,
 } from "@/lib/auth";
 import {
   splitUsageByEnforcement,
@@ -439,6 +442,8 @@ function UsersSection() {
         </div>
       </div>
 
+      <WeeklyLimitControls />
+
       {isLoading ? (
         <LoadingRow />
       ) : (
@@ -559,6 +564,151 @@ function UsersSection() {
         </Button>
       </div>
     </div>
+  );
+}
+
+type WeeklyLimitKey = keyof WeeklyLimitSettings;
+
+const WEEKLY_LIMIT_OPTIONS: ReadonlyArray<{
+  key: WeeklyLimitKey;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: "cost_enabled",
+    label: "Cost cap",
+    description: "Estimated model-token spend",
+  },
+  {
+    key: "token_enabled",
+    label: "Token cap",
+    description: "Weighted input and output tokens",
+  },
+  {
+    key: "call_enabled",
+    label: "Call cap",
+    description: "Billable model requests",
+  },
+];
+
+/** Global weekly-cap policy controls shown with the affected usage accounts. */
+function WeeklyLimitControls() {
+  const [settings, setSettings] = useState<WeeklyLimitSettings | null>(null);
+  const [saving, setSaving] = useState<WeeklyLimitKey | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoadFailed(false);
+    try {
+      setSettings(await apiGetWeeklyLimitSettings(signal));
+    } catch (error) {
+      if (signal?.aborted) return;
+      setLoadFailed(true);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to load weekly limit settings"
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
+
+  const handleChange = async (key: WeeklyLimitKey, enabled: boolean) => {
+    if (!settings || saving) return;
+    const previous = settings;
+    const next = { ...settings, [key]: enabled };
+    setSettings(next);
+    setSaving(key);
+    try {
+      setSettings(await apiSetWeeklyLimitSettings(next));
+      const option = WEEKLY_LIMIT_OPTIONS.find((item) => item.key === key);
+      toast.success(
+        `${option?.label ?? "Weekly cap"} ${enabled ? "enabled" : "disabled"}`
+      );
+    } catch (error) {
+      setSettings(previous);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update weekly limit settings"
+      );
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <section
+      className="aptiv-glass-soft rounded-lg p-3"
+      aria-labelledby="weekly-limit-controls-title"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p
+            id="weekly-limit-controls-title"
+            className="text-sm font-semibold"
+          >
+            Weekly limit caps
+          </p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            Choose which usage dimensions can block model calls.
+          </p>
+        </div>
+        {loadFailed && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => void load()}
+          >
+            Retry
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-3 divide-y divide-border/70 rounded-md border border-border/70 bg-background/35 px-3">
+        {WEEKLY_LIMIT_OPTIONS.map((option) => {
+          const controlId = `weekly-limit-${option.key}`;
+          return (
+            <div
+              key={option.key}
+              className="flex items-center gap-3 py-2.5"
+            >
+              <Label
+                htmlFor={controlId}
+                className="min-w-0 flex-1 cursor-pointer"
+              >
+                <span className="block text-xs font-semibold text-foreground">
+                  {option.label}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-normal leading-snug text-muted-foreground">
+                  {option.description}
+                </span>
+              </Label>
+              <Switch
+                id={controlId}
+                checked={settings?.[option.key] ?? false}
+                disabled={!settings || saving !== null}
+                onCheckedChange={(checked) =>
+                  void handleChange(option.key, checked)
+                }
+                aria-label={`${option.label} enforcement`}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+        Turning a cap off keeps its saved values and usage history, but stops it
+        from blocking requests.
+      </p>
+    </section>
   );
 }
 
