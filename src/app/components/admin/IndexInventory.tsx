@@ -38,6 +38,7 @@ import {
   type LibraryIndexDetail,
   type LibraryIndexSummary,
 } from "@/lib/library-admin";
+import { apiBatchIndexMaintenance } from "@/lib/library-batch";
 import { formatBytes } from "@/lib/library-format";
 import {
   commonIndexPrefix,
@@ -82,6 +83,13 @@ export function IndexInventory({
     null
   );
   const [emptyTargets, setEmptyTargets] = useState<string[] | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const [bulkAction, setBulkAction] = useState<"delete" | "refresh" | null>(
+    null
+  );
+  const [isBulkPending, setIsBulkPending] = useState(false);
 
   // Mirrored in a ref so `toggleMapping` can consult the cache without taking
   // `details` as a dependency. Every row is memoized on that callback's
@@ -111,6 +119,56 @@ export function IndexInventory({
     [indices]
   );
   const totals = useMemo(() => summarizeIndices(visible), [visible]);
+
+  // Stable so the memoized rows do not all re-render when the callback would
+  // otherwise be recreated; the functional update keeps it free of deps.
+  const toggleSelect = useCallback((name: string) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }, []);
+
+  // Selection is scoped to what the operator can currently see. A name hidden
+  // by the filter must not be swept up by an action whose confirm dialog never
+  // listed it.
+  const selectedVisible = useMemo(
+    () => visible.filter((index) => selected.has(index.name)),
+    [selected, visible]
+  );
+
+  const runBulk = useCallback(async () => {
+    if (!bulkAction) return;
+    const names = selectedVisible.map((index) => index.name);
+    setIsBulkPending(true);
+    try {
+      const result = await apiBatchIndexMaintenance(bulkAction, names);
+      if (result.failed) {
+        const firstFailure = result.results.find((row) => !row.ok);
+        toast.warning(
+          `${result.succeeded} of ${result.results.length} succeeded — ` +
+            `${firstFailure?.index}: ${firstFailure?.detail}`
+        );
+      } else {
+        toast.success(
+          `${result.succeeded} ${
+            bulkAction === "delete" ? "deleted" : "refreshed"
+          }`
+        );
+      }
+      setSelected(new Set());
+      setBulkAction(null);
+      await onReload();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Bulk index operation failed"
+      );
+    } finally {
+      setIsBulkPending(false);
+    }
+  }, [bulkAction, onReload, selectedVisible]);
 
   const run = useCallback(async (key: string, action: () => Promise<void>) => {
     setBusy((current) => new Set(current).add(key));
@@ -466,6 +524,51 @@ export function IndexInventory({
             isFiltering && "opacity-60"
           )}
         >
+          {selectedVisible.length ? (
+            <div
+              className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--aptiv-turquoise)]/40 bg-[var(--aptiv-glass-bg)] px-3 py-2 backdrop-blur"
+              role="toolbar"
+              aria-label="Selected index actions"
+            >
+              <span className="text-sm font-medium">
+                {selectedVisible.length} selected
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear
+              </Button>
+              <span className="ml-auto flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setBulkAction("refresh")}
+                >
+                  <RefreshCw
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  />
+                  Refresh selected
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setBulkAction("delete")}
+                >
+                  <Trash2
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  />
+                  Delete selected
+                </Button>
+              </span>
+            </div>
+          ) : null}
           {visible.map((index) => (
             <IndexRow
               key={index.name}
@@ -474,12 +577,14 @@ export function IndexInventory({
               isExpanded={expanded === index.name}
               isInspecting={busy.has(`inspect:${index.name}`)}
               isRefreshing={busy.has(`refresh:${index.name}`)}
+              isSelected={selected.has(index.name)}
               detail={details[index.name]}
               detailError={mappingErrors[index.name]}
               onToggleMapping={toggleMapping}
               onRetryMapping={loadMapping}
               onRefresh={refreshIndex}
               onDelete={setDeleteTarget}
+              onToggleSelect={toggleSelect}
             />
           ))}
         </div>
@@ -537,6 +642,49 @@ export function IndexInventory({
         confirmationLabel="Prune indices"
         isPending={busy.has("prune-empty")}
         onConfirm={pruneEmpty}
+      />
+      <LibraryConfirmDialog
+        open={bulkAction !== null}
+        onOpenChange={(open) => !open && setBulkAction(null)}
+        title={
+          bulkAction === "delete"
+            ? `Delete ${selectedVisible.length} selected ${
+                selectedVisible.length === 1 ? "index" : "indices"
+              }?`
+            : `Refresh ${selectedVisible.length} selected ${
+                selectedVisible.length === 1 ? "index" : "indices"
+              }?`
+        }
+        description={
+          bulkAction === "delete"
+            ? "These indices and every document in them are permanently removed. A shelf whose index is deleted must be rebuilt from its manifest."
+            : "Each index is refreshed so recently written documents become searchable immediately."
+        }
+        details={
+          <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-border/70 bg-muted/40 px-2.5 py-2">
+            {selectedVisible.map((index) => (
+              <li
+                key={index.name}
+                className="font-mono text-[11px] text-foreground break-anywhere"
+              >
+                {index.name}
+                <span className="ml-2 text-muted-foreground">
+                  {index.doc_count.toLocaleString()} docs
+                </span>
+              </li>
+            ))}
+          </ul>
+        }
+        // Deleting many indices at once is the one action here whose blast
+        // radius scales with the selection, so the count must be restated.
+        requiredPhrase={
+          bulkAction === "delete" ? String(selectedVisible.length) : undefined
+        }
+        confirmationLabel={
+          bulkAction === "delete" ? "Delete selected" : "Refresh selected"
+        }
+        isPending={isBulkPending}
+        onConfirm={runBulk}
       />
     </section>
   );

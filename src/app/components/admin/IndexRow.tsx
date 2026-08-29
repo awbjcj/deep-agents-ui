@@ -3,10 +3,12 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   Check,
+  CheckSquare,
   ChevronDown,
   Copy,
   Database,
   RefreshCw,
+  Square,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,12 +30,14 @@ interface IndexRowProps {
   isExpanded: boolean;
   isInspecting: boolean;
   isRefreshing: boolean;
+  isSelected: boolean;
   detail: LibraryIndexDetail | undefined;
   detailError: string | undefined;
   onToggleMapping: (name: string) => void;
   onRetryMapping: (name: string) => void;
   onRefresh: (name: string) => void;
   onDelete: (index: LibraryIndexSummary) => void;
+  onToggleSelect: (name: string) => void;
 }
 
 function indexTone(health: string) {
@@ -56,12 +60,14 @@ function IndexRowImpl({
   isExpanded,
   isInspecting,
   isRefreshing,
+  isSelected,
   detail,
   detailError,
   onToggleMapping,
   onRetryMapping,
   onRefresh,
   onDelete,
+  onToggleSelect,
 }: IndexRowProps) {
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -94,12 +100,41 @@ function IndexRowImpl({
     >
       <div className="p-3">
         <div className="flex items-start gap-2.5">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)]">
-            <Database
-              className="h-4 w-4"
-              aria-hidden="true"
-            />
-          </div>
+          {/* The selection control occupies the icon's slot rather than adding
+              a column, so enabling multi-select does not reflow a listing that
+              can run to hundreds of rows. The database glyph is the unselected
+              state; hovering or selecting reveals the checkbox. */}
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isSelected}
+            aria-label={`Select ${index.name}`}
+            onClick={() => onToggleSelect(index.name)}
+            className={cn(
+              "group flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border transition-colors",
+              isSelected
+                ? "border-[var(--aptiv-turquoise)] bg-[var(--aptiv-turquoise)]/12 text-[var(--aptiv-turquoise)]"
+                : "border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)] hover:border-[var(--aptiv-turquoise)]/60"
+            )}
+          >
+            {isSelected ? (
+              <CheckSquare
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
+            ) : (
+              <>
+                <Database
+                  className="h-4 w-4 group-hover:hidden"
+                  aria-hidden="true"
+                />
+                <Square
+                  className="hidden h-4 w-4 group-hover:block"
+                  aria-hidden="true"
+                />
+              </>
+            )}
+          </button>
 
           <div className="min-w-0 flex-1">
             {/* The name owns its own line. Sharing it with the health badge

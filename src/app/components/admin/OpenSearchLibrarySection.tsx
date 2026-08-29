@@ -7,10 +7,12 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { BookOpen, Database, FileStack, HardDrive } from "lucide-react";
+import { BookOpen, Database, FileStack, HardDrive, Layers } from "lucide-react";
 
 import { IndexInventory } from "@/app/components/admin/IndexInventory";
+import { LibraryBatch } from "@/app/components/admin/LibraryBatch";
 import { LibraryShelves } from "@/app/components/admin/LibraryShelves";
+import { useLibraryBatches } from "@/app/components/admin/use-library-batch";
 import { useLibraryJobs } from "@/app/components/admin/use-library-job";
 import {
   apiAuditLibrary,
@@ -22,9 +24,10 @@ import {
   type LibraryShelf,
   type ShelfAudit,
 } from "@/lib/library-admin";
+import { apiListActiveLibraryBatches } from "@/lib/library-batch";
 import { cn } from "@/lib/utils";
 
-type LibraryView = "indices" | "shelves";
+type LibraryView = "indices" | "shelves" | "batch";
 
 export function OpenSearchLibrarySection() {
   const [view, setView] = useState<LibraryView>("indices");
@@ -87,6 +90,17 @@ export function OpenSearchLibrarySection() {
   // here so accepting a job is not coupled to which panel happens to be open.
   const { jobsByShelf, track: trackJob, adopt } = useLibraryJobs(reloadShelves);
 
+  // Batches are polled here for the same reason as single-shelf jobs: the
+  // panels unmount on a view change, and a batch across every shelf runs far
+  // longer than an operator is likely to stay on one tab.
+  const {
+    batches,
+    track: trackBatch,
+    adopt: adoptBatches,
+    replace: replaceBatch,
+    dismiss: dismissBatch,
+  } = useLibraryBatches(reloadShelves);
+
   useEffect(() => {
     void reloadIndices();
   }, [reloadIndices]);
@@ -113,6 +127,23 @@ export function OpenSearchLibrarySection() {
       cancelled = true;
     };
   }, [adopt]);
+
+  // Same reattach story for batches: a reload mid-batch must resume the
+  // aggregate view rather than lose track of sixty-eight running shelves.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await apiListActiveLibraryBatches();
+        if (!cancelled) adoptBatches(rows);
+      } catch {
+        // Discovery is best-effort; the rest of the panel is independent of it.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adoptBatches]);
 
   const summary = useMemo(() => {
     const documentCount = indices.reduce(
@@ -148,8 +179,16 @@ export function OpenSearchLibrarySection() {
         count: shelves.length,
         icon: BookOpen,
       },
+      {
+        id: "batch",
+        label: "Batch",
+        // Counts batches in flight, not shelves: this tab's subject is the
+        // grouped operation, and a zero here means nothing is running.
+        count: Object.keys(batches).length,
+        icon: Layers,
+      },
     ],
-    [indices.length, shelves.length]
+    [batches, indices.length, shelves.length]
   );
 
   // `role="tablist"` promises arrow-key navigation; without it a keyboard user
@@ -275,7 +314,7 @@ export function OpenSearchLibrarySection() {
             onPatternChange={setPattern}
             onReload={reloadIndices}
           />
-        ) : (
+        ) : view === "shelves" ? (
           <LibraryShelves
             shelves={shelves}
             audits={audits}
@@ -284,6 +323,14 @@ export function OpenSearchLibrarySection() {
             error={shelvesError}
             jobsByShelf={jobsByShelf}
             onTrackJob={trackJob}
+            onReload={reloadShelves}
+          />
+        ) : (
+          <LibraryBatch
+            batches={batches}
+            onTrackBatch={trackBatch}
+            onReplaceBatch={replaceBatch}
+            onDismissBatch={dismissBatch}
             onReload={reloadShelves}
           />
         )}
