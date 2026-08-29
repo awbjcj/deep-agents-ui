@@ -22,6 +22,7 @@ import {
   KeyRound,
   Layers,
   Loader2,
+  Mail,
   Paperclip,
   Pencil,
   Plus,
@@ -107,6 +108,7 @@ import {
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibrarySection";
+import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
 
 function defaultAccessForRole(role: Role): ScopeAccess {
   return role === "admin" || role === "developer" ? "write" : "read";
@@ -124,6 +126,7 @@ type AdminTab =
   | "users"
   | "scopes"
   | "library"
+  | "newsletters"
   | "runmode"
   | "tiers"
   | "registration";
@@ -138,6 +141,7 @@ const TABS: AdminTabDef[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "scopes", label: "Memories", icon: Layers },
   { id: "library", label: "Search", icon: Database },
+  { id: "newsletters", label: "Newsletters", icon: Mail },
   { id: "runmode", label: "Run mode", icon: Globe },
   { id: "tiers", label: "Models", icon: Sliders },
   { id: "registration", label: "Invites", icon: Ticket },
@@ -221,6 +225,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
           {active === "users" && <UsersSection />}
           {active === "scopes" && <ScopesSection />}
           {active === "library" && <OpenSearchLibrarySection />}
+          {active === "newsletters" && <NewsletterSection />}
           {active === "runmode" && <RunModeSection />}
           {active === "tiers" && <TiersSection />}
           {active === "registration" && <RegistrationSection />}
