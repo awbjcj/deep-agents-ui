@@ -88,6 +88,7 @@ import {
   apiUpdateScopeMember,
   apiUpdateUserRole,
   CreatedInvitationCode,
+  type EmbeddingProvider,
   InvitationCode,
   MemoryScope,
   Role,
@@ -1453,6 +1454,31 @@ function RunModeSection() {
     }
   };
 
+  // --- Embedding provider ---
+  // This is a system ingestion policy, so a selection is persisted immediately
+  // and used by both new vectors and query-time embeddings.
+  const [isSavingEmbeddingProvider, setIsSavingEmbeddingProvider] = useState(false);
+
+  const handleEmbeddingProviderChange = async (provider: EmbeddingProvider) => {
+    if (!connectivity || provider === connectivity.embedding_provider) return;
+    setIsSavingEmbeddingProvider(true);
+    try {
+      const updated = await apiSetAdminConnectivity({ embedding_provider: provider });
+      setConnectivity(updated);
+      toast.success(
+        provider === "copilot"
+          ? "Embeddings now use copilot-api"
+          : "Embeddings now use the native API"
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update embedding provider"
+      );
+    } finally {
+      setIsSavingEmbeddingProvider(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <SectionHeader
@@ -1560,6 +1586,96 @@ function RunModeSection() {
               </>
             )}
           </Button>
+        </div>
+      )}
+
+      {connectivity && (
+        <div className="space-y-3 border-t border-border/40 pt-5">
+          <SectionHeader
+            title="Document embeddings"
+            subtitle="Choose the API used by library ingestion and semantic retrieval"
+          />
+
+          <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+            <div className="grid grid-cols-2 gap-2 p-3" aria-label="Embedding API">
+              {(
+                [
+                  {
+                    id: "native",
+                    label: "Native API",
+                    detail: "Existing OpenAI endpoint",
+                    icon: Database,
+                  },
+                  {
+                    id: "copilot",
+                    label: "Copilot API",
+                    detail: "Local copilot-api gateway",
+                    icon: Layers,
+                  },
+                ] as const
+              ).map((option) => {
+                const active = connectivity.embedding_provider === option.id;
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={isSavingEmbeddingProvider}
+                    onClick={() => void handleEmbeddingProviderChange(option.id)}
+                    className={cn(
+                      "group relative flex min-w-0 items-start gap-2.5 rounded-md border p-3 text-left transition-all duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:cursor-wait disabled:opacity-70",
+                      active
+                        ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] shadow-[inset_3px_0_0_var(--color-primary)]"
+                        : "border-border bg-card hover:-translate-y-px hover:border-[var(--color-primary)]/40"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors",
+                        active
+                          ? "bg-[var(--color-primary)] text-[var(--text-button-primary)]"
+                          : "bg-muted text-muted-foreground group-hover:text-[var(--color-primary)]"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold text-foreground">
+                        {option.label}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground">
+                        {option.detail}
+                      </span>
+                    </span>
+                    {active && (
+                      <CheckCircle
+                        className="absolute right-2 top-2 h-3.5 w-3.5 text-[var(--color-primary)]"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-border/60 bg-muted/20 px-4 py-2.5">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                {isSavingEmbeddingProvider ? (
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Database className="h-3 w-3" aria-hidden="true" />
+                )}
+                <span className="font-medium">Selection source:</span>
+                <span>{settingSourceLabel(connectivity.embedding_provider_source)}</span>
+              </div>
+              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80">
+                Rebuild existing vector shelves after switching providers so stored and
+                query embeddings use the same vector space.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

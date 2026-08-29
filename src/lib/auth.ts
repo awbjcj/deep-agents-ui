@@ -1010,9 +1010,13 @@ export interface UrlSettingInfo {
   updated_by: string | null;
 }
 
+export type EmbeddingProvider = "native" | "copilot";
+
 export interface AdminConnectivityResponse {
   run_mode: RunMode;
   run_mode_source: "database" | "env";
+  embedding_provider: EmbeddingProvider;
+  embedding_provider_source: "database" | "env";
   urls: Record<string, UrlSettingInfo>;
   /** Whether chat attachments/images may be uploaded while in Proxy mode. */
   proxy_attachments_enabled: boolean;
@@ -1021,6 +1025,7 @@ export interface AdminConnectivityResponse {
 
 export interface AdminConnectivityUpdatePayload {
   run_mode?: RunMode | "";
+  embedding_provider?: EmbeddingProvider | "";
   openai_base_url?: string;
   openai_base_url_gateway?: string;
   openai_base_url_proxy?: string;
