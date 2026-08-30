@@ -73,9 +73,13 @@ export async function apiFetch(
 ): Promise<Response> {
   const user = getAuthUser();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+  // The browser must supply multipart boundaries for FormData. Setting the
+  // JSON content type here makes otherwise-valid file uploads unparsable.
+  if (typeof FormData === "undefined" || !(options.body instanceof FormData)) {
+    headers["Content-Type"] ??= "application/json";
+  }
   if (user?.access_token) {
     headers["Authorization"] = `Bearer ${user.access_token}`;
   }

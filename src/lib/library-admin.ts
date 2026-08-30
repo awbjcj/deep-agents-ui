@@ -24,6 +24,19 @@ const shelfSchema = z.object({
   description: z.string().nullable(),
   retention_enabled: z.boolean().default(false),
   retention_older_than: z.string().nullable().default(null),
+  supports_files: z.boolean().default(false),
+  file_count: z.number().int().nonnegative().default(0),
+});
+
+const libraryFileSchema = z.object({
+  file_id: z.string(),
+  filename: z.string(),
+  content_type: z.string(),
+  byte_size: z.number().int().nonnegative(),
+  uploaded_at: z.string(),
+  uploaded_by: z.string(),
+  conversion_engine: z.string().nullable().default(null),
+  warning: z.string().nullable().default(null),
 });
 
 const shelfAuditSchema = z.object({
@@ -96,6 +109,7 @@ export type LibraryJob = z.infer<typeof libraryJobSchema>;
 export type LibraryIndexSummary = z.infer<typeof indexSummarySchema>;
 export type LibraryIndexDetail = z.infer<typeof indexDetailSchema>;
 export type LibraryShelf = z.infer<typeof shelfSchema>;
+export type LibraryFile = z.infer<typeof libraryFileSchema>;
 export type ShelfAudit = z.infer<typeof shelfAuditSchema>;
 export type DriftReport = z.infer<typeof driftReportSchema>;
 export type ShelfPruneResult = z.infer<typeof pruneResultSchema>;
@@ -192,6 +206,56 @@ export async function apiListLibraryShelves(
     "Failed to load library shelves"
   );
   return z.object({ shelves: z.array(shelfSchema) }).parse(data).shelves;
+}
+
+export async function apiListLibraryShelfFiles(
+  shelfId: string,
+  signal?: AbortSignal
+): Promise<LibraryFile[]> {
+  const data = await responseJson(
+    await apiFetch(`/library/shelves/${encodeURIComponent(shelfId)}/files`, {
+      signal,
+    }),
+    "Failed to load shelf files"
+  );
+  return z.object({ files: z.array(libraryFileSchema) }).parse(data).files;
+}
+
+const libraryFileMutationSchema = z.object({
+  files: z.array(libraryFileSchema),
+  job: libraryJobSchema,
+});
+
+export async function apiUploadLibraryShelfFiles(
+  shelfId: string,
+  files: readonly File[]
+): Promise<{ files: LibraryFile[]; job: LibraryJob }> {
+  const form = new FormData();
+  for (const file of files) form.append("files", file);
+  const data = await responseJson(
+    await apiFetch(`/library/shelves/${encodeURIComponent(shelfId)}/files`, {
+      method: "POST",
+      body: form,
+    }),
+    "Failed to upload shelf files"
+  );
+  return libraryFileMutationSchema.parse(data);
+}
+
+export async function apiDeleteLibraryShelfFile(
+  shelfId: string,
+  fileId: string
+): Promise<{ files: LibraryFile[]; job: LibraryJob }> {
+  const data = await responseJson(
+    await apiFetch(
+      `/library/shelves/${encodeURIComponent(
+        shelfId
+      )}/files/${encodeURIComponent(fileId)}`,
+      { method: "DELETE" }
+    ),
+    "Failed to delete shelf file"
+  );
+  return libraryFileMutationSchema.parse(data);
 }
 
 export async function apiAuditLibrary(signal?: AbortSignal): Promise<{

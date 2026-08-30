@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { LibraryConfirmDialog } from "@/app/components/admin/LibraryConfirmDialog";
+import { LibraryShelfFilesDialog } from "@/app/components/admin/LibraryShelfFilesDialog";
 import { LibraryStatus } from "@/app/components/admin/LibraryStatus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -424,6 +425,15 @@ export function LibraryShelves({
                 )}
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
+                  {shelf.supports_files && (
+                    <LibraryShelfFilesDialog
+                      shelfId={shelf.shelf_id}
+                      fileCount={shelf.file_count}
+                      mutationsDisabled={locked}
+                      onTrackJob={onTrackJob}
+                      onChanged={onReload}
+                    />
+                  )}
                   <Button
                     type="button"
                     size="sm"
