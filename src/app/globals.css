@@ -226,6 +226,10 @@
     --aptiv-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
       0 8px 24px -12px rgba(47, 104, 104, 0.18);
 
+    /* Communications strip (newsletter studio hero, light) */
+    --comms-strip-bg: var(--color-surface);
+    --comms-strip-accent: var(--aptiv-orange);
+
     /* Aptiv slider tokens (light) */
     --slider-track-bg: color-mix(
       in srgb,
@@ -483,6 +487,10 @@
     --aptiv-glass-border: color-mix(in srgb, var(--aptiv-slate) 22%, transparent);
     --aptiv-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
       0 12px 32px -16px rgba(0, 0, 0, 0.6);
+
+    /* Communications strip (newsletter studio hero, dark) */
+    --comms-strip-bg: #101820;
+    --comms-strip-accent: #ff9a56;
 
     /* Aptiv slider tokens (dark) */
     --slider-track-bg: color-mix(
