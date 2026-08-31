@@ -295,27 +295,27 @@ export function NewsletterSection() {
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-xl border border-[#283541] bg-[#101820] text-white shadow-lg shadow-black/10">
+      <section className="overflow-hidden rounded-xl border border-border bg-[var(--comms-strip-bg)] text-foreground shadow-lg shadow-black/10">
         <div className="h-1 bg-[var(--aptiv-orange)]" />
         <div className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff9a56]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--comms-strip-accent)]">
                 Communications studio
               </p>
               <h3 className="mt-1.5 text-xl font-semibold tracking-tight">
                 Newsletters that feel considered.
               </h3>
-              <p className="mt-2 max-w-sm text-xs leading-relaxed text-slate-300">
+              <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
                 Write in Markdown, preview the final email, send yourself a
                 proof, then publish with confidence.
               </p>
             </div>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-[#ff8a3d]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--comms-strip-accent)]">
               <Mail className="h-5 w-5" />
             </span>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
+          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4">
             <Metric
               label="Drafts"
               value={stats.drafts}
@@ -591,7 +591,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
-      <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">
+      <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
     </div>
