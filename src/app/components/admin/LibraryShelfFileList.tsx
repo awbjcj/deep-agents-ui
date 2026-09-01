@@ -75,8 +75,8 @@ export function LibraryShelfFileList({
               {file.filename}
             </p>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              {formatBytes(file.byte_size)} · Uploaded by{" "}
-              {file.uploaded_by} · {new Date(file.uploaded_at).toLocaleString()}
+              {formatBytes(file.byte_size)} · Uploaded by {file.uploaded_by} ·{" "}
+              {new Date(file.uploaded_at).toLocaleString()}
             </p>
             {file.warning && (
               <p className="mt-1 text-[10px] text-warning">{file.warning}</p>

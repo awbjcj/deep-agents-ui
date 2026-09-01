@@ -116,7 +116,8 @@ test("a partly-applied tier save reports which dimensions persisted", async () =
   // Slice out just this function so the assertions below cannot be satisfied
   // — or broken — by unrelated code elsewhere in auth.ts.
   const offset = api.slice(start + 1).search(/^export /m);
-  const body = offset === -1 ? api.slice(start) : api.slice(start, start + 1 + offset);
+  const body =
+    offset === -1 ? api.slice(start) : api.slice(start, start + 1 + offset);
 
   // The three quota endpoints are independent PUTs, so the save must not
   // short-circuit — it has to learn the fate of all three to describe the
