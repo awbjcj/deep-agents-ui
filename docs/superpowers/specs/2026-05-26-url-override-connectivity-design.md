@@ -9,6 +9,7 @@
 ## Summary
 
 Add admin and user-facing UI for managing LLM connectivity settings:
+
 - Admin can override the 6 base URLs (OpenAI + Anthropic, for each of remote/gateway/proxy modes) via HTTP API and UI, persisted in the database with env-file fallback
 - Users can select their own run mode (overriding the admin-set global default)
 - Users can set their own proxy URL (single URL applied to all providers when their mode is "proxy")
@@ -17,17 +18,17 @@ Add admin and user-facing UI for managing LLM connectivity settings:
 
 ## Requirements
 
-| # | Requirement | Actor |
-|---|-------------|-------|
-| R1 | Admin sets global run mode (system default) | Admin |
-| R2 | Admin overrides any of 6 base URLs via UI | Admin |
-| R3 | URL overrides stored in database, env as fallback | System |
-| R4 | User selects personal run mode (inherits global when unset) | User |
-| R5 | User sets personal proxy URL (applies to all providers) | User |
-| R6 | Per-user proxy stored in database, keyed by user | System |
-| R7 | Resolution priority: user DB > admin DB > env > hardcoded default | System |
-| R8 | Admin tab renamed from "Modes" to "Connectivities" | UI |
-| R9 | User connectivity section added to UserManagementSidebar | UI |
+| #   | Requirement                                                       | Actor  |
+| --- | ----------------------------------------------------------------- | ------ |
+| R1  | Admin sets global run mode (system default)                       | Admin  |
+| R2  | Admin overrides any of 6 base URLs via UI                         | Admin  |
+| R3  | URL overrides stored in database, env as fallback                 | System |
+| R4  | User selects personal run mode (inherits global when unset)       | User   |
+| R5  | User sets personal proxy URL (applies to all providers)           | User   |
+| R6  | Per-user proxy stored in database, keyed by user                  | System |
+| R7  | Resolution priority: user DB > admin DB > env > hardcoded default | System |
+| R8  | Admin tab renamed from "Modes" to "Connectivities"                | UI     |
+| R9  | User connectivity section added to UserManagementSidebar          | UI     |
 
 ---
 
@@ -99,17 +100,48 @@ when they are in proxy mode — it is ignored for remote/gateway modes.
 Returns all system URL settings and global run mode with source tracking.
 
 Response:
+
 ```json
 {
   "run_mode": "gateway",
   "run_mode_source": "database",
   "urls": {
-    "openai_base_url": {"value": "https://api.openai.com/v1", "source": "env", "updated_at": null, "updated_by": null},
-    "openai_base_url_gateway": {"value": "https://gateway...", "source": "database", "updated_at": "2026-05-20T14:30:00", "updated_by": "admin1"},
-    "openai_base_url_proxy": {"value": "", "source": "env", "updated_at": null, "updated_by": null},
-    "claude_base_url": {"value": "https://api.anthropic.com", "source": "env", "updated_at": null, "updated_by": null},
-    "claude_base_url_gateway": {"value": "https://gateway...", "source": "database", "updated_at": "2026-05-20T14:30:00", "updated_by": "admin1"},
-    "claude_base_url_proxy": {"value": "", "source": "env", "updated_at": null, "updated_by": null}
+    "openai_base_url": {
+      "value": "https://api.openai.com/v1",
+      "source": "env",
+      "updated_at": null,
+      "updated_by": null
+    },
+    "openai_base_url_gateway": {
+      "value": "https://gateway...",
+      "source": "database",
+      "updated_at": "2026-05-20T14:30:00",
+      "updated_by": "admin1"
+    },
+    "openai_base_url_proxy": {
+      "value": "",
+      "source": "env",
+      "updated_at": null,
+      "updated_by": null
+    },
+    "claude_base_url": {
+      "value": "https://api.anthropic.com",
+      "source": "env",
+      "updated_at": null,
+      "updated_by": null
+    },
+    "claude_base_url_gateway": {
+      "value": "https://gateway...",
+      "source": "database",
+      "updated_at": "2026-05-20T14:30:00",
+      "updated_by": "admin1"
+    },
+    "claude_base_url_proxy": {
+      "value": "",
+      "source": "env",
+      "updated_at": null,
+      "updated_by": null
+    }
   }
 }
 ```
@@ -121,6 +153,7 @@ Source is `"database"` when a non-empty override exists in system_settings, `"en
 Partial update — only include fields to change.
 
 Request body:
+
 ```json
 {
   "run_mode": "proxy",
@@ -138,6 +171,7 @@ Response: same shape as GET.
 #### `GET /api/user/connectivity`
 
 Response:
+
 ```json
 {
   "run_mode": "proxy",
@@ -154,6 +188,7 @@ Response:
 #### `PUT /api/user/connectivity`
 
 Request body (partial update):
+
 ```json
 {
   "run_mode": "proxy",
@@ -176,17 +211,20 @@ The existing `GET/PUT /api/admin/run-mode` endpoint stays functional. Internally
 ### Admin: Connectivities Tab
 
 Located in `AdminPanel.tsx`. Changes:
+
 - Rename tab from "Modes" to "Connectivities" (update `TABS` array, tab id stays `"runmode"` to avoid routing changes)
 - Rename `RunModeSection` component to `ConnectivitySection`
 - Add URL override form below the existing run mode radio group
 
 Layout (top to bottom):
+
 1. `SectionHeader` "Connectivity" — existing run mode radio group + save button (unchanged behavior)
 2. Divider
 3. `SectionHeader` "URL Overrides" — 6 input fields grouped by provider (OpenAI, Anthropic), each showing source indicator
 4. Save URL overrides button
 
 Component patterns:
+
 - Reuse `aptiv-glass-soft` card styling
 - `aptiv-eyebrow` for provider group labels (OPENAI, ANTHROPIC)
 - `aptiv-rule` orange accent line under section headers
@@ -199,6 +237,7 @@ Component patterns:
 Located in `UserManagementSidebar.tsx`. New section added below the existing profile/password sections.
 
 Layout:
+
 1. Section header with `Link` icon + "Connectivity" title
 2. Run mode radio group (3 options: remote, gateway, proxy) — same visual style as admin
 3. Subtext showing system default value
@@ -208,6 +247,7 @@ Layout:
 7. "Reset to defaults" link
 
 Behavior:
+
 - On mount: `GET /api/user/connectivity` to populate current values
 - On save: `PUT /api/user/connectivity` with changed fields
 - Reset: `PUT /api/user/connectivity` with `{run_mode: null, proxy_url: null}`
@@ -219,6 +259,7 @@ Behavior:
 ### New file: `src/backends/connectivity_store.py`
 
 Async DB access layer for the `system_settings` table:
+
 - `get_system_setting(key: str) -> str | None`
 - `set_system_setting(key: str, value: str, updated_by: str) -> None`
 - `get_all_connectivity_settings() -> dict[str, SystemSettingRow]`
@@ -226,17 +267,18 @@ Async DB access layer for the `system_settings` table:
 
 ### Changes to existing files
 
-| File | Change |
-|------|--------|
-| `src/backends/database.py` | Add `SystemSetting` model import; create table in `run_migrations()` |
-| `src/backends/models.py` | Add `SystemSetting` SQLAlchemy model; add `user_run_mode`, `user_proxy_url` to `User` |
-| `src/backends/main.py` | Add `GET/PUT /api/admin/connectivity` and `GET/PUT /api/user/connectivity` endpoints |
-| `src/backends/connectivity.py` | Add `resolve_user_connectivity()` that uses DB-first lookup |
-| `src/deep_agent/models.py` | Update `_resolve_connectivity()` to accept optional user context |
+| File                           | Change                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| `src/backends/database.py`     | Add `SystemSetting` model import; create table in `run_migrations()`                  |
+| `src/backends/models.py`       | Add `SystemSetting` SQLAlchemy model; add `user_run_mode`, `user_proxy_url` to `User` |
+| `src/backends/main.py`         | Add `GET/PUT /api/admin/connectivity` and `GET/PUT /api/user/connectivity` endpoints  |
+| `src/backends/connectivity.py` | Add `resolve_user_connectivity()` that uses DB-first lookup                           |
+| `src/deep_agent/models.py`     | Update `_resolve_connectivity()` to accept optional user context                      |
 
 ### Frontend new API functions
 
 Added to `src/lib/auth.ts`:
+
 - `apiGetAdminConnectivity(): Promise<AdminConnectivityResponse>`
 - `apiSetAdminConnectivity(payload): Promise<AdminConnectivityResponse>`
 - `apiGetUserConnectivity(): Promise<UserConnectivityResponse>`

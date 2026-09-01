@@ -11,7 +11,13 @@ import React, {
 } from "react";
 import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
-import { getConfig, saveConfig, getDeploymentUrl, getLangsmithApiKey, StandaloneConfig } from "@/lib/config";
+import {
+  getConfig,
+  saveConfig,
+  getDeploymentUrl,
+  getLangsmithApiKey,
+  StandaloneConfig,
+} from "@/lib/config";
 import { AccountMenu } from "@/app/components/AccountMenu";
 import { LoadingScreen } from "@/app/components/LoadingScreen";
 import { useHasBeenTrue } from "@/app/hooks/useHasBeenTrue";
@@ -50,27 +56,27 @@ import { ChatInterface } from "@/app/components/ChatInterface";
 // dialogs are closed on first paint. Keeping them out of the critical path cuts
 // the JS the chat view has to parse before it becomes interactive.
 const AdminPanel = lazy(() =>
-  import("@/app/components/AdminPanel").then((m) => ({ default: m.AdminPanel })),
+  import("@/app/components/AdminPanel").then((m) => ({ default: m.AdminPanel }))
 );
 const WorkspacePanel = lazy(() =>
   import("@/app/components/WorkspacePanel").then((m) => ({
     default: m.WorkspacePanel,
-  })),
+  }))
 );
 const ConfigDialog = lazy(() =>
   import("@/app/components/ConfigDialog").then((m) => ({
     default: m.ConfigDialog,
-  })),
+  }))
 );
 const ChangeProfileDialog = lazy(() =>
   import("@/app/components/ChangeProfileDialog").then((m) => ({
     default: m.ChangeProfileDialog,
-  })),
+  }))
 );
 const TokenSetupWizard = lazy(() =>
   import("@/app/components/TokenSetupWizard").then((m) => ({
     default: m.TokenSetupWizard,
-  })),
+  }))
 );
 
 interface HomePageInnerProps {
@@ -105,7 +111,7 @@ function HomePageInner({
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab | undefined>(
-    undefined,
+    undefined
   );
   const [adminOpen, setAdminOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
@@ -127,7 +133,7 @@ function HomePageInner({
     (id: string | null) => {
       void setThreadId(id);
     },
-    [setThreadId],
+    [setThreadId]
   );
   const handleSidebarClose = useCallback(() => {
     void setSidebar(null);
@@ -138,7 +144,7 @@ function HomePageInner({
   }, []);
   const handleTokenFocusConsumed = useCallback(
     () => requestTokenFocus(null),
-    [requestTokenFocus],
+    [requestTokenFocus]
   );
   const handleAdminClose = useCallback(() => setAdminOpen(false), []);
 
@@ -186,7 +192,7 @@ function HomePageInner({
         new Promise<T>((_, reject) => {
           timer = setTimeout(
             () => reject(new Error("Assistant request timed out")),
-            ms,
+            ms
           );
         }),
       ]).finally(() => clearTimeout(timer));
@@ -194,7 +200,7 @@ function HomePageInner({
 
     const isUUID =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        config.assistantId,
+        config.assistantId
       );
 
     const run = async () => {
@@ -203,7 +209,7 @@ function HomePageInner({
           const data = await withTimeout(
             client.assistants.get(config.assistantId, {
               signal: controller.signal,
-            }),
+            })
           );
           if (!cancelled) setAssistant(data);
         } catch (error) {
@@ -220,10 +226,10 @@ function HomePageInner({
             graphId: config.assistantId,
             limit: 100,
             signal: controller.signal,
-          }),
+          })
         );
         const defaultAssistant = assistants.find(
-          (candidate) => candidate.metadata?.["created_by"] === "system",
+          (candidate) => candidate.metadata?.["created_by"] === "system"
         );
         if (defaultAssistant === undefined) {
           throw new Error("No default assistant found");
@@ -233,7 +239,7 @@ function HomePageInner({
         if (cancelled) return;
         console.error(
           "Failed to find default assistant from graph_id: try setting the assistant_id directly:",
-          error,
+          error
         );
         setAssistant(synthesizeAssistant(config.assistantId));
       }
@@ -298,7 +304,10 @@ function HomePageInner({
                 height={22}
                 className="h-5 w-auto"
               />
-              <span className="h-5 w-px bg-border" aria-hidden="true" />
+              <span
+                className="h-5 w-px bg-border"
+                aria-hidden="true"
+              />
               <div className="flex flex-col leading-none">
                 <span
                   className="text-[9px] font-bold uppercase tracking-[0.2em]"
@@ -316,7 +325,7 @@ function HomePageInner({
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebar("1")}
-                className="rounded-full border border-border bg-card px-3 text-foreground hover:border-primary/40 hover:bg-accent"
+                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent"
               >
                 <MessagesSquare className="mr-2 h-4 w-4" />
                 Threads
@@ -349,12 +358,16 @@ function HomePageInner({
                     Agent
                   </span>
                   <span className="max-w-[180px] truncate text-[12px] font-medium text-foreground/80">
-                    {assistant?.graph_id || assistant?.name || config.assistantId}
+                    {assistant?.graph_id ||
+                      assistant?.name ||
+                      config.assistantId}
                   </span>
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <div className="font-mono text-[11px]">{config.assistantId}</div>
+                <div className="font-mono text-[11px]">
+                  {config.assistantId}
+                </div>
                 <div className="text-[10px] text-primary-foreground/70">
                   Click to switch agent
                 </div>
@@ -382,8 +395,8 @@ function HomePageInner({
                   aria-pressed={workspaceOpen}
                   className={
                     workspaceOpen
-                      ? "rounded-full border border-primary/40 bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:hidden"
-                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-primary/40 hover:bg-accent max-sm:hidden"
+                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:hidden"
+                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:hidden"
                   }
                 >
                   <LayoutPanelLeft className="mr-2 h-4 w-4" />
@@ -412,8 +425,8 @@ function HomePageInner({
                     aria-pressed={adminOpen}
                     className={
                       adminOpen
-                        ? "rounded-full border border-[var(--aptiv-orange)]/50 bg-[var(--aptiv-orange)]/10 text-[var(--aptiv-orange)] hover:bg-[var(--aptiv-orange)]/15"
-                        : "rounded-full border border-border bg-card text-foreground hover:border-[var(--aptiv-orange)]/50 hover:text-[var(--aptiv-orange)]"
+                        ? "border-[var(--aptiv-orange)]/50 bg-[var(--aptiv-orange)]/10 hover:bg-[var(--aptiv-orange)]/15 rounded-full border text-[var(--aptiv-orange)]"
+                        : "hover:border-[var(--aptiv-orange)]/50 rounded-full border border-border bg-card text-foreground hover:text-[var(--aptiv-orange)]"
                     }
                   >
                     <Shield className="h-4 w-4" />
@@ -429,7 +442,7 @@ function HomePageInner({
                   size="icon"
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="rounded-full border border-border bg-card text-foreground hover:border-primary/40 hover:text-primary max-sm:hidden"
+                  className="hover:border-primary/40 rounded-full border border-border bg-card text-foreground hover:text-primary max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
                 </Button>

@@ -23,9 +23,10 @@ export default function Error({
 
   // A failed chunk fetch is not recoverable by re-rendering — the module is
   // simply not there. Only a fresh document fetch can fix it.
-  const isChunkError = /ChunkLoadError|Loading chunk|dynamically imported module/i.test(
-    `${error.name} ${error.message}`,
-  );
+  const isChunkError =
+    /ChunkLoadError|Loading chunk|dynamically imported module/i.test(
+      `${error.name} ${error.message}`
+    );
 
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-4 px-6 text-center">

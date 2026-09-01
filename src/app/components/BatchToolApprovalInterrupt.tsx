@@ -88,7 +88,9 @@ export function BatchToolApprovalInterrupt({
           <ToolApprovalInterrupt
             actionRequest={actionRequest}
             reviewConfig={reviewConfigsMap?.get(actionRequest.name)}
-            onDecisionChange={(decision) => handleDecisionChange(index, decision)}
+            onDecisionChange={(decision) =>
+              handleDecisionChange(index, decision)
+            }
             currentDecision={decisions[index] ?? undefined}
             isLoading={isLoading}
           />

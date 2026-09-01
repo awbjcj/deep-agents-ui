@@ -38,7 +38,9 @@ export default function ForgotPasswordPage() {
       setEmail(normalizedEmail);
       setDone(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not send reset email");
+      setError(
+        err instanceof Error ? err.message : "Could not send reset email"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -91,7 +93,10 @@ export default function ForgotPasswordPage() {
           >
             Forgot password
           </h1>
-          <p className="mt-3 text-sm" style={{ color: "var(--color-text-secondary)" }}>
+          <p
+            className="mt-3 text-sm"
+            style={{ color: "var(--color-text-secondary)" }}
+          >
             {done
               ? "If your address is registered, a temporary password is on its way."
               : "Enter your Aptiv email to receive a temporary password."}
@@ -116,7 +121,10 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+          >
             <div className="space-y-1.5">
               <Label
                 htmlFor="email"

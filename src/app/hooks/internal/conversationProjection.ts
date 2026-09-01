@@ -47,7 +47,10 @@ function buildRawBuckets(
   isInterrupted: boolean
 ): RawBucket[] {
   const messageMap = new Map<string, RawBucket>();
-  const toolCallIndex = new Map<string, { messageKey: string; index: number }>();
+  const toolCallIndex = new Map<
+    string,
+    { messageKey: string; index: number }
+  >();
 
   messages.forEach((message: Message, idx: number) => {
     if (message.type === "ai") {
@@ -66,7 +69,9 @@ function buildRawBuckets(
         rawToolCalls.push(...message.additional_kwargs.tool_calls);
       } else if (message.tool_calls && Array.isArray(message.tool_calls)) {
         rawToolCalls.push(
-          ...message.tool_calls.filter((tc: { name?: string }) => tc.name !== "")
+          ...message.tool_calls.filter(
+            (tc: { name?: string }) => tc.name !== ""
+          )
         );
       } else if (Array.isArray(message.content)) {
         const toolUseBlocks = message.content.filter(
@@ -245,7 +250,11 @@ export function useProcessedMessages(
 ): ProcessedMessage[] {
   const prevRef = useRef<ProcessedMessage[] | null>(null);
   return useMemo(() => {
-    const next = reconcileConversation(prevRef.current, messages, isInterrupted);
+    const next = reconcileConversation(
+      prevRef.current,
+      messages,
+      isInterrupted
+    );
     prevRef.current = next;
     return next;
   }, [messages, isInterrupted]);

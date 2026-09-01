@@ -434,7 +434,10 @@ export function useChat({
   // references so a streamed token re-renders only the live message instead of
   // every artifact in the thread.
   const isInterrupted = stream.interrupt !== undefined;
-  const processedMessages = useProcessedMessages(stream.messages, isInterrupted);
+  const processedMessages = useProcessedMessages(
+    stream.messages,
+    isInterrupted
+  );
 
   // Read the live stream values once per render. `stream` is a Proxy that
   // forwards to the latest raw stream, so each property access is a trap
@@ -493,6 +496,6 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
-    ],
+    ]
   );
 }

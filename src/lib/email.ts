@@ -3,9 +3,9 @@ const ALLOWED_EMAIL_DOMAINS = ["aptiv.com", "vsda.top", "m.vsda.top"];
 
 const ALLOWED_EMAIL_RE = new RegExp(
   `^[a-zA-Z0-9._%+-]+@(${ALLOWED_EMAIL_DOMAINS.map((d) =>
-    d.replace(/\./g, "\\."),
+    d.replace(/\./g, "\\.")
   ).join("|")})$`,
-  "i",
+  "i"
 );
 
 export function isAllowedRegistrationEmail(email: string): boolean {
@@ -13,7 +13,7 @@ export function isAllowedRegistrationEmail(email: string): boolean {
 }
 
 export const ALLOWED_EMAIL_DOMAINS_LABEL = ALLOWED_EMAIL_DOMAINS.map(
-  (d) => `@${d}`,
+  (d) => `@${d}`
 ).join(", ");
 
 export const ALLOWED_EMAIL_ERROR_MESSAGE = `Email must be a valid ${ALLOWED_EMAIL_DOMAINS_LABEL} address`;

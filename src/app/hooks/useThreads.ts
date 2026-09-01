@@ -33,7 +33,9 @@ function deriveMeta(thread: Thread): { title: string; description: string } {
 
   try {
     if (thread.values && typeof thread.values === "object") {
-      const values = thread.values as { messages?: Array<{ type?: string; content?: unknown }> };
+      const values = thread.values as {
+        messages?: Array<{ type?: string; content?: unknown }>;
+      };
       const messages = values.messages ?? [];
       const firstHuman = messages.find((m) => m?.type === "human");
       if (firstHuman?.content) {
@@ -141,6 +143,6 @@ export function useThreads(props: {
       revalidateFirstPage: true,
       revalidateAll: false,
       revalidateOnFocus: true,
-    },
+    }
   );
 }

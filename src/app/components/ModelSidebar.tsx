@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react";
 import {
   Brain,
   CheckCircle,
@@ -43,8 +49,6 @@ import {
   type UserModelSelection,
 } from "@/lib/auth";
 
-
-
 type PresetOption =
   | {
       kind: "preset";
@@ -61,10 +65,33 @@ type PresetOption =
     };
 
 const PRESET_OPTIONS: PresetOption[] = [
-  { kind: "preset", value: "economy", label: "Economy", tone: "Lower spend", icon: Leaf },
-  { kind: "preset", value: "balanced", label: "Balanced", tone: "Default", icon: Scale },
-  { kind: "preset", value: "deep_work", label: "Deep Work", tone: "Hard tasks", icon: Brain },
-  { kind: "custom", label: "Custom", tone: "Fine-tuned", icon: SlidersHorizontal },
+  {
+    kind: "preset",
+    value: "economy",
+    label: "Economy",
+    tone: "Lower spend",
+    icon: Leaf,
+  },
+  {
+    kind: "preset",
+    value: "balanced",
+    label: "Balanced",
+    tone: "Default",
+    icon: Scale,
+  },
+  {
+    kind: "preset",
+    value: "deep_work",
+    label: "Deep Work",
+    tone: "Hard tasks",
+    icon: Brain,
+  },
+  {
+    kind: "custom",
+    label: "Custom",
+    tone: "Fine-tuned",
+    icon: SlidersHorizontal,
+  },
 ];
 
 const PRESET_LABELS: Record<ModelPreset, string> = {
@@ -88,7 +115,9 @@ interface DraftState {
 }
 
 function isPreset(v: string | null | undefined): v is ModelPreset {
-  return v !== null && v !== undefined && PRESET_VALUES.includes(v as ModelPreset);
+  return (
+    v !== null && v !== undefined && PRESET_VALUES.includes(v as ModelPreset)
+  );
 }
 
 function modelKey(provider: string, model: string): string {
@@ -145,7 +174,10 @@ function UsageMeter({
   const clampedPct = Math.min(Math.max(pct, 0), 100);
   const detail = isUnlimited
     ? `${formatUsageAmount(used, dimension)} used · Unlimited`
-    : `${formatUsageAmount(used, dimension)} / ${formatUsageAmount(limit, dimension)}`;
+    : `${formatUsageAmount(used, dimension)} / ${formatUsageAmount(
+        limit,
+        dimension
+      )}`;
   return (
     <div className="aptiv-glass-soft rounded-lg p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -312,7 +344,9 @@ export function ModelSidebar() {
         toast.success(`Preset set to ${PRESET_LABELS[preset]}`);
       })
       .catch((err) =>
-        toast.error(err instanceof Error ? err.message : "Failed to load preset")
+        toast.error(
+          err instanceof Error ? err.message : "Failed to load preset"
+        )
       )
       .finally(() => {
         setIsSaving(false);
@@ -390,10 +424,9 @@ export function ModelSidebar() {
       )
     : 0;
 
-  const effortOptions =
-    currentModelEntry?.efforts.length
-      ? currentModelEntry.efforts
-      : ["low", "medium", "high"];
+  const effortOptions = currentModelEntry?.efforts.length
+    ? currentModelEntry.efforts
+    : ["low", "medium", "high"];
 
   const resetLabel =
     usage?.display_reset && usage.display_reset !== "-"
@@ -408,7 +441,10 @@ export function ModelSidebar() {
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-8 p-5">
           {usage && (
-            <section className="space-y-2.5" aria-labelledby="usage-section-heading">
+            <section
+              className="space-y-2.5"
+              aria-labelledby="usage-section-heading"
+            >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <span
@@ -435,8 +471,8 @@ export function ModelSidebar() {
                   primary.dimension === "calls"
                     ? "Weekly call budget"
                     : primary.dimension === "cost"
-                      ? "Weekly cost budget"
-                      : "Weekly token budget";
+                    ? "Weekly cost budget"
+                    : "Weekly token budget";
                 return (
                   <UsageMeter
                     label={label}
@@ -452,7 +488,10 @@ export function ModelSidebar() {
             </section>
           )}
 
-          <div className="border-t border-dashed border-border" aria-hidden="true" />
+          <div
+            className="border-t border-dashed border-border"
+            aria-hidden="true"
+          />
 
           <div className="flex items-baseline justify-between">
             <div className="flex items-center gap-2">
@@ -461,12 +500,12 @@ export function ModelSidebar() {
             {!isLoading && draft && (
               <>
                 {isCustom ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--aptiv-orange)]">
+                  <span className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--aptiv-orange)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)]" />
                     Custom
                   </span>
                 ) : activePreset ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                  <span className="border-primary/40 inline-flex items-center gap-1 rounded-full border bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                     {PRESET_LABELS[activePreset]}
                   </span>
                 ) : null}
@@ -487,9 +526,7 @@ export function ModelSidebar() {
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
-                  <Label className="text-sm font-medium">
-                    Quick presets
-                  </Label>
+                  <Label className="text-sm font-medium">Quick presets</Label>
                 </div>
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   Start with a curated profile, then tweak any of the controls
@@ -506,7 +543,8 @@ export function ModelSidebar() {
                         ? isCustom
                         : !isCustom && activePreset === option.value;
                     const loading =
-                      option.kind === "preset" && pendingPreset === option.value;
+                      option.kind === "preset" &&
+                      pendingPreset === option.value;
                     const handleClick =
                       option.kind === "custom"
                         ? () => setCustomManuallySelected(true)
@@ -524,7 +562,7 @@ export function ModelSidebar() {
                         disabled={isSaving}
                         className={[
                           "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-all duration-200",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
+                          "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
                             ? "!border-[var(--aptiv-orange)]/55 !bg-[var(--aptiv-orange)]/10 shadow-[0_2px_10px_-4px_color-mix(in_srgb,var(--aptiv-orange)_30%,transparent)]"
@@ -603,7 +641,10 @@ export function ModelSidebar() {
                   onValueChange={handleModelChange}
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="model-select" className="aptiv-glass-soft">
+                  <SelectTrigger
+                    id="model-select"
+                    className="aptiv-glass-soft"
+                  >
                     <SelectValue placeholder="Choose a model" />
                   </SelectTrigger>
                   <SelectContent>
@@ -677,9 +718,7 @@ export function ModelSidebar() {
                     onCheckedChange={(checked) =>
                       updateDraft({ thinking: checked })
                     }
-                    disabled={
-                      !currentModelEntry?.supports_thinking || isSaving
-                    }
+                    disabled={!currentModelEntry?.supports_thinking || isSaving}
                   />
                 </div>
               </section>

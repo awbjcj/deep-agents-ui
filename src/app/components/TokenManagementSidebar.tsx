@@ -114,7 +114,14 @@ export function TokenManagementSidebar({
   }, [initialFocus, isLoading, onFocusConsumed]);
 
   const handleSave = async () => {
-    if (!graphDirty && !jiraDirty && !polarionAsuxDirty && !polarionProd1Dirty && !confluenceDirty) return;
+    if (
+      !graphDirty &&
+      !jiraDirty &&
+      !polarionAsuxDirty &&
+      !polarionProd1Dirty &&
+      !confluenceDirty
+    )
+      return;
     setIsSaving(true);
     try {
       // Only send tokens the user actually edited to avoid clearing the other
@@ -127,8 +134,10 @@ export function TokenManagementSidebar({
       } = {};
       if (graphDirty) payload.graph_api_token = graphToken;
       if (jiraDirty) payload.jira_api_token = jiraToken;
-      if (polarionAsuxDirty) payload.polarion_asux_api_token = polarionAsuxToken;
-      if (polarionProd1Dirty) payload.polarion_prod1_api_token = polarionProd1Token;
+      if (polarionAsuxDirty)
+        payload.polarion_asux_api_token = polarionAsuxToken;
+      if (polarionProd1Dirty)
+        payload.polarion_prod1_api_token = polarionProd1Token;
       if (confluenceDirty) payload.confluence_api_token = confluenceToken;
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
@@ -152,7 +161,9 @@ export function TokenManagementSidebar({
       toast.success("Tokens updated successfully");
       setTimeout(() => setSavedIndicator(false), 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update tokens");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update tokens"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -183,7 +194,7 @@ export function TokenManagementSidebar({
                 const launchWizard = () =>
                   window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT));
                 return (
-                  <div className="relative flex items-start gap-3 overflow-hidden rounded-lg border border-border bg-card pl-4 pr-3 py-3 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="relative flex items-start gap-3 overflow-hidden rounded-lg border border-border bg-card py-3 pl-4 pr-3 shadow-sm duration-200 animate-in fade-in slide-in-from-top-1">
                     {/* Aptiv orange accent stripe — onboarding is a brand touchpoint. */}
                     <span
                       aria-hidden="true"
@@ -199,7 +210,9 @@ export function TokenManagementSidebar({
                       </p>
                       <p className="text-sm leading-snug text-foreground/80">
                         {missingCount > 0
-                          ? `${missingCount} service${missingCount === 1 ? "" : "s"} still need a token. Add them so the assistant can reach Graph, Jira, Polarion, and Confluence on your behalf.`
+                          ? `${missingCount} service${
+                              missingCount === 1 ? "" : "s"
+                            } still need a token. Add them so the assistant can reach Graph, Jira, Polarion, and Confluence on your behalf.`
                           : "Step through each integration to refresh a token or check where to find it."}
                       </p>
                       <Button
@@ -218,7 +231,10 @@ export function TokenManagementSidebar({
 
               {/* Graph API Token */}
               <div className="space-y-2">
-                <Label htmlFor="graphToken" className="text-sm font-medium">
+                <Label
+                  htmlFor="graphToken"
+                  className="text-sm font-medium"
+                >
                   Graph API Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -226,28 +242,29 @@ export function TokenManagementSidebar({
                 </p>
                 {tokenMeta && tokenMeta.graph_api_token_preview && (
                   <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="text-xs font-mono text-foreground">
+                    <code className="font-mono text-xs text-foreground">
                       {tokenMeta.graph_api_token_preview}
                     </code>
                   </div>
                 )}
-                {tokenMeta && hasUpdatedAt(tokenMeta.graph_api_token_updated_at) && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">
-                      Updated
-                    </span>
-                    <time
-                      className="font-mono tabular-nums"
-                      dateTime={tokenMeta.graph_api_token_updated_at}
-                    >
-                      {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
-                    </time>
-                    <span className="text-muted-foreground/80">
-                      ({tokenMeta.graph_api_token_time_gap})
-                    </span>
-                  </div>
-                )}
+                {tokenMeta &&
+                  hasUpdatedAt(tokenMeta.graph_api_token_updated_at) && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.graph_api_token_updated_at}
+                      >
+                        {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.graph_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
                 <div className="relative">
                   <Input
                     id="graphToken"
@@ -281,7 +298,10 @@ export function TokenManagementSidebar({
 
               {/* JIRA API Token */}
               <div className="space-y-2">
-                <Label htmlFor="jiraToken" className="text-sm font-medium">
+                <Label
+                  htmlFor="jiraToken"
+                  className="text-sm font-medium"
+                >
                   JIRA API Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -289,28 +309,29 @@ export function TokenManagementSidebar({
                 </p>
                 {tokenMeta && tokenMeta.jira_api_token_preview && (
                   <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="text-xs font-mono text-foreground">
+                    <code className="font-mono text-xs text-foreground">
                       {tokenMeta.jira_api_token_preview}
                     </code>
                   </div>
                 )}
-                {tokenMeta && hasUpdatedAt(tokenMeta.jira_api_token_updated_at) && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">
-                      Updated
-                    </span>
-                    <time
-                      className="font-mono tabular-nums"
-                      dateTime={tokenMeta.jira_api_token_updated_at}
-                    >
-                      {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
-                    </time>
-                    <span className="text-muted-foreground/80">
-                      ({tokenMeta.jira_api_token_time_gap})
-                    </span>
-                  </div>
-                )}
+                {tokenMeta &&
+                  hasUpdatedAt(tokenMeta.jira_api_token_updated_at) && (
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-muted-foreground">
+                        Updated
+                      </span>
+                      <time
+                        className="font-mono tabular-nums"
+                        dateTime={tokenMeta.jira_api_token_updated_at}
+                      >
+                        {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
+                      </time>
+                      <span className="text-muted-foreground/80">
+                        ({tokenMeta.jira_api_token_time_gap})
+                      </span>
+                    </div>
+                  )}
                 <div className="relative">
                   <Input
                     id="jiraToken"
@@ -344,7 +365,10 @@ export function TokenManagementSidebar({
 
               {/* Polarion ASUX Token */}
               <div className="space-y-2">
-                <Label htmlFor="polarion_asuxToken" className="text-sm font-medium">
+                <Label
+                  htmlFor="polarion_asuxToken"
+                  className="text-sm font-medium"
+                >
                   Polarion (ASUX) Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -352,13 +376,15 @@ export function TokenManagementSidebar({
                 </p>
                 {tokenMeta && tokenMeta.polarion_asux_api_token_preview && (
                   <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="text-xs font-mono text-foreground">
+                    <code className="font-mono text-xs text-foreground">
                       {tokenMeta.polarion_asux_api_token_preview}
                     </code>
                   </div>
                 )}
                 {tokenMeta &&
-                  hasUpdatedAt(tokenMeta.polarion_asux_api_token_updated_at) && (
+                  hasUpdatedAt(
+                    tokenMeta.polarion_asux_api_token_updated_at
+                  ) && (
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-muted-foreground">
@@ -369,7 +395,7 @@ export function TokenManagementSidebar({
                         dateTime={tokenMeta.polarion_asux_api_token_updated_at}
                       >
                         {formatTimestamp(
-                          tokenMeta.polarion_asux_api_token_updated_at,
+                          tokenMeta.polarion_asux_api_token_updated_at
                         )}
                       </time>
                       <span className="text-muted-foreground/80">
@@ -392,7 +418,9 @@ export function TokenManagementSidebar({
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPolarionAsuxToken(!showPolarionAsuxToken)}
+                    onClick={() =>
+                      setShowPolarionAsuxToken(!showPolarionAsuxToken)
+                    }
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPolarionAsuxToken ? (
@@ -410,7 +438,10 @@ export function TokenManagementSidebar({
 
               {/* Polarion Prod1 Token */}
               <div className="space-y-2">
-                <Label htmlFor="polarion_prod1Token" className="text-sm font-medium">
+                <Label
+                  htmlFor="polarion_prod1Token"
+                  className="text-sm font-medium"
+                >
                   Polarion (Prod1) Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -418,13 +449,15 @@ export function TokenManagementSidebar({
                 </p>
                 {tokenMeta && tokenMeta.polarion_prod1_api_token_preview && (
                   <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="text-xs font-mono text-foreground">
+                    <code className="font-mono text-xs text-foreground">
                       {tokenMeta.polarion_prod1_api_token_preview}
                     </code>
                   </div>
                 )}
                 {tokenMeta &&
-                  hasUpdatedAt(tokenMeta.polarion_prod1_api_token_updated_at) && (
+                  hasUpdatedAt(
+                    tokenMeta.polarion_prod1_api_token_updated_at
+                  ) && (
                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
                       <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="font-medium text-muted-foreground">
@@ -435,7 +468,7 @@ export function TokenManagementSidebar({
                         dateTime={tokenMeta.polarion_prod1_api_token_updated_at}
                       >
                         {formatTimestamp(
-                          tokenMeta.polarion_prod1_api_token_updated_at,
+                          tokenMeta.polarion_prod1_api_token_updated_at
                         )}
                       </time>
                       <span className="text-muted-foreground/80">
@@ -458,7 +491,9 @@ export function TokenManagementSidebar({
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPolarionProd1Token(!showPolarionProd1Token)}
+                    onClick={() =>
+                      setShowPolarionProd1Token(!showPolarionProd1Token)
+                    }
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPolarionProd1Token ? (
@@ -476,7 +511,10 @@ export function TokenManagementSidebar({
 
               {/* Confluence API Token */}
               <div className="space-y-2">
-                <Label htmlFor="confluenceToken" className="text-sm font-medium">
+                <Label
+                  htmlFor="confluenceToken"
+                  className="text-sm font-medium"
+                >
                   Confluence API Token
                 </Label>
                 <p className="text-xs text-muted-foreground">
@@ -484,7 +522,7 @@ export function TokenManagementSidebar({
                 </p>
                 {tokenMeta && tokenMeta.confluence_api_token_preview && (
                   <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="text-xs font-mono text-foreground">
+                    <code className="font-mono text-xs text-foreground">
                       {tokenMeta.confluence_api_token_preview}
                     </code>
                   </div>
@@ -501,7 +539,7 @@ export function TokenManagementSidebar({
                         dateTime={tokenMeta.confluence_api_token_updated_at}
                       >
                         {formatTimestamp(
-                          tokenMeta.confluence_api_token_updated_at,
+                          tokenMeta.confluence_api_token_updated_at
                         )}
                       </time>
                       <span className="text-muted-foreground/80">

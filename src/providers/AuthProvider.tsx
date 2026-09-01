@@ -96,15 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       invitation_code?: string | null;
     }) => apiRegisterInit(payload),
-    [],
+    []
   );
 
   const registerVerify = useCallback(
-    async (payload: { pending_registration_id: string; verification_code: string }) => {
+    async (payload: {
+      pending_registration_id: string;
+      verification_code: string;
+    }) => {
       const authUser = await apiRegisterVerify(payload);
       setUser(authUser);
     },
-    [],
+    []
   );
 
   const logout = useCallback(() => {
@@ -130,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateUser,
     }),
-    [user, isLoading, login, registerInit, registerVerify, logout, updateUser],
+    [user, isLoading, login, registerInit, registerVerify, logout, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

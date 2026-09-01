@@ -68,7 +68,11 @@ test("a landed tool result re-allocates only its own tool call (two-level)", () 
   const p2 = reconcileConversation(p1, [{ ...ai }, toolResult], false);
 
   assert.notEqual(p2[0], p1[0], "bucket changes because a result landed");
-  assert.equal(p2[0].message, p1[0].message, "message ref preserved (render-equal)");
+  assert.equal(
+    p2[0].message,
+    p1[0].message,
+    "message ref preserved (render-equal)"
+  );
 
   assert.notEqual(
     p2[0].toolCalls[0],

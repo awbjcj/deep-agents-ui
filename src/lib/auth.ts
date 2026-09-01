@@ -158,14 +158,18 @@ export async function apiRegisterVerify(payload: {
   return user;
 }
 
-export async function apiForgotPassword(email: string): Promise<{ sent: boolean }> {
+export async function apiForgotPassword(
+  email: string
+): Promise<{ sent: boolean }> {
   const res = await apiFetch("/auth/forgot-password", {
     method: "POST",
     body: JSON.stringify({ email }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(extractErrorMessage(data.detail, "Could not send reset email"));
+    throw new Error(
+      extractErrorMessage(data.detail, "Could not send reset email")
+    );
   }
   return res.json();
 }
@@ -237,21 +241,21 @@ export interface TokenUpdateResponse extends UserTokens {
   cleared_notifications: UserNotification[];
 }
 
-export async function apiUpdateTokens(
-  tokens: {
-    graph_api_token?: string;
-    jira_api_token?: string;
-    polarion_asux_api_token?: string;
-    polarion_prod1_api_token?: string;
-    confluence_api_token?: string;
-  }
-): Promise<TokenUpdateResponse> {
+export async function apiUpdateTokens(tokens: {
+  graph_api_token?: string;
+  jira_api_token?: string;
+  polarion_asux_api_token?: string;
+  polarion_prod1_api_token?: string;
+  confluence_api_token?: string;
+}): Promise<TokenUpdateResponse> {
   const res = await apiFetch("/user/tokens", {
     method: "PUT",
     body: JSON.stringify(tokens),
   });
   if (!res.ok) {
-    throw new Error(await extractApiErrorMessage(res, "Failed to update tokens"));
+    throw new Error(
+      await extractApiErrorMessage(res, "Failed to update tokens")
+    );
   }
   return res.json();
 }
@@ -367,7 +371,9 @@ export async function apiUpdateUserRole(
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to update role");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to update role"
+    );
   }
   return res.json();
 }
@@ -397,7 +403,9 @@ export async function apiSetRunMode(mode: RunMode): Promise<RunModeInfo> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to set run mode");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to set run mode"
+    );
   }
   return res.json();
 }
@@ -450,7 +458,9 @@ export async function apiSetTierModels(
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to set tier models");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to set tier models"
+    );
   }
   return res.json();
 }
@@ -466,7 +476,9 @@ export async function apiSetAllTierModels(payload: {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to save tier models");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to save tier models"
+    );
   }
   const raw = (await res.json()) as unknown;
   return normalizeTierMap(raw, payload);
@@ -494,10 +506,19 @@ function isTierEntryArray(value: unknown): value is TierModelEntry[] {
  */
 function normalizeTierMap(
   raw: unknown,
-  fallback: { user: TierModelEntry[]; developer: TierModelEntry[]; admin: TierModelEntry[] }
+  fallback: {
+    user: TierModelEntry[];
+    developer: TierModelEntry[];
+    admin: TierModelEntry[];
+  }
 ): Record<Role, TierModelEntry[]> {
-  const out: Record<Role, TierModelEntry[]> = { user: [], developer: [], admin: [] };
-  const obj = (raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null);
+  const out: Record<Role, TierModelEntry[]> = {
+    user: [],
+    developer: [],
+    admin: [],
+  };
+  const obj =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
   for (const role of ["user", "developer", "admin"] as Role[]) {
     const slot = obj?.[role];
     if (isTierEntryArray(slot)) {
@@ -581,7 +602,9 @@ export async function apiSetUserModel(
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to set user model");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to set user model"
+    );
   }
   return res.json();
 }
@@ -592,7 +615,9 @@ export async function apiDeleteUser(userId: string): Promise<void> {
   const res = await apiFetch(`/admin/users/${userId}`, { method: "DELETE" });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to delete user");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to delete user"
+    );
   }
 }
 
@@ -608,7 +633,9 @@ export async function apiResetPassword(userId: string): Promise<TempPassword> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to reset password");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to reset password"
+    );
   }
   return res.json();
 }
@@ -619,7 +646,9 @@ export async function apiResetAllPasswords(): Promise<TempPassword[]> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error((data as { detail?: string }).detail || "Failed to reset passwords");
+    throw new Error(
+      (data as { detail?: string }).detail || "Failed to reset passwords"
+    );
   }
   const data: { resets: TempPassword[] } = await res.json();
   return data.resets;
@@ -650,7 +679,9 @@ export async function apiGetUserUsage(
   username: string,
   signal?: AbortSignal
 ): Promise<AdminUserUsage> {
-  const res = await apiFetch(`/admin/token-usage/users/${username}`, { signal });
+  const res = await apiFetch(`/admin/token-usage/users/${username}`, {
+    signal,
+  });
   if (!res.ok) {
     throw new Error("Failed to fetch user usage");
   }
@@ -732,7 +763,10 @@ type CostLimitResponse = {
   weekly_limit_micros: number;
 };
 
-async function quotaResponse<T>(response: Response, fallback: string): Promise<T> {
+async function quotaResponse<T>(
+  response: Response,
+  fallback: string
+): Promise<T> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(
@@ -753,9 +787,18 @@ export async function apiGetTierQuotaLimits(
     apiFetch(`/admin/tier-cost-limits/${tier}`, { signal }),
   ]);
   const [tokens, calls, cost] = await Promise.all([
-    quotaResponse<CountLimitResponse>(tokenResponse, `Failed to load ${tier} token limit`),
-    quotaResponse<CountLimitResponse>(callResponse, `Failed to load ${tier} call limit`),
-    quotaResponse<CostLimitResponse>(costResponse, `Failed to load ${tier} cost limit`),
+    quotaResponse<CountLimitResponse>(
+      tokenResponse,
+      `Failed to load ${tier} token limit`
+    ),
+    quotaResponse<CountLimitResponse>(
+      callResponse,
+      `Failed to load ${tier} call limit`
+    ),
+    quotaResponse<CostLimitResponse>(
+      costResponse,
+      `Failed to load ${tier} cost limit`
+    ),
   ]);
   return {
     tier,
@@ -791,7 +834,11 @@ export async function apiSetTierQuotaLimits(
   tier: Role,
   limits: Omit<TierQuotaLimits, "tier">
 ): Promise<TierQuotaLimits> {
-  const putCount = async (path: string, weekly_limit: number, label: string) => {
+  const putCount = async (
+    path: string,
+    weekly_limit: number,
+    label: string
+  ) => {
     const response = await apiFetch(path, {
       method: "PUT",
       body: JSON.stringify({ weekly_limit }),
@@ -840,7 +887,9 @@ export async function apiSetTierQuotaLimits(
     );
     throw new Error(
       saved.length > 0
-        ? `${detail}. ${describeDimensions(saved)} for ${tier} did save, so this tier is now partly updated`
+        ? `${detail}. ${describeDimensions(
+            saved
+          )} for ${tier} did save, so this tier is now partly updated`
         : detail
     );
   }
@@ -878,7 +927,10 @@ export async function apiUpdateProfile(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to update profile")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to update profile"
+      )
     );
   }
   return res.json();
@@ -926,7 +978,10 @@ export async function apiCreateScope(payload: {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to create scope")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to create scope"
+      )
     );
   }
   return res.json();
@@ -948,7 +1003,10 @@ export async function apiUpdateScope(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to update scope")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to update scope"
+      )
     );
   }
   return res.json();
@@ -964,7 +1022,10 @@ export async function apiDeleteScope(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to delete scope")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to delete scope"
+      )
     );
   }
 }
@@ -995,7 +1056,10 @@ export async function apiAddScopeMember(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to add member")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to add member"
+      )
     );
   }
   return res.json();
@@ -1014,7 +1078,10 @@ export async function apiUpdateScopeMember(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to update member")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to update member"
+      )
     );
   }
   return res.json();
@@ -1032,7 +1099,10 @@ export async function apiRemoveScopeMember(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to remove member")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to remove member"
+      )
     );
   }
 }
@@ -1050,7 +1120,10 @@ export async function apiSetScopeMembers(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
-      extractErrorMessage((body as { detail?: unknown }).detail, "Failed to set members")
+      extractErrorMessage(
+        (body as { detail?: unknown }).detail,
+        "Failed to set members"
+      )
     );
   }
 }
@@ -1158,7 +1231,8 @@ export async function apiSetRegistrationSettings(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
-      (data as { detail?: string }).detail || "Failed to update registration settings"
+      (data as { detail?: string }).detail ||
+        "Failed to update registration settings"
     );
   }
   return res.json();
@@ -1260,7 +1334,8 @@ export async function apiSetAdminConnectivity(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
-      (data as { detail?: string }).detail || "Failed to update connectivity settings"
+      (data as { detail?: string }).detail ||
+        "Failed to update connectivity settings"
     );
   }
   return res.json();
@@ -1306,7 +1381,8 @@ export async function apiSetUserConnectivity(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
-      (data as { detail?: string }).detail || "Failed to update user connectivity"
+      (data as { detail?: string }).detail ||
+        "Failed to update user connectivity"
     );
   }
   return res.json();

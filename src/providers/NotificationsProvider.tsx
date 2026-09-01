@@ -115,9 +115,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const clearedIds = new Set(cleared.map((c) => c.id));
       const clearedCodes = new Set(cleared.map((c) => c.code));
       setNotifications((prev) =>
-        prev.filter(
-          (n) => !clearedIds.has(n.id) && !clearedCodes.has(n.code)
-        )
+        prev.filter((n) => !clearedIds.has(n.id) && !clearedCodes.has(n.code))
       );
     },
     []

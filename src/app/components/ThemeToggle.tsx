@@ -20,7 +20,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
       title={isDark ? "Switch to day mode" : "Switch to night mode"}
       className={cn(
         "group relative inline-flex h-9 w-16 items-center rounded-full border border-border bg-card px-1 shadow-sm",
-        "transition-colors duration-300 ease-in-out hover:border-primary/40",
+        "hover:border-primary/40 transition-colors duration-300 ease-in-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className
       )}

@@ -46,7 +46,10 @@ export function AccountMenu() {
 
   return (
     <>
-      <div ref={menuRef} className="relative z-[70]">
+      <div
+        ref={menuRef}
+        className="relative z-[70]"
+      >
         <Button
           variant="outline"
           onPointerDown={(e) => e.stopPropagation()}
@@ -64,9 +67,15 @@ export function AccountMenu() {
           <span className="hidden max-w-28 truncate text-sm sm:inline">
             {user.username}
           </span>
-          <RoleBadge role={user.role} className="hidden md:inline-flex" />
+          <RoleBadge
+            role={user.role}
+            className="hidden md:inline-flex"
+          />
           <ChevronDown
-            className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")}
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
             aria-hidden="true"
           />
         </Button>
@@ -76,7 +85,7 @@ export function AccountMenu() {
             role="menu"
             className={cn(
               "absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-md border border-border bg-card p-1 text-card-foreground shadow-lg",
-              "data-[state=open]:animate-in data-[state=closed]:animate-out",
+              "data-[state=open]:animate-in data-[state=closed]:animate-out"
             )}
           >
             <div className="border-b border-border px-3 py-2">
@@ -84,7 +93,12 @@ export function AccountMenu() {
               <p className="mt-0.5 flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
                 {(() => {
                   const { Icon, color } = roleVisual(user.role);
-                  return <Icon className="h-3.5 w-3.5" style={{ color }} />;
+                  return (
+                    <Icon
+                      className="h-3.5 w-3.5"
+                      style={{ color }}
+                    />
+                  );
                 })()}
                 {user.role}
               </p>

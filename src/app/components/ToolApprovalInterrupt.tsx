@@ -67,7 +67,9 @@ export function ToolApprovalInterrupt({
     }
 
     if (currentDecision?.type === "edit") {
-      setEditedArgs(JSON.parse(JSON.stringify(currentDecision.edited_action.args)));
+      setEditedArgs(
+        JSON.parse(JSON.stringify(currentDecision.edited_action.args))
+      );
     }
   }, [currentDecision]);
 
@@ -191,10 +193,7 @@ export function ToolApprovalInterrupt({
     >
       <div
         aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 w-1",
-          "bg-warning-strong"
-        )}
+        className={cn("absolute inset-y-0 left-0 w-1", "bg-warning-strong")}
       />
 
       <div className="relative p-5 pl-6">
@@ -204,14 +203,18 @@ export function ToolApprovalInterrupt({
             <span
               className={cn(
                 "relative inline-flex h-8 w-8 items-center justify-center rounded-full",
-                "bg-warning-primary text-warning ring-1 ring-warning"
+                "ring-warning bg-warning-primary text-warning ring-1"
               )}
             >
               <span
                 aria-hidden
-                className="absolute inset-0 animate-ping rounded-full bg-warning-strong/25 opacity-60"
+                className="bg-warning-strong/25 absolute inset-0 animate-ping rounded-full opacity-60"
               />
-              <ShieldAlert size={15} className="relative" strokeWidth={2.25} />
+              <ShieldAlert
+                size={15}
+                className="relative"
+                strokeWidth={2.25}
+              />
             </span>
             <div className="flex flex-col leading-tight">
               <span

@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -98,7 +104,9 @@ export function ConnectivitySidebar() {
         if (mounted) setImageFetchingLoaded(true);
       });
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [setRunModeLocal]);
 
   useEffect(() => {
@@ -179,7 +187,8 @@ export function ConnectivitySidebar() {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
     }
-    const payload: { run_mode?: RunMode | null; proxy_url?: string | null } = {};
+    const payload: { run_mode?: RunMode | null; proxy_url?: string | null } =
+      {};
     if (pendingMode !== data.run_mode) {
       lastAutosavedModeRef.current = pendingMode;
       payload.run_mode = pendingMode;
@@ -281,11 +290,16 @@ export function ConnectivitySidebar() {
           ) : (
             <>
               <header className="space-y-1">
-                <h3 className="text-sm font-semibold tracking-tight">Run mode</h3>
+                <h3 className="text-sm font-semibold tracking-tight">
+                  Run mode
+                </h3>
                 <p className="text-xs leading-relaxed text-muted-foreground">
                   How your requests reach the LLM backend
                 </p>
-                <span className="aptiv-rule" aria-hidden="true" />
+                <span
+                  className="aptiv-rule"
+                  aria-hidden="true"
+                />
               </header>
 
               <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
@@ -310,10 +324,10 @@ export function ConnectivitySidebar() {
                         onClick={() => setPendingMode(mode)}
                         className={cn(
                           "group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-all duration-200",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
+                          "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           active
                             ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--text-button-primary)] shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]"
-                            : "border-border bg-card hover:-translate-y-px hover:border-[var(--color-primary)]/40 hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
+                            : "hover:border-[var(--color-primary)]/40 border-border bg-card hover:-translate-y-px hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
                         )}
                       >
                         {active && (
@@ -374,9 +388,12 @@ export function ConnectivitySidebar() {
               {pendingMode === "proxy" && (
                 <div className="space-y-2 border-t border-border/40 pt-4">
                   <header className="space-y-1">
-                    <h3 className="text-sm font-semibold tracking-tight">Proxy URL</h3>
+                    <h3 className="text-sm font-semibold tracking-tight">
+                      Proxy URL
+                    </h3>
                     <p className="text-[10px] text-muted-foreground">
-                      Your personal proxy endpoint. Leave empty to use the system default.
+                      Your personal proxy endpoint. Leave empty to use the
+                      system default.
                     </p>
                   </header>
                   <Input
@@ -410,8 +427,11 @@ export function ConnectivitySidebar() {
                   </header>
                   <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
                     <div className="flex items-start gap-3 p-3.5">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                        <ImageIcon className="h-4 w-4" aria-hidden="true" />
+                      <span className="bg-[var(--color-primary)]/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--color-primary)]">
+                        <ImageIcon
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        />
                       </span>
                       <div className="min-w-0 flex-1 space-y-1">
                         <label
@@ -427,20 +447,24 @@ export function ConnectivitySidebar() {
                           {imageFetchingDisabledByAdmin
                             ? "Unavailable because image fetching is disabled by an administrator."
                             : imageFetching
-                              ? "Supported images may be added when agents read connected content."
-                              : "Agents will read connected text without fetching its images."}
+                            ? "Supported images may be added when agents read connected content."
+                            : "Agents will read connected text without fetching its images."}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2 pt-0.5">
                         {isSavingImageFetching && (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+                          <Loader2
+                            className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                            aria-hidden="true"
+                          />
                         )}
                         <Switch
                           id="source-image-attachments"
                           checked={imageFetching}
                           onCheckedChange={handleImageFetchingChange}
                           disabled={
-                            isSavingImageFetching || imageFetchingDisabledByAdmin
+                            isSavingImageFetching ||
+                            imageFetchingDisabledByAdmin
                           }
                           aria-describedby="source-image-attachments-description"
                         />

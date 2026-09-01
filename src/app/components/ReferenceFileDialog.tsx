@@ -119,7 +119,7 @@ export const ReferenceFileDialog = React.memo<Props>(
                           "relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left shadow-sm transition-all duration-150",
                           isSelected
                             ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                            : "border-border hover:-translate-y-px hover:border-primary/40 hover:bg-primary/5 hover:shadow-md"
+                            : "hover:border-primary/40 border-border hover:-translate-y-px hover:bg-primary/5 hover:shadow-md"
                         )}
                       >
                         {entry.thumb ? (
@@ -129,7 +129,7 @@ export const ReferenceFileDialog = React.memo<Props>(
                             className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border"
                           />
                         ) : (
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/5 text-primary/70">
+                          <span className="text-primary/70 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/5">
                             <FileText className="h-5 w-5" />
                           </span>
                         )}
