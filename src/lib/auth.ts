@@ -637,6 +637,12 @@ export interface AdminUserUsage {
   calls_limit: number;
   calls_pct: number;
   calls_is_unlimited: boolean;
+  cost_used_micros: number;
+  cost_limit_micros: number;
+  cost_used_usd: number;
+  cost_limit_usd: number;
+  cost_pct: number;
+  cost_is_unlimited: boolean;
   enforced: "tokens" | "calls";
 }
 
@@ -707,6 +713,88 @@ export async function apiSetWeeklyLimitSettings(
     );
   }
   return res.json();
+}
+
+export interface TierQuotaLimits {
+  tier: Role;
+  token_limit: number;
+  call_limit: number;
+  cost_limit_micros: number;
+}
+
+type CountLimitResponse = {
+  tier: Role;
+  weekly_limit: number;
+};
+
+type CostLimitResponse = {
+  tier: Role;
+  weekly_limit_micros: number;
+};
+
+async function quotaResponse<T>(response: Response, fallback: string): Promise<T> {
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage((data as { detail?: unknown }).detail, fallback)
+    );
+  }
+  return response.json() as Promise<T>;
+}
+
+/** Load all three weekly quota defaults for one role tier. */
+export async function apiGetTierQuotaLimits(
+  tier: Role,
+  signal?: AbortSignal
+): Promise<TierQuotaLimits> {
+  const [tokenResponse, callResponse, costResponse] = await Promise.all([
+    apiFetch(`/admin/tier-token-limits/${tier}`, { signal }),
+    apiFetch(`/admin/tier-call-limits/${tier}`, { signal }),
+    apiFetch(`/admin/tier-cost-limits/${tier}`, { signal }),
+  ]);
+  const [tokens, calls, cost] = await Promise.all([
+    quotaResponse<CountLimitResponse>(tokenResponse, `Failed to load ${tier} token limit`),
+    quotaResponse<CountLimitResponse>(callResponse, `Failed to load ${tier} call limit`),
+    quotaResponse<CostLimitResponse>(costResponse, `Failed to load ${tier} cost limit`),
+  ]);
+  return {
+    tier,
+    token_limit: tokens.weekly_limit,
+    call_limit: calls.weekly_limit,
+    cost_limit_micros: cost.weekly_limit_micros,
+  };
+}
+
+/** Persist all three weekly quota defaults for one role tier. */
+export async function apiSetTierQuotaLimits(
+  tier: Role,
+  limits: Omit<TierQuotaLimits, "tier">
+): Promise<TierQuotaLimits> {
+  const [tokenResponse, callResponse, costResponse] = await Promise.all([
+    apiFetch(`/admin/tier-token-limits/${tier}`, {
+      method: "PUT",
+      body: JSON.stringify({ weekly_limit: limits.token_limit }),
+    }),
+    apiFetch(`/admin/tier-call-limits/${tier}`, {
+      method: "PUT",
+      body: JSON.stringify({ weekly_limit: limits.call_limit }),
+    }),
+    apiFetch(`/admin/tier-cost-limits/${tier}`, {
+      method: "PUT",
+      body: JSON.stringify({ weekly_limit_micros: limits.cost_limit_micros }),
+    }),
+  ]);
+  const [tokens, calls, cost] = await Promise.all([
+    quotaResponse<CountLimitResponse>(tokenResponse, `Failed to save ${tier} token limit`),
+    quotaResponse<CountLimitResponse>(callResponse, `Failed to save ${tier} call limit`),
+    quotaResponse<CostLimitResponse>(costResponse, `Failed to save ${tier} cost limit`),
+  ]);
+  return {
+    tier,
+    token_limit: tokens.weekly_limit,
+    call_limit: calls.weekly_limit,
+    cost_limit_micros: cost.weekly_limit_micros,
+  };
 }
 
 // --- Profile update ---

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { splitUsageByEnforcement } from "../src/lib/usage.ts";
+import {
+  formatUsageAmount,
+  splitUsageByEnforcement,
+} from "../src/lib/usage.ts";
 
 // Regression: the admin users panel used to render the token percentage
 // unconditionally, so under proxy mode (call cap enforced) it showed a
@@ -17,6 +20,10 @@ test("proxy mode surfaces the call cap as the primary meter, not tokens", () => 
     calls_limit: 500,
     calls_pct: 0.6,
     calls_is_unlimited: false,
+    cost_used_usd: 0.125,
+    cost_limit_usd: 10,
+    cost_pct: 1.25,
+    cost_is_unlimited: false,
     enforced: "calls",
   });
 
@@ -41,6 +48,10 @@ test("remote/gateway mode surfaces the token cap as the primary meter", () => {
     calls_limit: 500,
     calls_pct: 0.6,
     calls_is_unlimited: false,
+    cost_used_usd: 0.125,
+    cost_limit_usd: 10,
+    cost_pct: 1.25,
+    cost_is_unlimited: false,
     enforced: "tokens",
   });
 
@@ -60,6 +71,10 @@ test("unlimited flags follow the enforced dimension", () => {
     calls_limit: 500,
     calls_pct: 8.4,
     calls_is_unlimited: false,
+    cost_used_usd: 0.125,
+    cost_limit_usd: 10,
+    cost_pct: 1.25,
+    cost_is_unlimited: false,
     enforced: "calls",
   });
 
@@ -81,6 +96,10 @@ test("an explicit override flips the primary meter regardless of enforced", () =
     calls_limit: 500,
     calls_pct: 0.6,
     calls_is_unlimited: false,
+    cost_used_usd: 0.125,
+    cost_limit_usd: 10,
+    cost_pct: 1.25,
+    cost_is_unlimited: false,
     enforced: "calls",
   };
 
@@ -94,6 +113,13 @@ test("an explicit override flips the primary meter regardless of enforced", () =
   const c = splitUsageByEnforcement({ ...base, enforced: "tokens" }, "calls");
   assert.equal(c.primary.dimension, "calls");
   assert.equal(c.primary.pct, 0.6);
+
+  const cost = splitUsageByEnforcement(base, "cost");
+  assert.equal(cost.primary.dimension, "cost");
+  assert.equal(cost.primary.used, 0.125);
+  assert.equal(cost.primary.limit, 10);
+  assert.equal(cost.primary.pct, 1.25);
+  assert.equal(cost.secondary.dimension, "calls");
 });
 
 test("an undefined override falls back to the enforced dimension", () => {
@@ -106,7 +132,21 @@ test("an undefined override falls back to the enforced dimension", () => {
     calls_limit: 500,
     calls_pct: 0.6,
     calls_is_unlimited: false,
+    cost_used_usd: 0.125,
+    cost_limit_usd: 10,
+    cost_pct: 1.25,
+    cost_is_unlimited: false,
     enforced: "calls",
   };
-  assert.equal(splitUsageByEnforcement(base, undefined).primary.dimension, "calls");
+  assert.equal(
+    splitUsageByEnforcement(base, undefined).primary.dimension,
+    "calls"
+  );
+});
+
+test("usage values use dollars for cost and counts for tokens or calls", () => {
+  assert.equal(formatUsageAmount(12_345.4, "tokens"), "12,345");
+  assert.equal(formatUsageAmount(0.0045, "cost"), "$0.0045");
+  assert.equal(formatUsageAmount(1.0045, "cost"), "$1.0045");
+  assert.equal(formatUsageAmount(12.5, "cost"), "$12.50");
 });

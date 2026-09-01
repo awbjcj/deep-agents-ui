@@ -70,7 +70,6 @@ import {
   apiGetTierImageFetching,
   apiGetTierModels,
   apiGetUserUsage,
-  apiGetWeeklyLimitSettings,
   apiListInvitationCodes,
   apiListScopeMembers,
   apiListScopes,
@@ -87,7 +86,6 @@ import {
   apiSetRunMode,
   apiSetScopeMembers,
   apiSetTierImageFetching,
-  apiSetWeeklyLimitSettings,
   apiUpdateScope,
   apiUpdateScopeMember,
   apiUpdateUserRole,
@@ -105,15 +103,16 @@ import {
   ScopeType,
   TempPassword,
   TierModelEntry,
-  WeeklyLimitSettings,
 } from "@/lib/auth";
 import {
+  formatUsageAmount,
   splitUsageByEnforcement,
-  type EnforcedDimension,
+  type UsageDimension,
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibrarySection";
 import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
+import { UsageLimitControls } from "@/app/components/admin/UsageLimitControls";
 import {
   ScopeImportCard,
   type ScopeImportResult,
@@ -253,7 +252,7 @@ function UsersSection() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usage, setUsage] = useState<Record<string, AdminUserUsage>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [usageView, setUsageView] = useState<EnforcedDimension | null>(null);
+  const [usageView, setUsageView] = useState<UsageDimension | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -372,7 +371,7 @@ function UsersSection() {
   };
 
   const handleResetUsage = async (target: AdminUser) => {
-    if (!confirm(`Reset weekly token usage for ${target.username}?`)) return;
+    if (!confirm(`Reset weekly usage for ${target.username}?`)) return;
     try {
       await apiResetUserUsage(target.username);
       setUsage((prev) => {
@@ -384,6 +383,9 @@ function UsersSection() {
             pct: 0,
             calls_used: 0,
             calls_pct: 0,
+            cost_used_micros: 0,
+            cost_used_usd: 0,
+            cost_pct: 0,
           };
         }
         return next;
@@ -409,13 +411,22 @@ function UsersSection() {
   };
 
   const handleResetAllUsage = async () => {
-    if (!confirm("Reset weekly token usage for ALL users?")) return;
+    if (!confirm("Reset weekly usage for ALL users?")) return;
     try {
       const { reset } = await apiResetAllUsage();
       setUsage((prev) => {
         const next: Record<string, AdminUserUsage> = {};
         for (const [k, v] of Object.entries(prev)) {
-          next[k] = { ...v, used: 0, pct: 0, calls_used: 0, calls_pct: 0 };
+          next[k] = {
+            ...v,
+            used: 0,
+            pct: 0,
+            calls_used: 0,
+            calls_pct: 0,
+            cost_used_micros: 0,
+            cost_used_usd: 0,
+            cost_pct: 0,
+          };
         }
         return next;
       });
@@ -425,24 +436,24 @@ function UsersSection() {
     }
   };
 
-  // Default the meter to the enforced dimension of the loaded users (uniform in
-  // single-mode deployments); the toggle lets an admin force either dimension.
-  const usageDim: EnforcedDimension =
+  // Default to the backend's run-mode display dimension; the toggle lets an
+  // admin inspect any tracked weekly usage dimension.
+  const usageDim: UsageDimension =
     usageView ?? Object.values(usage).find(Boolean)?.enforced ?? "tokens";
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
         <SectionHeader
           title="People"
           subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"} in this workspace`}
         />
-        <div className="pt-0.5" title="Which weekly cap the usage bars show">
+        <div title="Which weekly cap the usage bars show">
           <UsageDimensionToggle value={usageDim} onChange={setUsageView} />
         </div>
       </div>
 
-      <WeeklyLimitControls />
+      <UsageLimitControls />
 
       {isLoading ? (
         <LoadingRow />
@@ -455,7 +466,7 @@ function UsersSection() {
             return (
               <article
                 key={u.user_id}
-                className="aptiv-glass-soft rounded-lg p-3 shadow-sm transition-colors hover:bg-muted/50"
+                className="aptiv-glass-soft rounded-lg p-2.5 shadow-sm transition-[background-color,border-color] duration-150 hover:bg-muted/50"
               >
                 <header className="flex items-center gap-2">
                   <div
@@ -516,7 +527,7 @@ function UsersSection() {
                   <UsageStrip usage={u_usage} override={usageDim} />
                 )}
 
-                <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+                <div className="mt-2 grid grid-cols-3 gap-1.5">
                   <ActionPill
                     icon={KeyRound}
                     label="Reset PW"
@@ -542,12 +553,12 @@ function UsersSection() {
         </div>
       )}
 
-      <div className="aptiv-glass-soft mt-4 space-y-2 rounded-lg p-3">
+      <div className="aptiv-glass-soft space-y-2 rounded-lg p-2.5">
         <p className="aptiv-eyebrow">Bulk operations</p>
         <Button
           type="button"
           variant="outline"
-          className="w-full text-[var(--aptiv-turquoise-dark)] hover:bg-[var(--aptiv-turquoise)]/10 hover:text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)] dark:hover:bg-[var(--aptiv-turquoise)]/15 dark:hover:text-[var(--aptiv-turquoise)]"
+          className="h-8 w-full text-xs text-[var(--aptiv-turquoise-dark)] transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:bg-[var(--aptiv-turquoise)]/10 hover:text-[var(--aptiv-turquoise-dark)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 dark:text-[var(--aptiv-turquoise)] dark:hover:bg-[var(--aptiv-turquoise)]/15 dark:hover:text-[var(--aptiv-turquoise)]"
           onClick={handleResetAllUsage}
         >
           <RotateCcw className="mr-2 h-4 w-4" />
@@ -556,7 +567,7 @@ function UsersSection() {
         <Button
           type="button"
           variant="outline"
-          className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="h-8 w-full text-xs text-destructive transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:bg-destructive/10 hover:text-destructive focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           onClick={handleResetAll}
         >
           <Download className="mr-2 h-4 w-4" />
@@ -564,151 +575,6 @@ function UsersSection() {
         </Button>
       </div>
     </div>
-  );
-}
-
-type WeeklyLimitKey = keyof WeeklyLimitSettings;
-
-const WEEKLY_LIMIT_OPTIONS: ReadonlyArray<{
-  key: WeeklyLimitKey;
-  label: string;
-  description: string;
-}> = [
-  {
-    key: "cost_enabled",
-    label: "Cost cap",
-    description: "Estimated model-token spend",
-  },
-  {
-    key: "token_enabled",
-    label: "Token cap",
-    description: "Weighted input and output tokens",
-  },
-  {
-    key: "call_enabled",
-    label: "Call cap",
-    description: "Billable model requests",
-  },
-];
-
-/** Global weekly-cap policy controls shown with the affected usage accounts. */
-function WeeklyLimitControls() {
-  const [settings, setSettings] = useState<WeeklyLimitSettings | null>(null);
-  const [saving, setSaving] = useState<WeeklyLimitKey | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  const load = useCallback(async (signal?: AbortSignal) => {
-    setLoadFailed(false);
-    try {
-      setSettings(await apiGetWeeklyLimitSettings(signal));
-    } catch (error) {
-      if (signal?.aborted) return;
-      setLoadFailed(true);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to load weekly limit settings"
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [load]);
-
-  const handleChange = async (key: WeeklyLimitKey, enabled: boolean) => {
-    if (!settings || saving) return;
-    const previous = settings;
-    const next = { ...settings, [key]: enabled };
-    setSettings(next);
-    setSaving(key);
-    try {
-      setSettings(await apiSetWeeklyLimitSettings(next));
-      const option = WEEKLY_LIMIT_OPTIONS.find((item) => item.key === key);
-      toast.success(
-        `${option?.label ?? "Weekly cap"} ${enabled ? "enabled" : "disabled"}`
-      );
-    } catch (error) {
-      setSettings(previous);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to update weekly limit settings"
-      );
-    } finally {
-      setSaving(null);
-    }
-  };
-
-  return (
-    <section
-      className="aptiv-glass-soft rounded-lg p-3"
-      aria-labelledby="weekly-limit-controls-title"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p
-            id="weekly-limit-controls-title"
-            className="text-sm font-semibold"
-          >
-            Weekly limit caps
-          </p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-            Choose which usage dimensions can block model calls.
-          </p>
-        </div>
-        {loadFailed && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => void load()}
-          >
-            Retry
-          </Button>
-        )}
-      </div>
-
-      <div className="mt-3 divide-y divide-border/70 rounded-md border border-border/70 bg-background/35 px-3">
-        {WEEKLY_LIMIT_OPTIONS.map((option) => {
-          const controlId = `weekly-limit-${option.key}`;
-          return (
-            <div
-              key={option.key}
-              className="flex items-center gap-3 py-2.5"
-            >
-              <Label
-                htmlFor={controlId}
-                className="min-w-0 flex-1 cursor-pointer"
-              >
-                <span className="block text-xs font-semibold text-foreground">
-                  {option.label}
-                </span>
-                <span className="mt-0.5 block text-[10px] font-normal leading-snug text-muted-foreground">
-                  {option.description}
-                </span>
-              </Label>
-              <Switch
-                id={controlId}
-                checked={settings?.[option.key] ?? false}
-                disabled={!settings || saving !== null}
-                onCheckedChange={(checked) =>
-                  void handleChange(option.key, checked)
-                }
-                aria-label={`${option.label} enforcement`}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-        Turning a cap off keeps its saved values and usage history, but stops it
-        from blocking requests.
-      </p>
-    </section>
   );
 }
 
@@ -2641,25 +2507,24 @@ type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
 
 /**
  * Per-user weekly usage strip. Renders a single meter for the selected cap
- * (`override`, from the panel's Tokens/Calls switch — defaulting to the enforced
- * dimension): a progress bar plus the dimension-labelled value. Both caps are
- * enforced server-side; the switch only chooses which one this bar shows. The
- * Tokens tab shows the token cap, the Calls tab shows the call cap — never both.
+ * (`override`, from the panel's Tokens/Calls/Cost switch — defaulting to the
+ * run-mode display dimension): a progress bar plus the dimension-labelled value.
+ * Enabled caps are enforced server-side; the switch only chooses what is shown.
  */
 function UsageStrip({
   usage,
   override,
 }: {
   usage: AdminUserUsage;
-  override?: EnforcedDimension;
+  override?: UsageDimension;
 }) {
   const { primary } = splitUsageByEnforcement(usage, override);
   return (
-    <div className="mt-2.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+    <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
       <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
         <div
           className={cn(
-            "h-full rounded-full transition-all",
+            "h-full origin-left rounded-full transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
             primary.isUnlimited
               ? "bg-muted-foreground/40"
               : primary.pct >= 90
@@ -2681,8 +2546,8 @@ function UsageStrip({
       >
         {primary.dimension}{" "}
         {primary.isUnlimited
-          ? `${Math.round(primary.used).toLocaleString()} / ∞`
-          : `${Math.round(primary.used).toLocaleString()} / ${primary.limit.toLocaleString()} · ${Math.round(primary.pct)}%`}
+          ? `${formatUsageAmount(primary.used, primary.dimension)} / ∞`
+          : `${formatUsageAmount(primary.used, primary.dimension)} / ${formatUsageAmount(primary.limit, primary.dimension)} · ${Math.round(primary.pct)}%`}
       </span>
     </div>
   );
@@ -2707,7 +2572,7 @@ function ActionPill({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-semibold transition-all",
+        "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         "disabled:cursor-not-allowed disabled:opacity-40",
         intent === "neutral" &&
