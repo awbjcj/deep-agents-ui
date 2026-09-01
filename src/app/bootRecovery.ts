@@ -6,7 +6,7 @@
  * chunk filenames, but browsers happily serve `index.html` from the HTTP cache.
  * After a redeploy that stale HTML points at chunk URLs that no longer exist,
  * so the JS never loads, React never hydrates, and the page sits on the
- * prerendered "Loading…" markup forever. A plain reload re-uses the same cached
+ * prerendered "Loading…" markup forever. A plain reload reuses the same cached
  * HTML; only a cache-bypassing hard reload (Ctrl+F5) recovers — exactly the
  * symptom users reported.
  *
