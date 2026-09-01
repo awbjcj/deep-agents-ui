@@ -4,7 +4,7 @@ import { FileText, Loader2, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { LibraryFile } from "@/lib/library-admin";
-import { formatLibraryFileSize } from "@/lib/library-file-view";
+import { formatBytes } from "@/lib/library-format";
 
 interface LibraryShelfFileListProps {
   files: LibraryFile[];
@@ -75,7 +75,7 @@ export function LibraryShelfFileList({
               {file.filename}
             </p>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              {formatLibraryFileSize(file.byte_size)} · Uploaded by{" "}
+              {formatBytes(file.byte_size)} · Uploaded by{" "}
               {file.uploaded_by} · {new Date(file.uploaded_at).toLocaleString()}
             </p>
             {file.warning && (

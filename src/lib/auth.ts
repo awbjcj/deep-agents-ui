@@ -765,36 +765,90 @@ export async function apiGetTierQuotaLimits(
   };
 }
 
-/** Persist all three weekly quota defaults for one role tier. */
+/** Quota dimensions written by one tier save, in the order their PUTs fire. */
+const QUOTA_DIMENSIONS = ["token", "call", "cost"] as const;
+
+/** "token", "token and call", "token, call and cost". */
+function joinDimensions(labels: readonly string[]): string {
+  if (labels.length <= 1) return labels[0] ?? "";
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+/** "the token limit" / "the token and call limits". */
+function describeDimensions(labels: readonly string[]): string {
+  return `the ${joinDimensions(labels)} limit${labels.length > 1 ? "s" : ""}`;
+}
+
+/**
+ * Persist all three weekly quota defaults for one role tier.
+ *
+ * Each dimension is its own backend endpoint, so a save is three independent
+ * writes with no way to roll them back as a unit. When only some land, the
+ * thrown error names exactly which dimensions were persisted — reporting a
+ * partial write as a blanket failure would hide that the tier changed.
+ */
 export async function apiSetTierQuotaLimits(
   tier: Role,
   limits: Omit<TierQuotaLimits, "tier">
 ): Promise<TierQuotaLimits> {
-  const [tokenResponse, callResponse, costResponse] = await Promise.all([
-    apiFetch(`/admin/tier-token-limits/${tier}`, {
+  const putCount = async (path: string, weekly_limit: number, label: string) => {
+    const response = await apiFetch(path, {
       method: "PUT",
-      body: JSON.stringify({ weekly_limit: limits.token_limit }),
-    }),
-    apiFetch(`/admin/tier-call-limits/${tier}`, {
-      method: "PUT",
-      body: JSON.stringify({ weekly_limit: limits.call_limit }),
-    }),
-    apiFetch(`/admin/tier-cost-limits/${tier}`, {
+      body: JSON.stringify({ weekly_limit }),
+    });
+    const data = await quotaResponse<CountLimitResponse>(
+      response,
+      `Failed to save ${tier} ${label} limit`
+    );
+    return data.weekly_limit;
+  };
+  const putCost = async () => {
+    const response = await apiFetch(`/admin/tier-cost-limits/${tier}`, {
       method: "PUT",
       body: JSON.stringify({ weekly_limit_micros: limits.cost_limit_micros }),
-    }),
-  ]);
-  const [tokens, calls, cost] = await Promise.all([
-    quotaResponse<CountLimitResponse>(tokenResponse, `Failed to save ${tier} token limit`),
-    quotaResponse<CountLimitResponse>(callResponse, `Failed to save ${tier} call limit`),
-    quotaResponse<CostLimitResponse>(costResponse, `Failed to save ${tier} cost limit`),
-  ]);
-  return {
-    tier,
-    token_limit: tokens.weekly_limit,
-    call_limit: calls.weekly_limit,
-    cost_limit_micros: cost.weekly_limit_micros,
+    });
+    const data = await quotaResponse<CostLimitResponse>(
+      response,
+      `Failed to save ${tier} cost limit`
+    );
+    return data.weekly_limit_micros;
   };
+
+  const results = await Promise.allSettled([
+    putCount(`/admin/tier-token-limits/${tier}`, limits.token_limit, "token"),
+    putCount(`/admin/tier-call-limits/${tier}`, limits.call_limit, "call"),
+    putCost(),
+  ]);
+
+  const failed = QUOTA_DIMENSIONS.filter(
+    (_, index) => results[index].status === "rejected"
+  );
+  if (failed.length > 0) {
+    const detail = results
+      .flatMap((result) =>
+        result.status === "rejected"
+          ? [
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason),
+            ]
+          : []
+      )
+      .join("; ");
+    const saved = QUOTA_DIMENSIONS.filter(
+      (_, index) => results[index].status === "fulfilled"
+    );
+    throw new Error(
+      saved.length > 0
+        ? `${detail}. ${describeDimensions(saved)} for ${tier} did save, so this tier is now partly updated`
+        : detail
+    );
+  }
+
+  const [token_limit, call_limit, cost_limit_micros] = results.map(
+    (result) => (result as PromiseFulfilledResult<number>).value
+  );
+  return { tier, token_limit, call_limit, cost_limit_micros };
 }
 
 // --- Profile update ---

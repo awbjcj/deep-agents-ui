@@ -44,13 +44,16 @@ export interface SplitUsageView {
 }
 
 /**
- * Split a usage summary into the enforced (primary) and non-enforced
- * (secondary) meters.
+ * Split a usage summary into the meter to feature (primary) and one kept
+ * alongside it for context (secondary).
  *
- * By default the backend's run-mode dimension (`u.enforced`) drives the primary
- * meter. Pass `override` to select a specific dimension instead — this
- * backs the local display switch, letting a viewer inspect any cap without
- * altering server enforcement.
+ * The primary meter is whichever dimension is being displayed: the backend's
+ * run-mode dimension (`u.enforced`) by default, or `override` when the viewer
+ * has picked one via the local display switch. Selecting a dimension only
+ * changes what is shown — it never alters server-side enforcement.
+ *
+ * The secondary meter is the token or call counterpart, so a cost-primary view
+ * still surfaces the count-based cap the backend is actually enforcing.
  */
 export function splitUsageByEnforcement(
   u: EnforcedUsageFields,

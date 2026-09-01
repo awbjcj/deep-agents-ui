@@ -1,13 +1,13 @@
 import type { LibraryFile } from "@/lib/library-admin";
 
-/** Human-readable byte count for compact file rows. */
-export function formatLibraryFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-}
-
-/** Stable newest-first ordering for shelf file inventory. */
+/**
+ * Deterministic newest-first ordering for shelf file inventory.
+ *
+ * Files uploaded within the same timestamp resolution are tie-broken by
+ * `file_id` so the list order is reproducible across renders. This is not a
+ * stable sort: equal timestamps are reordered by id rather than keeping the
+ * order they arrived in.
+ */
 export function sortLibraryFiles(files: readonly LibraryFile[]): LibraryFile[] {
   return [...files].sort(
     (left, right) =>

@@ -356,6 +356,10 @@ export function UsageLimitControls() {
                       costMicrosToInput(saved.cost_limit_micros);
                   const errorId = `tier-quota-${role}-error`;
                   const rowId = `tier-quota-${role}-label`;
+                  // Lock this row's inputs while its save is in flight: the
+                  // response overwrites the draft, so an edit typed meanwhile
+                  // would silently vanish.
+                  const isSavingRow = savingTier === role;
                   return (
                     <form
                       key={role}
@@ -374,6 +378,7 @@ export function UsageLimitControls() {
                         </span>
                         <Input
                           id={`tier-quota-${role}-tokens`}
+                          disabled={isSavingRow}
                           inputMode="numeric"
                           value={draft.tokenLimit}
                           onChange={(event) =>
@@ -386,6 +391,7 @@ export function UsageLimitControls() {
                         />
                         <Input
                           id={`tier-quota-${role}-calls`}
+                          disabled={isSavingRow}
                           inputMode="numeric"
                           value={draft.callLimit}
                           onChange={(event) =>
@@ -405,6 +411,7 @@ export function UsageLimitControls() {
                           </span>
                           <Input
                             id={`tier-quota-${role}-cost`}
+                            disabled={isSavingRow}
                             inputMode="decimal"
                             value={draft.costLimitUsd}
                             onChange={(event) =>
