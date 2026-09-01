@@ -34,7 +34,12 @@ const SyntaxHighlighter = lazy(() =>
     const Prism = sh.Prism;
     const oneDark = themes.oneDark;
     function ThemedPrism(props: React.ComponentProps<typeof Prism>) {
-      return <Prism style={oneDark} {...props} />;
+      return (
+        <Prism
+          style={oneDark}
+          {...props}
+        />
+      );
     }
     return { default: ThemedPrism };
   })
@@ -68,7 +73,7 @@ const PROSE_CLASS =
   "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden";
 
 const REMARK_PLUGINS = [remarkGfm, remarkMath];
-// KaTeX renders unparseable math inline in `errorColor` rather than throwing.
+// KaTeX renders malformed math inline in `errorColor` rather than throwing.
 // Pointing that at the theme token keeps malformed math legible on both themes
 // instead of KaTeX's hard-coded #cc0000.
 const REHYPE_PLUGINS: [
