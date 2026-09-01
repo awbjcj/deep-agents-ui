@@ -14,11 +14,13 @@ import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
+import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
 import {
   useNotifications,
   type StreamNotificationEvent,
 } from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
+import { clearStreamReconnectState } from "@/app/utils/threadRecovery";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -68,6 +70,7 @@ export function useChat({
   const { ingestStreamEvent } = useNotifications();
   const threadIdRef = useRef(threadId);
   const creatingThreadRef = useRef<Promise<string> | null>(null);
+  const reportedHistoryErrorsRef = useRef(new Set<string>());
 
   useEffect(() => {
     threadIdRef.current = threadId;
@@ -163,6 +166,43 @@ export function useChat({
     [activeAssistant?.config, username]
   );
 
+  const handleThreadHistoryError = useCallback(
+    (_error: unknown, failedThreadId: string) => {
+      onHistoryRevalidate?.();
+      clearStreamReconnectState(failedThreadId);
+      if (threadIdRef.current !== failedThreadId) return;
+      if (!reportedHistoryErrorsRef.current.has(failedThreadId)) {
+        reportedHistoryErrorsRef.current.add(failedThreadId);
+        toast.error("Couldn't load this conversation", {
+          description:
+            "It may have expired or been removed. Starting a new thread.",
+        });
+      }
+      threadIdRef.current = null;
+      void setThreadId(null);
+    },
+    [onHistoryRevalidate, setThreadId]
+  );
+
+  const recoverableThread = useRecoverableThread<StateType>({
+    client,
+    threadId,
+    enabled: thread === undefined,
+    onError: handleThreadHistoryError,
+  });
+
+  const handleRunError = useCallback(
+    (
+      _error: unknown,
+      run: { thread_id: string; run_id: string } | undefined
+    ) => {
+      onHistoryRevalidate?.();
+      const failedThreadId = run?.thread_id ?? threadIdRef.current;
+      if (failedThreadId) clearStreamReconnectState(failedThreadId);
+    },
+    [onHistoryRevalidate]
+  );
+
   // The langgraph-sdk's `useStream` accepts an `onCustomEvent(event)`
   // callback at runtime but doesn't expose it in its public types. We attach
   // the listener via Object.assign so the rest of the options keep their
@@ -179,9 +219,9 @@ export function useChat({
       fetchStateHistory: true,
       // Revalidate thread list when stream finishes, errors, or creates new thread
       onFinish: onHistoryRevalidate,
-      onError: onHistoryRevalidate,
+      onError: handleRunError,
       onCreated: onHistoryRevalidate,
-      thread,
+      thread: thread ?? recoverableThread,
     },
     { onCustomEvent: handleCustomEvent }
   );
@@ -246,9 +286,11 @@ export function useChat({
     stuckThreadRef.current = threadId;
     const timer = setTimeout(() => {
       if (stuckThreadRef.current !== threadId) return;
+      clearStreamReconnectState(threadId);
       toast.error("Couldn't load this conversation", {
         description: "It may have been removed. Starting a new thread.",
       });
+      threadIdRef.current = null;
       void setThreadId(null);
     }, 20000);
     return () => clearTimeout(timer);

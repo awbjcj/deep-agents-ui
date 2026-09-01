@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   AUTH_KEY,
+  AUTH_CLEARED_EVENT,
   AuthUser,
   RegisterInitResponse,
   apiGetProfile,
@@ -80,8 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
     };
+    const handleSameWindowClear = () => setUser(null);
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(AUTH_CLEARED_EVENT, handleSameWindowClear);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(AUTH_CLEARED_EVENT, handleSameWindowClear);
+    };
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {

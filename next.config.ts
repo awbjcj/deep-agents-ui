@@ -15,6 +15,14 @@ const isStaticExport =
 
 const DEFAULT_DEV_API_BASE = "http://localhost:2024";
 
+// Every exported document carries this marker. A timestamp is intentional:
+// production builds may include uncommitted UI changes, so a Git SHA alone is
+// not sufficient to distinguish two deployments from the same checkout.
+const publicBuildEnv = {
+  NEXT_PUBLIC_VSDA_BUILD_ID:
+    process.env.NEXT_PUBLIC_VSDA_BUILD_ID || String(Date.now()),
+};
+
 // The rewrite destination is a server-side fetch target, so a typo or a stray
 // value in the environment could aim it at a non-HTTP scheme. Reject anything
 // that isn't http/https instead of proxying it.
@@ -50,8 +58,9 @@ const DEV_SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = isStaticExport
-  ? { output: "export", basePath: "/chat" }
+  ? { output: "export", basePath: "/chat", env: publicBuildEnv }
   : {
+      env: publicBuildEnv,
       async headers() {
         return [{ source: "/:path*", headers: DEV_SECURITY_HEADERS }];
       },

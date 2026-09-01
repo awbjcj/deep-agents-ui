@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ThemedToaster } from "@/app/components/ThemedToaster";
 import { AppReadyBeacon } from "@/app/components/AppReadyBeacon";
 import { bootRecoveryScript } from "@/app/bootRecovery";
+import { APP_BUILD_ID, APP_BUILD_META_NAME } from "@/app/buildFreshness";
 import "./globals.css";
 
 const themeInitScript = `
@@ -33,6 +34,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta
+          name={APP_BUILD_META_NAME}
+          content={APP_BUILD_ID}
+        />
         <link
           rel="preload"
           href="/fonts/Formular.woff2"

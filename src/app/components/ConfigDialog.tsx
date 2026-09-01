@@ -34,6 +34,8 @@ interface AssistantOption {
   graphId: string;
 }
 
+const DEFAULT_ASSISTANT = "VSDA Deep Agent";
+
 interface AgentInfo {
   /** One-line summary of what the agent is for. */
   description: string;
@@ -119,6 +121,10 @@ const AGENT_INFO: Record<string, AgentInfo> = {
   },
 };
 
+const BUILT_IN_ASSISTANTS: AssistantOption[] = Object.keys(AGENT_INFO).map(
+  (graphId) => ({ id: graphId, name: graphId, graphId })
+);
+
 interface ConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -133,9 +139,10 @@ export function ConfigDialog({
   initialConfig,
 }: ConfigDialogProps) {
   const [assistantId, setAssistantId] = useState(
-    initialConfig?.assistantId || ""
+    initialConfig?.assistantId || DEFAULT_ASSISTANT
   );
-  const [assistants, setAssistants] = useState<AssistantOption[]>([]);
+  const [assistants, setAssistants] =
+    useState<AssistantOption[]>(BUILT_IN_ASSISTANTS);
   const [loading, setLoading] = useState(false);
 
   const deploymentUrl = getDeploymentUrl();
@@ -158,10 +165,21 @@ export function ConfigDialog({
         name: a.name || a.graph_id || a.assistant_id,
         graphId: a.graph_id,
       }));
-      setAssistants(options);
+      if (options.length > 0) {
+        setAssistantId((current) => {
+          const resolved = options.find((item) => item.graphId === current);
+          return resolved?.id ?? current;
+        });
+        setAssistants(options);
+      }
     } catch (error) {
-      console.error("Failed to fetch assistants:", error);
-      toast.error("Failed to fetch assistants from deployment");
+      // A cold or temporarily unreachable deployment must not break the first
+      // login flow. Built-in graph IDs remain valid SDK assistant identifiers,
+      // so keep the local list usable and let HomePage resolve it later.
+      console.warn(
+        "Using built-in assistants until deployment responds:",
+        error
+      );
     } finally {
       setLoading(false);
     }
@@ -171,7 +189,7 @@ export function ConfigDialog({
     if (open) {
       fetchAssistants();
       if (initialConfig) {
-        setAssistantId(initialConfig.assistantId);
+        setAssistantId(initialConfig.assistantId || DEFAULT_ASSISTANT);
       }
     }
   }, [open, initialConfig, fetchAssistants]);
@@ -227,7 +245,7 @@ export function ConfigDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="assistantId">Assistant</Label>
-            {loading ? (
+            {loading && assistants.length === 0 ? (
               <div className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading assistants...
@@ -307,7 +325,7 @@ export function ConfigDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={loading || !assistantId}
+            disabled={!assistantId}
           >
             Save
           </Button>

@@ -1,3 +1,9 @@
+import {
+  readBrowserStorage,
+  removeBrowserStorage,
+  writeBrowserStorage,
+} from "@/lib/browserStorage";
+
 export type Role = "user" | "developer" | "admin";
 
 export interface AuthUser {
@@ -10,6 +16,7 @@ export interface AuthUser {
 
 const AUTH_KEY = "deep-agent-auth";
 export { AUTH_KEY };
+export const AUTH_CLEARED_EVENT = "deep-agent-auth-cleared";
 
 function base64UrlDecode(str: string): string {
   // Replace base64url chars with standard base64 equivalents
@@ -37,7 +44,7 @@ function isTokenExpired(token: string): boolean {
 
 export function getAuthUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
-  const stored = localStorage.getItem(AUTH_KEY);
+  const stored = readBrowserStorage(AUTH_KEY);
   if (!stored) return null;
   try {
     const user: AuthUser = JSON.parse(stored);
@@ -53,16 +60,20 @@ export function getAuthUser(): AuthUser | null {
 
 export function saveAuthUser(user: AuthUser): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+  writeBrowserStorage(AUTH_KEY, JSON.stringify(user));
 }
 
 export function clearAuthUser(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(AUTH_KEY);
-  // Dispatch a storage event so same-window listeners (e.g. AuthProvider) can react
-  window.dispatchEvent(
-    new StorageEvent("storage", { key: AUTH_KEY, newValue: null })
-  );
+  removeBrowserStorage(AUTH_KEY);
+  // Native storage events only fire in other tabs. Use a dedicated same-window
+  // event so 401 responses update AuthProvider even when StorageEvent cannot be
+  // constructed in a restricted browser context.
+  try {
+    window.dispatchEvent(new Event(AUTH_CLEARED_EVENT));
+  } catch {
+    // AuthProvider's explicit logout path still clears its own state.
+  }
 }
 
 const API_BASE = "/api";

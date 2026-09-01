@@ -1,3 +1,5 @@
+import { readBrowserStorage, writeBrowserStorage } from "@/lib/browserStorage";
+
 export interface StandaloneConfig {
   deploymentUrl: string;
   assistantId: string;
@@ -20,7 +22,7 @@ export function getConfig(): StandaloneConfig | null {
   const deploymentUrl = getDeploymentUrl();
   if (!deploymentUrl) return null;
 
-  const stored = localStorage.getItem(CONFIG_KEY);
+  const stored = readBrowserStorage(CONFIG_KEY);
   const parsed = stored ? safeParse(stored) : null;
 
   return {
@@ -32,12 +34,12 @@ export function getConfig(): StandaloneConfig | null {
 
 export function saveAssistantId(assistantId: string): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CONFIG_KEY, JSON.stringify({ assistantId }));
+  writeBrowserStorage(CONFIG_KEY, JSON.stringify({ assistantId }));
 }
 
 export function saveConfig(config: StandaloneConfig): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(
+  writeBrowserStorage(
     CONFIG_KEY,
     JSON.stringify({ assistantId: config.assistantId })
   );

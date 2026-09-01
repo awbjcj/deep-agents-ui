@@ -7,19 +7,18 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { apiGetRegistrationPolicy } from "@/lib/auth";
+import { enterFreshAppAfterAuth } from "@/app/utils/navigationRecovery";
 import {
   ALLOWED_EMAIL_ERROR_MESSAGE,
   isAllowedRegistrationEmail,
 } from "@/lib/email";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Mode = "login" | "register" | "verify";
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login, registerInit, registerVerify } = useAuth();
   const { theme } = useTheme();
 
@@ -99,7 +98,7 @@ export default function LoginPage() {
       setIsSubmitting(true);
       try {
         await login(username.trim(), password);
-        router.push("/");
+        enterFreshAppAfterAuth();
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Sign in failed");
       } finally {
@@ -162,7 +161,7 @@ export default function LoginPage() {
         pending_registration_id: pendingRegistrationId,
         verification_code: verificationCode.trim(),
       });
-      router.push("/");
+      enterFreshAppAfterAuth();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
