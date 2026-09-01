@@ -1,0 +1,61 @@
+# Keep `dev` pointing at `main` after a rebase merge.
+#
+# "Rebase and merge" replays commits onto `main` with new SHAs, so `dev` is left
+# sitting on the pre-rebase copies even though its content is already identical.
+# This workflow moves `dev` back onto `main` whenever that is the case.
+#
+# It deliberately refuses to touch `dev` when `dev` holds content that is not yet
+# in `main`, because force-updating there would destroy unmerged work.
+
+name: Sync dev with main
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: # Allows triggering the workflow manually in GitHub UI
+
+permissions:
+  contents: write
+
+# Never let two syncs race each other onto the same branch.
+concurrency:
+  group: sync-dev-with-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history and every branch, not just main.
+
+      - name: Move dev onto main
+        run: |
+          set -euo pipefail
+
+          if ! git show-ref --verify --quiet refs/remotes/origin/dev; then
+            echo "::notice::No dev branch exists; nothing to sync."
+            exit 0
+          fi
+
+          main_sha="$(git rev-parse origin/main)"
+          dev_sha="$(git rev-parse origin/dev)"
+
+          if [ "$main_sha" = "$dev_sha" ]; then
+            echo "::notice::dev already matches main ($main_sha); nothing to do."
+            exit 0
+          fi
+
+          # Identical trees mean dev's work is already on main under rebased
+          # SHAs, so moving the branch pointer loses nothing. Differing trees
+          # mean dev has real unmerged work -- leave it alone and say so.
+          if [ "$(git rev-parse "origin/main^{tree}")" != "$(git rev-parse "origin/dev^{tree}")" ]; then
+            echo "::warning::dev has content that is not in main; refusing to force-update it."
+            echo "dev=$dev_sha main=$main_sha"
+            git log --oneline origin/main..origin/dev | head -20
+            exit 0
+          fi
+
+          echo "dev content already matches main; moving dev from $dev_sha to $main_sha."
+          git push --force-with-lease="dev:$dev_sha" origin "$main_sha:refs/heads/dev"
