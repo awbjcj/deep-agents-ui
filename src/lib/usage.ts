@@ -1,16 +1,14 @@
 /**
  * Weekly-usage display helpers.
  *
- * The backend tracks two independent weekly caps — weighted tokens and LLM-call
- * count — but enforces exactly one, chosen by `RUN_MODE` (`calls` under proxy,
- * `tokens` for remote/gateway). The usage summary carries both plus an
- * `enforced` marker. UI meters must render the *enforced* dimension as the
- * primary bar; the other is context only. Keeping this selection in one tested
- * place prevents the per-surface drift that let the admin panel keep showing the
- * token % after the workspace bar had moved to the enforced dimension.
+ * The backend tracks weekly weighted-token, LLM-call, and estimated model-cost
+ * caps. `RUN_MODE` still supplies the default token/call display dimension, while
+ * enabled caps are enforced independently. Keeping display selection in one
+ * tested place prevents per-surface drift without changing server enforcement.
  */
 
 export type EnforcedDimension = "tokens" | "calls";
+export type UsageDimension = EnforcedDimension | "cost";
 
 /** The subset of a usage summary needed to pick the enforced dimension. */
 export interface EnforcedUsageFields {
@@ -22,6 +20,10 @@ export interface EnforcedUsageFields {
   calls_limit: number;
   calls_pct: number;
   calls_is_unlimited: boolean;
+  cost_used_usd: number;
+  cost_limit_usd: number;
+  cost_pct: number;
+  cost_is_unlimited: boolean;
   enforced: EnforcedDimension;
 }
 
@@ -31,13 +33,13 @@ export interface UsageMeterView {
   limit: number;
   pct: number;
   isUnlimited: boolean;
-  dimension: EnforcedDimension;
+  dimension: UsageDimension;
 }
 
 export interface SplitUsageView {
-  /** The actively-enforced cap — drives the primary bar and percentage. */
+  /** The selected cap — drives the primary bar and percentage. */
   primary: UsageMeterView;
-  /** The other (tracked but not enforced) cap — shown as secondary context. */
+  /** Token/call context retained for existing consumers. */
   secondary: UsageMeterView;
 }
 
@@ -45,14 +47,14 @@ export interface SplitUsageView {
  * Split a usage summary into the enforced (primary) and non-enforced
  * (secondary) meters.
  *
- * By default the actively-enforced dimension (`u.enforced`) drives the primary
- * meter. Pass `override` to force a specific dimension primary instead — this
- * backs the local, per-view display switch, letting a viewer inspect either cap
- * without altering which one the backend enforces.
+ * By default the backend's run-mode dimension (`u.enforced`) drives the primary
+ * meter. Pass `override` to select a specific dimension instead — this
+ * backs the local display switch, letting a viewer inspect any cap without
+ * altering server enforcement.
  */
 export function splitUsageByEnforcement(
   u: EnforcedUsageFields,
-  override?: EnforcedDimension,
+  override?: UsageDimension
 ): SplitUsageView {
   const tokens: UsageMeterView = {
     used: u.used,
@@ -68,8 +70,37 @@ export function splitUsageByEnforcement(
     isUnlimited: u.calls_is_unlimited,
     dimension: "calls",
   };
+  const cost: UsageMeterView = {
+    used: u.cost_used_usd,
+    limit: u.cost_limit_usd,
+    pct: u.cost_pct,
+    isUnlimited: u.cost_is_unlimited,
+    dimension: "cost",
+  };
   const primaryDimension = override ?? u.enforced;
+  if (primaryDimension === "cost") {
+    return {
+      primary: cost,
+      secondary: u.enforced === "calls" ? calls : tokens,
+    };
+  }
   return primaryDimension === "calls"
     ? { primary: calls, secondary: tokens }
     : { primary: tokens, secondary: calls };
+}
+
+/** Format a usage amount with dimension-appropriate units. */
+export function formatUsageAmount(
+  value: number,
+  dimension: UsageDimension
+): string {
+  if (dimension !== "cost") {
+    return Math.round(value).toLocaleString("en-US");
+  }
+  return value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6,
+  });
 }

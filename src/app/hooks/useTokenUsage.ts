@@ -15,6 +15,12 @@ export type TokenUsageSnapshot = {
   calls_limit: number;
   calls_pct: number;
   calls_is_unlimited: boolean;
+  cost_used_micros: number;
+  cost_limit_micros: number;
+  cost_used_usd: number;
+  cost_limit_usd: number;
+  cost_pct: number;
+  cost_is_unlimited: boolean;
   enforced: "tokens" | "calls";
 };
 

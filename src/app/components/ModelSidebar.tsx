@@ -27,7 +27,11 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
-import { splitUsageByEnforcement, type EnforcedDimension } from "@/lib/usage";
+import {
+  formatUsageAmount,
+  splitUsageByEnforcement,
+  type UsageDimension,
+} from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import {
   apiGetAllowedModels,
@@ -125,9 +129,10 @@ type UsageMeterProps = {
   pct: number;
   isUnlimited: boolean;
   ariaLabel: string;
+  dimension: UsageDimension;
 };
 
-/** One labelled usage meter (token budget or call budget). */
+/** One labelled usage meter for tokens, calls, or estimated model cost. */
 function UsageMeter({
   label,
   used,
@@ -135,13 +140,14 @@ function UsageMeter({
   pct,
   isUnlimited,
   ariaLabel,
+  dimension,
 }: UsageMeterProps) {
   const clampedPct = Math.min(Math.max(pct, 0), 100);
   const detail = isUnlimited
-    ? "Unlimited"
-    : `${Math.round(used).toLocaleString()} / ${limit.toLocaleString()}`;
+    ? `${formatUsageAmount(used, dimension)} used · Unlimited`
+    : `${formatUsageAmount(used, dimension)} / ${formatUsageAmount(limit, dimension)}`;
   return (
-    <div className="aptiv-glass-soft rounded-lg p-4 shadow-sm">
+    <div className="aptiv-glass-soft rounded-lg p-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Gauge className="h-4 w-4 flex-shrink-0 text-[var(--color-primary)]" />
@@ -167,11 +173,11 @@ function UsageMeter({
         aria-valuemax={100}
         aria-valuenow={isUnlimited ? undefined : Math.round(clampedPct)}
         aria-valuetext={isUnlimited ? "Unlimited" : `${Math.round(pct)}% used`}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-muted/70"
+        className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted/70"
       >
         <div
           className={[
-            "h-full rounded-full transition-[width] duration-200 ease-out",
+            "h-full origin-left rounded-full transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
             usageBarClass(pct, isUnlimited),
           ].join(" ")}
           style={{ width: isUnlimited ? "100%" : `${clampedPct.toFixed(1)}%` }}
@@ -208,7 +214,7 @@ export function ModelSidebar() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const usage = useTokenUsage();
-  const [usageView, setUsageView] = useState<EnforcedDimension | null>(null);
+  const [usageView, setUsageView] = useState<UsageDimension | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -402,21 +408,19 @@ export function ModelSidebar() {
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-8 p-5">
           {usage && (
-            <section className="space-y-3" aria-labelledby="usage-section-heading">
-              <div className="flex items-baseline justify-between">
-                <div className="flex items-center gap-2">
+            <section className="space-y-2.5" aria-labelledby="usage-section-heading">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <span
                     className="aptiv-eyebrow"
                     id="usage-section-heading"
                   >
                     Usage
                   </span>
+                  <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {resetLabel}
+                  </span>
                 </div>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {resetLabel}
-                </span>
-              </div>
-              <div className="flex justify-end">
                 <UsageDimensionToggle
                   value={usageView ?? usage.enforced}
                   onChange={setUsageView}
@@ -427,19 +431,21 @@ export function ModelSidebar() {
                   usage,
                   usageView ?? usage.enforced
                 );
-                const isCalls = primary.dimension === "calls";
+                const label =
+                  primary.dimension === "calls"
+                    ? "Weekly call budget"
+                    : primary.dimension === "cost"
+                      ? "Weekly cost budget"
+                      : "Weekly token budget";
                 return (
                   <UsageMeter
-                    label={isCalls ? "Weekly call budget" : "Weekly token budget"}
+                    label={label}
                     used={primary.used}
                     limit={primary.limit}
                     pct={primary.pct}
                     isUnlimited={primary.isUnlimited}
-                    ariaLabel={
-                      isCalls
-                        ? "Weekly call budget usage"
-                        : "Weekly token budget usage"
-                    }
+                    ariaLabel={`${label} usage`}
+                    dimension={primary.dimension}
                   />
                 );
               })()}
