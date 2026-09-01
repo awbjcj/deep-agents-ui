@@ -104,3 +104,38 @@ test("usage limit controls use compact aligned geometry", async () => {
   assert.match(toggle, /inline-grid h-8 grid-cols-3/);
   assert.match(toggle, /active:scale-\[0\.97\]/);
 });
+
+test("a partly-applied tier save reports which dimensions persisted", async () => {
+  const api = await readFile(
+    new URL("../src/lib/auth.ts", import.meta.url),
+    "utf8"
+  );
+
+  const start = api.indexOf("export async function apiSetTierQuotaLimits");
+  assert.notEqual(start, -1, "apiSetTierQuotaLimits should exist");
+  // Slice out just this function so the assertions below cannot be satisfied
+  // — or broken — by unrelated code elsewhere in auth.ts.
+  const offset = api.slice(start + 1).search(/^export /m);
+  const body = offset === -1 ? api.slice(start) : api.slice(start, start + 1 + offset);
+
+  // The three quota endpoints are independent PUTs, so the save must not
+  // short-circuit — it has to learn the fate of all three to describe the
+  // resulting mixed state.
+  assert.match(body, /Promise\.allSettled\(/);
+  assert.doesNotMatch(body, /Promise\.all\(/);
+  assert.match(body, /this tier is now partly updated/);
+});
+
+test("tier quota inputs lock while that tier's save is in flight", async () => {
+  const panel = await readFile(
+    new URL(
+      "../src/app/components/admin/UsageLimitControls.tsx",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+  assert.match(panel, /const isSavingRow = savingTier === role;/);
+  // Tokens, calls and cost inputs all honour the in-flight lock.
+  assert.equal(panel.match(/disabled=\{isSavingRow\}/g)?.length, 3);
+});
