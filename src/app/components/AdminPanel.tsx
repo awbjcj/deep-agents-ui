@@ -208,7 +208,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
                 onClick={() => setActive(tab.id)}
                 className={cn(
                   "group relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-md px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aptiv-orange)]/40",
+                  "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
                   isActive
                     ? "bg-background/60 text-foreground"
                     : "text-muted-foreground hover:bg-background/30 hover:text-foreground"
@@ -337,7 +337,9 @@ function UsersSection() {
     try {
       reset = await apiResetPassword(target.user_id);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to reset password");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to reset password"
+      );
       return;
     }
     // Password is rotated server-side. From here, never lose it: copy to
@@ -406,7 +408,9 @@ function UsersSection() {
       downloadBlob(tsv, "text/tab-separated-values", "temp-passwords.tsv");
       toast.success(`Reset ${resets.length} password(s)`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to reset passwords");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to reset passwords"
+      );
     }
   };
 
@@ -432,7 +436,9 @@ function UsersSection() {
       });
       toast.success(`Reset usage for ${reset} user(s)`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to reset all usage");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to reset all usage"
+      );
     }
   };
 
@@ -446,10 +452,15 @@ function UsersSection() {
       <div className="flex items-center justify-between gap-3">
         <SectionHeader
           title="People"
-          subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"} in this workspace`}
+          subtitle={`${users.length} ${
+            users.length === 1 ? "account" : "accounts"
+          } in this workspace`}
         />
         <div title="Which weekly cap the usage bars show">
-          <UsageDimensionToggle value={usageDim} onChange={setUsageView} />
+          <UsageDimensionToggle
+            value={usageDim}
+            onChange={setUsageView}
+          />
         </div>
       </div>
 
@@ -494,7 +505,9 @@ function UsersSection() {
                   </div>
                   <Select
                     value={u.role}
-                    onValueChange={(v) => handleRoleChange(u.user_id, v as Role)}
+                    onValueChange={(v) =>
+                      handleRoleChange(u.user_id, v as Role)
+                    }
                     disabled={isSelf}
                   >
                     <SelectTrigger
@@ -524,7 +537,10 @@ function UsersSection() {
                 </header>
 
                 {u_usage && (
-                  <UsageStrip usage={u_usage} override={usageDim} />
+                  <UsageStrip
+                    usage={u_usage}
+                    override={usageDim}
+                  />
                 )}
 
                 <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -558,7 +574,7 @@ function UsersSection() {
         <Button
           type="button"
           variant="outline"
-          className="h-8 w-full text-xs text-[var(--aptiv-turquoise-dark)] transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:bg-[var(--aptiv-turquoise)]/10 hover:text-[var(--aptiv-turquoise-dark)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 dark:text-[var(--aptiv-turquoise)] dark:hover:bg-[var(--aptiv-turquoise)]/15 dark:hover:text-[var(--aptiv-turquoise)]"
+          className="hover:bg-[var(--aptiv-turquoise)]/10 dark:hover:bg-[var(--aptiv-turquoise)]/15 h-8 w-full text-xs text-[var(--aptiv-turquoise-dark)] transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:text-[var(--aptiv-turquoise-dark)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 dark:text-[var(--aptiv-turquoise)] dark:hover:text-[var(--aptiv-turquoise)]"
           onClick={handleResetAllUsage}
         >
           <RotateCcw className="mr-2 h-4 w-4" />
@@ -639,20 +655,26 @@ function ScopesSection() {
       setScopes((prev) =>
         prev.filter(
           (s) =>
-            !(s.scope_type === scope.scope_type && s.scope_id === scope.scope_id)
+            !(
+              s.scope_type === scope.scope_type && s.scope_id === scope.scope_id
+            )
         )
       );
       if (expanded === scopeKey(scope)) setExpanded(null);
       toast.success("Scope deleted");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete scope");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete scope"
+      );
     }
   };
 
   const handleManifestApply = async (
     entries: ScopeManifestEntry[]
   ): Promise<ScopeImportResult> => {
-    const currentByKey = new Map(scopes.map((scope) => [scopeKey(scope), scope]));
+    const currentByKey = new Map(
+      scopes.map((scope) => [scopeKey(scope), scope])
+    );
     let applied = 0;
     let failed = 0;
 
@@ -679,11 +701,7 @@ function ScopesSection() {
             entry.scope_id
           );
           const merged = mergeScopeMembers(currentMembers, entry.members);
-          await apiSetScopeMembers(
-            entry.scope_type,
-            entry.scope_id,
-            merged
-          );
+          await apiSetScopeMembers(entry.scope_type, entry.scope_id, merged);
           saved.member_count = merged.length;
         }
         applied += 1;
@@ -694,9 +712,13 @@ function ScopesSection() {
 
     await fetchScopes();
     if (failed === 0) {
-      toast.success(`Applied ${applied} knowledge scope${applied === 1 ? "" : "s"}`);
+      toast.success(
+        `Applied ${applied} knowledge scope${applied === 1 ? "" : "s"}`
+      );
     } else {
-      toast.warning(`Applied ${applied}/${entries.length} scopes; ${failed} failed`);
+      toast.warning(
+        `Applied ${applied}/${entries.length} scopes; ${failed} failed`
+      );
     }
     return { applied, failed };
   };
@@ -726,11 +748,7 @@ function ScopesSection() {
           await apiUpdateScope(scope.scope_type, scope.scope_id, {
             default_access: "tier",
           });
-          await apiSetScopeMembers(
-            scope.scope_type,
-            scope.scope_id,
-            merged
-          );
+          await apiSetScopeMembers(scope.scope_type, scope.scope_id, merged);
           applied += 1;
         } catch {
           failed += 1;
@@ -740,10 +758,14 @@ function ScopesSection() {
       if (failed === 0) {
         toast.success(`Applied role access to all ${applied} scopes`);
       } else {
-        toast.warning(`Applied role access to ${applied}/${scopes.length} scopes`);
+        toast.warning(
+          `Applied role access to ${applied}/${scopes.length} scopes`
+        );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load users");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load users"
+      );
     } finally {
       setApplyingRoleAccess(false);
     }
@@ -790,14 +812,17 @@ function ScopesSection() {
           ) : (
             <Users className="mr-2 h-4 w-4" />
           )}
-          {applyingRoleAccess ? "Applying access" : "Apply access to all scopes"}
+          {applyingRoleAccess
+            ? "Applying access"
+            : "Apply access to all scopes"}
         </Button>
       </div>
 
       <div className="aptiv-glass-soft space-y-2 rounded-lg p-3">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Role access grants read to users and write to developers/admins. Existing
-          custom write grants are preserved, and future users inherit access by role.
+          Role access grants read to users and write to developers/admins.
+          Existing custom write grants are preserved, and future users inherit
+          access by role.
         </p>
         <ScopeImportCard onApply={handleManifestApply} />
       </div>
@@ -826,7 +851,10 @@ function ScopesSection() {
             const items = grouped[type];
             if (!items || items.length === 0) return null;
             return (
-              <div key={type} className="space-y-2">
+              <div
+                key={type}
+                className="space-y-2"
+              >
                 <div className="flex items-center gap-2 px-1">
                   <span
                     className="h-1.5 w-1.5 rounded-full"
@@ -834,7 +862,7 @@ function ScopesSection() {
                   />
                   <h4 className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
                     {type}
-                    <span className="ml-1.5 font-mono tabular-nums normal-case tracking-normal text-muted-foreground/60">
+                    <span className="ml-1.5 font-mono normal-case tabular-nums tracking-normal text-muted-foreground/60">
                       {items.length}
                     </span>
                   </h4>
@@ -853,9 +881,7 @@ function ScopesSection() {
                         onDelete={() => handleDelete(scope)}
                         onUpdated={(next) =>
                           setScopes((prev) =>
-                            prev.map((s) =>
-                              scopeKey(s) === key ? next : s
-                            )
+                            prev.map((s) => (scopeKey(s) === key ? next : s))
                           )
                         }
                       />
@@ -920,7 +946,9 @@ function CreateScopeCard({
       if (aliveRef.current) onCreated({ ...result, member_count: 1 });
     } catch (err) {
       if (controller.signal.aborted) return;
-      toast.error(err instanceof Error ? err.message : "Failed to create scope");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create scope"
+      );
     } finally {
       if (aliveRef.current) setSubmitting(false);
     }
@@ -934,13 +962,19 @@ function CreateScopeCard({
           <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Type
           </Label>
-          <Select value={scopeType} onValueChange={(v) => setScopeType(v as ScopeType)}>
+          <Select
+            value={scopeType}
+            onValueChange={(v) => setScopeType(v as ScopeType)}
+          >
             <SelectTrigger className="h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {SCOPE_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
+                <SelectItem
+                  key={t}
+                  value={t}
+                >
                   {t}
                 </SelectItem>
               ))}
@@ -962,7 +996,10 @@ function CreateScopeCard({
       </div>
       <div className="space-y-1.5">
         <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Display name <span className="font-normal normal-case text-muted-foreground/60">(optional)</span>
+          Display name{" "}
+          <span className="font-normal normal-case text-muted-foreground/60">
+            (optional)
+          </span>
         </Label>
         <Input
           value={displayName}
@@ -973,7 +1010,10 @@ function CreateScopeCard({
       </div>
       <div className="space-y-1.5">
         <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Aliases <span className="font-normal normal-case text-muted-foreground/60">(comma-separated)</span>
+          Aliases{" "}
+          <span className="font-normal normal-case text-muted-foreground/60">
+            (comma-separated)
+          </span>
         </Label>
         <Input
           value={aliases}
@@ -992,18 +1032,30 @@ function CreateScopeCard({
             setDefaultAccess(value as ScopeDefaultAccess)
           }
         >
-          <SelectTrigger className="h-9" aria-label="Default scope access">
+          <SelectTrigger
+            className="h-9"
+            aria-label="Default scope access"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="tier">By role · user read, developer/admin write</SelectItem>
+            <SelectItem value="tier">
+              By role · user read, developer/admin write
+            </SelectItem>
             <SelectItem value="read">Read only · everyone</SelectItem>
-            <SelectItem value="none">Private · explicit members only</SelectItem>
+            <SelectItem value="none">
+              Private · explicit members only
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
       <div className="flex gap-2 pt-1">
-        <Button type="button" variant="ghost" onClick={onCancel} className="flex-1">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+          className="flex-1"
+        >
           Cancel
         </Button>
         <Button
@@ -1109,7 +1161,9 @@ function ScopeCard({
       setEditing(false);
       toast.success("Scope updated");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update scope");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update scope"
+      );
     } finally {
       setSaving(false);
     }
@@ -1157,7 +1211,9 @@ function ScopeCard({
         )
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update access");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update access"
+      );
     }
   };
 
@@ -1171,7 +1227,9 @@ function ScopeCard({
       onUpdated({ ...scope, member_count: next.length });
       toast.success(`Removed ${username}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to remove member");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove member"
+      );
     }
   };
 
@@ -1181,7 +1239,7 @@ function ScopeCard({
         "rounded-lg border bg-card/60 transition-colors",
         isOpen
           ? "border-[var(--aptiv-orange)]/40 shadow-sm"
-          : "border-border hover:border-primary/30"
+          : "hover:border-primary/30 border-border"
       )}
     >
       <button
@@ -1208,7 +1266,8 @@ function ScopeCard({
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="font-semibold uppercase tracking-wider">
-              {scope.member_count ?? 0} member{(scope.member_count ?? 0) === 1 ? "" : "s"}
+              {scope.member_count ?? 0} member
+              {(scope.member_count ?? 0) === 1 ? "" : "s"}
             </span>
             <span aria-hidden="true">·</span>
             <span>{scopeDefaultAccessLabel(scope.default_access)}</span>
@@ -1289,7 +1348,10 @@ function ScopeCard({
                     setDefaultAccess(value as ScopeDefaultAccess)
                   }
                 >
-                  <SelectTrigger className="h-9" aria-label="Default scope access">
+                  <SelectTrigger
+                    className="h-9"
+                    aria-label="Default scope access"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1368,13 +1430,19 @@ function ScopeCard({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="read" className="text-xs">
+                          <SelectItem
+                            value="read"
+                            className="text-xs"
+                          >
                             <span className="flex items-center gap-1.5">
                               <Eye className="h-3.5 w-3.5" />
                               read
                             </span>
                           </SelectItem>
-                          <SelectItem value="write" className="text-xs">
+                          <SelectItem
+                            value="write"
+                            className="text-xs"
+                          >
                             <span className="flex items-center gap-1.5">
                               <Pencil className="h-3.5 w-3.5" />
                               write
@@ -1417,13 +1485,19 @@ function ScopeCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="read" className="text-xs">
+                  <SelectItem
+                    value="read"
+                    className="text-xs"
+                  >
                     <span className="flex items-center gap-1.5">
                       <Eye className="h-3.5 w-3.5" />
                       read
                     </span>
                   </SelectItem>
-                  <SelectItem value="write" className="text-xs">
+                  <SelectItem
+                    value="write"
+                    className="text-xs"
+                  >
                     <span className="flex items-center gap-1.5">
                       <Pencil className="h-3.5 w-3.5" />
                       write
@@ -1504,7 +1578,9 @@ function RunModeSection() {
         savedTimerRef.current = null;
       }, 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save run mode");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save run mode"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -1544,7 +1620,8 @@ function RunModeSection() {
   };
 
   // --- URL Overrides ---
-  const [connectivity, setConnectivity] = useState<AdminConnectivityResponse | null>(null);
+  const [connectivity, setConnectivity] =
+    useState<AdminConnectivityResponse | null>(null);
   const [urlDraft, setUrlDraft] = useState<Record<string, string>>({});
   const [isSavingUrls, setIsSavingUrls] = useState(false);
 
@@ -1616,7 +1693,9 @@ function RunModeSection() {
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update attachment policy"
+        err instanceof Error
+          ? err.message
+          : "Failed to update attachment policy"
       );
     } finally {
       setIsTogglingAttachments(false);
@@ -1626,13 +1705,16 @@ function RunModeSection() {
   // --- Embedding provider ---
   // This is a system ingestion policy, so a selection is persisted immediately
   // and used by both new vectors and query-time embeddings.
-  const [isSavingEmbeddingProvider, setIsSavingEmbeddingProvider] = useState(false);
+  const [isSavingEmbeddingProvider, setIsSavingEmbeddingProvider] =
+    useState(false);
 
   const handleEmbeddingProviderChange = async (provider: EmbeddingProvider) => {
     if (!connectivity || provider === connectivity.embedding_provider) return;
     setIsSavingEmbeddingProvider(true);
     try {
-      const updated = await apiSetAdminConnectivity({ embedding_provider: provider });
+      const updated = await apiSetAdminConnectivity({
+        embedding_provider: provider,
+      });
       setConnectivity(updated);
       toast.success(
         provider === "copilot"
@@ -1641,7 +1723,9 @@ function RunModeSection() {
       );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update embedding provider"
+        err instanceof Error
+          ? err.message
+          : "Failed to update embedding provider"
       );
     } finally {
       setIsSavingEmbeddingProvider(false);
@@ -1680,10 +1764,10 @@ function RunModeSection() {
                   onClick={() => setPending(mode)}
                   className={cn(
                     "group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
+                    "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                     active
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--text-button-primary)] shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]"
-                      : "border-border bg-card hover:-translate-y-px hover:border-[var(--color-primary)]/40 hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
+                      : "hover:border-[var(--color-primary)]/40 border-border bg-card hover:-translate-y-px hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
                   )}
                 >
                   {active && (
@@ -1723,7 +1807,10 @@ function RunModeSection() {
               <span className="font-semibold uppercase tracking-wider">
                 Updated
               </span>
-              <time className="font-mono tabular-nums" dateTime={info.run_mode_updated_at}>
+              <time
+                className="font-mono tabular-nums"
+                dateTime={info.run_mode_updated_at}
+              >
                 {formatTimestamp(info.run_mode_updated_at)}
               </time>
               <span className="text-muted-foreground/70">
@@ -1766,7 +1853,10 @@ function RunModeSection() {
           />
 
           <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
-            <div className="grid grid-cols-2 gap-2 p-3" aria-label="Embedding API">
+            <div
+              className="grid grid-cols-2 gap-2 p-3"
+              aria-label="Embedding API"
+            >
               {(
                 [
                   {
@@ -1791,13 +1881,15 @@ function RunModeSection() {
                     type="button"
                     aria-pressed={active}
                     disabled={isSavingEmbeddingProvider}
-                    onClick={() => void handleEmbeddingProviderChange(option.id)}
+                    onClick={() =>
+                      void handleEmbeddingProviderChange(option.id)
+                    }
                     className={cn(
                       "group relative flex min-w-0 items-start gap-2.5 rounded-md border p-3 text-left transition-all duration-200",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 disabled:cursor-wait disabled:opacity-70",
+                      "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-70",
                       active
                         ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] shadow-[inset_3px_0_0_var(--color-primary)]"
-                        : "border-border bg-card hover:-translate-y-px hover:border-[var(--color-primary)]/40"
+                        : "hover:border-[var(--color-primary)]/40 border-border bg-card hover:-translate-y-px"
                     )}
                   >
                     <span
@@ -1808,7 +1900,10 @@ function RunModeSection() {
                           : "bg-muted text-muted-foreground group-hover:text-[var(--color-primary)]"
                       )}
                     >
-                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      <Icon
+                        className="h-4 w-4"
+                        aria-hidden="true"
+                      />
                     </span>
                     <span className="min-w-0">
                       <span className="block text-xs font-semibold text-foreground">
@@ -1832,16 +1927,24 @@ function RunModeSection() {
             <div className="border-t border-border/60 bg-muted/20 px-4 py-2.5">
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 {isSavingEmbeddingProvider ? (
-                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  <Loader2
+                    className="h-3 w-3 animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <Database className="h-3 w-3" aria-hidden="true" />
+                  <Database
+                    className="h-3 w-3"
+                    aria-hidden="true"
+                  />
                 )}
                 <span className="font-medium">Selection source:</span>
-                <span>{settingSourceLabel(connectivity.embedding_provider_source)}</span>
+                <span>
+                  {settingSourceLabel(connectivity.embedding_provider_source)}
+                </span>
               </div>
               <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80">
-                Rebuild existing vector shelves after switching providers so stored and
-                query embeddings use the same vector space.
+                Rebuild existing vector shelves after switching providers so
+                stored and query embeddings use the same vector space.
               </p>
             </div>
           </div>
@@ -1857,8 +1960,11 @@ function RunModeSection() {
 
           <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
             <div className="flex items-start gap-3 p-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                <Paperclip className="h-4 w-4" aria-hidden="true" />
+              <span className="bg-[var(--color-primary)]/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--color-primary)]">
+                <Paperclip
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
               </span>
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1883,7 +1989,10 @@ function RunModeSection() {
               </div>
               <div className="flex shrink-0 items-center gap-2 pt-0.5">
                 {isTogglingAttachments && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+                  <Loader2
+                    className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 )}
                 <Switch
                   id="proxy-chat-attachments"
@@ -1895,10 +2004,15 @@ function RunModeSection() {
               </div>
             </div>
             <div className="flex items-center gap-1.5 border-t border-border/60 bg-muted/20 px-4 py-2 text-[10px] text-muted-foreground">
-              <Database className="h-3 w-3" aria-hidden="true" />
+              <Database
+                className="h-3 w-3"
+                aria-hidden="true"
+              />
               <span className="font-medium">Policy source:</span>
               <span>
-                {settingSourceLabel(connectivity.proxy_attachments_enabled_source)}
+                {settingSourceLabel(
+                  connectivity.proxy_attachments_enabled_source
+                )}
               </span>
             </div>
           </div>
@@ -1912,25 +2026,42 @@ function RunModeSection() {
             subtitle="Override environment URLs for each provider and mode. Empty = use .env default."
           />
 
-          {([
-            { id: "openai", label: "OpenAI", prefix: "openai_base_url" },
-            { id: "anthropic", label: "Anthropic", prefix: "claude_base_url" },
-            { id: "gemini", label: "Gemini", prefix: "google_base_url" },
-          ] as const).map((provider) => (
-            <div key={provider.id} className="space-y-2">
+          {(
+            [
+              { id: "openai", label: "OpenAI", prefix: "openai_base_url" },
+              {
+                id: "anthropic",
+                label: "Anthropic",
+                prefix: "claude_base_url",
+              },
+              { id: "gemini", label: "Gemini", prefix: "google_base_url" },
+            ] as const
+          ).map((provider) => (
+            <div
+              key={provider.id}
+              className="space-y-2"
+            >
               <p className="aptiv-eyebrow">{provider.label}</p>
               {(["remote", "gateway", "proxy"] as const).map((mode) => {
-                const key = `${provider.prefix}${mode === "remote" ? "" : `_${mode}`}`;
+                const key = `${provider.prefix}${
+                  mode === "remote" ? "" : `_${mode}`
+                }`;
                 const info = connectivity.urls[key];
                 return (
-                  <div key={key} className="space-y-1">
+                  <div
+                    key={key}
+                    className="space-y-1"
+                  >
                     <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {mode} URL
                     </Label>
                     <Input
                       value={urlDraft[key] ?? ""}
                       onChange={(e) =>
-                        setUrlDraft((prev) => ({ ...prev, [key]: e.target.value }))
+                        setUrlDraft((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }))
                       }
                       placeholder="(not set — using .env)"
                       className={cn(
@@ -1940,12 +2071,14 @@ function RunModeSection() {
                           : ""
                       )}
                     />
-                    <span className={cn(
-                      "text-[9px]",
-                      info?.source === "database" && info.value
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-[9px]",
+                        info?.source === "database" && info.value
+                          ? "text-primary"
+                          : "text-muted-foreground"
+                      )}
+                    >
                       Source: {info?.source ?? "env"}
                       {info?.source === "database" && info.updated_at && (
                         <> · Updated {formatTimestamp(info.updated_at)}</>
@@ -2059,7 +2192,10 @@ function TiersSection() {
       ) : (
         <>
           {ROLES.map((tier) => (
-            <div key={tier} className="space-y-1.5">
+            <div
+              key={tier}
+              className="space-y-1.5"
+            >
               <div className="flex items-baseline justify-between">
                 <Label
                   htmlFor={`tier-${tier}`}
@@ -2068,7 +2204,8 @@ function TiersSection() {
                   {tier}
                 </Label>
                 <span className="font-mono text-[10px] tabular-nums text-muted-foreground/60">
-                  {tiers[tier].length} model{tiers[tier].length === 1 ? "" : "s"}
+                  {tiers[tier].length} model
+                  {tiers[tier].length === 1 ? "" : "s"}
                 </span>
               </div>
               <Textarea
@@ -2128,7 +2265,11 @@ function ImageFetchingTierToggles() {
       apiGetTierImageFetching("admin"),
     ])
       .then(([u, d, a]) => {
-        setTierStates({ user: u.enabled, developer: d.enabled, admin: a.enabled });
+        setTierStates({
+          user: u.enabled,
+          developer: d.enabled,
+          admin: a.enabled,
+        });
       })
       .catch(() => toast.error("Failed to load image fetching settings"))
       .finally(() => setIsLoading(false));
@@ -2139,7 +2280,9 @@ function ImageFetchingTierToggles() {
     setTierStates((s) => ({ ...s, [tier]: checked }));
     try {
       await apiSetTierImageFetching(tier, checked);
-      toast.success(`Image fetching ${checked ? "enabled" : "disabled"} for ${tier}`);
+      toast.success(
+        `Image fetching ${checked ? "enabled" : "disabled"} for ${tier}`
+      );
     } catch {
       setTierStates((s) => ({ ...s, [tier]: prev }));
       toast.error("Failed to update image fetching");
@@ -2189,7 +2332,9 @@ function RegistrationSection() {
   const [note, setNote] = useState("");
   const [expiresDays, setExpiresDays] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [lastCreated, setLastCreated] = useState<CreatedInvitationCode | null>(null);
+  const [lastCreated, setLastCreated] = useState<CreatedInvitationCode | null>(
+    null
+  );
 
   useEffect(() => {
     setIsLoadingSettings(true);
@@ -2221,11 +2366,13 @@ function RegistrationSection() {
       toast.success(
         checked
           ? "Invitation code now required to register"
-          : "Invitation code no longer required",
+          : "Invitation code no longer required"
       );
     } catch (err) {
       setRequireCode(prev);
-      toast.error(err instanceof Error ? err.message : "Failed to update setting");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update setting"
+      );
     } finally {
       setIsTogglingRequire(false);
     }
@@ -2235,7 +2382,10 @@ function RegistrationSection() {
     setIsGenerating(true);
     try {
       const parsedDays = expiresDays.trim() ? Number(expiresDays.trim()) : null;
-      if (parsedDays !== null && (!Number.isInteger(parsedDays) || parsedDays < 1)) {
+      if (
+        parsedDays !== null &&
+        (!Number.isInteger(parsedDays) || parsedDays < 1)
+      ) {
         toast.error("Expiry must be a whole number of days (1 or more)");
         setIsGenerating(false);
         return;
@@ -2250,7 +2400,9 @@ function RegistrationSection() {
       toast.success("Invitation code generated");
       loadCodes();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate code");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to generate code"
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -2313,7 +2465,10 @@ function RegistrationSection() {
         />
         <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
           <div className="space-y-1.5">
-            <Label htmlFor="invite-note" className="text-[13px] font-medium">
+            <Label
+              htmlFor="invite-note"
+              className="text-[13px] font-medium"
+            >
               Note (optional)
             </Label>
             <Input
@@ -2327,7 +2482,10 @@ function RegistrationSection() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="invite-expiry" className="text-[13px] font-medium">
+            <Label
+              htmlFor="invite-expiry"
+              className="text-[13px] font-medium"
+            >
               Expires after (days, optional)
             </Label>
             <Input
@@ -2360,7 +2518,7 @@ function RegistrationSection() {
           </Button>
 
           {lastCreated && (
-            <div className="rounded-md border border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 p-3">
+            <div className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 rounded-md border p-3">
               <p className="text-xs font-semibold text-foreground">
                 New code — copy it now, it won&apos;t be shown again
               </p>
@@ -2404,7 +2562,9 @@ function RegistrationSection() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <code className="font-mono text-sm">{code.code_prefix}…</code>
+                    <code className="font-mono text-sm">
+                      {code.code_prefix}…
+                    </code>
                     <InvitationStatusBadge status={code.status} />
                   </div>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -2437,7 +2597,11 @@ function RegistrationSection() {
   );
 }
 
-function InvitationStatusBadge({ status }: { status: InvitationCode["status"] }) {
+function InvitationStatusBadge({
+  status,
+}: {
+  status: InvitationCode["status"];
+}) {
   const styles: Record<InvitationCode["status"], string> = {
     active: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
     used: "bg-muted text-muted-foreground",
@@ -2447,7 +2611,7 @@ function InvitationStatusBadge({ status }: { status: InvitationCode["status"] })
     <span
       className={cn(
         "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-        styles[status],
+        styles[status]
       )}
     >
       {status}
@@ -2468,9 +2632,14 @@ function SectionHeader({
     <header className="space-y-1">
       <h3 className="text-base font-semibold tracking-tight">{title}</h3>
       {subtitle && (
-        <p className="text-xs leading-relaxed text-muted-foreground">{subtitle}</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {subtitle}
+        </p>
       )}
-      <span className="aptiv-rule" aria-hidden="true" />
+      <span
+        className="aptiv-rule"
+        aria-hidden="true"
+      />
     </header>
   );
 }
@@ -2488,13 +2657,7 @@ function LoadingRow({ compact }: { compact?: boolean }) {
   );
 }
 
-function EmptyState({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) {
+function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
       <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -2528,10 +2691,10 @@ function UsageStrip({
             primary.isUnlimited
               ? "bg-muted-foreground/40"
               : primary.pct >= 90
-                ? "bg-destructive"
-                : primary.pct >= 70
-                  ? "bg-[var(--color-warning)]"
-                  : "bg-primary"
+              ? "bg-destructive"
+              : primary.pct >= 70
+              ? "bg-[var(--color-warning)]"
+              : "bg-primary"
           )}
           style={{
             width: primary.isUnlimited
@@ -2547,7 +2710,13 @@ function UsageStrip({
         {primary.dimension}{" "}
         {primary.isUnlimited
           ? `${formatUsageAmount(primary.used, primary.dimension)} / ∞`
-          : `${formatUsageAmount(primary.used, primary.dimension)} / ${formatUsageAmount(primary.limit, primary.dimension)} · ${Math.round(primary.pct)}%`}
+          : `${formatUsageAmount(
+              primary.used,
+              primary.dimension
+            )} / ${formatUsageAmount(
+              primary.limit,
+              primary.dimension
+            )} · ${Math.round(primary.pct)}%`}
       </span>
     </div>
   );
@@ -2576,11 +2745,11 @@ function ActionPill({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         "disabled:cursor-not-allowed disabled:opacity-40",
         intent === "neutral" &&
-          "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/40",
+          "hover:border-primary/40 border-border bg-card text-foreground hover:bg-muted/40",
         intent === "primary" &&
-          "border-[var(--aptiv-sky)]/60 bg-[var(--aptiv-sky)]/25 text-[var(--aptiv-sky-strong)] hover:border-[var(--aptiv-sky)] hover:bg-[var(--aptiv-sky)]/35 dark:bg-[var(--aptiv-sky)]/20 dark:text-[var(--aptiv-sky)] dark:hover:bg-[var(--aptiv-sky)]/30",
+          "border-[var(--aptiv-sky)]/60 bg-[var(--aptiv-sky)]/25 hover:bg-[var(--aptiv-sky)]/35 dark:bg-[var(--aptiv-sky)]/20 dark:hover:bg-[var(--aptiv-sky)]/30 text-[var(--aptiv-sky-strong)] hover:border-[var(--aptiv-sky)] dark:text-[var(--aptiv-sky)]",
         intent === "renewal" &&
-          "border-[var(--aptiv-turquoise)]/45 bg-[var(--aptiv-turquoise)]/10 text-[var(--aptiv-turquoise-dark)] hover:border-[var(--aptiv-turquoise)] hover:bg-[var(--aptiv-turquoise)]/18 hover:text-[var(--aptiv-turquoise-dark)] dark:border-[var(--aptiv-turquoise)]/50 dark:bg-[var(--aptiv-turquoise)]/14 dark:text-[var(--aptiv-turquoise)] dark:hover:bg-[var(--aptiv-turquoise)]/22",
+          "border-[var(--aptiv-turquoise)]/45 bg-[var(--aptiv-turquoise)]/10 hover:bg-[var(--aptiv-turquoise)]/18 dark:border-[var(--aptiv-turquoise)]/50 dark:bg-[var(--aptiv-turquoise)]/14 dark:hover:bg-[var(--aptiv-turquoise)]/22 text-[var(--aptiv-turquoise-dark)] hover:border-[var(--aptiv-turquoise)] hover:text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)]",
         intent === "destructive" &&
           "border-destructive/30 bg-destructive/5 text-destructive hover:border-destructive/60 hover:bg-destructive/10"
       )}
@@ -2697,7 +2866,9 @@ function scopeTypeColor(type: ScopeType): string {
   }
 }
 
-function scopeDefaultAccessLabel(access: ScopeDefaultAccess | undefined): string {
+function scopeDefaultAccessLabel(
+  access: ScopeDefaultAccess | undefined
+): string {
   switch (access) {
     case "none":
       return "private";

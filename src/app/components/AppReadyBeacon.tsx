@@ -32,7 +32,7 @@ export function AppReadyBeacon() {
         window.history.replaceState(
           window.history.state,
           "",
-          url.pathname + url.search + url.hash,
+          url.pathname + url.search + url.hash
         );
       }
     } catch {

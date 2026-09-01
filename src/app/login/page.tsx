@@ -43,16 +43,16 @@ export default function LoginPage() {
     mode === "register"
       ? "Register"
       : mode === "verify"
-        ? "Verify email"
-        : "Sign in";
+      ? "Verify email"
+      : "Sign in";
   const supportingCopy =
     mode === "register"
       ? "Register a new account with your Aptiv email. No Aptiv network login (NetID) required — you'll set your own username and password."
       : mode === "verify"
-        ? `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
-            expiresInMinutes ?? 15
-          } minutes.`
-        : "Sign in with the VSDA Deep Agent account you registered — not your Aptiv NetID.";
+      ? `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
+          expiresInMinutes ?? 15
+        } minutes.`
+      : "Sign in with the VSDA Deep Agent account you registered — not your Aptiv NetID.";
 
   useEffect(() => {
     setCurrentYear(new Date().getFullYear());
@@ -219,7 +219,10 @@ export default function LoginPage() {
           >
             {headline}
           </h1>
-          <span className="aptiv-rule" aria-hidden="true" />
+          <span
+            className="aptiv-rule"
+            aria-hidden="true"
+          />
           <p
             className="mt-3 text-sm"
             style={{ color: "var(--color-text-secondary)" }}
@@ -228,7 +231,10 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
           {mode !== "verify" && (
             <div className="space-y-1.5">
               <Label
@@ -286,7 +292,9 @@ export default function LoginPage() {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                autoComplete={
+                  mode === "register" ? "new-password" : "current-password"
+                }
                 disabled={isSubmitting}
               />
             </div>
@@ -419,7 +427,9 @@ export default function LoginPage() {
               </span>
               <button
                 type="button"
-                onClick={() => switchMode(mode === "register" ? "login" : "register")}
+                onClick={() =>
+                  switchMode(mode === "register" ? "login" : "register")
+                }
                 className="font-semibold transition-opacity hover:opacity-75"
                 style={{ color: "var(--color-primary)" }}
               >

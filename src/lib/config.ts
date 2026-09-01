@@ -37,7 +37,10 @@ export function saveAssistantId(assistantId: string): void {
 
 export function saveConfig(config: StandaloneConfig): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CONFIG_KEY, JSON.stringify({ assistantId: config.assistantId }));
+  localStorage.setItem(
+    CONFIG_KEY,
+    JSON.stringify({ assistantId: config.assistantId })
+  );
 }
 
 function safeParse(json: string): Record<string, string> | null {

@@ -44,7 +44,9 @@ export function WorkspacePanel({
   const [active, setActive] = useState<WorkspaceTab>(() => {
     if (initialTab) return initialTab;
     if (typeof window === "undefined") return "models";
-    const stored = window.localStorage.getItem(STORAGE_KEY) as WorkspaceTab | null;
+    const stored = window.localStorage.getItem(
+      STORAGE_KEY
+    ) as WorkspaceTab | null;
     if (stored && TABS.some((t) => t.id === stored)) return stored;
     return "models";
   });
@@ -104,7 +106,7 @@ export function WorkspacePanel({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   isActive
                     ? "bg-background/60 text-foreground"
-                    : "text-muted-foreground hover:bg-background/30 hover:text-foreground",
+                    : "text-muted-foreground hover:bg-background/30 hover:text-foreground"
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -116,7 +118,7 @@ export function WorkspacePanel({
                   aria-hidden="true"
                   className={cn(
                     "absolute -bottom-px left-0 right-0 h-[2.5px] rounded-t-full transition-opacity",
-                    isActive ? "opacity-100" : "opacity-0",
+                    isActive ? "opacity-100" : "opacity-0"
                   )}
                   style={{ background: "var(--aptiv-orange)" }}
                 />

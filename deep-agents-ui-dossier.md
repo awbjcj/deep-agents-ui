@@ -86,7 +86,7 @@ project is actively developed (latest commit 2026-06).
 
 - 52 React `.tsx` components across the app (`find src -name '*.tsx' | wc -l`).
 - ~15,331 lines of TypeScript across 67 modules (`find src \( -name '*.ts' -o
-  -name '*.tsx' \) | wc -l`; fork total including preserved upstream code).
+-name '*.tsx' \) | wc -l`; fork total including preserved upstream code).
 - 6 React Context providers composing app-wide state (`ls src/providers`).
 - 2 LangGraph stream modes consumed concurrently (`messages-tuple` token
   streaming + `values` state snapshots) in `src/app/hooks/useChat.ts`.
@@ -94,7 +94,7 @@ project is actively developed (latest commit 2026-06).
 - 4 test suites / 12 test cases covering stream-mode parsing, conversation
   projection, markdown rendering, and dialog accessibility (`tests/*.mjs`).
 - 398 commits in the fork's history; latest 2026-06-16 (`git rev-list --count
-  HEAD`; `git log`).
+HEAD`; `git log`).
 - None evidenced for rendering performance, bundle size, or Core Web Vitals — no
   Lighthouse or bundle-analysis artifact is checked in; omitted rather than estimated.
 

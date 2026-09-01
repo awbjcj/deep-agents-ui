@@ -74,9 +74,13 @@ export function ModelSelector() {
           : modelKey(selectedEntry);
       setSelected(updatedKey);
       setSavedSelection(updatedKey);
-      toast.success(`Model set to ${selectedEntry.provider}/${selectedEntry.model}`);
+      toast.success(
+        `Model set to ${selectedEntry.provider}/${selectedEntry.model}`
+      );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update model");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update model"
+      );
     } finally {
       setIsSaving(false);
     }
@@ -94,7 +98,10 @@ export function ModelSelector() {
   return (
     <div className="space-y-2">
       <div className="space-y-1.5">
-        <Label htmlFor="model-selector" className="text-sm font-medium">
+        <Label
+          htmlFor="model-selector"
+          className="text-sm font-medium"
+        >
           Model
         </Label>
         <select
@@ -105,13 +112,19 @@ export function ModelSelector() {
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           aria-label="Selected model"
         >
-          <option value="" disabled>
+          <option
+            value=""
+            disabled
+          >
             {models.length === 0 ? "No models available" : "Select a model"}
           </option>
           {models.map((entry) => {
             const key = modelKey(entry);
             return (
-              <option key={key} value={key}>
+              <option
+                key={key}
+                value={key}
+              >
                 {key}
               </option>
             );

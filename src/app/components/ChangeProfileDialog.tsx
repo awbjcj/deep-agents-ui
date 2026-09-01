@@ -59,10 +59,10 @@ export function ChangeProfileDialog({
     trimmedUsername.length === 0
       ? ""
       : trimmedUsername.length < 3
-        ? "Username must be at least 3 characters"
-        : !USERNAME_PATTERN.test(trimmedUsername)
-          ? "Letters, digits, underscores, hyphens, and dots only"
-          : "";
+      ? "Username must be at least 3 characters"
+      : !USERNAME_PATTERN.test(trimmedUsername)
+      ? "Letters, digits, underscores, hyphens, and dots only"
+      : "";
   const usernameDirty =
     !!trimmedUsername && trimmedUsername !== user?.username && !usernameError;
   const passwordDirty = !!currentPassword && !!newPassword && !!confirmPassword;
@@ -76,7 +76,9 @@ export function ChangeProfileDialog({
       toast.success("Username updated");
       setNewUsername("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update username");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update username"
+      );
     } finally {
       setIsSavingUsername(false);
     }
@@ -104,19 +106,27 @@ export function ChangeProfileDialog({
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update password");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update password"
+      );
     } finally {
       setIsSavingPassword(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <span className="aptiv-eyebrow">Profile</span>
           <DialogTitle className="mt-1">Account</DialogTitle>
-          <span className="aptiv-rule" aria-hidden="true" />
+          <span
+            className="aptiv-rule"
+            aria-hidden="true"
+          />
           <DialogDescription>Signed in as {user?.username}.</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="username">
@@ -124,7 +134,10 @@ export function ChangeProfileDialog({
             <TabsTrigger value="username">Username</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
           </TabsList>
-          <TabsContent value="username" className="space-y-3 pt-3">
+          <TabsContent
+            value="username"
+            className="space-y-3 pt-3"
+          >
             <Label htmlFor="newUsername">New username</Label>
             <Input
               id="newUsername"
@@ -155,7 +168,10 @@ export function ChangeProfileDialog({
               )}
             </Button>
           </TabsContent>
-          <TabsContent value="password" className="space-y-3 pt-3">
+          <TabsContent
+            value="password"
+            className="space-y-3 pt-3"
+          >
             <PasswordField
               id="current-password"
               label="Current password"
@@ -183,9 +199,13 @@ export function ChangeProfileDialog({
               onToggle={() => setShowConfirmPw((value) => !value)}
               autoComplete="new-password"
             />
-            {newPassword && confirmPassword && newPassword !== confirmPassword && (
-              <p className="text-xs text-destructive">Passwords do not match</p>
-            )}
+            {newPassword &&
+              confirmPassword &&
+              newPassword !== confirmPassword && (
+                <p className="text-xs text-destructive">
+                  Passwords do not match
+                </p>
+              )}
             <Button
               onClick={savePassword}
               disabled={isSavingPassword || !passwordDirty}

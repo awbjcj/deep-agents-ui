@@ -221,8 +221,16 @@
 
     /* Aptiv glass surfaces (light) */
     --aptiv-glass-bg: color-mix(in srgb, #ffffff 70%, transparent);
-    --aptiv-glass-bg-soft: color-mix(in srgb, var(--aptiv-slate) 14%, #ffffff 80%);
-    --aptiv-glass-border: color-mix(in srgb, var(--aptiv-slate) 45%, transparent);
+    --aptiv-glass-bg-soft: color-mix(
+      in srgb,
+      var(--aptiv-slate) 14%,
+      #ffffff 80%
+    );
+    --aptiv-glass-border: color-mix(
+      in srgb,
+      var(--aptiv-slate) 45%,
+      transparent
+    );
     --aptiv-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset,
       0 8px 24px -12px rgba(47, 104, 104, 0.18);
 
@@ -231,11 +239,7 @@
     --comms-strip-accent: var(--aptiv-orange);
 
     /* Aptiv slider tokens (light) */
-    --slider-track-bg: color-mix(
-      in srgb,
-      var(--aptiv-slate) 22%,
-      transparent
-    );
+    --slider-track-bg: color-mix(in srgb, var(--aptiv-slate) 22%, transparent);
     --slider-track-border: color-mix(
       in srgb,
       var(--aptiv-slate) 55%,
@@ -483,8 +487,16 @@
 
     /* Aptiv glass surfaces (dark) */
     --aptiv-glass-bg: color-mix(in srgb, #ffffff 5%, transparent);
-    --aptiv-glass-bg-soft: color-mix(in srgb, var(--color-primary) 10%, #0d0d0d 90%);
-    --aptiv-glass-border: color-mix(in srgb, var(--aptiv-slate) 22%, transparent);
+    --aptiv-glass-bg-soft: color-mix(
+      in srgb,
+      var(--color-primary) 10%,
+      #0d0d0d 90%
+    );
+    --aptiv-glass-border: color-mix(
+      in srgb,
+      var(--aptiv-slate) 22%,
+      transparent
+    );
     --aptiv-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
       0 12px 32px -16px rgba(0, 0, 0, 0.6);
 
@@ -493,11 +505,7 @@
     --comms-strip-accent: #ff9a56;
 
     /* Aptiv slider tokens (dark) */
-    --slider-track-bg: color-mix(
-      in srgb,
-      var(--aptiv-slate) 14%,
-      transparent
-    );
+    --slider-track-bg: color-mix(in srgb, var(--aptiv-slate) 14%, transparent);
     --slider-track-border: color-mix(
       in srgb,
       var(--aptiv-slate) 28%,
@@ -847,7 +855,8 @@ button {
   }
 
   @keyframes pulse-dot {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
@@ -960,7 +969,6 @@ button {
   box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-
 
 .effort-btn:disabled {
   opacity: 0.45;

@@ -42,7 +42,7 @@ export function UsageDimensionToggle({
             aria-pressed={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "h-6 rounded-[5px] px-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-[background-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
+              "h-6 rounded-[5px] px-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition-[background-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:transition-none active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
               active
                 ? "bg-primary text-[var(--text-button-primary)] shadow-xs"
                 : "text-muted-foreground hover:bg-background/60 hover:text-foreground"

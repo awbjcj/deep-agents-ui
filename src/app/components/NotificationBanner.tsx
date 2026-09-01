@@ -73,8 +73,7 @@ export function NotificationBanner() {
       aria-label="Notifications"
     >
       {notifications.map((n) => {
-        const visual =
-          SEVERITY_VISUAL[n.severity] ?? SEVERITY_VISUAL.error;
+        const visual = SEVERITY_VISUAL[n.severity] ?? SEVERITY_VISUAL.error;
         const { Icon } = visual;
         const service = n.action_params?.service ?? null;
         const showActionButton =
@@ -85,8 +84,8 @@ export function NotificationBanner() {
             key={n.id}
             role="alert"
             className={cn(
-              "group relative flex items-start gap-3 overflow-hidden rounded-lg border pl-4 pr-3 py-3 shadow-sm",
-              "animate-in fade-in slide-in-from-top-1 duration-200",
+              "group relative flex items-start gap-3 overflow-hidden rounded-lg border py-3 pl-4 pr-3 shadow-sm",
+              "duration-200 animate-in fade-in slide-in-from-top-1",
               visual.bgClass,
               visual.borderClass
             )}

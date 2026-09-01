@@ -38,24 +38,24 @@ header menu and sidebars.
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `yarn dev` | Dev server with Turbopack on `localhost:3000` |
-| `yarn build` | Production build (static export when `NEXT_STATIC_EXPORT=1`) |
-| `yarn start` | Serve a non-export production build |
-| `yarn lint` / `yarn lint:fix` | ESLint |
-| `yarn format` / `yarn format:check` | Prettier |
-| `yarn test` | Node test runner over `tests/**/*.mjs` |
+| Command                             | Description                                                  |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `yarn dev`                          | Dev server with Turbopack on `localhost:3000`                |
+| `yarn build`                        | Production build (static export when `NEXT_STATIC_EXPORT=1`) |
+| `yarn start`                        | Serve a non-export production build                          |
+| `yarn lint` / `yarn lint:fix`       | ESLint                                                       |
+| `yarn format` / `yarn format:check` | Prettier                                                     |
+| `yarn test`                         | Node test runner over `tests/**/*.mjs`                       |
 
 ## Configuration
 
 Environment variables (see `.env.example`):
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `NEXT_PUBLIC_DEPLOYMENT_URL` | Yes | LangGraph deployment URL the UI connects to |
-| `NEXT_PUBLIC_LANGSMITH_API_KEY` | No | LangSmith key for tracing/deployed graphs |
-| `LANGGRAPH_API_URL` | No | Dev-only override for the `/api/*` proxy target |
+| Variable                        | Required | Description                                     |
+| ------------------------------- | -------- | ----------------------------------------------- |
+| `NEXT_PUBLIC_DEPLOYMENT_URL`    | Yes      | LangGraph deployment URL the UI connects to     |
+| `NEXT_PUBLIC_LANGSMITH_API_KEY` | No       | LangSmith key for tracing/deployed graphs       |
+| `LANGGRAPH_API_URL`             | No       | Dev-only override for the `/api/*` proxy target |
 
 The assistant ID is selected in the UI and stored in `localStorage`; the JWT from
 login is also kept client-side and attached to backend requests.

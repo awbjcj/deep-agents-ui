@@ -110,7 +110,9 @@ const pressableClass =
 /** Compact admin surface for global enforcement and role-tier quota defaults. */
 export function UsageLimitControls() {
   const [settings, setSettings] = useState<WeeklyLimitSettings | null>(null);
-  const [savingSetting, setSavingSetting] = useState<WeeklyLimitKey | null>(null);
+  const [savingSetting, setSavingSetting] = useState<WeeklyLimitKey | null>(
+    null
+  );
   const [settingsLoadFailed, setSettingsLoadFailed] = useState(false);
   const [limits, setLimits] = useState<TierQuotaMap | null>(null);
   const [drafts, setDrafts] = useState<TierQuotaDraftMap | null>(null);
@@ -166,10 +168,7 @@ export function UsageLimitControls() {
     return () => controller.abort();
   }, [loadQuotas, loadSettings]);
 
-  const handleSettingChange = async (
-    key: WeeklyLimitKey,
-    enabled: boolean
-  ) => {
+  const handleSettingChange = async (key: WeeklyLimitKey, enabled: boolean) => {
     if (!settings || savingSetting) return;
     const previous = settings;
     const next = { ...settings, [key]: enabled };
@@ -178,7 +177,9 @@ export function UsageLimitControls() {
     try {
       setSettings(await apiSetWeeklyLimitSettings(next));
       const option = WEEKLY_LIMIT_OPTIONS.find((item) => item.key === key);
-      toast.success(`${option?.label ?? "Weekly cap"} cap ${enabled ? "on" : "off"}`);
+      toast.success(
+        `${option?.label ?? "Weekly cap"} cap ${enabled ? "on" : "off"}`
+      );
     } catch (error) {
       setSettings(previous);
       toast.error(
@@ -229,7 +230,9 @@ export function UsageLimitControls() {
       toast.success(`${tier} tier quotas saved`);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : `Failed to save ${tier} quotas`;
+        error instanceof Error
+          ? error.message
+          : `Failed to save ${tier} quotas`;
       setErrors((current) => ({ ...current, [tier]: message }));
       toast.error(`${message}. Refreshing saved values.`);
       setLimits(null);
@@ -252,7 +255,10 @@ export function UsageLimitControls() {
     >
       <header className="flex items-start justify-between gap-3 border-b border-border/70 px-3 py-2.5">
         <div className="min-w-0">
-          <p id="usage-limit-controls-title" className="text-sm font-semibold">
+          <p
+            id="usage-limit-controls-title"
+            className="text-sm font-semibold"
+          >
             Usage limits
           </p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
@@ -288,7 +294,9 @@ export function UsageLimitControls() {
                   <div
                     key={option.key}
                     className={`flex min-h-12 items-center gap-2.5 px-2.5 py-2 ${
-                      index === 0 ? "" : "border-t border-border/70 sm:border-t-0"
+                      index === 0
+                        ? ""
+                        : "border-t border-border/70 sm:border-t-0"
                     }`}
                   >
                     <Label
@@ -316,7 +324,10 @@ export function UsageLimitControls() {
               })}
             </div>
           ) : (
-            <p className="mt-2 rounded-md border border-border/70 bg-background/35 px-3 py-2 text-xs text-muted-foreground" role="status">
+            <p
+              className="mt-2 rounded-md border border-border/70 bg-background/35 px-3 py-2 text-xs text-muted-foreground"
+              role="status"
+            >
               {settingsLoadFailed
                 ? "Enforcement controls are unavailable."
                 : "Loading enforcement controls…"}
@@ -331,7 +342,10 @@ export function UsageLimitControls() {
           </div>
 
           {!drafts || !limits ? (
-            <p className="mt-2 rounded-md border border-border/70 bg-background/35 px-3 py-2 text-xs text-muted-foreground" role="status">
+            <p
+              className="mt-2 rounded-md border border-border/70 bg-background/35 px-3 py-2 text-xs text-muted-foreground"
+              role="status"
+            >
               {quotaLoadFailed
                 ? "Tier quotas are unavailable."
                 : "Loading tier quotas…"}
@@ -415,10 +429,16 @@ export function UsageLimitControls() {
                             inputMode="decimal"
                             value={draft.costLimitUsd}
                             onChange={(event) =>
-                              updateDraft(role, "costLimitUsd", event.target.value)
+                              updateDraft(
+                                role,
+                                "costLimitUsd",
+                                event.target.value
+                              )
                             }
                             aria-labelledby={`${rowId} quota-column-cost`}
-                            aria-describedby={errors[role] ? errorId : undefined}
+                            aria-describedby={
+                              errors[role] ? errorId : undefined
+                            }
                             aria-invalid={Boolean(errors[role])}
                             className="h-8 rounded-md pl-6 pr-2.5 font-mono text-xs tabular-nums"
                           />

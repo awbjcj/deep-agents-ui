@@ -59,14 +59,18 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const [newUsername, setNewUsername] = useState("");
   const [isSavingUsername, setIsSavingUsername] = useState(false);
   const [usernameSaved, setUsernameSaved] = useState(false);
-  const usernameSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usernameSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   // --- Change email ---
   const [profileEmail, setProfileEmail] = useState<string>(user?.email ?? "");
   const [newEmail, setNewEmail] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [emailSaved, setEmailSaved] = useState(false);
-  const emailSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emailSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   // --- Change password ---
   const [currentPassword, setCurrentPassword] = useState("");
@@ -77,11 +81,15 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordSaved, setPasswordSaved] = useState(false);
-  const passwordSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const passwordSavedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   // --- Admin state ---
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
-  const [tierAllowlists, setTierAllowlists] = useState<Record<Role, TierModelEntry[]>>({
+  const [tierAllowlists, setTierAllowlists] = useState<
+    Record<Role, TierModelEntry[]>
+  >({
     user: [],
     developer: [],
     admin: [],
@@ -92,12 +100,13 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
     if (!isAdmin(user)) return;
     setIsLoadingAdmin(true);
     try {
-      const [users, userAllowlist, developerAllowlist, adminAllowlist] = await Promise.all([
-        apiListUsers(),
-        apiGetTierModels("user"),
-        apiGetTierModels("developer"),
-        apiGetTierModels("admin"),
-      ]);
+      const [users, userAllowlist, developerAllowlist, adminAllowlist] =
+        await Promise.all([
+          apiListUsers(),
+          apiGetTierModels("user"),
+          apiGetTierModels("developer"),
+          apiGetTierModels("admin"),
+        ]);
       setAdminUsers(users);
       setTierAllowlists({
         user: userAllowlist.models,
@@ -183,11 +192,14 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
 
   const handleDeleteUser = async (targetUser: AdminUser) => {
     if (targetUser.user_id === user?.user_id) return;
-    if (!confirm(`Delete user ${targetUser.username}? This cannot be undone.`)) return;
+    if (!confirm(`Delete user ${targetUser.username}? This cannot be undone.`))
+      return;
 
     try {
       await apiDeleteUser(targetUser.user_id);
-      setAdminUsers((prev) => prev.filter((u) => u.user_id !== targetUser.user_id));
+      setAdminUsers((prev) =>
+        prev.filter((u) => u.user_id !== targetUser.user_id)
+      );
       toast.success(`Deleted ${targetUser.username}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete user");
@@ -225,7 +237,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         "Temporary password reset; downloaded a file containing the temporary password"
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to reset password");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to reset password"
+      );
     }
   };
 
@@ -237,7 +251,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       const rows = ["username\ttemporary_password"].concat(
         resets.map((reset) => `${reset.username}\t${reset.temporary_password}`)
       );
-      const blob = new Blob([rows.join("\n")], { type: "text/tab-separated-values" });
+      const blob = new Blob([rows.join("\n")], {
+        type: "text/tab-separated-values",
+      });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -251,12 +267,19 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       }
       toast.success(`Reset ${resets.length} password(s); file downloaded`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to reset passwords");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to reset passwords"
+      );
     }
   };
 
   const handleSaveUsername = async () => {
-    if (!trimmedUsername || trimmedUsername === user?.username || usernameValidationError) return;
+    if (
+      !trimmedUsername ||
+      trimmedUsername === user?.username ||
+      usernameValidationError
+    )
+      return;
     setIsSavingUsername(true);
     try {
       const result = await apiUpdateProfile({ username: trimmedUsername });
@@ -278,14 +301,17 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         usernameSavedTimeoutRef.current = null;
       }, 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update username");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update username"
+      );
     } finally {
       setIsSavingUsername(false);
     }
   };
 
   const handleSaveEmail = async () => {
-    if (!trimmedEmail || trimmedEmail === profileEmail || emailValidationError) return;
+    if (!trimmedEmail || trimmedEmail === profileEmail || emailValidationError)
+      return;
     setIsSavingEmail(true);
     try {
       const result = await apiUpdateProfile({ email: trimmedEmail });
@@ -308,7 +334,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         emailSavedTimeoutRef.current = null;
       }, 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update email");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update email"
+      );
     } finally {
       setIsSavingEmail(false);
     }
@@ -353,7 +381,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         passwordSavedTimeoutRef.current = null;
       }, 2000);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update password");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update password"
+      );
     } finally {
       setIsSavingPassword(false);
     }
@@ -365,7 +395,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       <div className="flex flex-shrink-0 items-center justify-between border-b border-border p-4">
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold tracking-tight">User Management</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            User Management
+          </h2>
         </div>
         <Button
           variant="ghost"
@@ -386,8 +418,10 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <User className="h-5 w-5" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-semibold">{user?.username}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  {user?.username}
+                </p>
                 <div className="mt-0.5">
                   <RoleBadge role={user?.role || "user"} />
                 </div>
@@ -415,7 +449,10 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">Change Username</h3>
             <div className="space-y-1.5">
-              <Label htmlFor="newUsername" className="text-sm font-medium">
+              <Label
+                htmlFor="newUsername"
+                className="text-sm font-medium"
+              >
                 New Username
               </Label>
               <Input
@@ -427,7 +464,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 autoComplete="off"
               />
               {usernameValidationError && (
-                <p className="text-xs text-destructive">{usernameValidationError}</p>
+                <p className="text-xs text-destructive">
+                  {usernameValidationError}
+                </p>
               )}
             </div>
             <Button
@@ -463,7 +502,10 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           <div className="space-y-3 border-t border-border pt-4">
             <h3 className="text-sm font-semibold">Aptiv Email</h3>
             <div className="space-y-1.5">
-              <Label htmlFor="newEmail" className="text-sm font-medium">
+              <Label
+                htmlFor="newEmail"
+                className="text-sm font-medium"
+              >
                 Current: {profileEmail || "Not set"}
               </Label>
               <Input
@@ -475,7 +517,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 autoComplete="email"
               />
               {emailValidationError && (
-                <p className="text-xs text-destructive">{emailValidationError}</p>
+                <p className="text-xs text-destructive">
+                  {emailValidationError}
+                </p>
               )}
             </div>
             <Button
@@ -512,7 +556,10 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
             <h3 className="text-sm font-semibold">Change Password</h3>
 
             <div className="space-y-1.5">
-              <Label htmlFor="currentPassword" className="text-sm font-medium">
+              <Label
+                htmlFor="currentPassword"
+                className="text-sm font-medium"
+              >
                 Current Password
               </Label>
               <div className="relative">
@@ -529,16 +576,27 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                   type="button"
                   onClick={() => setShowCurrentPw(!showCurrentPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showCurrentPw ? "Hide current password" : "Show current password"}
+                  aria-label={
+                    showCurrentPw
+                      ? "Hide current password"
+                      : "Show current password"
+                  }
                   aria-pressed={showCurrentPw}
                 >
-                  {showCurrentPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showCurrentPw ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="newPassword" className="text-sm font-medium">
+              <Label
+                htmlFor="newPassword"
+                className="text-sm font-medium"
+              >
                 New Password
               </Label>
               <div className="relative">
@@ -555,16 +613,25 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                   type="button"
                   onClick={() => setShowNewPw(!showNewPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showNewPw ? "Hide new password" : "Show new password"}
+                  aria-label={
+                    showNewPw ? "Hide new password" : "Show new password"
+                  }
                   aria-pressed={showNewPw}
                 >
-                  {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showNewPw ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium">
+              <Label
+                htmlFor="confirmPassword"
+                className="text-sm font-medium"
+              >
                 Confirm New Password
               </Label>
               <div className="relative">
@@ -581,15 +648,27 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                   type="button"
                   onClick={() => setShowConfirmPw(!showConfirmPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showConfirmPw ? "Hide confirm password" : "Show confirm password"}
+                  aria-label={
+                    showConfirmPw
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
                   aria-pressed={showConfirmPw}
                 >
-                  {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPw ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
-              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-xs text-destructive">Passwords do not match</p>
-              )}
+              {newPassword &&
+                confirmPassword &&
+                newPassword !== confirmPassword && (
+                  <p className="text-xs text-destructive">
+                    Passwords do not match
+                  </p>
+                )}
             </div>
 
             <Button
@@ -648,18 +727,26 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                         >
                           <div className="flex items-center gap-2">
                             <RoleBadge role={u.role} />
-                            <span className="flex-1 truncate text-sm">{u.username}</span>
+                            <span className="flex-1 truncate text-sm">
+                              {u.username}
+                            </span>
                             <select
                               value={u.role}
                               onChange={(e) =>
-                                handleRoleChange(u.user_id, e.target.value as Role)
+                                handleRoleChange(
+                                  u.user_id,
+                                  e.target.value as Role
+                                )
                               }
                               disabled={u.user_id === user?.user_id}
                               className="rounded border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                               aria-label={`Role for ${u.username}`}
                             >
                               {ROLES.map((role) => (
-                                <option key={role} value={role}>
+                                <option
+                                  key={role}
+                                  value={role}
+                                >
                                   {role}
                                 </option>
                               ))}
@@ -694,14 +781,19 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                   </div>
 
                   <div className="space-y-3 border-t border-border pt-4">
-                    <h4 className="text-sm font-semibold">Tier Model Allowlists</h4>
+                    <h4 className="text-sm font-semibold">
+                      Tier Model Allowlists
+                    </h4>
                     {ROLES.map((role) => (
                       <TierAllowlistEditor
                         key={role}
                         tier={role}
                         entries={tierAllowlists[role]}
                         onSaved={(next) =>
-                          setTierAllowlists((prev) => ({ ...prev, [role]: next }))
+                          setTierAllowlists((prev) => ({
+                            ...prev,
+                            [role]: next,
+                          }))
                         }
                       />
                     ))}
@@ -753,7 +845,9 @@ function TierAllowlistEditor({
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setText(entries.map((entry) => `${entry.provider}:${entry.model}`).join("\n"));
+    setText(
+      entries.map((entry) => `${entry.provider}:${entry.model}`).join("\n")
+    );
   }, [entries]);
 
   const handleSave = async () => {
@@ -779,7 +873,9 @@ function TierAllowlistEditor({
       onSaved(updated.models);
       toast.success(`${tier} tier allowlist saved`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save allowlist");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save allowlist"
+      );
     } finally {
       setIsSaving(false);
     }

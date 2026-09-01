@@ -24,7 +24,9 @@ export function TokenGuideSteps({
       {guide.note && (
         <p className="text-xs text-muted-foreground">{guide.note}</p>
       )}
-      <p className="text-xs font-medium text-muted-foreground">{guide.expiry}</p>
+      <p className="text-xs font-medium text-muted-foreground">
+        {guide.expiry}
+      </p>
       <a
         href={guide.url(username)}
         target="_blank"
@@ -60,12 +62,18 @@ export function TokenSetupGuide({
           How to get this token
         </span>
         <ChevronDown
-          className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+          className={cn(
+            "h-3.5 w-3.5 transition-transform",
+            open && "rotate-180"
+          )}
         />
       </button>
       {open && (
         <div className="border-t border-border/60 px-3 py-2.5">
-          <TokenGuideSteps guide={guide} username={username} />
+          <TokenGuideSteps
+            guide={guide}
+            username={username}
+          />
         </div>
       )}
     </div>

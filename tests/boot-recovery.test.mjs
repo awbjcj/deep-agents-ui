@@ -49,7 +49,7 @@ function createHarness({
     removeEventListener(type, fn) {
       docListeners.set(
         type,
-        (docListeners.get(type) ?? []).filter((f) => f !== fn),
+        (docListeners.get(type) ?? []).filter((f) => f !== fn)
       );
     },
   };
@@ -115,7 +115,8 @@ function createHarness({
     appended,
     reloads,
     replaces,
-    fire: (type, event) => (listeners.get(type) ?? []).forEach((fn) => fn(event)),
+    fire: (type, event) =>
+      (listeners.get(type) ?? []).forEach((fn) => fn(event)),
     fireDoc: (type, event) =>
       (docListeners.get(type) ?? []).slice().forEach((fn) => fn(event)),
     runTimers: () => {
@@ -149,7 +150,10 @@ test("does not reload after the app signals it is ready", () => {
 test("recovers from a failed _next chunk request", () => {
   const h = createHarness();
   h.fire("error", {
-    target: { tagName: "SCRIPT", src: "https://agent.example/chat/_next/static/chunks/main.js" },
+    target: {
+      tagName: "SCRIPT",
+      src: "https://agent.example/chat/_next/static/chunks/main.js",
+    },
   });
   assert.equal(h.reloads.length, 1);
 });
@@ -157,7 +161,10 @@ test("recovers from a failed _next chunk request", () => {
 test("ignores asset errors unrelated to the build output", () => {
   const h = createHarness();
   h.fire("error", {
-    target: { tagName: "IMG", src: "https://agent.example/chat/assets/logo.svg" },
+    target: {
+      tagName: "IMG",
+      src: "https://agent.example/chat/assets/logo.svg",
+    },
   });
   h.fire("error", {
     target: { tagName: "SCRIPT", src: "https://cdn.example/analytics.js" },
@@ -191,7 +198,11 @@ test("stops reloading after the attempt budget and shows a fallback", () => {
   h.runTimers();
   assert.equal(h.reloads.length, 0);
   assert.equal(h.replaces.length, 0);
-  assert.equal(h.appended.length, 1, "expected the manual-retry fallback to render");
+  assert.equal(
+    h.appended.length,
+    1,
+    "expected the manual-retry fallback to render"
+  );
 });
 
 test("without sessionStorage, recovery gets exactly one cache-busted attempt", () => {

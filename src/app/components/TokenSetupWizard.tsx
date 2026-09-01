@@ -76,7 +76,7 @@ export function TokenSetupWizard() {
         const tokens = await apiGetTokens();
         if (cancelled) return;
         const missing = TOKEN_SERVICE_GUIDES.filter(
-          (g) => !tokens[g.previewField],
+          (g) => !tokens[g.previewField]
         );
         if (missing.length > 0) {
           setGuides(missing);
@@ -103,7 +103,7 @@ export function TokenSetupWizard() {
         try {
           const tokens = await apiGetTokens();
           const missing = TOKEN_SERVICE_GUIDES.filter(
-            (g) => !tokens[g.previewField],
+            (g) => !tokens[g.previewField]
           );
           if (missing.length > 0) next = missing;
         } catch {
@@ -125,7 +125,7 @@ export function TokenSetupWizard() {
 
   const enteredCount = useMemo(
     () => guides.filter((g) => values[g.key]?.trim()).length,
-    [guides, values],
+    [guides, values]
   );
 
   const handleClose = useCallback(() => {
@@ -150,14 +150,14 @@ export function TokenSetupWizard() {
         applyClearedNotifications(updated.cleared_notifications);
       }
       toast.success(
-        `Saved ${Object.keys(payload).length} token${Object.keys(payload).length === 1 ? "" : "s"}`,
+        `Saved ${Object.keys(payload).length} token${
+          Object.keys(payload).length === 1 ? "" : "s"
+        }`
       );
       markDismissed();
       setOpen(false);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save tokens",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to save tokens");
     } finally {
       setIsSaving(false);
     }
@@ -208,17 +208,29 @@ export function TokenSetupWizard() {
             {guides.map((g, i) => (
               <div
                 key={g.key}
-                className={i <= step ? "h-1 flex-1 rounded-full" : "h-1 flex-1 rounded-full bg-muted"}
-                style={i <= step ? { background: "var(--aptiv-orange)" } : undefined}
+                className={
+                  i <= step
+                    ? "h-1 flex-1 rounded-full"
+                    : "h-1 flex-1 rounded-full bg-muted"
+                }
+                style={
+                  i <= step ? { background: "var(--aptiv-orange)" } : undefined
+                }
                 aria-hidden="true"
               />
             ))}
           </div>
 
-          <TokenGuideSteps guide={current} username={username} />
+          <TokenGuideSteps
+            guide={current}
+            username={username}
+          />
 
           <div className="space-y-2">
-            <Label htmlFor="wizardTokenInput" className="text-sm font-medium">
+            <Label
+              htmlFor="wizardTokenInput"
+              className="text-sm font-medium"
+            >
               Paste your {current.label}
             </Label>
             <div className="relative">

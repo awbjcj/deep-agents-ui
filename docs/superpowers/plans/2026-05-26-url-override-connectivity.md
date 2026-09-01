@@ -14,30 +14,31 @@
 
 ### Backend (C:\Users\tpoj6d\wkspaces\vsda-deep-agent)
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `src/backends/models.py` | Modify | Add `SystemSetting` model, add `user_run_mode` + `user_proxy_url` to `User` |
-| `src/backends/database.py` | Modify | Add migration for new table + columns |
-| `src/backends/connectivity_store.py` | Create | Async DB layer for system_settings reads/writes |
-| `src/backends/connectivity.py` | Modify | Add `resolve_user_connectivity()` with DB-first lookup |
-| `src/backends/schemas.py` | Modify | Add Pydantic request/response models for connectivity endpoints |
-| `src/backends/main.py` | Modify | Add 4 new endpoints (admin + user connectivity) |
-| `tests/unit_tests/test_connectivity_store.py` | Create | Unit tests for connectivity_store |
-| `tests/integration_tests/test_backend_api.py` | Modify | Integration tests for new endpoints |
+| File                                          | Action | Responsibility                                                              |
+| --------------------------------------------- | ------ | --------------------------------------------------------------------------- |
+| `src/backends/models.py`                      | Modify | Add `SystemSetting` model, add `user_run_mode` + `user_proxy_url` to `User` |
+| `src/backends/database.py`                    | Modify | Add migration for new table + columns                                       |
+| `src/backends/connectivity_store.py`          | Create | Async DB layer for system_settings reads/writes                             |
+| `src/backends/connectivity.py`                | Modify | Add `resolve_user_connectivity()` with DB-first lookup                      |
+| `src/backends/schemas.py`                     | Modify | Add Pydantic request/response models for connectivity endpoints             |
+| `src/backends/main.py`                        | Modify | Add 4 new endpoints (admin + user connectivity)                             |
+| `tests/unit_tests/test_connectivity_store.py` | Create | Unit tests for connectivity_store                                           |
+| `tests/integration_tests/test_backend_api.py` | Modify | Integration tests for new endpoints                                         |
 
 ### Frontend (C:\Users\tpoj6d\wkspaces\deep-agents-ui)
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `src/lib/auth.ts` | Modify | Add API client functions for connectivity endpoints |
-| `src/app/components/AdminPanel.tsx` | Modify | Rename tab, add URL override form to RunModeSection |
-| `src/app/components/UserManagementSidebar.tsx` | Modify | Add Connectivity section |
+| File                                           | Action | Responsibility                                      |
+| ---------------------------------------------- | ------ | --------------------------------------------------- |
+| `src/lib/auth.ts`                              | Modify | Add API client functions for connectivity endpoints |
+| `src/app/components/AdminPanel.tsx`            | Modify | Rename tab, add URL override form to RunModeSection |
+| `src/app/components/UserManagementSidebar.tsx` | Modify | Add Connectivity section                            |
 
 ---
 
 ## Task 1: Backend — SystemSetting model and User columns
 
 **Files:**
+
 - Modify: `src/backends/models.py`
 - Modify: `src/backends/database.py`
 
@@ -123,6 +124,7 @@ git commit -m "feat: add SystemSetting model and user connectivity columns"
 ## Task 2: Backend — Connectivity Store
 
 **Files:**
+
 - Create: `src/backends/connectivity_store.py`
 - Create: `tests/unit_tests/test_connectivity_store.py`
 
@@ -306,6 +308,7 @@ git commit -m "feat: add connectivity_store for system_settings DB access"
 ## Task 3: Backend — Connectivity Resolution with DB lookup
 
 **Files:**
+
 - Modify: `src/backends/connectivity.py`
 - Modify: `tests/unit_tests/test_models.py`
 
@@ -438,6 +441,7 @@ git commit -m "feat: add resolve_run_mode and resolve_base_url with DB-first loo
 ## Task 4: Backend — Pydantic Schemas for Connectivity Endpoints
 
 **Files:**
+
 - Modify: `src/backends/schemas.py`
 
 - [ ] **Step 1: Add connectivity schemas to schemas.py**
@@ -531,6 +535,7 @@ git commit -m "feat: add Pydantic schemas for connectivity endpoints"
 ## Task 5: Backend — Admin and User Connectivity Endpoints
 
 **Files:**
+
 - Modify: `src/backends/main.py`
 
 - [ ] **Step 1: Add imports to main.py**
@@ -713,6 +718,7 @@ git commit -m "feat: add admin and user connectivity API endpoints"
 ## Task 6: Frontend — API Client Functions
 
 **Files:**
+
 - Modify: `src/lib/auth.ts` (in deep-agents-ui)
 
 - [ ] **Step 1: Add types and API functions to auth.ts**
@@ -763,7 +769,8 @@ export async function apiSetAdminConnectivity(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
-      (data as { detail?: string }).detail || "Failed to update connectivity settings"
+      (data as { detail?: string }).detail ||
+        "Failed to update connectivity settings"
     );
   }
   return res.json();
@@ -801,7 +808,8 @@ export async function apiSetUserConnectivity(
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
-      (data as { detail?: string }).detail || "Failed to update user connectivity"
+      (data as { detail?: string }).detail ||
+        "Failed to update user connectivity"
     );
   }
   return res.json();
@@ -826,6 +834,7 @@ git commit -m "feat: add connectivity API client functions"
 ## Task 7: Frontend — Admin Connectivities Tab
 
 **Files:**
+
 - Modify: `src/app/components/AdminPanel.tsx`
 
 - [ ] **Step 1: Rename tab and add icon import**
@@ -833,10 +842,11 @@ git commit -m "feat: add connectivity API client functions"
 In `AdminPanel.tsx`, update the `TABS` array — change the "runmode" entry label from `"Modes"` to `"Connectivities"` and icon from `RadioTower` to `Globe`:
 
 ```typescript
-import { Globe } from "lucide-react";  // add to imports (replace RadioTower usage for this tab)
+import { Globe } from "lucide-react"; // add to imports (replace RadioTower usage for this tab)
 ```
 
 Update the TABS entry:
+
 ```typescript
   { id: "runmode", label: "Connectivities", icon: Globe },
 ```
@@ -858,49 +868,50 @@ Add to the imports from `@/lib/auth`:
 After the existing `handleSave` function and before the `return` in `RunModeSection`, add state and handlers for the URL overrides:
 
 ```typescript
-  // --- URL Overrides ---
-  const [connectivity, setConnectivity] = useState<AdminConnectivityResponse | null>(null);
-  const [urlDraft, setUrlDraft] = useState<Record<string, string>>({});
-  const [isSavingUrls, setIsSavingUrls] = useState(false);
+// --- URL Overrides ---
+const [connectivity, setConnectivity] =
+  useState<AdminConnectivityResponse | null>(null);
+const [urlDraft, setUrlDraft] = useState<Record<string, string>>({});
+const [isSavingUrls, setIsSavingUrls] = useState(false);
 
-  useEffect(() => {
-    apiGetAdminConnectivity()
-      .then((data) => {
-        setConnectivity(data);
-        const draft: Record<string, string> = {};
-        for (const [key, info] of Object.entries(data.urls)) {
-          draft[key] = info.value;
-        }
-        setUrlDraft(draft);
-      })
-      .catch(() => toast.error("Failed to load URL settings"));
-  }, []);
-
-  const urlsDirty = connectivity
-    ? Object.entries(urlDraft).some(
-        ([key, val]) => val !== (connectivity.urls[key]?.value ?? "")
-      )
-    : false;
-
-  const handleSaveUrls = async () => {
-    if (!urlsDirty) return;
-    setIsSavingUrls(true);
-    try {
-      const payload: AdminConnectivityUpdatePayload = {};
-      for (const [key, val] of Object.entries(urlDraft)) {
-        if (val !== (connectivity?.urls[key]?.value ?? "")) {
-          (payload as Record<string, string>)[key] = val;
-        }
+useEffect(() => {
+  apiGetAdminConnectivity()
+    .then((data) => {
+      setConnectivity(data);
+      const draft: Record<string, string> = {};
+      for (const [key, info] of Object.entries(data.urls)) {
+        draft[key] = info.value;
       }
-      const updated = await apiSetAdminConnectivity(payload);
-      setConnectivity(updated);
-      toast.success("URL overrides saved");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save URLs");
-    } finally {
-      setIsSavingUrls(false);
+      setUrlDraft(draft);
+    })
+    .catch(() => toast.error("Failed to load URL settings"));
+}, []);
+
+const urlsDirty = connectivity
+  ? Object.entries(urlDraft).some(
+      ([key, val]) => val !== (connectivity.urls[key]?.value ?? "")
+    )
+  : false;
+
+const handleSaveUrls = async () => {
+  if (!urlsDirty) return;
+  setIsSavingUrls(true);
+  try {
+    const payload: AdminConnectivityUpdatePayload = {};
+    for (const [key, val] of Object.entries(urlDraft)) {
+      if (val !== (connectivity?.urls[key]?.value ?? "")) {
+        (payload as Record<string, string>)[key] = val;
+      }
     }
-  };
+    const updated = await apiSetAdminConnectivity(payload);
+    setConnectivity(updated);
+    toast.success("URL overrides saved");
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "Failed to save URLs");
+  } finally {
+    setIsSavingUrls(false);
+  }
+};
 ```
 
 - [ ] **Step 4: Add URL override JSX to the return**
@@ -908,76 +919,89 @@ After the existing `handleSave` function and before the `return` in `RunModeSect
 After the existing run mode save button (inside the same section), add:
 
 ```tsx
-        {connectivity && (
-          <div className="space-y-3 border-t border-border/40 pt-5">
-            <SectionHeader
-              title="URL Overrides"
-              subtitle="Override environment URLs for each provider and mode. Empty = use .env default."
-            />
+{
+  connectivity && (
+    <div className="space-y-3 border-t border-border/40 pt-5">
+      <SectionHeader
+        title="URL Overrides"
+        subtitle="Override environment URLs for each provider and mode. Empty = use .env default."
+      />
 
-            {(["openai", "anthropic"] as const).map((provider) => (
-              <div key={provider} className="space-y-2">
-                <p className="aptiv-eyebrow">{provider === "openai" ? "OpenAI" : "Anthropic"}</p>
-                {(["remote", "gateway", "proxy"] as const).map((mode) => {
-                  const key = provider === "openai"
-                    ? `openai_base_url${mode === "remote" ? "" : `_${mode}`}`
-                    : `claude_base_url${mode === "remote" ? "" : `_${mode}`}`;
-                  const info = connectivity.urls[key];
-                  return (
-                    <div key={key} className="space-y-1">
-                      <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        {mode} URL
-                      </Label>
-                      <Input
-                        value={urlDraft[key] ?? ""}
-                        onChange={(e) =>
-                          setUrlDraft((prev) => ({ ...prev, [key]: e.target.value }))
-                        }
-                        placeholder={`(not set — using .env)`}
-                        className={cn(
-                          "h-9 font-mono text-[11px]",
-                          info?.source === "database" && info.value
-                            ? "border-primary/40"
-                            : ""
-                        )}
-                      />
-                      <span className={cn(
-                        "text-[9px]",
-                        info?.source === "database" && info.value
-                          ? "text-primary"
-                          : "text-muted-foreground"
-                      )}>
-                        Source: {info?.source ?? "env"}
-                        {info?.source === "database" && info.updated_at && (
-                          <> · Updated {formatTimestamp(info.updated_at)}</>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
+      {(["openai", "anthropic"] as const).map((provider) => (
+        <div
+          key={provider}
+          className="space-y-2"
+        >
+          <p className="aptiv-eyebrow">
+            {provider === "openai" ? "OpenAI" : "Anthropic"}
+          </p>
+          {(["remote", "gateway", "proxy"] as const).map((mode) => {
+            const key =
+              provider === "openai"
+                ? `openai_base_url${mode === "remote" ? "" : `_${mode}`}`
+                : `claude_base_url${mode === "remote" ? "" : `_${mode}`}`;
+            const info = connectivity.urls[key];
+            return (
+              <div
+                key={key}
+                className="space-y-1"
+              >
+                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {mode} URL
+                </Label>
+                <Input
+                  value={urlDraft[key] ?? ""}
+                  onChange={(e) =>
+                    setUrlDraft((prev) => ({ ...prev, [key]: e.target.value }))
+                  }
+                  placeholder={`(not set — using .env)`}
+                  className={cn(
+                    "h-9 font-mono text-[11px]",
+                    info?.source === "database" && info.value
+                      ? "border-primary/40"
+                      : ""
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-[9px]",
+                    info?.source === "database" && info.value
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  Source: {info?.source ?? "env"}
+                  {info?.source === "database" && info.updated_at && (
+                    <> · Updated {formatTimestamp(info.updated_at)}</>
+                  )}
+                </span>
               </div>
-            ))}
+            );
+          })}
+        </div>
+      ))}
 
-            <Button
-              type="button"
-              onClick={handleSaveUrls}
-              disabled={isSavingUrls || !urlsDirty}
-              className="w-full"
-            >
-              {isSavingUrls ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save URL overrides
-                </>
-              )}
-            </Button>
-          </div>
+      <Button
+        type="button"
+        onClick={handleSaveUrls}
+        disabled={isSavingUrls || !urlsDirty}
+        className="w-full"
+      >
+        {isSavingUrls ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving
+          </>
+        ) : (
+          <>
+            <Save className="mr-2 h-4 w-4" />
+            Save URL overrides
+          </>
         )}
+      </Button>
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 5: Verify TypeScript compiles**
@@ -1004,6 +1028,7 @@ git commit -m "feat: add URL override form to admin Connectivities tab"
 ## Task 8: Frontend — User Connectivity Section
 
 **Files:**
+
 - Modify: `src/app/components/UserManagementSidebar.tsx`
 
 - [ ] **Step 1: Add imports**
@@ -1011,7 +1036,7 @@ git commit -m "feat: add URL override form to admin Connectivities tab"
 Add to imports in `UserManagementSidebar.tsx`:
 
 ```typescript
-import { Globe, Link } from "lucide-react";  // add Globe and Link
+import { Globe, Link } from "lucide-react"; // add Globe and Link
 import {
   apiGetUserConnectivity,
   apiSetUserConnectivity,
@@ -1052,7 +1077,8 @@ function ConnectivitySection() {
     if (!dirty) return;
     setIsSaving(true);
     try {
-      const payload: { run_mode?: string | null; proxy_url?: string | null } = {};
+      const payload: { run_mode?: string | null; proxy_url?: string | null } =
+        {};
       if (pendingMode !== data?.run_mode) {
         payload.run_mode = pendingMode;
       }
@@ -1123,7 +1149,7 @@ function ConnectivitySection() {
                     "rounded-md border px-3 py-2 text-center text-xs font-semibold transition-all",
                     active
                       ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-card text-foreground hover:border-primary/40"
+                      : "hover:border-primary/40 border-border bg-card text-foreground"
                   )}
                 >
                   {mode}
@@ -1134,7 +1160,8 @@ function ConnectivitySection() {
           {data && (
             <p className="text-[9px] text-muted-foreground">
               System default: {data.default_run_mode}
-              {data.run_mode_source === "user" && " · Your choice: " + data.run_mode}
+              {data.run_mode_source === "user" &&
+                " · Your choice: " + data.run_mode}
             </p>
           )}
         </div>
@@ -1150,7 +1177,8 @@ function ConnectivitySection() {
             className="h-9 font-mono text-[11px]"
           />
           <p className="text-[9px] text-muted-foreground">
-            Used when run mode is &quot;proxy&quot;. Leave empty for system default.
+            Used when run mode is &quot;proxy&quot;. Leave empty for system
+            default.
           </p>
         </div>
 
@@ -1191,9 +1219,9 @@ function ConnectivitySection() {
 Find the main return of `UserManagementSidebar` and add `<ConnectivitySection />` after the password change section (and before any admin-only sections). Add a divider before it:
 
 ```tsx
-      <div className="border-t border-border/40 pt-4">
-        <ConnectivitySection />
-      </div>
+<div className="border-t border-border/40 pt-4">
+  <ConnectivitySection />
+</div>
 ```
 
 - [ ] **Step 4: Verify TypeScript compiles**
@@ -1205,6 +1233,7 @@ Expected: No errors.
 - [ ] **Step 5: Visually verify in dev server**
 
 Open the User Management Sidebar. Verify the Connectivity section appears with:
+
 - Run mode radio group (3 options)
 - System default indication
 - Proxy URL input
@@ -1223,6 +1252,7 @@ git commit -m "feat: add user Connectivity section to sidebar"
 ## Task 9: Integration Test
 
 **Files:**
+
 - Modify: `tests/integration_tests/test_backend_api.py` (in vsda-deep-agent)
 
 - [ ] **Step 1: Add integration tests for connectivity endpoints**
@@ -1343,14 +1373,14 @@ git commit -m "test: add integration tests for connectivity endpoints"
 
 ## Summary of Changes
 
-| Area | Files Changed | Description |
-|------|--------------|-------------|
-| Backend models | `models.py`, `database.py` | New `SystemSetting` table + user columns |
-| Backend store | `connectivity_store.py` (new) | Async DB layer for settings |
-| Backend resolution | `connectivity.py` | New resolve functions with DB-first lookup |
-| Backend schemas | `schemas.py` | Pydantic models for endpoints |
-| Backend API | `main.py` | 4 new endpoints |
-| Frontend API | `auth.ts` | 4 new client functions |
-| Frontend admin | `AdminPanel.tsx` | Renamed tab + URL override form |
-| Frontend user | `UserManagementSidebar.tsx` | New Connectivity section |
-| Tests | `test_connectivity_store.py`, `test_backend_api.py` | Unit + integration tests |
+| Area               | Files Changed                                       | Description                                |
+| ------------------ | --------------------------------------------------- | ------------------------------------------ |
+| Backend models     | `models.py`, `database.py`                          | New `SystemSetting` table + user columns   |
+| Backend store      | `connectivity_store.py` (new)                       | Async DB layer for settings                |
+| Backend resolution | `connectivity.py`                                   | New resolve functions with DB-first lookup |
+| Backend schemas    | `schemas.py`                                        | Pydantic models for endpoints              |
+| Backend API        | `main.py`                                           | 4 new endpoints                            |
+| Frontend API       | `auth.ts`                                           | 4 new client functions                     |
+| Frontend admin     | `AdminPanel.tsx`                                    | Renamed tab + URL override form            |
+| Frontend user      | `UserManagementSidebar.tsx`                         | New Connectivity section                   |
+| Tests              | `test_connectivity_store.py`, `test_backend_api.py` | Unit + integration tests                   |

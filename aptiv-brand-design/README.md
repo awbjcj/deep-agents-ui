@@ -11,19 +11,20 @@
 
 ## Sources
 
-| Source | Location | Notes |
-|---|---|---|
-| Aptiv Master Theme (PPTX) | `uploads/Aptiv_Master_Theme With Instructions.pptx` | 48-slide deck with all layout templates and instructions |
-| Aptiv Geo Theme (PPTX) | `uploads/Aptiv_Geo_Theme.pptx` | Alternate geometric slide theme |
-| Brand color/visual guides | `uploads/859e19ec-*.webp`, `uploads/c66bd70c-*.webp`, `uploads/9c10c549-*.webp` | Color palette screenshots and data viz examples |
-| Logo files (PNG + SVG) | `assets/` | 4 logo variants |
-| VSDA Deep Agent codebase | GitHub: `awbjcj/vsda-deep-agent` (branch: `main`) | Next.js frontend in `src/frontends/app/` |
+| Source                    | Location                                                                        | Notes                                                    |
+| ------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Aptiv Master Theme (PPTX) | `uploads/Aptiv_Master_Theme With Instructions.pptx`                             | 48-slide deck with all layout templates and instructions |
+| Aptiv Geo Theme (PPTX)    | `uploads/Aptiv_Geo_Theme.pptx`                                                  | Alternate geometric slide theme                          |
+| Brand color/visual guides | `uploads/859e19ec-*.webp`, `uploads/c66bd70c-*.webp`, `uploads/9c10c549-*.webp` | Color palette screenshots and data viz examples          |
+| Logo files (PNG + SVG)    | `assets/`                                                                       | 4 logo variants                                          |
+| VSDA Deep Agent codebase  | GitHub: `awbjcj/vsda-deep-agent` (branch: `main`)                               | Next.js frontend in `src/frontends/app/`                 |
 
 ---
 
 ## CONTENT FUNDAMENTALS
 
 ### Tone & Voice
+
 - **Professional, precise, direct.** Aptiv communicates authority without jargon.
 - Headlines are **compelling and concise** — never padded. Sentence case for body, ALL CAPS for certain display headings in slides.
 - Copy is **third-person brand** in marketing contexts ("Aptiv delivers…") and **second-person instructional** in product/UI contexts ("Sign in to your account").
@@ -33,6 +34,7 @@
 - The product name in the app is **"VSDA Deep Agent"** — always use this full name in UI headers.
 
 ### Casing
+
 - Slide headlines: Title Case or ALL CAPS (display treatment)
 - UI labels: Sentence case
 - Navigation items: Sentence case
@@ -42,6 +44,7 @@
 ## VISUAL FOUNDATIONS
 
 ### Colors
+
 **Primary Palette:**
 | Name | Hex | Usage |
 |---|---|---|
@@ -76,10 +79,11 @@
 | Border (dark) | `#2d2d2d` | Dark mode borders |
 
 ### Typography
+
 - **Brand font:** Arial — used for all headings and body in slides and brand materials
-- **App font:** System font stack (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial`) 
+- **App font:** System font stack (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial`)
 - **Monospace (app):** `"SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas`
-- *Note: Arial is a system font and needs no web import. For Google Fonts substitution, use `Barlow` (geometric, similar feel).*
+- _Note: Arial is a system font and needs no web import. For Google Fonts substitution, use `Barlow` (geometric, similar feel)._
 
 **Type Scale:**
 | Level | Size | Weight | Notes |
@@ -93,6 +97,7 @@
 | XSmall | 12px | 400 | Footnotes |
 
 ### Backgrounds
+
 - **Black** is the dominant slide background. Strongly preferred over white for high-impact presentations.
 - **Light Slate Blue** (`#B7D1CF`) used as a soft background for report covers and content variety.
 - **White** used for print reports and lighter content slides.
@@ -100,18 +105,21 @@
 - Photography used at full-bleed for image slides — dark/automotive subject matter, high contrast.
 
 ### Layout
+
 - Slides use strict grid alignment with strong left-edge anchoring.
 - Footer bar on all slides: presentation title | date | confidentiality | page number
 - Orange dots flank the •APTIV• logo wordmark — always shown on slides.
 - Content text flows left to right in a columnar layout.
 
 ### Animation & Interaction (App)
+
 - Subtle `fadeIn` and `slideIn` (scale + translateY) animations at `200ms ease`
 - Hover states: opacity decrease (`opacity: 0.8`) for links
 - No bounces, no spring physics — linear or ease only
 - Loading states use spinner (`Loader2` from Lucide, `animate-spin`)
 
 ### Cards & Components (App)
+
 - Border radius: `0.375rem` (md), `0.5rem` (lg)
 - Cards have `border border-border bg-card shadow-lg`
 - No colored left-border accent cards
@@ -119,9 +127,11 @@
 - Scrollbars: 6px width, rounded thumb, transparent track
 
 ### Iconography
+
 See ICONOGRAPHY section below.
 
 ### Imagery
+
 - Automotive photography: dark, dramatic, high contrast
 - Subject matter: vehicles, interiors, circuit boards, autonomous systems
 - Color grading: cool-to-neutral, occasionally warm/amber for interior shots

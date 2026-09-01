@@ -29,7 +29,7 @@ function resolveDevApiBase(): string {
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error(
-      `LANGGRAPH_API_URL must use http: or https:, got ${parsed.protocol}`,
+      `LANGGRAPH_API_URL must use http: or https:, got ${parsed.protocol}`
     );
   }
   return raw.replace(/\/$/, "");

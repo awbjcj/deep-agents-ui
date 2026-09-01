@@ -33,7 +33,7 @@ and architecture discussions so names stay stable. Architecture vocabulary
   `useProcessedMessages`. Without it, per-token render cost scales with the
   total number of artifacts in the thread rather than with what changed.
 
-  *Known follow-up (out of scope for the projection):* the **live** streaming
+  _Known follow-up (out of scope for the projection):_ the **live** streaming
   message still re-parses its own growing markdown every token. Throttling /
   segmenting that parse is a separate lever, deliberately not bundled with the
   identity work.

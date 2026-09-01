@@ -19,7 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { StandaloneConfig, getDeploymentUrl, getLangsmithApiKey } from "@/lib/config";
+import {
+  StandaloneConfig,
+  getDeploymentUrl,
+  getLangsmithApiKey,
+} from "@/lib/config";
 import { toast } from "sonner";
 import { Client } from "@langchain/langgraph-sdk";
 import { Loader2 } from "lucide-react";
@@ -52,8 +56,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
     ],
   },
   "VSDA Jira Agent": {
-    description:
-      "Reads, searches, summarizes, and edits Jira tickets.",
+    description: "Reads, searches, summarizes, and edits Jira tickets.",
     useCases: [
       "Summarize the status, blockers, and recent activity of a specific ticket (e.g. CADM-1234).",
       "Find all open tickets matching a query — by assignee, sprint, priority, or label.",
@@ -62,8 +65,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
     ],
   },
   "VSDA Teams Agent": {
-    description:
-      "Reads, summarizes, and sends Microsoft Teams chat messages.",
+    description: "Reads, summarizes, and sends Microsoft Teams chat messages.",
     useCases: [
       "Catch up on the latest messages in a specific chat or channel.",
       "Find what was decided or discussed in a recent group conversation.",
@@ -107,8 +109,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
     ],
   },
   "VSDA Jenkins Agent": {
-    description:
-      "Monitors, queries, and triggers Jenkins CI/CD build jobs.",
+    description: "Monitors, queries, and triggers Jenkins CI/CD build jobs.",
     useCases: [
       "Check the current status or recent build history of a Jenkins job.",
       "List available jobs or look up the parameters a job accepts.",
@@ -197,15 +198,21 @@ export function ConfigDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <span className="aptiv-eyebrow">Settings</span>
           <DialogTitle className="mt-1">Configuration</DialogTitle>
-          <span className="aptiv-rule" aria-hidden="true" />
+          <span
+            className="aptiv-rule"
+            aria-hidden="true"
+          />
           <DialogDescription>
-            Deployment settings are configured via environment variables.
-            Select an assistant to get started.
+            Deployment settings are configured via environment variables. Select
+            an assistant to get started.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -221,18 +228,24 @@ export function ConfigDialog({
           <div className="grid gap-2">
             <Label htmlFor="assistantId">Assistant</Label>
             {loading ? (
-              <div className="flex items-center gap-2 h-10 px-3 text-sm text-muted-foreground border rounded-md">
+              <div className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading assistants...
               </div>
             ) : (
-              <Select value={assistantId} onValueChange={setAssistantId}>
+              <Select
+                value={assistantId}
+                onValueChange={setAssistantId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select an assistant" />
                 </SelectTrigger>
                 <SelectContent>
                   {assistants.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
+                    <SelectItem
+                      key={a.id}
+                      value={a.id}
+                    >
                       {a.graphId}
                     </SelectItem>
                   ))}
@@ -240,53 +253,62 @@ export function ConfigDialog({
               </Select>
             )}
           </div>
-          {assistantId && (() => {
-            const selected = assistants.find((a) => a.id === assistantId);
-            const info = selected ? AGENT_INFO[selected.graphId] : undefined;
-            if (!info) return null;
-            return (
-              <div className="grid gap-2">
-                <Label>Agent Details</Label>
-                <div className="rounded-md border bg-muted/50 p-3 text-sm space-y-3">
-                  <p className="text-muted-foreground">{info.description}</p>
-                  <div>
-                    <span className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
-                      What it's good for
-                    </span>
-                    <ul className="mt-1.5 space-y-1.5">
-                      {info.useCases.map((useCase) => (
-                        <li
-                          key={useCase}
-                          className="flex gap-2 text-muted-foreground"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
-                          />
-                          <span>{useCase}</span>
-                        </li>
-                      ))}
-                    </ul>
+          {assistantId &&
+            (() => {
+              const selected = assistants.find((a) => a.id === assistantId);
+              const info = selected ? AGENT_INFO[selected.graphId] : undefined;
+              if (!info) return null;
+              return (
+                <div className="grid gap-2">
+                  <Label>Agent Details</Label>
+                  <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
+                    <p className="text-muted-foreground">{info.description}</p>
+                    <div>
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        What it's good for
+                      </span>
+                      <ul className="mt-1.5 space-y-1.5">
+                        {info.useCases.map((useCase) => (
+                          <li
+                            key={useCase}
+                            className="flex gap-2 text-muted-foreground"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
+                            />
+                            <span>{useCase}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {info.isSupervisor && (
+                      <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          Tip:
+                        </span>{" "}
+                        If your task is simple and only needs one source, select
+                        that sub-agent directly instead of the supervisor — it's
+                        faster and more focused. Use VSDA Deep Agent when the
+                        work spans multiple sources or several steps.
+                      </p>
+                    )}
                   </div>
-                  {info.isSupervisor && (
-                    <p className="rounded-md border-l-2 border-primary/40 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">Tip:</span>{" "}
-                      If your task is simple and only needs one source, select
-                      that sub-agent directly instead of the supervisor — it's
-                      faster and more focused. Use VSDA Deep Agent when the work
-                      spans multiple sources or several steps.
-                    </p>
-                  )}
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={loading || !assistantId}>
+          <Button
+            onClick={handleSave}
+            disabled={loading || !assistantId}
+          >
             Save
           </Button>
         </DialogFooter>

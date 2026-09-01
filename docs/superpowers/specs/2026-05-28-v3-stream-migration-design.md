@@ -92,8 +92,8 @@ export interface StreamView<TState> {
 
 type SubmitInput =
   | { messages: Message[] }
-  | undefined           // resume from checkpoint
-  | null;               // command-only (resume / goto)
+  | undefined // resume from checkpoint
+  | null; // command-only (resume / goto)
 
 interface SubmitOptions {
   optimisticValues?: (prev: Partial<TState>) => Partial<TState>;
@@ -102,7 +102,7 @@ interface SubmitOptions {
   interruptBefore?: string[];
   interruptAfter?: string[];
   streamSubgraphs?: boolean;
-  streamMode?: StreamMode[];        // legacy only; v3 ignores
+  streamMode?: StreamMode[]; // legacy only; v3 ignores
   metadata?: Record<string, unknown>;
   command?: { goto?: string; update?: unknown; resume?: unknown };
 }
@@ -117,14 +117,14 @@ interface SubagentSnapshot {
 interface ToolCallSnapshot {
   id: string;
   name: string;
-  args: unknown;                    // may be partial during streaming
+  args: unknown; // may be partial during streaming
   argsComplete: boolean;
   status: "pending" | "running" | "completed" | "errored";
   result?: string;
 }
 
 interface SubgraphNode {
-  namespace: string[];              // e.g. ["task:abc123", "research"]
+  namespace: string[]; // e.g. ["task:abc123", "research"]
   parentToolCallId?: string;
 }
 
@@ -165,15 +165,15 @@ client.runs.stream(threadId, assistantId, opts) →
   handle.interrupts    AsyncIterable<InterruptEvent>
 ```
 
-| Projection | Reducer behavior | StreamView slice |
-|---|---|---|
-| `.values` | `(prev, snapshot) => ({ ...prev, ...snapshot })`; if snapshot has `__interrupt__`, also update `interrupt` | `values`, `interrupt` |
-| `.messages` | Consume the projection's per-token / lifecycle events and maintain a `Map<id, Message>`; rebuild `messages: Message[]` on insert/update. Whether the projection yields pre-assembled messages or raw deltas (requiring `StreamingMessageAssembler` on the consumer side) is an implementation-plan verification item — see Open question 3. | `messages` |
-| `.toolCalls` | `toolCalls.set(id, snapshot)` per delta | `toolCalls` |
-| `.subagents` | `subagents.set(toolCallId, snapshot)` per lifecycle event | `subagents` |
-| `.subgraphs` | Append-dedupe by namespace | `subgraphs` |
-| `.custom` | Forward to `onCustomEvent` callback | (none) |
-| `.interrupts` | Same as `values.__interrupt__` — whichever lands first wins | `interrupt` |
+| Projection    | Reducer behavior                                                                                                                                                                                                                                                                                                                            | StreamView slice      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `.values`     | `(prev, snapshot) => ({ ...prev, ...snapshot })`; if snapshot has `__interrupt__`, also update `interrupt`                                                                                                                                                                                                                                  | `values`, `interrupt` |
+| `.messages`   | Consume the projection's per-token / lifecycle events and maintain a `Map<id, Message>`; rebuild `messages: Message[]` on insert/update. Whether the projection yields pre-assembled messages or raw deltas (requiring `StreamingMessageAssembler` on the consumer side) is an implementation-plan verification item — see Open question 3. | `messages`            |
+| `.toolCalls`  | `toolCalls.set(id, snapshot)` per delta                                                                                                                                                                                                                                                                                                     | `toolCalls`           |
+| `.subagents`  | `subagents.set(toolCallId, snapshot)` per lifecycle event                                                                                                                                                                                                                                                                                   | `subagents`           |
+| `.subgraphs`  | Append-dedupe by namespace                                                                                                                                                                                                                                                                                                                  | `subgraphs`           |
+| `.custom`     | Forward to `onCustomEvent` callback                                                                                                                                                                                                                                                                                                         | (none)                |
+| `.interrupts` | Same as `values.__interrupt__` — whichever lands first wins                                                                                                                                                                                                                                                                                 | `interrupt`           |
 
 **State container.** One `useReducer` with actions `{type, payload}`. Each projection dispatches; React 18+ auto-batches across `await` boundaries.
 
@@ -221,7 +221,7 @@ stream.submit(input, opts) →
 client.runs.stream(threadId, assistantId, {
   command: { resume: value },
   // no `input`, no `checkpoint` — server resumes from interrupt
-})
+});
 ```
 
 **Optimistic rollback.** Match `useStream`: do not roll back on error. User re-submits.
@@ -240,29 +240,29 @@ client.runs.stream(threadId, assistantId, {
 
 ### Smoke-test matrix (manual, before prod flip)
 
-| # | Scenario | Expected |
-|---|---|---|
-| 1 | New thread → "hello" → assistant streams | Tokens paint; `processedMessages` builds tool-call list |
-| 2 | Existing thread reload mid-stream | `joinStream` reattaches; remaining tokens land in same message |
-| 3 | Click stop mid-stream | `AbortController` cancels; partial message preserved |
-| 4 | Tool requires HITL approval | `interrupt` surfaces; `submit(null, {command:{resume}})` continues |
-| 5 | File write from middleware | `values.files` repaints within 1 frame |
-| 6 | Custom event from ToolErrorNotificationMiddleware | `onCustomEvent` fires; toast/banner appears |
-| 7 | Subagent task spawn (`task` tool) | Same outward behavior as today; `subagents` Map populates (unrendered) |
-| 8 | Rapid double-submit | Queued — second waits for first to close |
-| 9 | Network drop mid-stream | `onError` fires; user can resubmit |
+| #   | Scenario                                          | Expected                                                               |
+| --- | ------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | New thread → "hello" → assistant streams          | Tokens paint; `processedMessages` builds tool-call list                |
+| 2   | Existing thread reload mid-stream                 | `joinStream` reattaches; remaining tokens land in same message         |
+| 3   | Click stop mid-stream                             | `AbortController` cancels; partial message preserved                   |
+| 4   | Tool requires HITL approval                       | `interrupt` surfaces; `submit(null, {command:{resume}})` continues     |
+| 5   | File write from middleware                        | `values.files` repaints within 1 frame                                 |
+| 6   | Custom event from ToolErrorNotificationMiddleware | `onCustomEvent` fires; toast/banner appears                            |
+| 7   | Subagent task spawn (`task` tool)                 | Same outward behavior as today; `subagents` Map populates (unrendered) |
+| 8   | Rapid double-submit                               | Queued — second waits for first to close                               |
+| 9   | Network drop mid-stream                           | `onError` fires; user can resubmit                                     |
 
 ### Risk register
 
-| Risk | Mitigation |
-|---|---|
-| Future SDK v3 frame shape change | Per-projection try/catch isolates breakage to one slice; SDK pinned by exact version |
-| Legacy backend rots after flag flips | Sunset PR within 1 release |
+| Risk                                                     | Mitigation                                                                                                                     |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Future SDK v3 frame shape change                         | Per-projection try/catch isolates breakage to one slice; SDK pinned by exact version                                           |
+| Legacy backend rots after flag flips                     | Sunset PR within 1 release                                                                                                     |
 | `processedMessages` vs `toolCalls` projection divergence | `processedMessages` is source of truth in this PR. `toolCalls` is future-facing — no consumer. Documented in `streamTypes.ts`. |
-| Optimistic-files mirror | Unchanged — reads `stream.values.files`; both backends write that slice identically |
-| Notification routing | Unchanged — both backends forward `onCustomEvent` |
-| Per-message metadata lazy load | v3 path replicates lazy fetch (smoke matrix row 2) |
-| Race on `ensureThreadId` during rapid submit | Existing `creatingThreadRef.current` Promise-cache preserved above the seam |
+| Optimistic-files mirror                                  | Unchanged — reads `stream.values.files`; both backends write that slice identically                                            |
+| Notification routing                                     | Unchanged — both backends forward `onCustomEvent`                                                                              |
+| Per-message metadata lazy load                           | v3 path replicates lazy fetch (smoke matrix row 2)                                                                             |
+| Race on `ensureThreadId` during rapid submit             | Existing `creatingThreadRef.current` Promise-cache preserved above the seam                                                    |
 
 ---
 
@@ -298,10 +298,10 @@ Reading the SDK's actual v3 surface (`@langchain/langgraph-sdk@1.9.9 dist/client
 
 The SDK exposes **two** v3 surfaces, neither a clean parity replacement for `useStream`:
 
-| Surface | API | Submit options | Frame decoder |
-|---|---|---|---|
-| Low-level (run-centric) | `client.runs.stream(threadId, assistantId, opts)` — still present, still accepts `interruptBefore/After`, `command.{goto,update,resume}`, `streamMode`, `checkpoint`, `streamSubgraphs`. Server upgrades the envelope to v3 when `configurable.__event_streaming_v2: true`. | All legacy options preserved | **We own it.** Need to write our own v3-envelope decoder (the SDK's `useStream` decoder is the broken one we're trying to leave). |
-| High-level (thread-centric) | `client.threads.stream(threadId, {assistantId}).submitRun({input, config, metadata, forkFrom, multitaskStrategy})` returning a `ThreadStream` with assembled projection handles (`messages: AsyncIterable<StreamingMessageHandle>`, `toolCalls: AsyncIterable<ClientAssembledToolCall>`, `subagents: AsyncIterable<SubagentHandle>`, `subgraphs: AsyncIterable<SubgraphHandle>`). HITL via `respondInput({namespace, interrupt_id, response})`. Idempotent join via `startLifecycleWatcher()`. | **Loses** `interruptBefore/After`, `command.goto`, `command.update`, `streamMode`. `checkpoint` becomes `forkFrom: {checkpointId}`. `command.resume` becomes `respondInput`. | SDK assembles for us. |
+| Surface                     | API                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Submit options                                                                                                                                                               | Frame decoder                                                                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Low-level (run-centric)     | `client.runs.stream(threadId, assistantId, opts)` — still present, still accepts `interruptBefore/After`, `command.{goto,update,resume}`, `streamMode`, `checkpoint`, `streamSubgraphs`. Server upgrades the envelope to v3 when `configurable.__event_streaming_v2: true`.                                                                                                                                                                                                                    | All legacy options preserved                                                                                                                                                 | **We own it.** Need to write our own v3-envelope decoder (the SDK's `useStream` decoder is the broken one we're trying to leave). |
+| High-level (thread-centric) | `client.threads.stream(threadId, {assistantId}).submitRun({input, config, metadata, forkFrom, multitaskStrategy})` returning a `ThreadStream` with assembled projection handles (`messages: AsyncIterable<StreamingMessageHandle>`, `toolCalls: AsyncIterable<ClientAssembledToolCall>`, `subagents: AsyncIterable<SubagentHandle>`, `subgraphs: AsyncIterable<SubgraphHandle>`). HITL via `respondInput({namespace, interrupt_id, response})`. Idempotent join via `startLifecycleWatcher()`. | **Loses** `interruptBefore/After`, `command.goto`, `command.update`, `streamMode`. `checkpoint` becomes `forkFrom: {checkpointId}`. `command.resume` becomes `respondInput`. | SDK assembles for us.                                                                                                             |
 
 ### Why neither path is parity in a single PR
 
@@ -313,7 +313,7 @@ The SDK exposes **two** v3 surfaces, neither a clean parity replacement for `use
 
 At minimum two follow-up specs before the migration can ship:
 
-1. Replace `runSingleStep`'s `interruptBefore/After` with the v3 HITL `respondInput` model. Requires UI/UX redesign — today's step-runner pauses *before* tool execution; the v3 model interrupts only when the agent explicitly raises an interrupt.
+1. Replace `runSingleStep`'s `interruptBefore/After` with the v3 HITL `respondInput` model. Requires UI/UX redesign — today's step-runner pauses _before_ tool execution; the v3 model interrupts only when the agent explicitly raises an interrupt.
 2. Replace `markCurrentThreadAsResolved`'s `command.{goto, update}` with whatever v3 equivalent exists (not visible in the public d.ts — likely needs a non-streaming `client.threads.updateState` + run-cancel call).
 
 Once those two are done, the parity migration described in this document becomes writable.

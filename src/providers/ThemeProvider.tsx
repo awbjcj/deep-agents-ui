@@ -76,7 +76,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // new object and re-renders the whole tree.
   const value = useMemo<ThemeContextValue>(
     () => ({ theme, toggleTheme, setTheme }),
-    [theme, toggleTheme, setTheme],
+    [theme, toggleTheme, setTheme]
   );
 
   return (
