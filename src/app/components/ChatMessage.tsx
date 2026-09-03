@@ -16,8 +16,10 @@ import {
   extractStringFromMessageContent,
   extractImageUrlsFromMessage,
 } from "@/app/utils/utils";
-import type { MessageAttachment } from "@/lib/uploads";
-import { FileText } from "lucide-react";
+import { inlineImageToFile, type MessageAttachment } from "@/lib/uploads";
+import { FileViewDialog } from "@/app/components/FileViewDialog";
+import type { FileItem } from "@/app/types/types";
+import { FileText, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
@@ -112,6 +114,13 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         });
     }, [toolCalls]);
 
+    // Attachments open in the same viewer as workspace files, so an attached
+    // screenshot gets the full-size view and download the file list already
+    // provides rather than a second, parallel lightbox.
+    const [viewedAttachment, setViewedAttachment] = useState<FileItem | null>(
+      null
+    );
+
     const [expandedSubAgents, setExpandedSubAgents] = useState<
       Record<string, boolean>
     >({});
@@ -146,14 +155,51 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 isUser && "justify-end"
               )}
             >
-              {attachmentImageUrls.map((url, idx) => (
-                <img
-                  key={`img-${idx}`}
-                  src={url}
-                  alt={`Attached image ${idx + 1}`}
-                  className="h-20 w-20 rounded-xl border border-border bg-muted object-cover shadow-sm ring-1 ring-black/5"
-                />
-              ))}
+              {attachmentImageUrls.map((url, idx) => {
+                const label = `Attached image ${idx + 1}`;
+                const asFile = inlineImageToFile(url, label);
+                const thumbnail = (
+                  <img
+                    src={url}
+                    alt={label}
+                    // object-contain, not object-cover: a centre-cropped
+                    // square of a screenshot usually hides the part the user
+                    // is asking about. Fixed height keeps the row aligned
+                    // while widths follow each image's real aspect ratio.
+                    className="h-24 w-auto max-w-[220px] object-contain"
+                  />
+                );
+                // A remote image has no base64 body to hand the viewer, so it
+                // stays a plain thumbnail rather than advertising an action
+                // that would open an empty dialog.
+                if (!asFile) {
+                  return (
+                    <span
+                      key={`img-${idx}`}
+                      className="inline-flex overflow-hidden rounded-xl border border-border bg-muted shadow-sm"
+                    >
+                      {thumbnail}
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={`img-${idx}`}
+                    type="button"
+                    onClick={() => setViewedAttachment(asFile)}
+                    aria-label={`View ${label} full size`}
+                    className="hover:border-primary/50 group relative inline-flex overflow-hidden rounded-xl border border-border bg-muted shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 motion-reduce:transition-none"
+                  >
+                    {thumbnail}
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+                    >
+                      <Maximize2 className="h-4 w-4 text-white" />
+                    </span>
+                  </button>
+                );
+              })}
               {docAttachments.map((doc, idx) => (
                 <span
                   key={`doc-${idx}`}
@@ -192,6 +238,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 ) : null}
               </div>
             </div>
+          )}
+          {viewedAttachment && (
+            <FileViewDialog
+              file={viewedAttachment}
+              onSaveFile={async () => {}}
+              onClose={() => setViewedAttachment(null)}
+              editDisabled
+            />
           )}
           {hasToolCalls && (
             <div className="mt-4 flex w-full flex-col">

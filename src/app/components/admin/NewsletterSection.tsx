@@ -26,6 +26,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import {
+  PanelTabs,
+  panelTabPanelProps,
+  type PanelTabDef,
+} from "@/components/ui/panel-tabs";
 import type { Role } from "@/lib/auth";
 import {
   apiCreateNewsletter,
@@ -82,6 +87,11 @@ function audienceLabel(targetTiers: Role[] | null): string {
     .map((tier) => `${tier[0]?.toUpperCase()}${tier.slice(1)}`)
     .join(", ");
 }
+
+const WORKSPACE_TABS: readonly PanelTabDef<WorkspaceView>[] = [
+  { id: "compose", label: "Compose", icon: FileText },
+  { id: "history", label: "History", icon: History },
+];
 
 export function NewsletterSection() {
   const [view, setView] = useState<WorkspaceView>("compose");
@@ -332,27 +342,20 @@ export function NewsletterSection() {
         </div>
       </section>
 
-      <div
-        role="tablist"
-        aria-label="Newsletter workspace"
-        className="grid grid-cols-2 rounded-lg border border-border bg-muted/40 p-1"
-      >
-        <WorkspaceTab
-          active={view === "compose"}
-          icon={FileText}
-          label="Compose"
-          onClick={() => setView("compose")}
-        />
-        <WorkspaceTab
-          active={view === "history"}
-          icon={History}
-          label="History"
-          onClick={() => setView("history")}
-        />
-      </div>
+      <PanelTabs
+        tabs={WORKSPACE_TABS}
+        value={view}
+        onValueChange={setView}
+        idPrefix="newsletter"
+        label="Newsletter workspace"
+        variant="segmented"
+      />
 
       {view === "compose" ? (
-        <div className="space-y-4">
+        <div
+          {...panelTabPanelProps("newsletter", "compose")}
+          className="space-y-4 focus-visible:outline-none"
+        >
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold">
@@ -399,24 +402,31 @@ export function NewsletterSection() {
           )}
 
           <div className="aptiv-glass-soft overflow-hidden rounded-xl shadow-sm">
-            <div className="flex border-b border-border bg-muted/30 p-1.5">
-              <ComposerTab
-                active={composerView === "write"}
-                icon={Pencil}
-                label="Write"
-                onClick={() => setComposerView("write")}
-              />
-              <ComposerTab
-                active={composerView === "preview"}
-                icon={Monitor}
-                label="Preview"
-                disabled={!previewHtml}
-                onClick={() => setComposerView("preview")}
-              />
-            </div>
+            <PanelTabs
+              tabs={[
+                { id: "write" as const, label: "Write", icon: Pencil },
+                {
+                  id: "preview" as const,
+                  label: "Preview",
+                  icon: Monitor,
+                  disabled: !previewHtml,
+                  disabledReason:
+                    "Add subject and body content to generate a preview.",
+                },
+              ]}
+              value={composerView}
+              onValueChange={setComposerView}
+              idPrefix="newsletter-composer"
+              label="Composer view"
+              variant="segmented"
+              className="rounded-none border-0 border-b border-border bg-muted/30 p-1.5"
+            />
 
             {composerView === "write" ? (
-              <div className="space-y-4 p-4">
+              <div
+                {...panelTabPanelProps("newsletter-composer", "write")}
+                className="space-y-4 p-4 focus-visible:outline-none"
+              >
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="newsletter-subject"
@@ -499,7 +509,10 @@ export function NewsletterSection() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3 p-3">
+              <div
+                {...panelTabPanelProps("newsletter-composer", "preview")}
+                className="space-y-3 p-3 focus-visible:outline-none"
+              >
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -572,16 +585,21 @@ export function NewsletterSection() {
           </div>
         </div>
       ) : (
-        <HistoryView
-          newsletters={newsletters}
-          selected={selected}
-          isLoading={isLoading}
-          onSelect={openNewsletter}
-          onBack={() => setSelected(null)}
-          onEdit={editSelected}
-          onDelete={deleteDraft}
-          isActioning={isActioning}
-        />
+        <div
+          {...panelTabPanelProps("newsletter", "history")}
+          className="focus-visible:outline-none"
+        >
+          <HistoryView
+            newsletters={newsletters}
+            selected={selected}
+            isLoading={isLoading}
+            onSelect={openNewsletter}
+            onBack={() => setSelected(null)}
+            onEdit={editSelected}
+            onDelete={deleteDraft}
+            isActioning={isActioning}
+          />
+        </div>
       )}
     </div>
   );
@@ -595,67 +613,6 @@ function Metric({ label, value }: { label: string; value: number }) {
         {label}
       </p>
     </div>
-  );
-}
-
-function WorkspaceTab({
-  active,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  icon: typeof Mail;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-8 items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[.98]",
-        active
-          ? "bg-card text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground"
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
-  );
-}
-
-function ComposerTab({
-  active,
-  icon: Icon,
-  label,
-  onClick,
-  disabled = false,
-}: {
-  active: boolean;
-  icon: typeof Mail;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-[11px] font-semibold transition-[background-color,color,box-shadow] duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-40",
-        active
-          ? "bg-card text-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground"
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
   );
 }
 

@@ -48,6 +48,42 @@ export function imageMimeForPath(path: string): string | null {
   return IMAGE_MIME_BY_EXT[ext] ?? null;
 }
 
+/**
+ * Reverse of `imageMimeForPath`: the canonical extension for an image MIME
+ * type, or null when the type is not one we render.
+ */
+export function imageExtForMime(mime: string): string | null {
+  const normalized = mime.trim().toLowerCase();
+  for (const [ext, value] of Object.entries(IMAGE_MIME_BY_EXT)) {
+    // jpg is the canonical extension for image/jpeg; jpeg maps to the same
+    // MIME, so take the first match and stop.
+    if (value === normalized) return ext;
+  }
+  return null;
+}
+
+/**
+ * Adapts an inline `data:` image (how attachments ride along on a message) to
+ * the `{ path, content }` shape the file viewer reads, so an attached image
+ * opens in the same viewer as a workspace file instead of needing a second
+ * lightbox implementation. `path` carries a real extension because the viewer
+ * infers the MIME from it; `content` is the bare base64 payload, matching how
+ * thread image files are stored.
+ *
+ * Returns null for anything that is not a base64 `data:image/*` URL — remote
+ * http(s) images have no base64 body to hand the viewer.
+ */
+export function inlineImageToFile(
+  url: string,
+  displayName: string
+): { path: string; content: string } | null {
+  const match = /^data:(image\/[a-z+]+);base64,([\s\S]+)$/i.exec(url.trim());
+  if (!match) return null;
+  const ext = imageExtForMime(match[1]!);
+  if (!ext) return null;
+  return { path: `${displayName}.${ext}`, content: match[2]! };
+}
+
 /** Classify a thread file path as an image or a document by extension. */
 export function attachmentKindForPath(path: string): UploadKind {
   return imageMimeForPath(path) ? "image" : "document";

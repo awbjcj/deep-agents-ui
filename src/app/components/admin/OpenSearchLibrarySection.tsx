@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Database, FileStack, HardDrive, Layers } from "lucide-react";
 
 import { IndexInventory } from "@/app/components/admin/IndexInventory";
@@ -26,7 +20,8 @@ import {
 } from "@/lib/library-admin";
 import { apiListActiveLibraryBatches } from "@/lib/library-batch";
 import { isBatchTerminal } from "@/lib/library-batch-view";
-import { cn } from "@/lib/utils";
+import { PanelTabs, panelTabPanelProps } from "@/components/ui/panel-tabs";
+import { SectionHeader } from "@/app/components/admin/primitives";
 
 type LibraryView = "indices" | "shelves" | "batch";
 
@@ -194,44 +189,12 @@ export function OpenSearchLibrarySection() {
     [batches, indices.length, shelves.length]
   );
 
-  // `role="tablist"` promises arrow-key navigation; without it a keyboard user
-  // can reach the tabs but not move between them.
-  const onTabKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
-      const step =
-        event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-      let nextIndex = -1;
-      if (step !== 0) {
-        nextIndex = (currentIndex + step + views.length) % views.length;
-      } else if (event.key === "Home") {
-        nextIndex = 0;
-      } else if (event.key === "End") {
-        nextIndex = views.length - 1;
-      }
-      if (nextIndex === -1) return;
-      event.preventDefault();
-      const next = views[nextIndex];
-      setView(next.id);
-      document.getElementById(`search-library-tab-${next.id}`)?.focus();
-    },
-    [views]
-  );
-
   return (
     <div className="space-y-5">
-      <header className="space-y-1">
-        <h3 className="text-base font-semibold tracking-tight">
-          Search library
-        </h3>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Operate OpenSearch storage and manifest-backed knowledge sources from
-          one control surface.
-        </p>
-        <span
-          className="aptiv-rule"
-          aria-hidden="true"
-        />
-      </header>
+      <SectionHeader
+        title="Search library"
+        subtitle="Operate OpenSearch storage and manifest-backed knowledge sources from one control surface."
+      />
 
       <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 shadow-sm">
         {[
@@ -265,47 +228,17 @@ export function OpenSearchLibrarySection() {
         ))}
       </dl>
 
-      <div
-        role="tablist"
-        aria-label="Search library views"
-        className="grid grid-cols-3 rounded-md border border-border bg-muted/35 p-1"
-      >
-        {views.map(({ id, label, count, icon: Icon }, tabIndex) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`search-library-tab-${id}`}
-            aria-selected={view === id}
-            aria-controls={`search-library-panel-${id}`}
-            tabIndex={view === id ? 0 : -1}
-            onKeyDown={(event) => onTabKeyDown(event, tabIndex)}
-            onClick={() => setView(id)}
-            className={cn(
-              "flex h-8 items-center justify-center gap-1.5 rounded-sm px-3 text-xs font-semibold transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-              view === id
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Icon
-              className="h-3.5 w-3.5"
-              aria-hidden="true"
-            />
-            {label}
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {count}
-            </span>
-          </button>
-        ))}
-      </div>
+      <PanelTabs
+        tabs={views}
+        value={view}
+        onValueChange={setView}
+        idPrefix="search-library"
+        label="Search library views"
+        variant="segmented"
+      />
 
       <div
-        id={`search-library-panel-${view}`}
-        role="tabpanel"
-        aria-labelledby={`search-library-tab-${view}`}
-        tabIndex={0}
+        {...panelTabPanelProps("search-library", view)}
         className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
       >
         {view === "indices" ? (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Cpu, Key, Link, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { PanelTabs, panelTabPanelProps } from "@/components/ui/panel-tabs";
 import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";
@@ -84,48 +84,19 @@ export function WorkspacePanel({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <div
-          role="tablist"
-          aria-label="Workspace sections"
-          className="flex items-end gap-1.5 px-4 pt-4"
-        >
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = active === tab.id;
-            return (
-              <button
-                key={tab.id}
-                role="tab"
-                type="button"
-                id={`workspace-tab-${tab.id}`}
-                aria-selected={isActive}
-                aria-controls={`workspace-panel-${tab.id}`}
-                onClick={() => setActive(tab.id)}
-                className={cn(
-                  "group relative inline-flex items-center gap-1.5 rounded-t-md px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                  isActive
-                    ? "bg-background/60 text-foreground"
-                    : "text-muted-foreground hover:bg-background/30 hover:text-foreground"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
-                {/* Active indicator — Aptiv orange accent rail, slightly
-                    thicker (2.5px) and edge-to-edge so it reads as a real
-                    underline rather than a hairline. */}
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute -bottom-px left-0 right-0 h-[2.5px] rounded-t-full transition-opacity",
-                    isActive ? "opacity-100" : "opacity-0"
-                  )}
-                  style={{ background: "var(--aptiv-orange)" }}
-                />
-              </button>
-            );
-          })}
-        </div>
+        {/* Manual activation: each panel body runs its own fetches on mount,
+            so arrowing across the strip must not mount every section on the
+            way past. */}
+        <PanelTabs
+          tabs={TABS}
+          value={active}
+          onValueChange={setActive}
+          idPrefix="workspace"
+          label="Workspace sections"
+          variant="underline"
+          activation="manual"
+          className="pt-4"
+        />
       </div>
 
       {/* Panel bodies. We mount only the active tab to avoid running fetches
@@ -133,20 +104,16 @@ export function WorkspacePanel({
       <div className="relative min-h-0 flex-1">
         {active === "models" && (
           <div
-            id="workspace-panel-models"
-            role="tabpanel"
-            aria-labelledby="workspace-tab-models"
-            className="absolute inset-0"
+            {...panelTabPanelProps("workspace", "models")}
+            className="absolute inset-0 focus-visible:outline-none"
           >
             <ModelSidebar />
           </div>
         )}
         {active === "tokens" && (
           <div
-            id="workspace-panel-tokens"
-            role="tabpanel"
-            aria-labelledby="workspace-tab-tokens"
-            className="absolute inset-0"
+            {...panelTabPanelProps("workspace", "tokens")}
+            className="absolute inset-0 focus-visible:outline-none"
           >
             <TokenManagementSidebar
               initialFocus={initialTokenFocus}
@@ -156,10 +123,8 @@ export function WorkspacePanel({
         )}
         {active === "connectivity" && (
           <div
-            id="workspace-panel-connectivity"
-            role="tabpanel"
-            aria-labelledby="workspace-tab-connectivity"
-            className="absolute inset-0"
+            {...panelTabPanelProps("workspace", "connectivity")}
+            className="absolute inset-0 focus-visible:outline-none"
           >
             <ConnectivitySidebar />
           </div>

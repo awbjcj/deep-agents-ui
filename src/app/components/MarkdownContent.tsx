@@ -1,7 +1,15 @@
 "use client";
 
-import React, { Suspense, lazy, useMemo } from "react";
-import ReactMarkdown from "react-markdown";
+import React, {
+  Suspense,
+  lazy,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { ImageOff } from "lucide-react";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -102,6 +110,23 @@ function safeUrl(value: unknown): string | undefined {
   }
 }
 
+/**
+ * react-markdown blanks any URL whose protocol is not http/https/mailto/xmpp
+ * *before* the `img` renderer below ever sees it, so an inline base64 image —
+ * how an agent returns a generated chart or diagram — silently rendered as
+ * nothing at all, and the `SAFE_IMAGE_DATA_URL` allowance under it was
+ * unreachable.
+ *
+ * This keeps react-markdown's conservative default for every other URL and
+ * opens exactly the four raster types already whitelisted above. SVG stays
+ * excluded on purpose: it can carry script, and this markdown is untrusted
+ * agent output.
+ */
+function urlTransform(value: string, key: string): string {
+  if (key === "src" && SAFE_IMAGE_DATA_URL.test(value.trim())) return value;
+  return defaultUrlTransform(value);
+}
+
 function safeImageSrc(value: unknown): string | undefined {
   if (typeof value === "string" && SAFE_IMAGE_DATA_URL.test(value.trim())) {
     return value.trim();
@@ -159,6 +184,134 @@ function PlainCodeBlock({ text, label }: { text: string; label: string }) {
     >
       <code className="font-mono text-current">{text}</code>
     </pre>
+  );
+}
+
+/**
+ * Inline markdown image.
+ *
+ * Agent output gives us a bare `src` with no intrinsic size, so the browser
+ * lays the image out at zero height and then reflows the whole transcript when
+ * the bytes arrive — the worst version of the CLS problem, because it fires
+ * mid-stream while the user is reading. We hold a reserved box until the image
+ * reports its natural dimensions, then pin the container to that exact aspect
+ * ratio so any later re-render (every streamed token re-renders this subtree)
+ * is stable.
+ *
+ * A failed load renders a labelled placeholder rather than disappearing:
+ * returning null for a broken image deletes content the author intended to be
+ * there, leaving the surrounding prose referring to nothing.
+ */
+function MarkdownImage({
+  src,
+  alt,
+  ...props
+}: React.ImgHTMLAttributes<HTMLImageElement> & { src: string }) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    "loading"
+  );
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+
+  /**
+   * An image can finish — or fail — before React attaches `onLoad`/`onError`.
+   * `data:` URLs and anything already in the HTTP cache routinely do, and then
+   * neither handler ever fires and the component is stuck on "loading"
+   * forever. So reconcile against the live element too, keyed on `src`
+   * because streaming markdown revises a half-written URL in place.
+   *
+   * `complete` with a zero `naturalWidth` is the reliable signal for a load
+   * that failed: a decoded image always reports non-zero intrinsic size.
+   */
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img || !img.complete) {
+      setStatus("loading");
+      setSize(null);
+      return;
+    }
+    if (img.naturalWidth && img.naturalHeight) {
+      setSize({ w: img.naturalWidth, h: img.naturalHeight });
+      setStatus("loaded");
+    } else {
+      setStatus("error");
+    }
+  }, [src]);
+
+  const isError = status === "error";
+
+  return (
+    <span
+      className={cn(
+        "not-prose my-4 block overflow-hidden rounded-md border",
+        isError
+          ? "border-dashed border-border bg-muted/30"
+          : "border-border bg-muted/30",
+        status === "loading" && "animate-pulse motion-reduce:animate-none"
+      )}
+      style={
+        isError
+          ? undefined
+          : size
+          ? {
+              aspectRatio: `${size.w} / ${size.h}`,
+              // Never upscale past the image's own pixels: without this a
+              // 10x10 icon would be stretched into a full-column square.
+              maxWidth: `${size.w}px`,
+              maxHeight: "60vh",
+            }
+          : // Reserved box before the natural size is known, so a loading
+            // image has a stable footprint instead of being laid out at zero
+            // height and reflowing the transcript when the bytes land.
+            { aspectRatio: "16 / 9", maxHeight: "22rem" }
+      }
+    >
+      {/* A failed image gets a labelled placeholder rather than disappearing:
+          returning null would delete content the author meant to be there,
+          leaving the surrounding prose referring to nothing. */}
+      {isError && (
+        <span className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-muted-foreground">
+          <ImageOff
+            className="h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
+          <span className="min-w-0">
+            <span className="block font-medium text-foreground">
+              Image failed to load
+            </span>
+            {alt ? (
+              <span className="mt-0.5 block [overflow-wrap:anywhere]">
+                {alt}
+              </span>
+            ) : null}
+          </span>
+        </span>
+      )}
+      {/* The element stays mounted while errored (just hidden) so its ref
+          remains live — a streamed URL that errors half-written must be able
+          to recover when the rest of it arrives. */}
+      <img
+        {...props}
+        ref={imgRef}
+        src={src}
+        alt={alt ?? ""}
+        loading="lazy"
+        decoding="async"
+        onLoad={(event) => {
+          const img = event.currentTarget;
+          if (img.naturalWidth && img.naturalHeight) {
+            setSize({ w: img.naturalWidth, h: img.naturalHeight });
+          }
+          setStatus("loaded");
+        }}
+        onError={() => setStatus("error")}
+        className={cn(
+          "h-full w-full object-contain transition-opacity duration-200 motion-reduce:transition-none",
+          isError && "hidden",
+          status === "loaded" ? "opacity-100" : "opacity-0"
+        )}
+      />
+    </span>
   );
 }
 
@@ -394,12 +547,10 @@ const COMPONENTS: Components = {
     const safeSrc = safeImageSrc(src);
     if (!safeSrc) return null;
     return (
-      <img
-        src={safeSrc}
-        alt={alt ?? ""}
-        loading="lazy"
-        className="my-4 h-auto max-w-full rounded-md border border-border"
+      <MarkdownImage
         {...props}
+        src={safeSrc}
+        alt={alt}
       />
     );
   },
@@ -436,6 +587,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
           components={COMPONENTS}
+          urlTransform={urlTransform}
         >
           {normalizedContent}
         </ReactMarkdown>
