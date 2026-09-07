@@ -92,6 +92,46 @@ export const analysisLimitsSchema = z
 
 export type AnalysisLimits = z.infer<typeof analysisLimitsSchema>;
 
+export const engineIdSchema = z.enum(["deep_agent", "copilot"]);
+export type AnalysisEngine = z.infer<typeof engineIdSchema>;
+
+export const nativeAnalysisLimitsSchema = z
+  .object({
+    max_tokens: z.number().int().positive().default(100_000),
+    max_tool_calls: z.number().int().positive().default(200),
+  })
+  .strict();
+
+export const analysisSettingsSchema = z
+  .object({
+    limits: analysisLimitsSchema.prefault({}),
+    native_limits: nativeAnalysisLimitsSchema.prefault({}),
+    default_engine: engineIdSchema.default("copilot"),
+    model_override: z
+      .object({ provider: z.string().min(1), model: z.string().min(1) })
+      .strict()
+      .nullable()
+      .default(null),
+  })
+  .strict();
+export type AnalysisSettings = z.infer<typeof analysisSettingsSchema>;
+
+export const engineCatalogSchema = z
+  .object({
+    default_engine: engineIdSchema,
+    engines: z.array(
+      z
+        .object({
+          id: engineIdSchema,
+          ready: z.boolean(),
+          blockers: z.array(z.string()).default([]),
+        })
+        .strict()
+    ),
+  })
+  .strict();
+export type EngineCatalog = z.infer<typeof engineCatalogSchema>;
+
 const analysisResultSchema = z.record(z.string(), z.unknown()).default({});
 
 export const analysisJobSchema = z.object({
@@ -107,6 +147,14 @@ export const analysisJobSchema = z.object({
   operation: z.string().optional(),
   created_at: z.string().optional(),
   finished_at: z.string().nullable().optional(),
+  configuration: z
+    .object({
+      engine: engineIdSchema,
+      provider: z.string().nullable().optional(),
+      model: z.string().nullable().optional(),
+      native_limits: nativeAnalysisLimitsSchema,
+    })
+    .optional(),
 });
 
 export type AnalysisJobView = z.infer<typeof analysisJobSchema>;
@@ -208,6 +256,36 @@ export async function saveAnalysisSettings(
     "Failed to save code-analysis limits"
   );
   return analysisLimitsSchema.parse(data);
+}
+
+export async function getAnalysisEngineSettings(): Promise<AnalysisSettings> {
+  const data = await responseJson(
+    await apiFetch("/admin/code-analysis/engine-settings"),
+    "Failed to load analysis engine settings"
+  );
+  return analysisSettingsSchema.parse(data);
+}
+
+export async function saveAnalysisEngineSettings(
+  input: AnalysisSettings
+): Promise<AnalysisSettings> {
+  const data = await responseJson(
+    await apiFetch("/admin/code-analysis/engine-settings", {
+      method: "PUT",
+      body: JSON.stringify(analysisSettingsSchema.parse(input)),
+    }),
+    "Failed to save analysis engine settings"
+  );
+  return analysisSettingsSchema.parse(data);
+}
+
+export async function getAnalysisEngines(): Promise<EngineCatalog> {
+  return engineCatalogSchema.parse(
+    await responseJson(
+      await apiFetch("/code-analysis/engines"),
+      "Failed to load analysis engines"
+    )
+  );
 }
 
 export async function getAnalysisJob(

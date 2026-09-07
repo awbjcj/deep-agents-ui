@@ -499,6 +499,7 @@ function HomePageInner({
                 onHistoryRevalidate={handleHistoryRevalidate}
                 userId={user?.user_id}
                 username={user?.username}
+                analysisEngine={config.analysisEngine}
               >
                 <ChatInterface
                   assistant={assistant}

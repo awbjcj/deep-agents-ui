@@ -58,12 +58,14 @@ export function useChat({
   thread,
   userId,
   username,
+  analysisEngine,
 }: {
   activeAssistant: Assistant | null;
   onHistoryRevalidate?: () => void;
   thread?: UseStreamThread<StateType>;
   userId?: string;
   username?: string;
+  analysisEngine?: "deep_agent" | "copilot";
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
@@ -149,6 +151,7 @@ export function useChat({
           | Record<string, unknown>
           | undefined),
         ...(username ? { system_username: username } : {}),
+        ...(analysisEngine ? { analysis_engine: analysisEngine } : {}),
         // DO NOT enable `__event_streaming_v2` here. Migration deferred —
         // see docs/superpowers/specs/2026-05-28-v3-stream-migration-design.md
         // (status: DEFERRED) for the SDK-surface findings and revisit triggers.
@@ -163,7 +166,7 @@ export function useChat({
         configurable,
       };
     },
-    [activeAssistant?.config, username]
+    [activeAssistant?.config, username, analysisEngine]
   );
 
   const handleThreadHistoryError = useCallback(
