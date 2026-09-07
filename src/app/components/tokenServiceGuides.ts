@@ -7,6 +7,10 @@ import type { UserTokens } from "@/lib/auth";
  */
 export const OPEN_TOKEN_WIZARD_EVENT = "vsda:open-token-wizard";
 
+/** Guidance for dynamic SCM credentials, which do not belong in the fixed-token wizard. */
+export const SCM_CREDENTIAL_GUIDANCE =
+  "SCM access is configured per available source-control server in the Tokens panel.";
+
 export type TokenServiceKey =
   | "graph"
   | "jira"

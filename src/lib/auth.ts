@@ -103,6 +103,13 @@ export async function apiFetch(
 
 export function extractErrorMessage(detail: unknown, fallback: string): string {
   if (typeof detail === "string") return detail;
+  if (
+    detail &&
+    typeof detail === "object" &&
+    typeof (detail as { message?: unknown }).message === "string"
+  ) {
+    return (detail as { message: string }).message;
+  }
   if (Array.isArray(detail) && detail.length > 0) {
     // FastAPI Pydantic validation error format: [{loc, msg, type}]
     return detail.map((e: { msg?: string }) => e.msg || String(e)).join("; ");

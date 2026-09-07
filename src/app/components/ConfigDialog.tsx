@@ -119,6 +119,15 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Trigger a Jenkins build job with specific parameters.",
     ],
   },
+  "VSDA Code Analyzer Agent": {
+    description:
+      "Read-only analysis of configured Gerrit and Plastic SCM code, with immutable revision evidence and persistent reports.",
+    useCases: [
+      "Resolve a repository revision and explain a code path with file-and-line evidence.",
+      "Compare two explicit revisions without running repository scripts, builds, or tests.",
+      "Track a managed code-analysis job and download its durable Markdown report.",
+    ],
+  },
 };
 
 const BUILT_IN_ASSISTANTS: AssistantOption[] = Object.keys(AGENT_INFO).map(

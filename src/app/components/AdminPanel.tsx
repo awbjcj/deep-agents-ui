@@ -3,6 +3,7 @@
 import { useState, type ComponentType } from "react";
 import {
   Database,
+  GitBranch,
   Globe,
   Layers,
   Mail,
@@ -24,6 +25,8 @@ import { TiersSection } from "@/app/components/admin/TiersSection";
 import { RegistrationSection } from "@/app/components/admin/RegistrationSection";
 import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibrarySection";
 import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
+import { CodeAnalysisSettings } from "@/app/components/admin/CodeAnalysisSettings";
+import { ScmServersSection } from "@/app/components/admin/ScmServersSection";
 
 type AdminTab =
   | "users"
@@ -32,7 +35,8 @@ type AdminTab =
   | "newsletters"
   | "runmode"
   | "tiers"
-  | "registration";
+  | "registration"
+  | "scm";
 
 const TABS: readonly {
   id: AdminTab;
@@ -46,6 +50,7 @@ const TABS: readonly {
   { id: "runmode", label: "Run mode", icon: Globe },
   { id: "tiers", label: "Models", icon: Sliders },
   { id: "registration", label: "Invites", icon: Ticket },
+  { id: "scm", label: "Code sources", icon: GitBranch },
 ];
 
 const SECTIONS: Record<AdminTab, ComponentType> = {
@@ -56,6 +61,12 @@ const SECTIONS: Record<AdminTab, ComponentType> = {
   runmode: RunModeSection,
   tiers: TiersSection,
   registration: RegistrationSection,
+  scm: () => (
+    <div className="space-y-8">
+      <ScmServersSection />
+      <CodeAnalysisSettings />
+    </div>
+  ),
 };
 
 interface AdminPanelProps {
