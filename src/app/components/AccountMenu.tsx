@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { RoleBadge, roleVisual } from "@/app/utils/roles";
+import { RoleBadge } from "@/app/utils/roles";
+import { roleVisual } from "@/app/utils/roleVisual";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 

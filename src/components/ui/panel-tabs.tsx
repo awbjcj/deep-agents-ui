@@ -57,26 +57,6 @@ interface PanelTabsProps<Id extends string> {
   className?: string;
 }
 
-/**
- * Props for the region a tab controls. Spreading this onto the panel element
- * is what makes `aria-controls` on the trigger resolve — a tablist whose
- * `aria-controls` points at an id that is never rendered is worse than no
- * association at all, because assistive tech announces a relationship the user
- * cannot follow.
- *
- * `tabIndex={0}` keeps the panel itself focusable: tab panels are scrollable
- * regions, and a keyboard user moving off the tab strip must land inside the
- * content they just selected (WCAG 2.1.1).
- */
-export function panelTabPanelProps(idPrefix: string, id: string) {
-  return {
-    id: `${idPrefix}-panel-${id}`,
-    role: "tabpanel" as const,
-    "aria-labelledby": `${idPrefix}-tab-${id}`,
-    tabIndex: 0,
-  };
-}
-
 export function PanelTabs<Id extends string>({
   tabs,
   value,
@@ -180,14 +160,14 @@ export function PanelTabs<Id extends string>({
                 "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground"
             )}
           >
-            {Icon && (
+            {Icon ? (
               <Icon
                 className="h-3.5 w-3.5 shrink-0"
                 aria-hidden="true"
               />
-            )}
+            ) : null}
             {tab.label}
-            {tab.count !== undefined && (
+            {tab.count !== undefined ? (
               <span
                 className={cn(
                   "min-w-[1.5ch] text-center font-mono text-[10px] tabular-nums",
@@ -196,8 +176,8 @@ export function PanelTabs<Id extends string>({
               >
                 {tab.count}
               </span>
-            )}
-            {isUnderline && (
+            ) : null}
+            {isUnderline ? (
               <span
                 aria-hidden="true"
                 className={cn(
@@ -206,7 +186,7 @@ export function PanelTabs<Id extends string>({
                 )}
                 style={{ background: "var(--aptiv-orange)" }}
               />
-            )}
+            ) : null}
           </button>
         );
       })}

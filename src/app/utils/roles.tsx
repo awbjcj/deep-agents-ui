@@ -1,23 +1,6 @@
-import { Code2, Shield, User, type LucideIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/auth";
-
-export interface RoleVisual {
-  Icon: LucideIcon;
-  color: string;
-}
-
-export function roleVisual(role: Role): RoleVisual {
-  switch (role) {
-    case "admin":
-      return { Icon: Shield, color: "var(--aptiv-orange)" };
-    case "developer":
-      return { Icon: Code2, color: "var(--aptiv-turquoise)" };
-    default:
-      return { Icon: User, color: "var(--role-badge-user)" };
-  }
-}
+import { roleVisual } from "@/app/utils/roleVisual";
 
 /**
  * Consistent role pill used across admin/user-management surfaces:

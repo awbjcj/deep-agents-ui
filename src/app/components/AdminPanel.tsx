@@ -16,7 +16,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PanelTabs, panelTabPanelProps } from "@/components/ui/panel-tabs";
+import { PanelTabs } from "@/components/ui/panel-tabs";
+import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 
 import { UsersSection } from "@/app/components/admin/UsersSection";
 import { ScopesSection } from "@/app/components/admin/ScopesSection";

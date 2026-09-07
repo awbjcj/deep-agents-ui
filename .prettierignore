@@ -24,6 +24,10 @@ build
 # misc
 *.tsbuildinfo
 next-env.d.ts
+.claude
+.omc
+.remember
+.worktrees
 
 # lock files
 pnpm-lock.yaml

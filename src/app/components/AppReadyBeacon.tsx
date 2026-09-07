@@ -12,7 +12,7 @@ import {
   fetchLatestBuildId,
   shouldReloadForBuild,
 } from "@/app/buildFreshness";
-import { reloadBypassingCache } from "@/app/components/LoadingScreen";
+import { reloadBypassingCache } from "@/app/reloadBypassingCache";
 
 const FRESHNESS_INTERVAL_MS = 5 * 60 * 1000;
 const FRESHNESS_FOCUS_THROTTLE_MS = 60 * 1000;

@@ -15,11 +15,8 @@ import {
   Role,
   TierModelEntry,
 } from "@/lib/auth";
-import {
-  LoadingRow,
-  ROLES,
-  SectionHeader,
-} from "@/app/components/admin/primitives";
+import { LoadingRow, SectionHeader } from "@/app/components/admin/primitives";
+import { ROLES } from "@/app/components/admin/primitives-utils";
 
 type TierMap = Record<Role, TierModelEntry[]>;
 type TierTextMap = Record<Role, string>;

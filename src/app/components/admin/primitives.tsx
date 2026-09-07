@@ -15,9 +15,9 @@ import { Loader2 } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/auth";
+import type { ActionIntent } from "@/app/components/admin/primitives-utils";
 
-export const ROLES: Role[] = ["user", "developer", "admin"];
+export type { ActionIntent } from "@/app/components/admin/primitives-utils";
 
 export function SectionHeader({
   title,
@@ -29,11 +29,11 @@ export function SectionHeader({
   return (
     <header className="space-y-1">
       <h3 className="text-base font-semibold tracking-tight">{title}</h3>
-      {subtitle && (
+      {subtitle ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
           {subtitle}
         </p>
-      )}
+      ) : null}
       <span
         className="aptiv-rule"
         aria-hidden="true"
@@ -69,8 +69,6 @@ export function EmptyState({
     </div>
   );
 }
-
-export type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
 
 export function ActionPill({
   icon: Icon,
@@ -108,24 +106,4 @@ export function ActionPill({
       {label}
     </button>
   );
-}
-
-/**
- * Triggers a client-side download of in-memory text. Used by the admin
- * exports (user CSV, temp-password TSV) which are generated in the browser
- * rather than served from an endpoint.
- */
-export function downloadBlob(content: string, type: string, filename: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  try {
-    document.body.appendChild(link);
-    link.click();
-  } finally {
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
 }

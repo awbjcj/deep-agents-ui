@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Cpu, Key, Link, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PanelTabs, panelTabPanelProps } from "@/components/ui/panel-tabs";
+import { PanelTabs } from "@/components/ui/panel-tabs";
+import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";

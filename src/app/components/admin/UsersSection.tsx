@@ -5,7 +5,7 @@ import { Download, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { UsageLimitControls } from "@/app/components/admin/UsageLimitControls";
-import { roleVisual } from "@/app/utils/roles";
+import { roleVisual } from "@/app/utils/roleVisual";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -38,10 +38,9 @@ import { useAuth } from "@/providers/AuthProvider";
 import {
   ActionPill,
   LoadingRow,
-  ROLES,
   SectionHeader,
-  downloadBlob,
 } from "@/app/components/admin/primitives";
+import { ROLES, downloadBlob } from "@/app/components/admin/primitives-utils";
 
 export function UsersSection() {
   const { user } = useAuth();
