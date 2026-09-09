@@ -34,7 +34,11 @@ import {
 } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
-import { LoadingRow, SectionHeader } from "@/app/components/admin/primitives";
+import {
+  DisclosureSection,
+  LoadingRow,
+  SectionHeader,
+} from "@/app/components/admin/primitives";
 
 const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
 
@@ -529,12 +533,12 @@ export function RunModeSection() {
       )}
 
       {connectivity && (
-        <div className="space-y-3 border-t border-border/40 pt-5">
-          <SectionHeader
-            title="URL Overrides"
-            subtitle="Override environment URLs for each provider and mode. Empty = use .env default."
-          />
-
+        <DisclosureSection
+          title="URL overrides"
+          subtitle="Custom provider endpoints for each run mode"
+          className="mt-5"
+          contentClassName="space-y-3"
+        >
           {(
             [
               { id: "openai", label: "OpenAI", prefix: "openai_base_url" },
@@ -599,6 +603,9 @@ export function RunModeSection() {
             </div>
           ))}
 
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            Leave a field empty to use its environment default.
+          </p>
           <Button
             type="button"
             onClick={handleSaveUrls}
@@ -617,7 +624,7 @@ export function RunModeSection() {
               </>
             )}
           </Button>
-        </div>
+        </DisclosureSection>
       )}
     </div>
   );

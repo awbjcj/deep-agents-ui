@@ -15,7 +15,11 @@ import {
   Role,
   TierModelEntry,
 } from "@/lib/auth";
-import { LoadingRow, SectionHeader } from "@/app/components/admin/primitives";
+import {
+  DisclosureSection,
+  LoadingRow,
+  SectionHeader,
+} from "@/app/components/admin/primitives";
 import { ROLES } from "@/app/components/admin/primitives-utils";
 
 type TierMap = Record<Role, TierModelEntry[]>;
@@ -195,32 +199,32 @@ function ImageFetchingTierToggles() {
   };
 
   return (
-    <div className="space-y-3 border-t border-border/40 pt-5">
-      <SectionHeader
-        title="Image fetching"
-        subtitle="Allow users in each tier to attach images from tickets and pages"
-      />
+    <DisclosureSection
+      className="mt-5"
+      contentClassName="space-y-2"
+      title="Image fetching"
+      subtitle="Per-tier access to images from tickets and pages"
+    >
       {isLoading ? (
         <LoadingRow />
       ) : (
-        <div className="space-y-2">
-          {ROLES.map((tier) => (
-            <div
-              key={tier}
-              className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2"
-            >
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {tier}
-              </span>
-              <Switch
-                checked={tierStates[tier]}
-                onCheckedChange={(checked) => handleToggle(tier, checked)}
-              />
-            </div>
-          ))}
-        </div>
+        ROLES.map((tier) => (
+          <div
+            key={tier}
+            className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2"
+          >
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {tier}
+            </span>
+            <Switch
+              checked={tierStates[tier]}
+              onCheckedChange={(checked) => handleToggle(tier, checked)}
+              aria-label={`Image fetching for ${tier}`}
+            />
+          </div>
+        ))
       )}
-    </div>
+    </DisclosureSection>
   );
 }
 

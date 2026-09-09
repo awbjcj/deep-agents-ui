@@ -114,6 +114,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
           label="Admin sections"
           variant="underline"
           activation="manual"
+          layout="two-row"
           className="mt-4"
         />
       </div>

@@ -11,8 +11,8 @@
  * enforceable rather than aspirational.
  */
 
-import { Loader2 } from "lucide-react";
-import type { ComponentType } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import type { ActionIntent } from "@/app/components/admin/primitives-utils";
@@ -39,6 +39,52 @@ export function SectionHeader({
         aria-hidden="true"
       />
     </header>
+  );
+}
+
+/**
+ * Collapsible shell for detailed admin settings that are useful occasionally.
+ * Native disclosure semantics keep the summary keyboard and screen-reader
+ * accessible without adding another client-side state machine.
+ */
+export function DisclosureSection({
+  title,
+  subtitle,
+  children,
+  className,
+  contentClassName,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <details
+      className={cn(
+        "aptiv-glass-soft group overflow-hidden rounded-lg shadow-sm",
+        className
+      )}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">
+            {title}
+          </span>
+          <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+            {subtitle}
+          </span>
+        </span>
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+          aria-hidden="true"
+        />
+      </summary>
+      <div className={cn("border-t border-border/70 p-3", contentClassName)}>
+        {children}
+      </div>
+    </details>
   );
 }
 
