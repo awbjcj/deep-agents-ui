@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { browserRunLimit, buildRunConfig } from "@/lib/runLimits";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   type Message,
@@ -141,31 +142,16 @@ export function useChat({
     return creatingThreadRef.current;
   }, [client, onHistoryRevalidate, setThreadId, threadCreationMetadata]);
 
-  // Build a merged config that includes system_username in configurable
-  // so the LangGraph backend can resolve per-user tokens.
+  // Read the execution budget on submission, including checkpoint retries/resumes.
+  // Do not enable __event_streaming_v2 until the deferred SDK migration lands.
   const buildConfig = useCallback(
-    (overrides?: Record<string, unknown>) => {
-      const base = activeAssistant?.config ?? {};
-      const configurable = {
-        ...((base as Record<string, unknown>).configurable as
-          | Record<string, unknown>
-          | undefined),
-        ...(username ? { system_username: username } : {}),
-        ...(analysisEngine ? { analysis_engine: analysisEngine } : {}),
-        // DO NOT enable `__event_streaming_v2` here. Migration deferred —
-        // see docs/superpowers/specs/2026-05-28-v3-stream-migration-design.md
-        // (status: DEFERRED) for the SDK-surface findings and revisit triggers.
-        // Short version: useStream's legacy frame decoder crashes on v3 message
-        // frames, and neither v3 client API (low-level client.runs.stream or
-        // high-level ThreadStream.submitRun) is a clean parity replacement for
-        // the submit options we use (interruptBefore/After, command.goto, etc.).
-      };
-      return {
-        ...base,
-        ...overrides,
-        configurable,
-      };
-    },
+    () =>
+      buildRunConfig(
+        activeAssistant?.config ?? {},
+        browserRunLimit(username),
+        username,
+        analysisEngine
+      ),
     [activeAssistant?.config, username, analysisEngine]
   );
 
@@ -318,7 +304,7 @@ export function useChat({
           optimisticValues: (prev) => ({
             messages: [...(prev.messages ?? []), newMessage],
           }),
-          config: buildConfig({ recursion_limit: 100 }),
+          config: buildConfig(),
           streamSubgraphs: true,
           streamMode: STREAM_MODES,
           ...(threadCreationMetadata
@@ -440,7 +426,7 @@ export function useChat({
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {
       stream.submit(undefined, {
-        config: buildConfig({ recursion_limit: 100 }),
+        config: buildConfig(),
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }
           : { interruptBefore: ["tools"] }),

@@ -39,6 +39,7 @@ import {
   type UsageDimension,
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
+import { RunLimitSettings } from "@/app/components/RunLimitSettings";
 import {
   apiGetAllowedModels,
   apiGetUserModel,
@@ -629,6 +630,7 @@ export function ModelSidebar() {
                 <span className="h-px flex-1 bg-border" />
               </div>
 
+              <RunLimitSettings />
               <section className="space-y-2">
                 <Label
                   htmlFor="model-select"
