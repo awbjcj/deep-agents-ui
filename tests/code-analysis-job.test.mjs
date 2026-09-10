@@ -2,10 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  analysisPollDelay,
   analysisJobSchema,
   analysisTargets,
   shouldPoll,
 } from "../src/lib/code-analysis.ts";
+
+test("transient job failures use a bounded polling backoff", () => {
+  assert.deepEqual(
+    [0, 1, 2, 3, 4, 5, Number.POSITIVE_INFINITY].map(analysisPollDelay),
+    [2000, 4000, 8000, 16000, 30000, 30000, 2000]
+  );
+});
 
 test("cancel acknowledgement remains pending until the process has exited", () => {
   assert.equal(shouldPoll("cancel_requested"), true);

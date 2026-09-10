@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import {
   buildRunConfig,
   readRunLimit,
@@ -69,4 +70,17 @@ test("unavailable browser storage does not prevent running a task", () => {
     ),
     1000
   );
+});
+
+test("interrupt resumes reapply the configured run limit", () => {
+  const source = readFileSync(
+    new URL("../src/app/hooks/useChat.ts", import.meta.url),
+    "utf8"
+  );
+  const resumeBlock = source.slice(
+    source.indexOf("const resumeInterrupt"),
+    source.indexOf("const stopStream")
+  );
+  assert.match(resumeBlock, /command: \{ resume: value \}/);
+  assert.match(resumeBlock, /config: buildConfig\(\)/);
 });

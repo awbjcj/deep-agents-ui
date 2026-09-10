@@ -608,11 +608,14 @@ export function useChat({
 
   const resumeInterrupt = useCallback(
     (value: any) => {
-      stream.submit(null, { command: { resume: value } });
+      stream.submit(null, {
+        command: { resume: value },
+        config: buildConfig(),
+      });
       // Update thread list when resuming from interrupt
       onHistoryRevalidate?.();
     },
-    [stream, onHistoryRevalidate]
+    [stream, buildConfig, onHistoryRevalidate]
   );
 
   const stopStream = useCallback(() => {

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { apiFetch, extractErrorMessage } from "@/lib/auth";
 
 const GIB = 1024 ** 3;
+const ANALYSIS_POLL_BASE_MS = 2_000;
+const ANALYSIS_POLL_MAX_MS = 30_000;
 
 export const analysisLimitsSchema = z
   .object({
@@ -228,6 +230,14 @@ export function shouldPoll(status: string): boolean {
   return !new Set(["succeeded", "failed", "cancelled", "interrupted"]).has(
     status
   );
+}
+
+/** Back off transient status failures without abandoning a durable job. */
+export function analysisPollDelay(failures: number): number {
+  const exponent = Number.isFinite(failures)
+    ? Math.max(0, Math.min(Math.trunc(failures), 4))
+    : 0;
+  return Math.min(ANALYSIS_POLL_BASE_MS * 2 ** exponent, ANALYSIS_POLL_MAX_MS);
 }
 
 /** Return an inert filename instead of reflecting unsafe server IDs to downloads. */

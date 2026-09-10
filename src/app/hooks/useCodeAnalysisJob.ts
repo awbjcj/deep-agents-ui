@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  analysisPollDelay,
   cancelAnalysisJob,
   getAnalysisJob,
   shouldPoll,
   type AnalysisJobView,
 } from "@/lib/code-analysis";
-
-const POLL_MS = 2_000;
 
 /** Poll one durable analysis job and cancel only browser requests on unmount. */
 export function useCodeAnalysisJob(jobId: string | null) {
@@ -35,6 +34,7 @@ export function useCodeAnalysisJob(jobId: string | null) {
     let disposed = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
+    let consecutiveFailures = 0;
 
     const poll = async () => {
       controller?.abort();
@@ -44,7 +44,10 @@ export function useCodeAnalysisJob(jobId: string | null) {
         if (disposed) return;
         setJob(next);
         setError(null);
-        if (shouldPoll(next.status)) timeout = setTimeout(poll, POLL_MS);
+        consecutiveFailures = 0;
+        if (shouldPoll(next.status)) {
+          timeout = setTimeout(poll, analysisPollDelay(0));
+        }
       } catch (caught) {
         if (
           disposed ||
@@ -56,6 +59,8 @@ export function useCodeAnalysisJob(jobId: string | null) {
             ? caught.message
             : "Failed to load analysis job"
         );
+        timeout = setTimeout(poll, analysisPollDelay(consecutiveFailures));
+        consecutiveFailures += 1;
       }
     };
     void poll();
