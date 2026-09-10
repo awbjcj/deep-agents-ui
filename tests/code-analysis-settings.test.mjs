@@ -58,6 +58,7 @@ test("analysis settings UI groups raw limits and validates model overrides inlin
   assert.match(source, /Settings unavailable/);
   assert.doesNotMatch(source, /saveAnalysisSettings/);
   assert.match(source, /limits: input/);
+  assert.match(source, /<fieldset[\s\S]*disabled=\{saving\}/);
 });
 
 test("analysis job UI exposes live status, progress, and evidence landmarks", async () => {

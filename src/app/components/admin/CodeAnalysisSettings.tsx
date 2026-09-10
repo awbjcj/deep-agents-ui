@@ -414,7 +414,10 @@ export function CodeAnalysisSettings() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <fieldset
+          className="space-y-4"
+          disabled={saving}
+        >
           <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
             <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
               <Bot
@@ -621,7 +624,7 @@ export function CodeAnalysisSettings() {
               {saving ? "Saving…" : "Save analysis settings"}
             </Button>
           </div>
-        </div>
+        </fieldset>
       )}
     </div>
   );

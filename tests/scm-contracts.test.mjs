@@ -6,6 +6,7 @@ import {
   scmFieldKey,
   scmServerSchema,
 } from "../src/lib/scm.ts";
+import { readFile } from "node:fs/promises";
 
 test("an untouched SCM token is not submitted as an empty replacement", () => {
   assert.throws(() => credentialUpdate("", "alice"), /personal access token/);
@@ -36,4 +37,14 @@ test("personal server metadata retains only the public readiness bit", () => {
   });
 
   assert.deepEqual(server.validation, { ready: false });
+});
+
+test("the credential row is locked while its submitted secret is saving", async () => {
+  const source = await readFile(
+    new URL("../src/app/components/ScmCredentials.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.equal(source.match(/disabled=\{busy\}/g)?.length, 3);
+  assert.match(source, /disabled=\{busy \|\| !value\.token\.trim\(\)\}/);
 });

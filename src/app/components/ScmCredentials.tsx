@@ -177,6 +177,7 @@ export function ScmCredentials() {
                     type="password"
                     autoComplete="off"
                     value={value.token}
+                    disabled={busy}
                     onChange={(event) =>
                       setValue(server.id, "token", event.target.value)
                     }
@@ -194,6 +195,7 @@ export function ScmCredentials() {
                     id={`${fieldKey}:username`}
                     autoComplete="username"
                     value={value.username}
+                    disabled={busy}
                     onChange={(event) =>
                       setValue(server.id, "username", event.target.value)
                     }
