@@ -145,7 +145,7 @@ export const FileViewDialog = React.memo<{
   }, [fileContent]);
 
   const handleDownload = useCallback(() => {
-    if (fileContent && fileName) {
+    if (fileContent && displayName) {
       let blob: Blob;
       if (isImage && imageMime) {
         // Image content is base64; decode to real bytes so the download is a
@@ -162,13 +162,13 @@ export const FileViewDialog = React.memo<{
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = fileName;
+      a.download = displayName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-  }, [fileContent, fileName, isImage, imageMime]);
+  }, [displayName, fileContent, isImage, imageMime]);
 
   const handleEdit = useCallback(() => {
     setIsEditingMode(true);

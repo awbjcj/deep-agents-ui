@@ -32,7 +32,6 @@ import {
   getAnalysisEngines,
   getAnalysisSettings,
   saveAnalysisEngineSettings,
-  saveAnalysisSettings,
   type AnalysisEngine,
   type AnalysisLimits,
   type AnalysisSettings as EngineSettings,
@@ -330,10 +329,9 @@ export function CodeAnalysisSettings() {
         ...Object.fromEntries(EDITABLE.map((key) => [key, Number(draft[key])])),
       });
       setSaving(true);
-      const saved = await saveAnalysisSettings(input);
       const savedEngines = await saveAnalysisEngineSettings({
         ...engines,
-        limits: saved,
+        limits: input,
         native_limits: {
           max_tokens: Number(draft.native_max_tokens),
           max_tool_calls: Number(draft.native_max_tool_calls),
@@ -343,6 +341,7 @@ export function CodeAnalysisSettings() {
             ? { provider: overrideProvider.trim(), model: overrideModel.trim() }
             : null,
       });
+      const saved = savedEngines.limits;
       setLimits(saved);
       setEngines(savedEngines);
       setSavedDefaultEngine(savedEngines.default_engine);

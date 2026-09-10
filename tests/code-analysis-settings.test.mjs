@@ -56,6 +56,8 @@ test("analysis settings UI groups raw limits and validates model overrides inlin
   assert.match(source, /Enter both a provider and model/);
   assert.match(source, /aria-describedby=\{descriptionId\}/);
   assert.match(source, /Settings unavailable/);
+  assert.doesNotMatch(source, /saveAnalysisSettings/);
+  assert.match(source, /limits: input/);
 });
 
 test("analysis job UI exposes live status, progress, and evidence landmarks", async () => {

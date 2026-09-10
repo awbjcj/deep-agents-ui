@@ -19,3 +19,13 @@ test("file view dialog provides a Radix dialog description", async () => {
     "The description can stay visually hidden while remaining available to assistive technology."
   );
 });
+
+test("source images download with their displayed source filename", async () => {
+  const source = await readFile(
+    new URL("../src/app/components/FileViewDialog.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(source, /const displayName = sourceImage\?\.filename/);
+  assert.match(source, /a\.download = displayName/);
+});
