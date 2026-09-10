@@ -18,21 +18,33 @@ import {
   imageMimeForPath,
 } from "@/lib/uploads";
 import type { AttachmentReference } from "@/app/hooks/useAttachments";
+import {
+  SOURCE_IMAGE_LABELS,
+  type SourceImageRecord,
+} from "@/lib/source-images";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   files: Record<string, string>;
+  sourceImageAttachments: Record<string, SourceImageRecord>;
   onConfirm: (refs: AttachmentReference[]) => void;
 }
 
 export const ReferenceFileDialog = React.memo<Props>(
-  ({ open, onOpenChange, files, onConfirm }) => {
+  ({ open, onOpenChange, files, sourceImageAttachments, onConfirm }) => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
 
     const entries = useMemo(() => {
+      const sourceByPath = new Map(
+        Object.values(sourceImageAttachments).map((record) => [
+          record.artifact_path,
+          record,
+        ])
+      );
       return Object.keys(files).map((path) => {
         const mime = imageMimeForPath(path);
+        const sourceRecord = sourceByPath.get(path);
         const thumb = mime
           ? `data:${mime};base64,${fileContentToText(files[path])}`
           : undefined;
@@ -41,9 +53,10 @@ export const ReferenceFileDialog = React.memo<Props>(
           label: attachmentDisplayName(path),
           kind: attachmentKindForPath(path),
           thumb,
+          sourceRecord,
         };
       });
-    }, [files]);
+    }, [files, sourceImageAttachments]);
 
     const toggle = useCallback((path: string) => {
       setSelected((prev) => {
@@ -70,6 +83,15 @@ export const ReferenceFileDialog = React.memo<Props>(
           filename: e.label,
           kind: e.kind,
           thumb: e.thumb,
+          ...(e.sourceRecord
+            ? {
+                source_image_ref: {
+                  attachment_id: e.sourceRecord.attachment_id,
+                  artifact_path: e.sourceRecord.artifact_path,
+                },
+                source: e.sourceRecord.source,
+              }
+            : {}),
         }));
       if (refs.length > 0) onConfirm(refs);
       setSelected(new Set());
@@ -138,7 +160,11 @@ export const ReferenceFileDialog = React.memo<Props>(
                             {entry.label}
                           </span>
                           <span className="block truncate text-xs text-muted-foreground">
-                            {entry.kind}
+                            {entry.sourceRecord
+                              ? `${
+                                  SOURCE_IMAGE_LABELS[entry.sourceRecord.source]
+                                } source image`
+                              : entry.kind}
                           </span>
                         </span>
                         {isSelected && (

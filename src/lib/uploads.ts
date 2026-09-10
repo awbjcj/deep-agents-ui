@@ -1,5 +1,6 @@
 import { getDeploymentUrl } from "@/lib/config";
 import { getAuthUser } from "@/lib/auth";
+import type { SourceImageRef } from "@/lib/source-images";
 
 export type UploadKind = "image" | "document";
 
@@ -32,6 +33,7 @@ export interface MessageAttachment {
   name: string;
   kind: UploadKind;
   detail?: string;
+  source_image_ref?: SourceImageRef;
 }
 
 const IMAGE_MIME_BY_EXT: Record<string, string> = {

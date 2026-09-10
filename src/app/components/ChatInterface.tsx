@@ -64,8 +64,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       processedMessages,
       todos,
       files,
+      sourceImageAttachments,
       ui,
       setFiles,
+      removeSourceImage,
       isLoading,
       isThreadLoading,
       interrupt,
@@ -213,6 +215,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       stream={stream}
                       onResumeInterrupt={resumeInterrupt}
                       graphId={assistant?.graph_id}
+                      files={files}
+                      sourceImageAttachments={sourceImageAttachments}
                     />
                   );
                 })}
@@ -464,6 +468,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           <FilesPopover
                             files={files}
                             setFiles={setFiles}
+                            sourceImageAttachments={sourceImageAttachments}
+                            removeSourceImage={removeSourceImage}
                             editDisabled={
                               isLoading === true || interrupt !== undefined
                             }
@@ -479,6 +485,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               assistant={assistant}
               isLoading={isLoading}
               files={files}
+              sourceImageAttachments={sourceImageAttachments}
               sendMessage={sendMessage}
               stopStream={stopStream}
               ensureThreadId={ensureThreadId}

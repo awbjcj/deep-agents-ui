@@ -1,3 +1,5 @@
+import type { SourceImageRecord } from "@/lib/source-images";
+
 export interface ToolCall {
   id: string;
   name: string;
@@ -18,6 +20,7 @@ export interface SubAgent {
 export interface FileItem {
   path: string;
   content: string;
+  sourceImage?: SourceImageRecord;
 }
 
 export interface TodoItem {

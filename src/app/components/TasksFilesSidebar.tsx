@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { FileText, Trash2 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { ExternalLink, FileText, Trash2 } from "lucide-react";
 import type { FileItem } from "@/app/types/types";
 import { toast } from "sonner";
 import {
@@ -10,17 +10,36 @@ import {
   imageMimeForPath,
 } from "@/lib/uploads";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
+import {
+  safeSourcePageUrl,
+  SOURCE_IMAGE_LABELS,
+  type SourceImageRecord,
+} from "@/lib/source-images";
 
 export function FilesPopover({
   files,
   setFiles,
+  sourceImageAttachments,
+  removeSourceImage,
   editDisabled,
 }: {
   files: Record<string, string>;
   setFiles: (files: Record<string, string>) => Promise<void>;
+  sourceImageAttachments: Record<string, SourceImageRecord>;
+  removeSourceImage: (record: SourceImageRecord) => Promise<void>;
   editDisabled: boolean;
 }) {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const sourceByPath = useMemo(
+    () =>
+      new Map(
+        Object.values(sourceImageAttachments).map((record) => [
+          record.artifact_path,
+          record,
+        ])
+      ),
+    [sourceImageAttachments]
+  );
 
   const handleSaveFile = useCallback(
     async (fileName: string, content: string) => {
@@ -34,6 +53,21 @@ export function FilesPopover({
     async (filePath: string) => {
       if (editDisabled) return;
       const label = attachmentDisplayName(filePath);
+      const sourceRecord = sourceByPath.get(filePath);
+      if (sourceRecord) {
+        try {
+          await removeSourceImage(sourceRecord);
+          setSelectedFile((current) =>
+            current?.path === filePath ? null : current
+          );
+          toast.success(`Deleted "${label}" from thread`);
+        } catch (err) {
+          toast.error(`Couldn't delete "${label}"`, {
+            description: err instanceof Error ? err.message : undefined,
+          });
+        }
+        return;
+      }
       const next: Record<string, unknown> = { ...files };
       delete next[filePath];
       try {
@@ -46,7 +80,7 @@ export function FilesPopover({
         });
       }
     },
-    [files, setFiles, editDisabled]
+    [editDisabled, files, removeSourceImage, setFiles, sourceByPath]
   );
 
   return (
@@ -64,6 +98,10 @@ export function FilesPopover({
             const thumbnailSrc =
               mime && fileContent ? `data:${mime};base64,${fileContent}` : null;
             const label = attachmentDisplayName(filePath);
+            const sourceRecord = sourceByPath.get(filePath);
+            const sourcePageUrl = sourceRecord
+              ? safeSourcePageUrl(sourceRecord.source_page_url)
+              : null;
 
             return (
               <div
@@ -73,7 +111,11 @@ export function FilesPopover({
                 <button
                   type="button"
                   onClick={() =>
-                    setSelectedFile({ path: filePath, content: fileContent })
+                    setSelectedFile({
+                      path: filePath,
+                      content: fileContent,
+                      sourceImage: sourceRecord,
+                    })
                   }
                   title={filePath}
                   className="hover:border-primary/40 flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border border-border bg-[var(--color-file-button)] px-2 py-3 shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-[var(--color-file-button-hover)] hover:shadow-md"
@@ -92,7 +134,24 @@ export function FilesPopover({
                   <span className="block w-full truncate break-words text-center text-sm leading-relaxed text-foreground">
                     {label}
                   </span>
+                  {sourceRecord && (
+                    <span className="text-[10px] font-semibold text-[var(--color-primary)]">
+                      {SOURCE_IMAGE_LABELS[sourceRecord.source]} source image
+                    </span>
+                  )}
                 </button>
+                {sourcePageUrl && (
+                  <a
+                    href={sourcePageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 flex items-center justify-center gap-1 rounded-md py-1 text-[10px] text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Open source page for ${label}`}
+                  >
+                    Open source
+                    <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                )}
                 {!editDisabled && (
                   <button
                     type="button"

@@ -57,7 +57,7 @@ test("detailed admin settings are collapsed by default", async () => {
   assert.match(primitives, /group-open:rotate-180/);
   assert.match(limits, /<DisclosureSection[\s\S]*title="Usage limits"/);
   assert.match(runMode, /<DisclosureSection[\s\S]*title="URL overrides"/);
-  assert.match(tiers, /<DisclosureSection[\s\S]*title="Image fetching"/);
+  assert.match(tiers, /<DisclosureSection[\s\S]*title="Source images"/);
 });
 
 test("admin user quotas default to the token view", async () => {

@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { AttachmentState } from "@/app/hooks/useAttachments";
+import { SOURCE_IMAGE_LABELS } from "@/lib/source-images";
 
 interface Props {
   item: AttachmentState;
@@ -57,7 +58,9 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
       : item.phase === "error"
       ? item.error
       : isReference
-      ? "Linked from this conversation"
+      ? item.source
+        ? `${SOURCE_IMAGE_LABELS[item.source]} source image`
+        : "Linked from this conversation"
       : size !== null
       ? humanSize(size)
       : "Ready";

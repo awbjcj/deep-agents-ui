@@ -5,13 +5,10 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  apiGetTierImageFetching,
   apiGetTierModels,
   apiSetAllTierModels,
-  apiSetTierImageFetching,
   Role,
   TierModelEntry,
 } from "@/lib/auth";
@@ -21,6 +18,7 @@ import {
   SectionHeader,
 } from "@/app/components/admin/primitives";
 import { ROLES } from "@/app/components/admin/primitives-utils";
+import { SourceImageControls } from "@/app/components/admin/SourceImageControls";
 
 type TierMap = Record<Role, TierModelEntry[]>;
 type TierTextMap = Record<Role, string>;
@@ -153,78 +151,34 @@ export function TiersSection() {
         </>
       )}
 
-      <ImageFetchingTierToggles />
-    </div>
-  );
-}
-
-function ImageFetchingTierToggles() {
-  const [tierStates, setTierStates] = useState<Record<Role, boolean>>({
-    user: false,
-    developer: false,
-    admin: false,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(true);
-    Promise.all([
-      apiGetTierImageFetching("user"),
-      apiGetTierImageFetching("developer"),
-      apiGetTierImageFetching("admin"),
-    ])
-      .then(([u, d, a]) => {
-        setTierStates({
-          user: u.enabled,
-          developer: d.enabled,
-          admin: a.enabled,
-        });
-      })
-      .catch(() => toast.error("Failed to load image fetching settings"))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const handleToggle = async (tier: Role, checked: boolean) => {
-    const prev = tierStates[tier];
-    setTierStates((s) => ({ ...s, [tier]: checked }));
-    try {
-      await apiSetTierImageFetching(tier, checked);
-      toast.success(
-        `Image fetching ${checked ? "enabled" : "disabled"} for ${tier}`
-      );
-    } catch {
-      setTierStates((s) => ({ ...s, [tier]: prev }));
-      toast.error("Failed to update image fetching");
-    }
-  };
-
-  return (
-    <DisclosureSection
-      className="mt-5"
-      contentClassName="space-y-2"
-      title="Image fetching"
-      subtitle="Per-tier access to images from tickets and pages"
-    >
-      {isLoading ? (
-        <LoadingRow />
-      ) : (
-        ROLES.map((tier) => (
-          <div
+      <DisclosureSection
+        className="mt-5"
+        contentClassName="space-y-5"
+        title="Source images"
+        subtitle="Per-source defaults and permissions for each tier"
+      >
+        {ROLES.map((tier, index) => (
+          <section
             key={tier}
-            className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2"
+            aria-labelledby={`source-image-tier-${tier}`}
+            className={index === 0 ? "" : "border-t border-border/60 pt-5"}
           >
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {tier}
-            </span>
-            <Switch
-              checked={tierStates[tier]}
-              onCheckedChange={(checked) => handleToggle(tier, checked)}
-              aria-label={`Image fetching for ${tier}`}
-            />
-          </div>
-        ))
-      )}
-    </DisclosureSection>
+            <div className="mb-2.5 flex items-baseline justify-between gap-3">
+              <h4
+                id={`source-image-tier-${tier}`}
+                className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
+              >
+                {tier}
+              </h4>
+              <span className="text-[10px] text-muted-foreground/70">
+                3 sources
+              </span>
+            </div>
+            <SourceImageControls tier={tier} />
+          </section>
+        ))}
+      </DisclosureSection>
+    </div>
   );
 }
 

@@ -8,7 +8,16 @@ import React, {
   lazy,
   Suspense,
 } from "react";
-import { FileText, Copy, Download, Edit, Save, X, Loader2 } from "lucide-react";
+import {
+  Copy,
+  Download,
+  Edit,
+  ExternalLink,
+  FileText,
+  Loader2,
+  Save,
+  X,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +33,7 @@ import { MarkdownContent } from "@/app/components/MarkdownContent";
 import type { FileItem } from "@/app/types/types";
 import { imageMimeForPath } from "@/lib/uploads";
 import useSWRMutation from "swr/mutation";
+import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
 
 // Lazy: Prism + its theme together push ~300KB. We only need them when the
 // user opens a non-markdown file in the viewer.
@@ -117,6 +127,11 @@ export const FileViewDialog = React.memo<{
     [fileName]
   );
   const isImage = imageMime !== null;
+  const sourceImage = file?.sourceImage;
+  const displayName = sourceImage?.filename || file?.path || "New File";
+  const sourcePageUrl = sourceImage
+    ? safeSourcePageUrl(sourceImage.source_page_url)
+    : null;
 
   const language = useMemo(() => {
     return LANGUAGE_MAP[fileExtension] || "text";
@@ -182,12 +197,12 @@ export const FileViewDialog = React.memo<{
       onOpenChange={onClose}
     >
       <DialogContent className="flex h-[80vh] max-h-[80vh] min-w-[60vw] flex-col p-6">
-        <DialogTitle className="sr-only">
-          {file?.path || "New File"}
-        </DialogTitle>
+        <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <DialogDescription className="sr-only">
           {file
-            ? `View, copy, download, or edit ${file.path}.`
+            ? sourceImage
+              ? `View, copy, or download ${displayName}.`
+              : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
         <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
@@ -204,9 +219,30 @@ export const FileViewDialog = React.memo<{
                 aria-invalid={!fileNameIsValid}
               />
             ) : (
-              <span className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium text-primary">
-                {file?.path}
-              </span>
+              <div className="min-w-0">
+                <span className="block overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium text-primary">
+                  {displayName}
+                </span>
+                {sourceImage && (
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                    <span className="font-semibold text-[var(--color-primary)]">
+                      {SOURCE_IMAGE_LABELS[sourceImage.source]} source image
+                    </span>
+                    {sourceImage.optimized_copy && <span>Optimized copy</span>}
+                    {sourcePageUrl && (
+                      <a
+                        href={sourcePageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        Open source
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    )}
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">

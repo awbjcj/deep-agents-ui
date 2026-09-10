@@ -17,11 +17,13 @@ import { useAttachments } from "@/app/hooks/useAttachments";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
 import { useQueryState } from "nuqs";
 import type { MessageAttachment } from "@/lib/uploads";
+import type { SourceImageRecord } from "@/lib/source-images";
 
 interface ChatComposerProps {
   assistant: Assistant | null;
   isLoading: boolean;
   files: Record<string, string>;
+  sourceImageAttachments: Record<string, SourceImageRecord>;
   sendMessage: (
     content: string | Array<Record<string, unknown>>,
     additionalKwargs?: Record<string, unknown>
@@ -44,6 +46,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     assistant,
     isLoading,
     files,
+    sourceImageAttachments,
     sendMessage,
     stopStream,
     ensureThreadId,
@@ -65,7 +68,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       takeAttachments,
       hasUploading,
       accept: acceptAttr,
-    } = useAttachments({ threadId, ensureThreadId });
+    } = useAttachments({ threadId, ensureThreadId, files });
 
     // Attachments are available in every run mode; under Proxy they follow an
     // admin switch surfaced by the connectivity endpoint. Every entry point
@@ -137,6 +140,9 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           name: r.filename,
           kind: r.kind,
           ...(r.detail ? { detail: r.detail } : {}),
+          ...(r.source_image_ref
+            ? { source_image_ref: r.source_image_ref }
+            : {}),
         }));
         const additionalKwargs = attachmentsKwarg.length
           ? { attachments: attachmentsKwarg }
@@ -336,6 +342,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           open={referenceDialogOpen}
           onOpenChange={setReferenceDialogOpen}
           files={files}
+          sourceImageAttachments={sourceImageAttachments}
           onConfirm={addReferences}
         />
       </>

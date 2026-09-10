@@ -3,6 +3,12 @@ import {
   removeBrowserStorage,
   writeBrowserStorage,
 } from "@/lib/browserStorage";
+import type {
+  SourceImagePolicy,
+  SourceImagePolicyMap,
+  SourceImagePolicyResponse,
+  SourceImageSource,
+} from "@/lib/source-images";
 
 export type Role = "user" | "developer" | "admin";
 
@@ -1153,6 +1159,7 @@ export async function apiSetScopeMembers(
 export interface ImageFetchingStatus {
   enabled: boolean | null;
   effective: boolean;
+  sources: SourceImagePolicyMap;
 }
 
 export interface TierImageFetchingStatus {
@@ -1177,6 +1184,55 @@ export async function apiSetImageFetching(
   });
   if (!res.ok) {
     throw new Error("Failed to update image fetching preference");
+  }
+  return res.json();
+}
+
+export async function fetchTierSourceImagePolicy(
+  tier: string,
+  source: SourceImageSource,
+  signal?: AbortSignal
+): Promise<SourceImagePolicyResponse> {
+  const res = await apiFetch(
+    `/admin/tier-source-images/${encodeURIComponent(tier)}/${source}`,
+    { signal }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage(
+        (data as { detail?: unknown }).detail,
+        `Failed to load ${source} image policy`
+      )
+    );
+  }
+  return res.json();
+}
+
+export async function updateTierSourceImagePolicy(
+  tier: string,
+  source: SourceImageSource,
+  policy: SourceImagePolicy
+): Promise<SourceImagePolicyResponse> {
+  const res = await apiFetch(
+    `/admin/tier-source-images/${encodeURIComponent(tier)}/${source}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        enabled: policy.enabled,
+        default_scope: policy.default_scope,
+        allow_all: policy.allow_all,
+      }),
+    }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage(
+        (data as { detail?: unknown }).detail,
+        `Failed to update ${source} image policy`
+      )
+    );
   }
   return res.json();
 }
