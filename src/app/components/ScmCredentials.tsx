@@ -137,7 +137,8 @@ export function ScmCredentials() {
       ) : (
         servers.map((server) => {
           const value = values[server.id] ?? { token: "", username: "" };
-          const busy = saving === server.id;
+          const busy = saving !== null;
+          const rowBusy = saving === server.id;
           const fieldKey = scmFieldKey(server.id);
           return (
             <div
@@ -152,17 +153,18 @@ export function ScmCredentials() {
                     {server.credential_state ?? "missing"}
                   </p>
                 </div>
-                {server.credential_state !== "missing" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void remove(server.id)}
-                    disabled={busy}
-                    aria-label={`Remove ${server.display_name} credential`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
-                )}
+                {server.credential_state !== undefined &&
+                  server.credential_state !== "missing" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void remove(server.id)}
+                      disabled={busy}
+                      aria-label={`Remove ${server.display_name} credential`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  )}
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
@@ -208,7 +210,7 @@ export function ScmCredentials() {
                 onClick={() => void save(server.id)}
                 disabled={busy || !value.token.trim()}
               >
-                {busy ? (
+                {rowBusy ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Save className="mr-1.5 h-3.5 w-3.5" />

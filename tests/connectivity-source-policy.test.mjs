@@ -13,4 +13,8 @@ test("an unknown source-image preference is visible, retryable, and not editable
   assert.match(source, /Source image preference could not be loaded/);
   assert.match(source, /onClick=\{loadImageFetching\}[\s\S]*Retry/);
   assert.match(source, /disabled=\{[\s\S]*imageFetchingError[\s\S]*\}/);
+  assert.match(
+    source,
+    /setImageFetching\(status\.enabled \?\? status\.effective\)/
+  );
 });

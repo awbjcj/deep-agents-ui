@@ -47,6 +47,12 @@ test("the credential row is locked while its submitted secret is saving", async 
 
   assert.equal(source.match(/disabled=\{busy\}/g)?.length, 3);
   assert.match(source, /disabled=\{busy \|\| !value\.token\.trim\(\)\}/);
+  assert.match(source, /const busy = saving !== null/);
+  assert.match(source, /const rowBusy = saving === server\.id/);
+  assert.match(
+    source,
+    /server\.credential_state !== undefined &&[\s\S]*server\.credential_state !== "missing"/
+  );
 });
 
 test("SCM server editing supports re-enable and locks the submitted form", async () => {

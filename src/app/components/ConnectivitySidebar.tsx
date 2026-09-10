@@ -106,7 +106,7 @@ export function ConnectivitySidebar() {
     try {
       const status = await apiGetImageFetching();
       if (imageFetchingRequestRef.current !== request) return;
-      setImageFetching(status.enabled === true);
+      setImageFetching(status.enabled ?? status.effective);
       setSourceImagePolicies(status.sources);
     } catch {
       if (imageFetchingRequestRef.current !== request) return;
