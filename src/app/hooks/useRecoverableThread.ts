@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import type { Client, ThreadState } from "@langchain/langgraph-sdk";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 
@@ -23,6 +23,7 @@ export function useRecoverableThread<
   enabled: boolean;
   onError: (error: unknown, threadId: string) => void;
 }): UseStreamThread<StateType> {
+  const { mutate: mutateCache } = useSWRConfig();
   const key =
     enabled && threadId
       ? (["thread-history", client, threadId] as const)
@@ -53,11 +54,19 @@ export function useRecoverableThread<
       if (!requestedThreadId || requestedThreadId === threadId) {
         return (await revalidate()) ?? data;
       }
-      return client.threads.getHistory<StateType>(requestedThreadId, {
-        limit: 10,
-      });
+      // A new run retains the callback from before its thread ID existed.
+      // Publish the fetched head to that thread's cache before the SDK clears
+      // live values; returning it alone leaves approval tasks invisible.
+      return mutateCache<ThreadState<StateType>[]>(
+        ["thread-history", client, requestedThreadId],
+        () =>
+          client.threads.getHistory<StateType>(requestedThreadId, {
+            limit: 10,
+          }),
+        { revalidate: false }
+      );
     },
-    [client, data, revalidate, threadId]
+    [client, data, mutateCache, revalidate, threadId]
   );
 
   return useMemo(
