@@ -12,6 +12,7 @@ interface ChatProviderProps {
   thread?: UseStreamThread<StateType>;
   userId?: string;
   username?: string;
+  analysisEngine?: "deep_agent" | "copilot";
 }
 
 export function ChatProvider({
@@ -21,6 +22,7 @@ export function ChatProvider({
   thread,
   userId,
   username,
+  analysisEngine,
 }: ChatProviderProps) {
   const chat = useChat({
     activeAssistant,
@@ -28,6 +30,7 @@ export function ChatProvider({
     thread,
     userId,
     username,
+    analysisEngine,
   });
   return <ChatContext.Provider value={chat}>{children}</ChatContext.Provider>;
 }

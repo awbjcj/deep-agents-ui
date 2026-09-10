@@ -4,6 +4,7 @@ export interface StandaloneConfig {
   deploymentUrl: string;
   assistantId: string;
   langsmithApiKey?: string;
+  analysisEngine?: "deep_agent" | "copilot";
 }
 
 const CONFIG_KEY = "deep-agent-config";
@@ -29,6 +30,11 @@ export function getConfig(): StandaloneConfig | null {
     deploymentUrl,
     assistantId: parsed?.assistantId || "",
     langsmithApiKey: getLangsmithApiKey() || undefined,
+    analysisEngine:
+      parsed?.analysisEngine === "deep_agent" ||
+      parsed?.analysisEngine === "copilot"
+        ? parsed.analysisEngine
+        : undefined,
   };
 }
 
@@ -41,7 +47,12 @@ export function saveConfig(config: StandaloneConfig): void {
   if (typeof window === "undefined") return;
   writeBrowserStorage(
     CONFIG_KEY,
-    JSON.stringify({ assistantId: config.assistantId })
+    JSON.stringify({
+      assistantId: config.assistantId,
+      ...(config.analysisEngine
+        ? { analysisEngine: config.analysisEngine }
+        : {}),
+    })
   );
 }
 

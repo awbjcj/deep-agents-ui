@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { reloadBypassingCache } from "@/app/components/LoadingScreen";
+import { reloadBypassingCache } from "@/app/reloadBypassingCache";
 
 /**
  * Route-level error boundary.

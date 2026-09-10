@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BOOT_CACHE_BUST_PARAM } from "@/app/bootConstants";
+import { reloadBypassingCache } from "@/app/reloadBypassingCache";
 
 interface LoadingScreenProps {
   label?: string;
@@ -34,7 +34,7 @@ export function LoadingScreen({
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-4 px-6 text-center">
       <p className="text-muted-foreground">{label}</p>
-      {stalled && (
+      {stalled ? (
         <div className="flex flex-col items-center gap-3">
           <p className="max-w-sm text-sm text-muted-foreground/80">
             This is taking longer than usual. A stale cached version or an
@@ -48,22 +48,7 @@ export function LoadingScreen({
             Reload app
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
-}
-
-/**
- * Reloads with a cache-busting query parameter. A plain `location.reload()` can
- * be answered from the HTTP cache with the same broken document, which is why
- * users currently have to press Ctrl+F5.
- */
-export function reloadBypassingCache() {
-  try {
-    const url = new URL(window.location.href);
-    url.searchParams.set(BOOT_CACHE_BUST_PARAM, String(Date.now()));
-    window.location.replace(url.toString());
-  } catch {
-    window.location.reload();
-  }
 }

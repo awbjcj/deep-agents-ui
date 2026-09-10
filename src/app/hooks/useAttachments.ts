@@ -14,6 +14,11 @@ import {
   type UploadKind,
   type UploadResponse,
 } from "@/lib/uploads";
+import {
+  serializeAttachment,
+  type SourceImageRef,
+  type SourceImageSource,
+} from "@/lib/source-images";
 
 export type AttachmentState =
   | { phase: "uploading"; localId: string; file: File }
@@ -25,19 +30,23 @@ export type AttachmentState =
       filename: string;
       kind: UploadKind;
       thumb?: string;
+      source_image_ref?: SourceImageRef;
+      source?: SourceImageSource;
     }
   | { phase: "error"; localId: string; file: File; error: string };
 
 /**
  * A new file the user wants to reference instead of uploading. `thumb` is a
- * ready-to-render data URL for image references (used both for the chip
- * preview and for inline embedding when the message is sent).
+ * ready-to-render data URL for image references. Source-image thumbnails are
+ * transient previews; their durable message metadata is `source_image_ref`.
  */
 export interface AttachmentReference {
   path: string;
   filename: string;
   kind: UploadKind;
   thumb?: string;
+  source_image_ref?: SourceImageRef;
+  source?: SourceImageSource;
 }
 
 /**
@@ -52,11 +61,13 @@ export interface ResolvedAttachment {
   kind: UploadKind;
   detail?: string;
   imageUrl: string | null;
+  source_image_ref?: SourceImageRef;
 }
 
 interface UseAttachmentsOpts {
   threadId: string | null;
   ensureThreadId: () => Promise<string | null>;
+  files: Record<string, string>;
 }
 
 const ALL_EXTS = new Set<string>([
@@ -84,6 +95,7 @@ function attachmentName(item: AttachmentState): string {
 export function useAttachments({
   threadId,
   ensureThreadId,
+  files,
 }: UseAttachmentsOpts) {
   const [items, setItems] = useState<AttachmentState[]>([]);
   const aborters = useRef(new Map<string, AbortController>());
@@ -93,6 +105,27 @@ export function useAttachments({
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  useEffect(() => {
+    const stale = itemsRef.current.filter(
+      (item) =>
+        item.phase === "reference" &&
+        item.source_image_ref !== undefined &&
+        !(item.source_image_ref.artifact_path in files)
+    );
+    if (stale.length === 0) return;
+    const staleIds = new Set(stale.map((item) => item.localId));
+    setItems((previous) => {
+      const next = previous.filter((item) => !staleIds.has(item.localId));
+      itemsRef.current = next;
+      return next;
+    });
+    toast.warning(
+      stale.length === 1
+        ? `Removed unavailable source image "${attachmentName(stale[0]!)}"`
+        : `Removed ${stale.length} unavailable source image references`
+    );
+  }, [files]);
 
   // Switching away from an existing thread clears in-flight chips.
   // null -> string is initial thread creation; keep attachments in place.
@@ -256,6 +289,8 @@ export function useAttachments({
           filename: ref.filename,
           kind: ref.kind,
           thumb: ref.thumb,
+          source_image_ref: ref.source_image_ref,
+          source: ref.source,
         });
       }
 
@@ -329,13 +364,33 @@ export function useAttachments({
 
   const takeAttachments = useCallback((): ResolvedAttachment[] => {
     const current = itemsRef.current;
-    const sendable = current.filter(
+    const candidates = current.filter(
       (it) => it.phase === "ready" || it.phase === "reference"
     );
-    if (sendable.length === 0) return [];
+    if (candidates.length === 0) return [];
 
-    const consumedIds = new Set(sendable.map((it) => it.localId));
+    const staleSourceReferences = candidates.filter(
+      (item) =>
+        item.phase === "reference" &&
+        item.source_image_ref !== undefined &&
+        !(item.source_image_ref.artifact_path in files)
+    );
+    const sendable = candidates.filter(
+      (item) => !staleSourceReferences.includes(item)
+    );
+
+    const consumedIds = new Set(candidates.map((it) => it.localId));
     setItems((prev) => prev.filter((it) => !consumedIds.has(it.localId)));
+
+    if (staleSourceReferences.length > 0) {
+      toast.warning(
+        staleSourceReferences.length === 1
+          ? `Source image "${attachmentName(
+              staleSourceReferences[0]!
+            )}" is no longer available`
+          : `${staleSourceReferences.length} source images are no longer available`
+      );
+    }
 
     return sendable.map((it): ResolvedAttachment => {
       if (it.phase === "ready") {
@@ -351,23 +406,24 @@ export function useAttachments({
           meta.kind === "image" && meta.image
             ? `data:${meta.image.media_type};base64,${meta.image.data_b64}`
             : null;
-        return {
+        return serializeAttachment({
           path,
           filename: meta.filename,
           kind: meta.kind,
           detail,
           imageUrl,
-        };
+        });
       }
-      return {
+      return serializeAttachment({
         path: it.path,
         filename: it.filename,
         kind: it.kind,
         detail: undefined,
         imageUrl: it.kind === "image" ? it.thumb ?? null : null,
-      };
+        source_image_ref: it.source_image_ref,
+      });
     });
-  }, []);
+  }, [files]);
 
   const hasUploading = items.some((it) => it.phase === "uploading");
 

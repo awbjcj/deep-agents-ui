@@ -14,12 +14,14 @@ interface ClientProviderProps {
   children: ReactNode;
   deploymentUrl: string;
   apiKey: string;
+  accessToken: string;
 }
 
 export function ClientProvider({
   children,
   deploymentUrl,
   apiKey,
+  accessToken,
 }: ClientProviderProps) {
   const client = useMemo(() => {
     return createStreamModeCompatibilityClient(
@@ -28,10 +30,11 @@ export function ClientProvider({
         defaultHeaders: {
           "Content-Type": "application/json",
           "X-Api-Key": apiKey,
+          Authorization: `Bearer ${accessToken}`,
         },
       })
     );
-  }, [deploymentUrl, apiKey]);
+  }, [deploymentUrl, apiKey, accessToken]);
 
   const value = useMemo(() => ({ client }), [client]);
 

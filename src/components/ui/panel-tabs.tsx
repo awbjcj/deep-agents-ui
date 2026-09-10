@@ -43,6 +43,7 @@ type PanelTabsVariant = "underline" | "segmented";
  * automatic, which is the more discoverable default.
  */
 type PanelTabsActivation = "automatic" | "manual";
+type PanelTabsLayout = "strip" | "two-row";
 
 interface PanelTabsProps<Id extends string> {
   tabs: readonly PanelTabDef<Id>[];
@@ -54,27 +55,9 @@ interface PanelTabsProps<Id extends string> {
   label: string;
   variant?: PanelTabsVariant;
   activation?: PanelTabsActivation;
+  /** Arrange an underline tab list as a compact grid with exactly two rows. */
+  layout?: PanelTabsLayout;
   className?: string;
-}
-
-/**
- * Props for the region a tab controls. Spreading this onto the panel element
- * is what makes `aria-controls` on the trigger resolve — a tablist whose
- * `aria-controls` points at an id that is never rendered is worse than no
- * association at all, because assistive tech announces a relationship the user
- * cannot follow.
- *
- * `tabIndex={0}` keeps the panel itself focusable: tab panels are scrollable
- * regions, and a keyboard user moving off the tab strip must land inside the
- * content they just selected (WCAG 2.1.1).
- */
-export function panelTabPanelProps(idPrefix: string, id: string) {
-  return {
-    id: `${idPrefix}-panel-${id}`,
-    role: "tabpanel" as const,
-    "aria-labelledby": `${idPrefix}-tab-${id}`,
-    tabIndex: 0,
-  };
 }
 
 export function PanelTabs<Id extends string>({
@@ -85,6 +68,7 @@ export function PanelTabs<Id extends string>({
   label,
   variant = "underline",
   activation = "automatic",
+  layout = "strip",
   className,
 }: PanelTabsProps<Id>) {
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -95,9 +79,8 @@ export function PanelTabs<Id extends string>({
         `#${CSS.escape(`${idPrefix}-tab-${id}`)}`
       );
       el?.focus();
-      // The panel strip scrolls horizontally when tabs overflow. Without this,
-      // arrowing to an off-screen tab moves focus somewhere the user cannot
-      // see (WCAG 2.4.11 Focus Not Obscured).
+      // Keep a keyboard-focused tab visible in both scrolling strips and
+      // compact wrapped layouts (WCAG 2.4.11 Focus Not Obscured).
       el?.scrollIntoView({ block: "nearest", inline: "nearest" });
     },
     [idPrefix]
@@ -125,6 +108,7 @@ export function PanelTabs<Id extends string>({
   );
 
   const isUnderline = variant === "underline";
+  const isTwoRow = isUnderline && layout === "two-row";
 
   return (
     <div
@@ -132,9 +116,20 @@ export function PanelTabs<Id extends string>({
       role="tablist"
       aria-label={label}
       aria-orientation="horizontal"
+      style={
+        isTwoRow
+          ? {
+              gridTemplateColumns: `repeat(${Math.ceil(
+                tabs.length / 2
+              )}, minmax(0, 1fr))`,
+            }
+          : undefined
+      }
       className={cn(
         isUnderline
-          ? "flex items-end gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          ? isTwoRow
+            ? "grid items-stretch gap-x-1.5 gap-y-1 overflow-visible px-4 pb-1"
+            : "flex items-end gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
         className
       )}
@@ -167,7 +162,10 @@ export function PanelTabs<Id extends string>({
               "group relative inline-flex items-center gap-1.5 whitespace-nowrap font-semibold transition-colors motion-reduce:transition-none",
               "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
               isUnderline
-                ? "rounded-t-md px-3 py-2 text-[11px] uppercase tracking-[0.14em]"
+                ? cn(
+                    "rounded-t-md px-3 py-2 text-[11px] uppercase tracking-[0.14em]",
+                    isTwoRow && "w-full justify-center px-2"
+                  )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive
                 ? isUnderline
@@ -180,14 +178,14 @@ export function PanelTabs<Id extends string>({
                 "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground"
             )}
           >
-            {Icon && (
+            {Icon ? (
               <Icon
                 className="h-3.5 w-3.5 shrink-0"
                 aria-hidden="true"
               />
-            )}
+            ) : null}
             {tab.label}
-            {tab.count !== undefined && (
+            {tab.count !== undefined ? (
               <span
                 className={cn(
                   "min-w-[1.5ch] text-center font-mono text-[10px] tabular-nums",
@@ -196,8 +194,8 @@ export function PanelTabs<Id extends string>({
               >
                 {tab.count}
               </span>
-            )}
-            {isUnderline && (
+            ) : null}
+            {isUnderline ? (
               <span
                 aria-hidden="true"
                 className={cn(
@@ -206,7 +204,7 @@ export function PanelTabs<Id extends string>({
                 )}
                 style={{ background: "var(--aptiv-orange)" }}
               />
-            )}
+            ) : null}
           </button>
         );
       })}

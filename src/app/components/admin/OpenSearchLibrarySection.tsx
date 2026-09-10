@@ -20,7 +20,8 @@ import {
 } from "@/lib/library-admin";
 import { apiListActiveLibraryBatches } from "@/lib/library-batch";
 import { isBatchTerminal } from "@/lib/library-batch-view";
-import { PanelTabs, panelTabPanelProps } from "@/components/ui/panel-tabs";
+import { PanelTabs } from "@/components/ui/panel-tabs";
+import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 import { SectionHeader } from "@/app/components/admin/primitives";
 
 type LibraryView = "indices" | "shelves" | "batch";

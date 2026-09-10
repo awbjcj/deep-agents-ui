@@ -11,13 +11,13 @@
  * enforceable rather than aspirational.
  */
 
-import { Loader2 } from "lucide-react";
-import type { ComponentType } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/auth";
+import type { ActionIntent } from "@/app/components/admin/primitives-utils";
 
-export const ROLES: Role[] = ["user", "developer", "admin"];
+export type { ActionIntent } from "@/app/components/admin/primitives-utils";
 
 export function SectionHeader({
   title,
@@ -29,16 +29,62 @@ export function SectionHeader({
   return (
     <header className="space-y-1">
       <h3 className="text-base font-semibold tracking-tight">{title}</h3>
-      {subtitle && (
+      {subtitle ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
           {subtitle}
         </p>
-      )}
+      ) : null}
       <span
         className="aptiv-rule"
         aria-hidden="true"
       />
     </header>
+  );
+}
+
+/**
+ * Collapsible shell for detailed admin settings that are useful occasionally.
+ * Native disclosure semantics keep the summary keyboard and screen-reader
+ * accessible without adding another client-side state machine.
+ */
+export function DisclosureSection({
+  title,
+  subtitle,
+  children,
+  className,
+  contentClassName,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <details
+      className={cn(
+        "aptiv-glass-soft group overflow-hidden rounded-lg shadow-sm",
+        className
+      )}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">
+            {title}
+          </span>
+          <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+            {subtitle}
+          </span>
+        </span>
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+          aria-hidden="true"
+        />
+      </summary>
+      <div className={cn("border-t border-border/70 p-3", contentClassName)}>
+        {children}
+      </div>
+    </details>
   );
 }
 
@@ -69,8 +115,6 @@ export function EmptyState({
     </div>
   );
 }
-
-export type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
 
 export function ActionPill({
   icon: Icon,
@@ -108,24 +152,4 @@ export function ActionPill({
       {label}
     </button>
   );
-}
-
-/**
- * Triggers a client-side download of in-memory text. Used by the admin
- * exports (user CSV, temp-password TSV) which are generated in the browser
- * rather than served from an endpoint.
- */
-export function downloadBlob(content: string, type: string, filename: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  try {
-    document.body.appendChild(link);
-    link.click();
-  } finally {
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
 }

@@ -21,6 +21,7 @@ import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
+import { CodeAnalysisJob } from "@/app/components/CodeAnalysisJob";
 
 interface ToolCallBoxProps {
   toolCall: ToolCall;
@@ -31,6 +32,30 @@ interface ToolCallBoxProps {
   reviewConfig?: ReviewConfig;
   onResume?: (value: any) => void;
   isLoading?: boolean;
+}
+
+function codeAnalysisJobId(name: string, result: unknown): string | null {
+  if (
+    !name.includes("code_analysis") &&
+    name !== "analyze_code_workspace" &&
+    name !== "prepare_code_workspace"
+  )
+    return null;
+  const value =
+    typeof result === "string"
+      ? (() => {
+          try {
+            return JSON.parse(result);
+          } catch {
+            return null;
+          }
+        })()
+      : result;
+  const jobId =
+    value && typeof value === "object"
+      ? (value as { job_id?: unknown }).job_id
+      : null;
+  return typeof jobId === "string" && jobId.trim() ? jobId : null;
 }
 
 export const ToolCallBox = React.memo<ToolCallBoxProps>(
@@ -126,6 +151,10 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     }, []);
 
     const hasContent = result || Object.keys(args).length > 0;
+    const analysisJobId = useMemo(
+      () => codeAnalysisJobId(name, result),
+      [name, result]
+    );
 
     return (
       <div
@@ -189,6 +218,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               </div>
             ) : (
               <>
+                {analysisJobId && <CodeAnalysisJob jobId={analysisJobId} />}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -13,6 +13,7 @@ import {
   OPEN_TOKEN_WIZARD_EVENT,
 } from "@/app/components/tokenServiceGuides";
 import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
+import { ScmCredentials } from "@/app/components/ScmCredentials";
 import {
   CheckCircle,
   Clock,
@@ -608,6 +609,7 @@ export function TokenManagementSidebar({
                   </>
                 )}
               </Button>
+              <ScmCredentials />
             </>
           )}
         </div>

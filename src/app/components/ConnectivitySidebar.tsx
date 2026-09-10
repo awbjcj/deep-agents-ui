@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
+  AlertCircle,
   CheckCircle,
   Clock,
   Image as ImageIcon,
@@ -27,6 +28,12 @@ import {
   RunMode,
   UserConnectivityResponse,
 } from "@/lib/auth";
+import {
+  SOURCE_IMAGE_LABELS,
+  SOURCE_IMAGE_SOURCES,
+  type EffectiveSourceImagePolicy,
+  type SourceImagePolicyMap,
+} from "@/lib/source-images";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
@@ -55,6 +62,20 @@ function runModeDescription(mode: RunMode): string {
   }
 }
 
+function sourcePolicyDescription(
+  policy: EffectiveSourceImagePolicy,
+  userEnabled: boolean
+): string {
+  if (!policy.enabled) return "Admin disabled";
+  if (!userEnabled || !policy.effective_enabled) {
+    return "Text only";
+  }
+  if (policy.default_scope === "all") {
+    return "All by default";
+  }
+  return policy.allow_all ? "Embedded · all on request" : "Embedded only";
+}
+
 export function ConnectivitySidebar() {
   const { setRunModeLocal } = useConnectivity();
   const [data, setData] = useState<UserConnectivityResponse | null>(null);
@@ -65,13 +86,41 @@ export function ConnectivitySidebar() {
   const [saved, setSaved] = useState(false);
   const [imageFetching, setImageFetching] = useState(false);
   const [isSavingImageFetching, setIsSavingImageFetching] = useState(false);
-  const [imageFetchingDisabledByAdmin, setImageFetchingDisabledByAdmin] =
-    useState(false);
+  const [sourceImagePolicies, setSourceImagePolicies] =
+    useState<SourceImagePolicyMap | null>(null);
   const [imageFetchingLoaded, setImageFetchingLoaded] = useState(false);
+  const [isLoadingImageFetching, setIsLoadingImageFetching] = useState(false);
+  const [imageFetchingError, setImageFetchingError] = useState<string | null>(
+    null
+  );
+  const imageFetchingRequestRef = useRef(0);
   const radioRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutosavedModeRef = useRef<RunMode | null>(null);
+
+  const loadImageFetching = useCallback(async () => {
+    const request = ++imageFetchingRequestRef.current;
+    setIsLoadingImageFetching(true);
+    setImageFetchingError(null);
+    try {
+      const status = await apiGetImageFetching();
+      if (imageFetchingRequestRef.current !== request) return;
+      setImageFetching(status.enabled ?? status.effective);
+      setSourceImagePolicies(status.sources);
+    } catch {
+      if (imageFetchingRequestRef.current !== request) return;
+      setSourceImagePolicies(null);
+      setImageFetchingError(
+        "Source image preference could not be loaded. Its status is unknown."
+      );
+    } finally {
+      if (imageFetchingRequestRef.current === request) {
+        setIsLoadingImageFetching(false);
+        setImageFetchingLoaded(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -91,23 +140,13 @@ export function ConnectivitySidebar() {
         if (mounted) setIsLoading(false);
       });
 
-    apiGetImageFetching()
-      .then((status) => {
-        if (!mounted) return;
-        setImageFetching(status.effective);
-        setImageFetchingDisabledByAdmin(
-          !status.effective && status.enabled === true
-        );
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (mounted) setImageFetchingLoaded(true);
-      });
+    void loadImageFetching();
 
     return () => {
       mounted = false;
+      imageFetchingRequestRef.current += 1;
     };
-  }, [setRunModeLocal]);
+  }, [loadImageFetching, setRunModeLocal]);
 
   useEffect(() => {
     return () => {
@@ -125,6 +164,11 @@ export function ConnectivitySidebar() {
   const dirty =
     data !== null &&
     (pendingMode !== data.run_mode || proxyUrl !== data.proxy_url);
+  const imageFetchingDisabledByAdmin =
+    sourceImagePolicies !== null &&
+    SOURCE_IMAGE_SOURCES.every(
+      (source) => !sourceImagePolicies[source].enabled
+    );
 
   const applyUpdate = useCallback(
     async (
@@ -230,16 +274,16 @@ export function ConnectivitySidebar() {
 
   const handleImageFetchingChange = async (checked: boolean) => {
     const previous = imageFetching;
+    const previousPolicies = sourceImagePolicies;
     setImageFetching(checked);
     setIsSavingImageFetching(true);
     try {
       const status = await apiSetImageFetching(checked);
-      setImageFetching(status.effective);
-      setImageFetchingDisabledByAdmin(
-        !status.effective && status.enabled === true
-      );
+      setImageFetching(status.enabled === true);
+      setSourceImagePolicies(status.sources);
     } catch {
       setImageFetching(previous);
+      setSourceImagePolicies(previousPolicies);
       toast.error("Failed to update source image attachments");
     } finally {
       setIsSavingImageFetching(false);
@@ -420,9 +464,8 @@ export function ConnectivitySidebar() {
                       Source images
                     </h3>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Choose whether connected tickets and pages may include
-                      their images in agent context. This does not control chat
-                      uploads.
+                      Let agents include images from connected tickets, work
+                      items, and pages. Chat uploads are controlled separately.
                     </p>
                   </header>
                   <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
@@ -444,10 +487,14 @@ export function ConnectivitySidebar() {
                           id="source-image-attachments-description"
                           className="text-[11px] leading-relaxed text-muted-foreground"
                         >
-                          {imageFetchingDisabledByAdmin
-                            ? "Unavailable because image fetching is disabled by an administrator."
+                          {imageFetchingError
+                            ? "Status unavailable. Retry before changing this preference."
+                            : isLoadingImageFetching
+                            ? "Checking your source image preference…"
+                            : imageFetchingDisabledByAdmin
+                            ? "Unavailable because no connected source is enabled for your tier."
                             : imageFetching
-                            ? "Supported images may be added when agents read connected content."
+                            ? "Agents may include images when they read connected content."
                             : "Agents will read connected text without fetching its images."}
                         </p>
                       </div>
@@ -463,13 +510,83 @@ export function ConnectivitySidebar() {
                           checked={imageFetching}
                           onCheckedChange={handleImageFetchingChange}
                           disabled={
+                            imageFetchingError !== null ||
+                            isLoadingImageFetching ||
                             isSavingImageFetching ||
                             imageFetchingDisabledByAdmin
+                          }
+                          aria-label={
+                            imageFetchingError
+                              ? "Include source images (status unavailable)"
+                              : "Include source images"
                           }
                           aria-describedby="source-image-attachments-description"
                         />
                       </div>
                     </div>
+                    {sourceImagePolicies && (
+                      <div className="border-t border-border/60 bg-muted/20 px-3.5 py-2.5">
+                        <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Effective access
+                        </p>
+                        <div className="divide-y divide-border/50">
+                          {SOURCE_IMAGE_SOURCES.map((source) => {
+                            const policy = sourceImagePolicies[source];
+                            return (
+                              <div
+                                key={source}
+                                className="flex min-w-0 items-center gap-2 py-1.5 first:pt-0 last:pb-0"
+                              >
+                                <span
+                                  className={cn(
+                                    "h-1.5 w-1.5 shrink-0 rounded-full ring-2 ring-background",
+                                    policy.effective_enabled
+                                      ? "bg-[var(--color-primary)]"
+                                      : "bg-muted-foreground/35"
+                                  )}
+                                  aria-hidden="true"
+                                />
+                                <span className="min-w-0 flex-1 text-[11px] font-semibold text-foreground">
+                                  {SOURCE_IMAGE_LABELS[source]}
+                                </span>
+                                <span className="max-w-[58%] text-right text-[10px] leading-relaxed text-muted-foreground">
+                                  {sourcePolicyDescription(
+                                    policy,
+                                    imageFetching
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {imageFetchingError && (
+                      <div
+                        role="alert"
+                        className="flex items-start gap-2 border-t border-destructive/25 bg-destructive/5 px-3.5 py-3"
+                      >
+                        <AlertCircle
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] leading-relaxed text-destructive">
+                            {imageFetchingError}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={loadImageFetching}
+                            className="mt-2 h-7 px-2.5 text-[10px]"
+                            disabled={isLoadingImageFetching}
+                          >
+                            {isLoadingImageFetching ? "Retrying…" : "Retry"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

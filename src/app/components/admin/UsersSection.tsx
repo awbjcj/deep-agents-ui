@@ -5,7 +5,7 @@ import { Download, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { UsageLimitControls } from "@/app/components/admin/UsageLimitControls";
-import { roleVisual } from "@/app/utils/roles";
+import { roleVisual } from "@/app/utils/roleVisual";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -38,17 +38,16 @@ import { useAuth } from "@/providers/AuthProvider";
 import {
   ActionPill,
   LoadingRow,
-  ROLES,
   SectionHeader,
-  downloadBlob,
 } from "@/app/components/admin/primitives";
+import { ROLES, downloadBlob } from "@/app/components/admin/primitives-utils";
 
 export function UsersSection() {
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usage, setUsage] = useState<Record<string, AdminUserUsage>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [usageView, setUsageView] = useState<UsageDimension | null>(null);
+  const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -238,10 +237,9 @@ export function UsersSection() {
     }
   };
 
-  // Default to the backend's run-mode display dimension; the toggle lets an
-  // admin inspect any tracked weekly usage dimension.
-  const usageDim: UsageDimension =
-    usageView ?? Object.values(usage).find(Boolean)?.enforced ?? "tokens";
+  // Admin quota review starts with the most directly comparable dimension.
+  // The toggle still lets an admin inspect calls or estimated cost on demand.
+  const usageDim = usageView;
 
   return (
     <div className="space-y-4">

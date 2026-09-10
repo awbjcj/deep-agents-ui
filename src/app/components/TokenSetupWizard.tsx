@@ -27,6 +27,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import {
   OPEN_TOKEN_WIZARD_EVENT,
+  SCM_CREDENTIAL_GUIDANCE,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
 } from "@/app/components/tokenServiceGuides";
@@ -192,7 +193,7 @@ export function TokenSetupWizard() {
           <DialogDescription>
             Add your personal tokens so the assistant can reach these services
             on your behalf. You can skip any of these and add them later from
-            the Tokens panel.
+            the Tokens panel. {SCM_CREDENTIAL_GUIDANCE}
           </DialogDescription>
         </DialogHeader>
 

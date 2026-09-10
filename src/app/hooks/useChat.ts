@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { browserRunLimit, buildRunConfig } from "@/lib/runLimits";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   type Message,
@@ -21,6 +22,14 @@ import {
 } from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
 import { clearStreamReconnectState } from "@/app/utils/threadRecovery";
+import { deleteUpload } from "@/lib/uploads";
+import {
+  reconcileSourceImageRecords,
+  restoreSourceImageRemoval,
+  stageSourceImageRemoval,
+  type SourceImageRecord,
+  type SourceImageRecordMap,
+} from "@/lib/source-images";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -28,6 +37,7 @@ export type StateType = {
   messages: Message[];
   todos: TodoItem[];
   files: Record<string, string>;
+  source_image_attachments?: SourceImageRecordMap;
   email?: {
     id?: string;
     subject?: string;
@@ -58,12 +68,14 @@ export function useChat({
   thread,
   userId,
   username,
+  analysisEngine,
 }: {
   activeAssistant: Assistant | null;
   onHistoryRevalidate?: () => void;
   thread?: UseStreamThread<StateType>;
   userId?: string;
   username?: string;
+  analysisEngine?: "deep_agent" | "copilot";
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
@@ -139,31 +151,17 @@ export function useChat({
     return creatingThreadRef.current;
   }, [client, onHistoryRevalidate, setThreadId, threadCreationMetadata]);
 
-  // Build a merged config that includes system_username in configurable
-  // so the LangGraph backend can resolve per-user tokens.
+  // Read the execution budget on submission, including checkpoint retries/resumes.
+  // Do not enable __event_streaming_v2 until the deferred SDK migration lands.
   const buildConfig = useCallback(
-    (overrides?: Record<string, unknown>) => {
-      const base = activeAssistant?.config ?? {};
-      const configurable = {
-        ...((base as Record<string, unknown>).configurable as
-          | Record<string, unknown>
-          | undefined),
-        ...(username ? { system_username: username } : {}),
-        // DO NOT enable `__event_streaming_v2` here. Migration deferred —
-        // see docs/superpowers/specs/2026-05-28-v3-stream-migration-design.md
-        // (status: DEFERRED) for the SDK-surface findings and revisit triggers.
-        // Short version: useStream's legacy frame decoder crashes on v3 message
-        // frames, and neither v3 client API (low-level client.runs.stream or
-        // high-level ThreadStream.submitRun) is a clean parity replacement for
-        // the submit options we use (interruptBefore/After, command.goto, etc.).
-      };
-      return {
-        ...base,
-        ...overrides,
-        configurable,
-      };
-    },
-    [activeAssistant?.config, username]
+    () =>
+      buildRunConfig(
+        activeAssistant?.config ?? {},
+        browserRunLimit(username),
+        username,
+        analysisEngine
+      ),
+    [activeAssistant?.config, username, analysisEngine]
   );
 
   const handleThreadHistoryError = useCallback(
@@ -315,7 +313,7 @@ export function useChat({
           optimisticValues: (prev) => ({
             messages: [...(prev.messages ?? []), newMessage],
           }),
-          config: buildConfig({ recursion_limit: 100 }),
+          config: buildConfig(),
           streamSubgraphs: true,
           streamMode: STREAM_MODES,
           ...(threadCreationMetadata
@@ -376,6 +374,7 @@ export function useChat({
     string,
     string
   > | null>(null);
+  const filesOverrideBaselineRef = useRef<Record<string, string> | null>(null);
   // Memoize so identity changes only when the stream actually emits new files
   // — otherwise the effect below would loop on every parent render.
   const serverFiles = useMemo(
@@ -383,6 +382,35 @@ export function useChat({
     [stream.values.files]
   );
   const files = optimisticFiles ?? serverFiles;
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
+  const rawServerSourceImageAttachments = useMemo(
+    () => stream.values.source_image_attachments ?? {},
+    [stream.values.source_image_attachments]
+  );
+  const serverSourceImageAttachments = useMemo(
+    () =>
+      reconcileSourceImageRecords(rawServerSourceImageAttachments, serverFiles),
+    [rawServerSourceImageAttachments, serverFiles]
+  );
+  const [
+    optimisticSourceImageAttachments,
+    setOptimisticSourceImageAttachments,
+  ] = useState<Record<string, SourceImageRecord> | null>(null);
+  const sourceOverrideBaselineRef = useRef<Record<
+    string,
+    SourceImageRecord
+  > | null>(null);
+  const sourceImageAttachments = useMemo(
+    () =>
+      optimisticSourceImageAttachments ??
+      reconcileSourceImageRecords(rawServerSourceImageAttachments, files),
+    [optimisticSourceImageAttachments, rawServerSourceImageAttachments, files]
+  );
+  const sourceImageAttachmentsRef = useRef(sourceImageAttachments);
+  sourceImageAttachmentsRef.current = sourceImageAttachments;
+  const sourceImageRemovalQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     if (!optimisticFiles) return;
@@ -391,19 +419,155 @@ export function useChat({
       Object.keys(optimisticFiles).every(
         (k) => optimisticFiles[k] === serverFiles[k]
       );
-    if (sameKeys) setOptimisticFiles(null);
+    const baseline = filesOverrideBaselineRef.current;
+    const serverChangedSinceMutation =
+      baseline !== null &&
+      (Object.keys(baseline).length !== Object.keys(serverFiles).length ||
+        Object.keys(baseline).some(
+          (key) => baseline[key] !== serverFiles[key]
+        ));
+    if (sameKeys || serverChangedSinceMutation) {
+      filesOverrideBaselineRef.current = null;
+      setOptimisticFiles(null);
+    }
   }, [serverFiles, optimisticFiles]);
+
+  useEffect(() => {
+    if (!optimisticSourceImageAttachments) return;
+    const sameKeys =
+      Object.keys(optimisticSourceImageAttachments).length ===
+        Object.keys(serverSourceImageAttachments).length &&
+      Object.keys(optimisticSourceImageAttachments).every(
+        (key) =>
+          optimisticSourceImageAttachments[key]?.artifact_path ===
+            serverSourceImageAttachments[key]?.artifact_path &&
+          optimisticSourceImageAttachments[key]?.content_digest ===
+            serverSourceImageAttachments[key]?.content_digest
+      );
+    const baseline = sourceOverrideBaselineRef.current;
+    const serverChangedSinceMutation =
+      baseline !== null &&
+      (Object.keys(baseline).length !==
+        Object.keys(serverSourceImageAttachments).length ||
+        Object.keys(baseline).some(
+          (key) =>
+            baseline[key]?.artifact_path !==
+              serverSourceImageAttachments[key]?.artifact_path ||
+            baseline[key]?.content_digest !==
+              serverSourceImageAttachments[key]?.content_digest
+        ));
+    if (sameKeys || serverChangedSinceMutation) {
+      sourceOverrideBaselineRef.current = null;
+      setOptimisticSourceImageAttachments(null);
+    }
+  }, [optimisticSourceImageAttachments, serverSourceImageAttachments]);
 
   // Switching threads must clear the override; otherwise a write in one thread
   // would visually persist into the next.
   useEffect(() => {
+    filesOverrideBaselineRef.current = null;
+    sourceOverrideBaselineRef.current = null;
     setOptimisticFiles(null);
+    setOptimisticSourceImageAttachments(null);
   }, [threadId]);
+
+  const removeSourceImageNow = useCallback(
+    async (record: SourceImageRecord) => {
+      if (!threadId) {
+        throw new Error("Open a conversation before deleting a source image");
+      }
+      const currentRecord =
+        sourceImageAttachmentsRef.current[record.attachment_id];
+      if (
+        !currentRecord ||
+        currentRecord.artifact_path !== record.artifact_path ||
+        !(record.artifact_path in filesRef.current)
+      ) {
+        return;
+      }
+
+      const deletionThreadId = threadId;
+      const staged = stageSourceImageRemoval(
+        filesRef.current,
+        sourceImageAttachmentsRef.current,
+        record
+      );
+      filesOverrideBaselineRef.current = serverFiles;
+      sourceOverrideBaselineRef.current = serverSourceImageAttachments;
+      filesRef.current = staged.next.files;
+      sourceImageAttachmentsRef.current = staged.next.records;
+      setOptimisticFiles(staged.next.files);
+      setOptimisticSourceImageAttachments(staged.next.records);
+
+      try {
+        await deleteUpload(deletionThreadId, record.state_files_key);
+      } catch (error) {
+        if (threadIdRef.current === deletionThreadId) {
+          const restored = restoreSourceImageRemoval(
+            filesRef.current,
+            sourceImageAttachmentsRef.current,
+            staged.previous,
+            record
+          );
+          filesRef.current = restored.files;
+          sourceImageAttachmentsRef.current = restored.records;
+          setOptimisticFiles(restored.files);
+          setOptimisticSourceImageAttachments(restored.records);
+        }
+        throw error;
+      }
+
+      try {
+        const refreshed = await client.threads.getState<StateType>(
+          deletionThreadId
+        );
+        if (threadIdRef.current !== deletionThreadId) return;
+        const refreshedFiles = refreshed.values.files ?? {};
+        const refreshedRecords = reconcileSourceImageRecords(
+          refreshed.values.source_image_attachments ?? {},
+          refreshedFiles
+        );
+        filesRef.current = refreshedFiles;
+        sourceImageAttachmentsRef.current = refreshedRecords;
+        setOptimisticFiles(refreshedFiles);
+        setOptimisticSourceImageAttachments(refreshedRecords);
+      } catch {
+        // The DELETE already succeeded. Keep the narrow optimistic state until
+        // the next stream snapshot or thread hydration supplies fresh values.
+      }
+    },
+    [client, serverFiles, serverSourceImageAttachments, threadId]
+  );
+
+  const removeSourceImage = useCallback(
+    (record: SourceImageRecord): Promise<void> => {
+      // Each refresh replaces the complete file/attachment maps, so serialize
+      // removals to prevent an older getState response from undoing a newer
+      // optimistic deletion. Keep the queue usable after a rejected removal.
+      const removal = sourceImageRemovalQueueRef.current.then(() =>
+        removeSourceImageNow(record)
+      );
+      sourceImageRemovalQueueRef.current = removal.catch(() => undefined);
+      return removal;
+    },
+    [removeSourceImageNow]
+  );
 
   const setFiles = useCallback(
     async (next: Record<string, string>) => {
       if (!threadId) return;
       const previous = optimisticFiles ?? serverFiles;
+
+      const removedSource = Object.values(
+        sourceImageAttachmentsRef.current
+      ).find(
+        (record) =>
+          record.artifact_path in previous && !(record.artifact_path in next)
+      );
+      if (removedSource) {
+        await removeSourceImage(removedSource);
+        return;
+      }
 
       // state.files is a delta-reduced channel that MERGES updates: omitting a
       // key does NOT delete it (the old value is merged back on the next state
@@ -420,6 +584,7 @@ export function useChat({
       }
       if (Object.keys(delta).length === 0) return;
 
+      filesOverrideBaselineRef.current = serverFiles;
       setOptimisticFiles(next);
       try {
         await client.threads.updateState(threadId, {
@@ -431,13 +596,13 @@ export function useChat({
         throw err;
       }
     },
-    [client, threadId, optimisticFiles, serverFiles]
+    [client, threadId, optimisticFiles, serverFiles, removeSourceImage]
   );
 
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {
       stream.submit(undefined, {
-        config: buildConfig({ recursion_limit: 100 }),
+        config: buildConfig(),
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }
           : { interruptBefore: ["tools"] }),
@@ -458,11 +623,14 @@ export function useChat({
 
   const resumeInterrupt = useCallback(
     (value: any) => {
-      stream.submit(null, { command: { resume: value } });
+      stream.submit(null, {
+        command: { resume: value },
+        config: buildConfig(),
+      });
       // Update thread list when resuming from interrupt
       onHistoryRevalidate?.();
     },
-    [stream, onHistoryRevalidate]
+    [stream, buildConfig, onHistoryRevalidate]
   );
 
   const stopStream = useCallback(() => {
@@ -501,9 +669,11 @@ export function useChat({
       stream,
       todos,
       files,
+      sourceImageAttachments,
       email,
       ui,
       setFiles,
+      removeSourceImage,
       messages,
       processedMessages,
       isLoading,
@@ -522,9 +692,11 @@ export function useChat({
       stream,
       todos,
       files,
+      sourceImageAttachments,
       email,
       ui,
       setFiles,
+      removeSourceImage,
       messages,
       processedMessages,
       isLoading,

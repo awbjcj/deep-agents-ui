@@ -16,11 +16,22 @@ import {
   extractStringFromMessageContent,
   extractImageUrlsFromMessage,
 } from "@/app/utils/utils";
-import { inlineImageToFile, type MessageAttachment } from "@/lib/uploads";
+import {
+  fileContentToText,
+  imageMimeForPath,
+  inlineImageToFile,
+  type MessageAttachment,
+} from "@/lib/uploads";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
 import type { FileItem } from "@/app/types/types";
-import { FileText, Maximize2 } from "lucide-react";
+import { ExternalLink, FileText, ImageOff, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  omitSourceImagePayloads,
+  safeSourcePageUrl,
+  SOURCE_IMAGE_LABELS,
+  type SourceImageRecord,
+} from "@/lib/source-images";
 
 interface ChatMessageProps {
   message: Message;
@@ -32,6 +43,8 @@ interface ChatMessageProps {
   stream?: any;
   onResumeInterrupt?: (value: any) => void;
   graphId?: string;
+  files: Record<string, string>;
+  sourceImageAttachments: Record<string, SourceImageRecord>;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -45,6 +58,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     stream,
     onResumeInterrupt,
     graphId,
+    files,
+    sourceImageAttachments,
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
@@ -55,11 +70,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     // image_url content blocks (for multimodal viewing) and documents are
     // recorded on additional_kwargs.attachments. Surface both as a compact
     // strip above the bubble so the user sees what they sent.
-    const attachmentImageUrls = useMemo(
-      () => (isUser ? extractImageUrlsFromMessage(message) : []),
-      [isUser, message]
-    );
-    const docAttachments = useMemo(() => {
+    const messageAttachments = useMemo(() => {
       if (!isUser) return [] as MessageAttachment[];
       const raw = (message as { additional_kwargs?: Record<string, unknown> })
         .additional_kwargs?.attachments;
@@ -68,12 +79,40 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         (a): a is MessageAttachment =>
           typeof a === "object" &&
           a !== null &&
-          typeof (a as MessageAttachment).path === "string" &&
-          (a as MessageAttachment).kind !== "image"
+          typeof (a as MessageAttachment).path === "string"
       );
     }, [isUser, message]);
+    const attachmentImageUrls = useMemo(
+      () =>
+        isUser
+          ? omitSourceImagePayloads(
+              extractImageUrlsFromMessage(message),
+              messageAttachments
+            )
+          : [],
+      [isUser, message, messageAttachments]
+    );
+    const docAttachments = useMemo(
+      () =>
+        messageAttachments.filter((attachment) => attachment.kind !== "image"),
+      [messageAttachments]
+    );
+    const sourceImageMessageAttachments = useMemo(
+      () =>
+        messageAttachments.filter((attachment) => {
+          const ref = attachment.source_image_ref;
+          return (
+            attachment.kind === "image" &&
+            typeof ref?.attachment_id === "string" &&
+            typeof ref.artifact_path === "string"
+          );
+        }),
+      [messageAttachments]
+    );
     const hasAttachments =
-      attachmentImageUrls.length > 0 || docAttachments.length > 0;
+      attachmentImageUrls.length > 0 ||
+      docAttachments.length > 0 ||
+      sourceImageMessageAttachments.length > 0;
 
     // Build a tool_call_id → ui-component index once instead of calling
     // ui?.find(...) inside the toolCalls.map below. Streaming re-renders this
@@ -198,6 +237,99 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                       <Maximize2 className="h-4 w-4 text-white" />
                     </span>
                   </button>
+                );
+              })}
+              {sourceImageMessageAttachments.map((attachment) => {
+                const ref = attachment.source_image_ref!;
+                const record = sourceImageAttachments[ref.attachment_id];
+                const isMatchingRecord =
+                  record?.artifact_path === ref.artifact_path;
+                const rawFile = files[ref.artifact_path];
+                const fileContent = isMatchingRecord
+                  ? fileContentToText(rawFile)
+                  : "";
+                const mime = imageMimeForPath(ref.artifact_path);
+                const isLive = Boolean(record && fileContent && mime);
+                const sourceUrl = record
+                  ? safeSourcePageUrl(record.source_page_url)
+                  : null;
+
+                if (!isLive || !record || !mime) {
+                  return (
+                    <span
+                      key={ref.attachment_id}
+                      className="inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-dashed border-border/80 bg-card/55 px-3 py-2.5 text-xs text-muted-foreground"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/70">
+                        <ImageOff
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-foreground/80">
+                          {attachment.name}
+                        </span>
+                        <span className="mt-0.5 block text-[10px]">
+                          Source image unavailable
+                        </span>
+                      </span>
+                    </span>
+                  );
+                }
+
+                return (
+                  <span
+                    key={ref.attachment_id}
+                    className="inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-border/75 bg-card p-2.5 shadow-sm"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setViewedAttachment({
+                          path: ref.artifact_path,
+                          content: fileContent,
+                          sourceImage: record,
+                        })
+                      }
+                      aria-label={`View ${attachment.name} full size`}
+                      className="group/preview relative shrink-0 overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      <img
+                        src={`data:${mime};base64,${fileContent}`}
+                        alt={attachment.name}
+                        className="h-14 w-14 object-cover transition-opacity duration-150 group-hover/preview:opacity-85 motion-reduce:transition-none"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity duration-150 group-hover/preview:opacity-100 group-focus-visible/preview:opacity-100 motion-reduce:transition-none">
+                        <Maximize2
+                          className="h-4 w-4 text-white"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </button>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-medium text-foreground">
+                        {attachment.name}
+                      </span>
+                      <span className="bg-primary/8 mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]">
+                        {SOURCE_IMAGE_LABELS[record.source]} source image
+                      </span>
+                      {sourceUrl && (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          Open source
+                          <ExternalLink
+                            aria-hidden="true"
+                            className="h-2.5 w-2.5"
+                          />
+                        </a>
+                      )}
+                    </span>
+                  </span>
                 );
               })}
               {docAttachments.map((doc, idx) => (
