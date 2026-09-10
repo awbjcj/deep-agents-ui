@@ -410,6 +410,7 @@ export function useChat({
   );
   const sourceImageAttachmentsRef = useRef(sourceImageAttachments);
   sourceImageAttachmentsRef.current = sourceImageAttachments;
+  const sourceImageRemovalQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     if (!optimisticFiles) return;
@@ -470,7 +471,7 @@ export function useChat({
     setOptimisticSourceImageAttachments(null);
   }, [threadId]);
 
-  const removeSourceImage = useCallback(
+  const removeSourceImageNow = useCallback(
     async (record: SourceImageRecord) => {
       if (!threadId) {
         throw new Error("Open a conversation before deleting a source image");
@@ -536,6 +537,20 @@ export function useChat({
       }
     },
     [client, serverFiles, serverSourceImageAttachments, threadId]
+  );
+
+  const removeSourceImage = useCallback(
+    (record: SourceImageRecord): Promise<void> => {
+      // Each refresh replaces the complete file/attachment maps, so serialize
+      // removals to prevent an older getState response from undoing a newer
+      // optimistic deletion. Keep the queue usable after a rejected removal.
+      const removal = sourceImageRemovalQueueRef.current.then(() =>
+        removeSourceImageNow(record)
+      );
+      sourceImageRemovalQueueRef.current = removal.catch(() => undefined);
+      return removal;
+    },
+    [removeSourceImageNow]
   );
 
   const setFiles = useCallback(
