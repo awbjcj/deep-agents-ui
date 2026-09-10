@@ -375,7 +375,7 @@ test(
       );
       await userSection.getByText("Jira", { exact: true }).waitFor();
       assert.equal(
-        await userSection.getByText(/Images from .* content/).count(),
+        await userSection.getByText(/^(Issue|Work item|Page) content$/).count(),
         3
       );
 
@@ -494,10 +494,12 @@ test(
       );
       const enabledBox = await jiraEnabled.boundingBox();
       const defaultBox = await jiraDefault.boundingBox();
-      assert(enabledBox && defaultBox);
+      const allowAllBox = await jiraAllowAll.boundingBox();
+      assert(enabledBox && defaultBox && allowAllBox);
       assert(
-        defaultBox.y > enabledBox.y + enabledBox.height,
-        "narrow layout should stack subordinate controls below Enabled"
+        defaultBox.x > enabledBox.x + enabledBox.width &&
+          allowAllBox.y > enabledBox.y + enabledBox.height,
+        "narrow layout should keep primary controls readable in two columns"
       );
       await page.screenshot({
         path: join(EVIDENCE, "admin-source-controls-narrow.png"),
@@ -557,7 +559,7 @@ test(
       await livePreviewButton.click();
       const previewDialog = page.getByRole("dialog");
       await previewDialog
-        .getByText("Optimized copy", { exact: true })
+        .getByText("Optimized for model", { exact: true })
         .waitFor();
       assert.equal(
         await previewDialog.getByRole("heading").textContent(),

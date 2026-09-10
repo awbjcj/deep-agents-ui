@@ -66,16 +66,14 @@ function sourcePolicyDescription(
   policy: EffectiveSourceImagePolicy,
   userEnabled: boolean
 ): string {
-  if (!policy.enabled) return "Disabled by your administrator";
+  if (!policy.enabled) return "Admin disabled";
   if (!userEnabled || !policy.effective_enabled) {
-    return "Text only while your preference is off";
+    return "Text only";
   }
   if (policy.default_scope === "all") {
-    return "All image attachments by default";
+    return "All by default";
   }
-  return policy.allow_all
-    ? "Embedded by default · all available on request"
-    : "Embedded images only";
+  return policy.allow_all ? "Embedded · all on request" : "Embedded only";
 }
 
 export function ConnectivitySidebar() {
@@ -466,9 +464,8 @@ export function ConnectivitySidebar() {
                       Source images
                     </h3>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Choose whether connected tickets and pages may include
-                      their images in agent context. This does not control chat
-                      uploads.
+                      Let agents include images from connected tickets, work
+                      items, and pages. Chat uploads are controlled separately.
                     </p>
                   </header>
                   <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
@@ -528,38 +525,36 @@ export function ConnectivitySidebar() {
                       </div>
                     </div>
                     {sourceImagePolicies && (
-                      <div className="border-t border-border/60 px-3.5 py-2.5">
+                      <div className="border-t border-border/60 bg-muted/20 px-3.5 py-2.5">
                         <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          Effective source access
+                          Effective access
                         </p>
-                        <div className="space-y-2">
+                        <div className="divide-y divide-border/50">
                           {SOURCE_IMAGE_SOURCES.map((source) => {
                             const policy = sourceImagePolicies[source];
                             return (
                               <div
                                 key={source}
-                                className="flex min-w-0 items-start gap-2"
+                                className="flex min-w-0 items-center gap-2 py-1.5 first:pt-0 last:pb-0"
                               >
                                 <span
                                   className={cn(
-                                    "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
+                                    "h-1.5 w-1.5 shrink-0 rounded-full ring-2 ring-background",
                                     policy.effective_enabled
                                       ? "bg-[var(--color-primary)]"
                                       : "bg-muted-foreground/35"
                                   )}
                                   aria-hidden="true"
                                 />
-                                <div className="min-w-0">
-                                  <p className="text-[11px] font-semibold text-foreground">
-                                    {SOURCE_IMAGE_LABELS[source]}
-                                  </p>
-                                  <p className="text-[10px] leading-relaxed text-muted-foreground">
-                                    {sourcePolicyDescription(
-                                      policy,
-                                      imageFetching
-                                    )}
-                                  </p>
-                                </div>
+                                <span className="min-w-0 flex-1 text-[11px] font-semibold text-foreground">
+                                  {SOURCE_IMAGE_LABELS[source]}
+                                </span>
+                                <span className="max-w-[58%] text-right text-[10px] leading-relaxed text-muted-foreground">
+                                  {sourcePolicyDescription(
+                                    policy,
+                                    imageFetching
+                                  )}
+                                </span>
                               </div>
                             );
                           })}
@@ -571,7 +566,10 @@ export function ConnectivitySidebar() {
                         role="alert"
                         className="flex items-start gap-2 border-t border-destructive/25 bg-destructive/5 px-3.5 py-3"
                       >
-                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                        <AlertCircle
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
+                          aria-hidden="true"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] leading-relaxed text-destructive">
                             {imageFetchingError}

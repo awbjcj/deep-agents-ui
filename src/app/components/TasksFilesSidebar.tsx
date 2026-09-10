@@ -10,6 +10,7 @@ import {
   imageMimeForPath,
 } from "@/lib/uploads";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
+import { cn } from "@/lib/utils";
 import {
   safeSourcePageUrl,
   SOURCE_IMAGE_LABELS,
@@ -118,13 +119,18 @@ export function FilesPopover({
                     })
                   }
                   title={filePath}
-                  className="hover:border-primary/40 flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border border-border bg-[var(--color-file-button)] px-2 py-3 shadow-sm transition-all duration-150 hover:-translate-y-px hover:bg-[var(--color-file-button-hover)] hover:shadow-md"
+                  className={cn(
+                    "flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border px-2 py-3 shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                    sourceRecord
+                      ? "border-primary/20 hover:border-primary/45 bg-primary/[0.035] hover:bg-primary/[0.06] hover:shadow-md"
+                      : "hover:border-primary/40 border-border bg-[var(--color-file-button)] hover:bg-[var(--color-file-button-hover)] hover:shadow-md"
+                  )}
                 >
                   {thumbnailSrc ? (
                     <img
                       src={thumbnailSrc}
                       alt={label}
-                      className="h-16 w-16 rounded-md object-cover ring-1 ring-border"
+                      className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
                     />
                   ) : (
                     <span className="text-primary/70 flex h-16 w-16 items-center justify-center rounded-md bg-primary/5">
@@ -135,7 +141,7 @@ export function FilesPopover({
                     {label}
                   </span>
                   {sourceRecord && (
-                    <span className="text-[10px] font-semibold text-[var(--color-primary)]">
+                    <span className="bg-primary/8 rounded-full px-2 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]">
                       {SOURCE_IMAGE_LABELS[sourceRecord.source]} source image
                     </span>
                   )}
@@ -149,7 +155,10 @@ export function FilesPopover({
                     aria-label={`Open source page for ${label}`}
                   >
                     Open source
-                    <ExternalLink className="h-2.5 w-2.5" />
+                    <ExternalLink
+                      className="h-2.5 w-2.5"
+                      aria-hidden="true"
+                    />
                   </a>
                 )}
                 {!editDisabled && (
@@ -161,9 +170,15 @@ export function FilesPopover({
                       e.stopPropagation();
                       void handleDeleteFile(filePath);
                     }}
-                    className="absolute right-1 top-1 rounded-md bg-card/80 p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+                    className={cn(
+                      "absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-card/90 text-muted-foreground shadow-xs transition-[color,background-color,opacity] duration-150 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 motion-reduce:transition-none",
+                      sourceRecord ? "opacity-100" : "opacity-0"
+                    )}
                   >
-                    <Trash2 size={14} />
+                    <Trash2
+                      size={14}
+                      aria-hidden="true"
+                    />
                   </button>
                 )}
               </div>

@@ -258,15 +258,19 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   return (
                     <span
                       key={ref.attachment_id}
-                      title={ref.artifact_path}
-                      className="inline-flex max-w-[240px] items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
+                      className="inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-dashed border-border/80 bg-card/55 px-3 py-2.5 text-xs text-muted-foreground"
                     >
-                      <ImageOff className="h-4 w-4 shrink-0" />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/70">
+                        <ImageOff
+                          className="h-4 w-4"
+                          aria-hidden="true"
+                        />
+                      </span>
                       <span className="min-w-0">
-                        <span className="block truncate font-medium">
+                        <span className="block truncate font-medium text-foreground/80">
                           {attachment.name}
                         </span>
-                        <span className="block text-[10px]">
+                        <span className="mt-0.5 block text-[10px]">
                           Source image unavailable
                         </span>
                       </span>
@@ -277,7 +281,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 return (
                   <span
                     key={ref.attachment_id}
-                    className="inline-flex max-w-[240px] items-center gap-2 rounded-lg border border-border bg-card p-2 shadow-sm"
+                    className="inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-border/75 bg-card p-2.5 shadow-sm"
                   >
                     <button
                       type="button"
@@ -289,19 +293,25 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                         })
                       }
                       aria-label={`View ${attachment.name} full size`}
-                      className="shrink-0 rounded-md transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 motion-reduce:transition-none"
+                      className="group/preview relative shrink-0 overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       <img
                         src={`data:${mime};base64,${fileContent}`}
                         alt={attachment.name}
-                        className="h-12 w-12 rounded-md object-cover ring-1 ring-border"
+                        className="h-14 w-14 object-cover transition-opacity duration-150 group-hover/preview:opacity-85 motion-reduce:transition-none"
                       />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity duration-150 group-hover/preview:opacity-100 group-focus-visible/preview:opacity-100 motion-reduce:transition-none">
+                        <Maximize2
+                          className="h-4 w-4 text-white"
+                          aria-hidden="true"
+                        />
+                      </span>
                     </button>
                     <span className="min-w-0">
                       <span className="block truncate text-xs font-medium text-foreground">
                         {attachment.name}
                       </span>
-                      <span className="block truncate text-[10px] text-[var(--color-primary)]">
+                      <span className="bg-primary/8 mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]">
                         {SOURCE_IMAGE_LABELS[record.source]} source image
                       </span>
                       {sourceUrl && (
@@ -312,7 +322,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                           className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           Open source
-                          <ExternalLink className="h-2.5 w-2.5" />
+                          <ExternalLink
+                            aria-hidden="true"
+                            className="h-2.5 w-2.5"
+                          />
                         </a>
                       )}
                     </span>

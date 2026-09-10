@@ -14,6 +14,7 @@ import {
   Edit,
   ExternalLink,
   FileText,
+  Image as ImageIcon,
   Loader2,
   Save,
   X,
@@ -196,7 +197,7 @@ export const FileViewDialog = React.memo<{
       open={true}
       onOpenChange={onClose}
     >
-      <DialogContent className="flex h-[80vh] max-h-[80vh] min-w-[60vw] flex-col p-6">
+      <DialogContent className="flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
         <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <DialogDescription className="sr-only">
           {file
@@ -205,10 +206,20 @@ export const FileViewDialog = React.memo<{
               : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
-        <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
+        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)]">
-              <FileText className="h-4 w-4" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
+              {sourceImage ? (
+                <ImageIcon
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
+              ) : (
+                <FileText
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
+              )}
             </span>
             {isEditingMode && file === null ? (
               <Input
@@ -224,20 +235,30 @@ export const FileViewDialog = React.memo<{
                   {displayName}
                 </span>
                 {sourceImage && (
-                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-                    <span className="font-semibold text-[var(--color-primary)]">
+                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span className="bg-primary/8 rounded-full px-1.5 py-0.5 font-semibold text-[var(--color-primary)]">
                       {SOURCE_IMAGE_LABELS[sourceImage.source]} source image
                     </span>
-                    {sourceImage.optimized_copy && <span>Optimized copy</span>}
+                    <span className="rounded-full bg-muted px-1.5 py-0.5">
+                      {sourceImage.embedded ? "Embedded" : "Attachment"}
+                    </span>
+                    {sourceImage.optimized_copy && (
+                      <span className="rounded-full bg-muted px-1.5 py-0.5">
+                        Optimized for model
+                      </span>
+                    )}
                     {sourcePageUrl && (
                       <a
                         href={sourcePageUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="inline-flex items-center gap-1 rounded px-1 py-0.5 font-medium hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         Open source
-                        <ExternalLink className="h-2.5 w-2.5" />
+                        <ExternalLink
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5"
+                        />
                       </a>
                     )}
                   </span>
@@ -245,7 +266,7 @@ export const FileViewDialog = React.memo<{
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1 self-end min-[520px]:self-auto">
             {!isEditingMode && (
               <>
                 {!isImage && (
@@ -263,18 +284,20 @@ export const FileViewDialog = React.memo<{
                     Edit
                   </Button>
                 )}
-                <Button
-                  onClick={handleCopy}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2"
-                >
-                  <Copy
-                    size={16}
-                    className="mr-1"
-                  />
-                  Copy
-                </Button>
+                {!isImage && (
+                  <Button
+                    onClick={handleCopy}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                  >
+                    <Copy
+                      size={16}
+                      className="mr-1"
+                    />
+                    Copy
+                  </Button>
+                )}
                 <Button
                   onClick={handleDownload}
                   variant="ghost"
@@ -300,15 +323,15 @@ export const FileViewDialog = React.memo<{
               className="h-full min-h-[400px] resize-none font-mono text-sm"
             />
           ) : (
-            <ScrollArea className="bg-surface h-full rounded-md">
+            <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20">
               <div className="p-4">
                 {fileContent ? (
                   isImage && imageMime ? (
-                    <div className="flex items-center justify-center p-4">
+                    <div className="flex min-h-[min(52dvh,520px)] items-center justify-center p-4 sm:p-8">
                       <img
                         src={`data:${imageMime};base64,${fileContent}`}
-                        alt={String(fileName)}
-                        className="max-h-[60vh] max-w-full rounded-md object-contain"
+                        alt={displayName}
+                        className="max-h-[52dvh] max-w-full rounded-lg border border-border/60 bg-background object-contain shadow-sm"
                       />
                     </div>
                   ) : isMarkdown ? (

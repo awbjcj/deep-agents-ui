@@ -105,7 +105,7 @@ export const ReferenceFileDialog = React.memo<Props>(
         open={open}
         onOpenChange={close}
       >
-        <DialogContent className="flex h-[70vh] max-h-[70vh] min-w-[60vw] flex-col p-6">
+        <DialogContent className="flex h-[min(70dvh,680px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-4xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
           <DialogTitle className="text-base font-semibold tracking-tight">
             Reference an existing file
           </DialogTitle>
@@ -138,10 +138,10 @@ export const ReferenceFileDialog = React.memo<Props>(
                         title={entry.path}
                         aria-pressed={isSelected}
                         className={cn(
-                          "relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left shadow-sm transition-all duration-150",
+                          "relative flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
                           isSelected
                             ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                            : "hover:border-primary/40 border-border hover:-translate-y-px hover:bg-primary/5 hover:shadow-md"
+                            : "hover:border-primary/40 border-border hover:bg-primary/5 hover:shadow-md"
                         )}
                       >
                         {entry.thumb ? (
@@ -159,7 +159,14 @@ export const ReferenceFileDialog = React.memo<Props>(
                           <span className="block truncate text-sm font-medium">
                             {entry.label}
                           </span>
-                          <span className="block truncate text-xs text-muted-foreground">
+                          <span
+                            className={cn(
+                              "mt-0.5 truncate text-xs text-muted-foreground",
+                              entry.sourceRecord
+                                ? "bg-primary/8 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]"
+                                : "block"
+                            )}
+                          >
                             {entry.sourceRecord
                               ? `${
                                   SOURCE_IMAGE_LABELS[entry.sourceRecord.source]
@@ -169,7 +176,10 @@ export const ReferenceFileDialog = React.memo<Props>(
                         </span>
                         {isSelected && (
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="h-3 w-3" />
+                            <Check
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            />
                           </span>
                         )}
                       </button>
@@ -180,25 +190,37 @@ export const ReferenceFileDialog = React.memo<Props>(
             )}
           </div>
 
-          <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => close(false)}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <span
+              aria-live="polite"
+              className="text-xs text-muted-foreground"
             >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={confirm}
-              disabled={selectedCount === 0}
-            >
-              {selectedCount > 0
-                ? `Add ${selectedCount} reference${
+              {selectedCount === 0
+                ? "No files selected"
+                : `${selectedCount} file${
                     selectedCount > 1 ? "s" : ""
-                  }`
-                : "Add references"}
-            </Button>
+                  } selected`}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => close(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={confirm}
+                disabled={selectedCount === 0}
+              >
+                {selectedCount > 0
+                  ? `Add ${selectedCount} reference${
+                      selectedCount > 1 ? "s" : ""
+                    }`
+                  : "Add references"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

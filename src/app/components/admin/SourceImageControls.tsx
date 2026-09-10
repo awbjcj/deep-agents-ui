@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -35,6 +37,12 @@ interface PolicyRowState {
 }
 
 type PolicyRows = Record<SourceImageSource, PolicyRowState>;
+
+const SOURCE_DESCRIPTIONS: Record<SourceImageSource, string> = {
+  jira: "Issue content",
+  polarion: "Work item content",
+  confluence: "Page content",
+};
 
 function loadingRows(): PolicyRows {
   return Object.fromEntries(
@@ -108,6 +116,46 @@ export function SourceImageControls({ tier }: { tier: string }) {
     return () => controller.abort();
   }, [tier]);
 
+  const retrySource = async (source: SourceImageSource) => {
+    const generation = generationRef.current;
+    setRows((previous) => ({
+      ...previous,
+      [source]: {
+        ...previous[source],
+        isLoading: true,
+        error: null,
+      },
+    }));
+    try {
+      const policy = await fetchTierSourceImagePolicy(tier, source);
+      if (tierRef.current !== tier || generationRef.current !== generation) {
+        return;
+      }
+      setRows((previous) => ({
+        ...previous,
+        [source]: {
+          confirmed: policy,
+          current: policy,
+          isLoading: false,
+          isSaving: false,
+          error: null,
+        },
+      }));
+    } catch (error) {
+      if (tierRef.current !== tier || generationRef.current !== generation) {
+        return;
+      }
+      setRows((previous) => ({
+        ...previous,
+        [source]: {
+          ...previous[source],
+          isLoading: false,
+          error: errorMessage(error, `Failed to load ${source} policy`),
+        },
+      }));
+    }
+  };
+
   const handleEdit = async (
     source: SourceImageSource,
     edit: SourceImagePolicyEdit
@@ -173,7 +221,24 @@ export function SourceImageControls({ tier }: { tier: string }) {
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs">
+      <div
+        aria-hidden="true"
+        className="hidden min-[440px]:grid min-[440px]:grid-cols-[minmax(108px,1fr)_64px_minmax(116px,1fr)_76px] min-[440px]:items-center min-[440px]:gap-3 min-[440px]:border-b min-[440px]:border-border/60 min-[440px]:bg-muted/35 min-[440px]:px-3 min-[440px]:py-2"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Source
+        </span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Enabled
+        </span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Default fetch
+        </span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Allow all
+        </span>
+      </div>
       {SOURCE_IMAGE_SOURCES.map((source) => {
         const row = rows[source];
         const policy = row.current;
@@ -183,39 +248,44 @@ export function SourceImageControls({ tier }: { tier: string }) {
         return (
           <div
             key={source}
-            className="rounded-lg border border-border/60 bg-background/55 p-3"
-            aria-busy={row.isSaving}
+            className="border-t border-border/60 p-3 first:border-t-0 min-[440px]:first:border-t-0"
+            aria-busy={row.isSaving || row.isLoading}
           >
-            <div className="mb-3 flex min-h-5 items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-foreground">
-                  {sourceLabel}
-                </p>
-                <p className="text-[10px] leading-relaxed text-muted-foreground">
-                  Images from {sourceLabel} content for the {tier} tier
-                </p>
-              </div>
-              {(row.isLoading || row.isSaving) && (
-                <Loader2
-                  className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground"
-                  aria-hidden="true"
-                />
-              )}
-            </div>
-
             {policy ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(84px,0.7fr)_minmax(150px,1.3fr)_minmax(180px,1.4fr)] sm:items-end">
+              <div className="grid grid-cols-2 items-end gap-x-4 gap-y-3 min-[440px]:grid-cols-[minmax(108px,1fr)_64px_minmax(116px,1fr)_76px] min-[440px]:items-center min-[440px]:gap-3">
+                <div className="col-span-2 flex min-w-0 items-center gap-2.5 min-[440px]:col-span-1">
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/45 text-[10px] font-bold text-foreground"
+                    aria-hidden="true"
+                  >
+                    {sourceLabel.slice(0, 1)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      {sourceLabel}
+                      {row.isSaving && (
+                        <Loader2
+                          className="h-3 w-3 animate-spin text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {SOURCE_DESCRIPTIONS[source]}
+                    </span>
+                  </span>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label
                     htmlFor={`${idBase}-enabled`}
-                    className="text-[10px] font-semibold text-muted-foreground"
+                    className="text-[10px] font-semibold text-muted-foreground min-[440px]:sr-only"
                   >
                     Enabled
                   </Label>
-                  <div className="flex h-9 items-center">
+                  <div className="flex h-8 items-center">
                     <Switch
                       id={`${idBase}-enabled`}
-                      className="data-[state=unchecked]:border-muted-foreground/45 data-[state=unchecked]:bg-muted/80 data-[state=unchecked]:shadow-inner"
                       checked={policy.enabled}
                       onCheckedChange={(value) =>
                         void handleEdit(source, {
@@ -232,7 +302,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor={`${idBase}-default`}
-                    className="text-[10px] font-semibold text-muted-foreground"
+                    className="text-[10px] font-semibold text-muted-foreground min-[440px]:sr-only"
                   >
                     Default fetch
                   </Label>
@@ -248,7 +318,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
                   >
                     <SelectTrigger
                       id={`${idBase}-default`}
-                      className="h-9 text-xs"
+                      className="h-8 min-w-0 border-border/70 bg-background px-2.5 text-xs shadow-none"
                       aria-label={`Default ${sourceLabel} image fetch for ${tier} tier`}
                     >
                       <SelectValue />
@@ -263,11 +333,11 @@ export function SourceImageControls({ tier }: { tier: string }) {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor={`${idBase}-allow-all`}
-                    className="text-[10px] font-semibold leading-tight text-muted-foreground"
+                    className="text-[10px] font-semibold leading-tight text-muted-foreground min-[440px]:sr-only"
                   >
-                    Allow users to fetch all
+                    Allow all attachments
                   </Label>
-                  <div className="flex h-9 items-center">
+                  <div className="flex h-8 items-center">
                     <Switch
                       id={`${idBase}-allow-all`}
                       checked={policy.allow_all}
@@ -284,22 +354,42 @@ export function SourceImageControls({ tier }: { tier: string }) {
                 </div>
               </div>
             ) : row.isLoading ? (
-              <p className="text-[11px] text-muted-foreground">
-                Loading policy…
-              </p>
+              <div
+                role="status"
+                className="flex h-12 items-center gap-3"
+              >
+                <Skeleton className="h-8 w-8 shrink-0 motion-reduce:animate-none" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-20 motion-reduce:animate-none" />
+                  <Skeleton className="h-2.5 w-32 motion-reduce:animate-none" />
+                </div>
+                <span className="sr-only">Loading {sourceLabel} policy</span>
+              </div>
             ) : null}
 
             {row.error && (
-              <p
+              <div
                 role="alert"
-                className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-destructive"
+                className="mt-2 flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-2.5 py-2 text-[11px] leading-relaxed text-destructive"
               >
                 <AlertCircle
                   className="mt-0.5 h-3 w-3 shrink-0"
                   aria-hidden="true"
                 />
-                <span>{row.error}</span>
-              </p>
+                <span className="min-w-0 flex-1">{row.error}</span>
+                {!policy && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void retrySource(source)}
+                    className="h-7 shrink-0 px-2 text-[10px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <RefreshCw aria-hidden="true" />
+                    Retry
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         );
