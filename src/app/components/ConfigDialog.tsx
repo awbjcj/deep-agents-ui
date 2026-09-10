@@ -24,6 +24,7 @@ import {
   getDeploymentUrl,
   getLangsmithApiKey,
 } from "@/lib/config";
+import { getAuthUser } from "@/lib/auth";
 import { toast } from "sonner";
 import { Client } from "@langchain/langgraph-sdk";
 import { AlertCircle, CheckCircle2, Loader2, Route } from "lucide-react";
@@ -163,6 +164,7 @@ export function ConfigDialog({
 
   const deploymentUrl = getDeploymentUrl();
   const langsmithApiKey = getLangsmithApiKey();
+  const accessToken = getAuthUser()?.access_token;
 
   const fetchAssistants = useCallback(async () => {
     const catalogPromise = getAnalysisEngines()
@@ -179,6 +181,7 @@ export function ConfigDialog({
         defaultHeaders: {
           "Content-Type": "application/json",
           ...(langsmithApiKey ? { "X-Api-Key": langsmithApiKey } : {}),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
       });
       const results = await client.assistants.search({ limit: 100 });
@@ -206,7 +209,7 @@ export function ConfigDialog({
       await catalogPromise;
       setLoading(false);
     }
-  }, [deploymentUrl, langsmithApiKey]);
+  }, [accessToken, deploymentUrl, langsmithApiKey]);
 
   useEffect(() => {
     if (open) {
