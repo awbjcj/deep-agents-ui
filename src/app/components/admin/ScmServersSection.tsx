@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { SectionHeader } from "@/app/components/admin/primitives";
 import {
   deleteScmServer,
@@ -78,69 +79,89 @@ export function ScmServersSection() {
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Server className="h-4 w-4 text-primary" /> Add or update server
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(["id", "display_name", "endpoint", "auth_profile"] as const).map(
-            (field) => (
-              <div
-                key={field}
-                className="space-y-1"
-              >
-                <Label
-                  htmlFor={`scm-server-${field}`}
-                  className="text-xs"
-                >
-                  {field.replaceAll("_", " ")}
-                </Label>
-                <Input
-                  id={`scm-server-${field}`}
-                  value={draft[field]}
-                  onChange={(event) =>
-                    setDraft((value) => ({
-                      ...value,
-                      [field]: event.target.value,
-                    }))
-                  }
-                  placeholder={
-                    field === "endpoint" ? "https://scm.example" : undefined
-                  }
-                />
-              </div>
-            )
-          )}
-          <div className="space-y-1">
-            <Label
-              htmlFor="scm-server-provider"
-              className="text-xs"
-            >
-              Provider
-            </Label>
-            <select
-              id="scm-server-provider"
-              value={draft.provider}
-              onChange={(event) =>
-                setDraft((value) => ({
-                  ...value,
-                  provider: event.target.value as ScmServerInput["provider"],
-                }))
-              }
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="gerrit">Gerrit</option>
-              <option value="plastic">Plastic SCM</option>
-            </select>
-          </div>
-        </div>
-        <Button
-          onClick={() => void save()}
+        <fieldset
+          className="space-y-3"
           disabled={saving}
         >
-          {saving ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}{" "}
-          Save server
-        </Button>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(["id", "display_name", "endpoint", "auth_profile"] as const).map(
+              (field) => (
+                <div
+                  key={field}
+                  className="space-y-1"
+                >
+                  <Label
+                    htmlFor={`scm-server-${field}`}
+                    className="text-xs"
+                  >
+                    {field.replaceAll("_", " ")}
+                  </Label>
+                  <Input
+                    id={`scm-server-${field}`}
+                    value={draft[field]}
+                    onChange={(event) =>
+                      setDraft((value) => ({
+                        ...value,
+                        [field]: event.target.value,
+                      }))
+                    }
+                    placeholder={
+                      field === "endpoint" ? "https://scm.example" : undefined
+                    }
+                  />
+                </div>
+              )
+            )}
+            <div className="space-y-1">
+              <Label
+                htmlFor="scm-server-provider"
+                className="text-xs"
+              >
+                Provider
+              </Label>
+              <select
+                id="scm-server-provider"
+                value={draft.provider}
+                onChange={(event) =>
+                  setDraft((value) => ({
+                    ...value,
+                    provider: event.target.value as ScmServerInput["provider"],
+                  }))
+                }
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="gerrit">Gerrit</option>
+                <option value="plastic">Plastic SCM</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 sm:col-span-2">
+              <div>
+                <Label htmlFor="scm-server-enabled">Enabled</Label>
+                <p className="text-xs text-muted-foreground">
+                  Allow users to connect and start new work with this server.
+                </p>
+              </div>
+              <Switch
+                id="scm-server-enabled"
+                checked={draft.enabled}
+                onCheckedChange={(enabled) =>
+                  setDraft((value) => ({ ...value, enabled }))
+                }
+              />
+            </div>
+          </div>
+          <Button
+            onClick={() => void save()}
+            disabled={saving}
+          >
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}{" "}
+            Save server
+          </Button>
+        </fieldset>
       </div>
       {loading ? (
         <div className="flex justify-center py-4">
@@ -166,6 +187,7 @@ export function ScmServersSection() {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={saving}
                   onClick={() =>
                     setDraft({
                       id: server.id,
@@ -183,6 +205,7 @@ export function ScmServersSection() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  disabled={saving}
                   onClick={() =>
                     void deleteScmServer(server.id)
                       .then(load)

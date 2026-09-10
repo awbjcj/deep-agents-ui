@@ -48,3 +48,17 @@ test("the credential row is locked while its submitted secret is saving", async 
   assert.equal(source.match(/disabled=\{busy\}/g)?.length, 3);
   assert.match(source, /disabled=\{busy \|\| !value\.token\.trim\(\)\}/);
 });
+
+test("SCM server editing supports re-enable and locks the submitted form", async () => {
+  const source = await readFile(
+    new URL(
+      "../src/app/components/admin/ScmServersSection.tsx",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
+  assert.match(source, /id="scm-server-enabled"/);
+  assert.match(source, /onCheckedChange=\{\(enabled\)/);
+  assert.match(source, /<fieldset[\s\S]*disabled=\{saving\}/);
+});
