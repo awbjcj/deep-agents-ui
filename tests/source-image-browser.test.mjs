@@ -13,6 +13,90 @@ const SOURCE_IMAGE_BYTES =
 const SOURCE_ARTIFACT_PATH =
   "/_artifacts/admin/thread-1/uploads/source-a__diagram.png";
 const SOURCE_STATE_KEY = "uploads/source-a__diagram.png";
+const TOOL_CATALOG = [
+  ["send_email", "Send email", "Email", "Send an email through SMTP."],
+  [
+    "send_draft_email",
+    "Send draft email",
+    "Email",
+    "Send an existing Outlook email draft.",
+  ],
+  [
+    "create_draft_email",
+    "Create draft email",
+    "Email",
+    "Create an Outlook email draft.",
+  ],
+  [
+    "send_chat_message",
+    "Send Teams message",
+    "Teams",
+    "Send a message in Microsoft Teams.",
+  ],
+  [
+    "create_chat_with_user",
+    "Create Teams chat",
+    "Teams",
+    "Create a Microsoft Teams chat with a user.",
+  ],
+  [
+    "grade_vsda_ticket",
+    "Grade VSDA ticket",
+    "Jira",
+    "Evaluate a VSDA ticket and compute its grade.",
+  ],
+  [
+    "edit_jira_ticket",
+    "Edit Jira ticket",
+    "Jira",
+    "Change fields on an existing Jira ticket.",
+  ],
+  [
+    "add_jira_comment",
+    "Add Jira comment",
+    "Jira",
+    "Add a comment to an existing Jira ticket.",
+  ],
+  [
+    "trigger_jenkins_build",
+    "Trigger Jenkins build",
+    "Jenkins",
+    "Start a Jenkins build.",
+  ],
+  [
+    "save_scope_note",
+    "Save shared note",
+    "Shared memory",
+    "Save a named note in a shared memory scope.",
+  ],
+  [
+    "save_scope_preference",
+    "Save shared preference",
+    "Shared memory",
+    "Save a preference or rule in a shared memory scope.",
+  ],
+  [
+    "record_scope_history",
+    "Record shared history",
+    "Shared memory",
+    "Record an event in a shared memory scope.",
+  ],
+  [
+    "update_scope_context",
+    "Update shared context",
+    "Shared memory",
+    "Update the summary for a shared memory scope.",
+  ],
+].map(([id, label, group, description]) => ({
+  id,
+  label,
+  group,
+  description,
+  prerequisites:
+    group === "Shared memory"
+      ? "Requires developer or admin role and write access to the target scope."
+      : null,
+}));
 
 const sourceRecord = {
   attachment_id: "source-a",
@@ -173,6 +257,16 @@ test(
     const pageErrors = [];
     const seenRequests = [];
     const putBodies = [];
+    const connectivityPutBodies = [];
+    let adminConnectivity = {
+      run_mode: "gateway",
+      run_mode_source: "env",
+      embedding_provider: "native",
+      embedding_provider_source: "env",
+      urls: {},
+      proxy_attachments_enabled: true,
+      proxy_attachments_enabled_source: "env",
+    };
     let failNextSource = null;
     let imageFetchingReads = 0;
     const policies = new Map();
@@ -240,6 +334,23 @@ test(
           proxy_attachments_enabled: true,
         });
       }
+      if (path === "/api/admin/connectivity") {
+        if (request.method() === "PUT") {
+          const body = request.postDataJSON();
+          connectivityPutBodies.push(body);
+          adminConnectivity = {
+            ...adminConnectivity,
+            ...body,
+            ...(Object.hasOwn(body, "proxy_attachments_enabled")
+              ? { proxy_attachments_enabled_source: "database" }
+              : {}),
+            ...(Object.hasOwn(body, "embedding_provider")
+              ? { embedding_provider_source: "database" }
+              : {}),
+          };
+        }
+        return json(route, adminConnectivity);
+      }
       if (path === "/api/user/image-fetching") {
         if (request.method() === "GET") {
           imageFetchingReads += 1;
@@ -253,9 +364,123 @@ test(
           sources: effectivePolicies(),
         });
       }
-      if (path === "/api/admin/users") return json(route, { users: [] });
+      if (path === "/api/admin/users") {
+        return json(route, {
+          users: [
+            { user_id: "admin-1", username: "browser-admin", role: "admin" },
+            {
+              user_id: "developer-1",
+              username: "fixture-developer",
+              role: "developer",
+            },
+          ],
+        });
+      }
+      if (path.startsWith("/api/admin/token-usage/users/")) {
+        return json(route, {
+          used: 24000,
+          limit: 100000,
+          pct: 24,
+          is_unlimited: false,
+          display_reset: "Monday",
+          calls_used: 12,
+          calls_limit: 100,
+          calls_pct: 12,
+          calls_is_unlimited: false,
+          cost_used_micros: 250000,
+          cost_limit_micros: 1000000,
+          cost_used_usd: 0.25,
+          cost_limit_usd: 1,
+          cost_pct: 25,
+          cost_is_unlimited: false,
+          enforced: "tokens",
+        });
+      }
+      if (path === "/api/admin/registration-settings") {
+        return json(route, { require_invitation_code: true });
+      }
+      if (path === "/api/admin/invitation-codes") {
+        return json(route, { codes: [] });
+      }
       if (path.startsWith("/api/admin/tier-models/")) {
         return json(route, { tier: path.split("/").at(-1), models: [] });
+      }
+      if (path === "/api/admin/weekly-limit-settings") {
+        return json(route, {
+          token_enabled: true,
+          call_enabled: true,
+          cost_enabled: true,
+        });
+      }
+      if (path.includes("/api/admin/tier-token-limits/")) {
+        return json(route, {
+          tier: path.split("/").at(-1),
+          weekly_limit: 100000,
+        });
+      }
+      if (path.includes("/api/admin/tier-call-limits/")) {
+        return json(route, {
+          tier: path.split("/").at(-1),
+          weekly_limit: 100,
+        });
+      }
+      if (path.includes("/api/admin/tier-cost-limits/")) {
+        return json(route, {
+          tier: path.split("/").at(-1),
+          weekly_limit_micros: 1000000,
+        });
+      }
+      if (path === "/api/admin/tool-permissions") {
+        const allowed = TOOL_CATALOG.map((tool) => tool.id);
+        return json(route, {
+          catalog: TOOL_CATALOG,
+          tiers: Object.fromEntries(
+            ["user", "developer", "admin"].map((tier) => [
+              tier,
+              { tier, allowed_tool_ids: allowed, revision: 1 },
+            ])
+          ),
+        });
+      }
+      if (path === "/api/admin/run-mode") {
+        return json(route, {
+          run_mode: "gateway",
+          run_mode_updated_at: "2026-09-11T12:00:00Z",
+          run_mode_time_gap: "just now",
+        });
+      }
+      if (path === "/api/admin/scopes") return json(route, []);
+      if (path === "/api/library/indices") {
+        return json(route, { indices: [] });
+      }
+      if (path === "/api/library/shelves") {
+        return json(route, { shelves: [] });
+      }
+      if (path === "/api/library/shelves/audit") {
+        return json(route, { shelves: [], drift: [] });
+      }
+      if (path === "/api/library/jobs") return json(route, { jobs: [] });
+      if (path === "/api/library/batches") {
+        return json(route, { batches: [] });
+      }
+      if (path === "/api/admin/scm/servers") return json(route, []);
+      if (path === "/api/admin/broadcasts") {
+        return json(route, { broadcasts: [] });
+      }
+      if (path === "/api/admin/code-analysis/settings") {
+        return json(route, {});
+      }
+      if (path === "/api/admin/code-analysis/engine-settings") {
+        return json(route, {});
+      }
+      if (path === "/api/code-analysis/engines") {
+        return json(route, {
+          default_engine: "copilot",
+          engines: [
+            { id: "deep_agent", ready: true, blockers: [] },
+            { id: "copilot", ready: true, blockers: [] },
+          ],
+        });
       }
       const policyMatch = path.match(
         /^\/api\/admin\/tier-source-images\/([^/]+)\/(jira|polarion|confluence)$/
@@ -356,17 +581,250 @@ test(
       }
       await adminButton.click();
 
-      const modelsTab = page.getByRole("tab", { name: "Models" });
-      await modelsTab.focus();
+      const adminTabs = page.getByRole("tablist", {
+        name: "Admin sections",
+      });
+      const expectedTabs = [
+        "People",
+        "Models",
+        "Tools",
+        "Runtime",
+        "Memories",
+        "Search",
+        "Sources",
+        "Newsletters",
+      ];
+      await adminTabs.waitFor();
+      await adminTabs
+        .getByRole("tab", { name: "People", exact: true })
+        .waitFor();
+      assert.equal(await adminTabs.getByRole("tab").count(), 8);
+      for (const label of expectedTabs) {
+        await adminTabs
+          .getByRole("tab", { name: label, exact: true })
+          .waitFor();
+      }
+      const assertAdminTabBounds = async (viewport) => {
+        const result = await adminTabs.evaluate((list) => ({
+          clientWidth: list.clientWidth,
+          scrollWidth: list.scrollWidth,
+          labels: [...list.querySelectorAll('[role="tab"]')].map((tab) => ({
+            label: tab.textContent?.trim(),
+            clientWidth: tab.clientWidth,
+            scrollWidth: tab.scrollWidth,
+            tabBounds: tab.getBoundingClientRect().toJSON(),
+            iconBounds: tab
+              .querySelector("svg")
+              ?.getBoundingClientRect()
+              .toJSON(),
+            textBounds: (() => {
+              const textNode = [...tab.childNodes].find(
+                (node) =>
+                  node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+              );
+              if (!textNode) return null;
+              const range = document.createRange();
+              range.selectNode(textNode);
+              return range.getBoundingClientRect().toJSON();
+            })(),
+          })),
+        }));
+        assert(
+          result.scrollWidth <= result.clientWidth + 1,
+          `${viewport} admin tabs overflowed: ${JSON.stringify(result)}`
+        );
+        for (const tab of result.labels) {
+          assert(
+            tab.scrollWidth <= tab.clientWidth + 1,
+            `${viewport} tab label clipped: ${JSON.stringify(tab)}`
+          );
+          assert(
+            tab.textBounds && tab.textBounds.width > 0,
+            `${viewport} tab label is hidden: ${JSON.stringify(tab)}`
+          );
+          assert(
+            tab.textBounds.left >= tab.tabBounds.left - 1 &&
+              tab.textBounds.right <= tab.tabBounds.right + 1,
+            `${viewport} tab label escaped its button: ${JSON.stringify(tab)}`
+          );
+          if (tab.iconBounds && tab.iconBounds.width > 0) {
+            const bounds = tab.iconBounds;
+            assert(
+              bounds.left >= tab.tabBounds.left - 1 &&
+                bounds.right <= tab.tabBounds.right + 1,
+              `${viewport} tab icon escaped its button: ${JSON.stringify(tab)}`
+            );
+          }
+        }
+      };
+      await assertAdminTabBounds("desktop");
+
+      await page.getByText("2 accounts in this workspace").waitFor();
+      const registrationSummary = page
+        .locator("details")
+        .filter({ hasText: /Registration & invitations/ })
+        .locator("summary");
+      await registrationSummary.waitFor();
+      await page.locator("#admin-panel").screenshot({
+        path: join(EVIDENCE, "admin-people-desktop.png"),
+        animations: "disabled",
+      });
+      await registrationSummary.click();
+      await page
+        .getByRole("switch", {
+          name: "Require invitation code for registration",
+        })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Generate invitation code" })
+        .waitFor();
+      await registrationSummary.click();
+      const bulkSummary = page
+        .locator("details")
+        .filter({ hasText: /Bulk account operations/ })
+        .locator("summary");
+      await bulkSummary.click();
+      await page
+        .getByRole("button", { name: "Reset all weekly usage" })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Reset all non-admin passwords" })
+        .waitFor();
+      await bulkSummary.click();
+
+      const peopleTab = adminTabs.getByRole("tab", {
+        name: "People",
+        exact: true,
+      });
+      const modelsTab = adminTabs.getByRole("tab", {
+        name: "Models",
+        exact: true,
+      });
+      await peopleTab.focus();
+      await page.keyboard.press("ArrowRight");
+      assert.equal(await peopleTab.getAttribute("aria-selected"), "true");
+      assert.equal(await modelsTab.getAttribute("aria-selected"), "false");
+      await page.keyboard.press("Enter");
+      await page.getByText("Tier model allowlists").waitFor();
+      await page.getByText("Usage limits", { exact: true }).waitFor();
+
+      const toolsTab = adminTabs.getByRole("tab", {
+        name: "Tools",
+        exact: true,
+      });
+      await toolsTab.click();
+      await page.getByRole("heading", { name: "Agent tools" }).waitFor();
+      await page.getByRole("radio", { name: "developer", exact: true }).click();
+      await page.getByText("Email", { exact: true }).waitFor();
+      await page.locator("#admin-panel").screenshot({
+        path: join(EVIDENCE, "admin-tools-compact-desktop.png"),
+        animations: "disabled",
+      });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.getByRole("button", { name: "Switch to night mode" }).click();
+      const darkTheme = await page.evaluate(() => ({
+        theme: document.documentElement.dataset.theme,
+        darkClass: document.documentElement.classList.contains("dark"),
+        bodyBackground: getComputedStyle(document.body).backgroundColor,
+      }));
+      assert.equal(darkTheme.theme, "dark");
+      assert.equal(darkTheme.darkClass, true);
+      assert.notEqual(darkTheme.bodyBackground, "rgb(255, 255, 255)");
+      await page.locator("#admin-panel").screenshot({
+        path: join(EVIDENCE, "admin-tools-dark-reduced-motion.png"),
+        animations: "disabled",
+      });
+      await page.getByRole("button", { name: "Switch to day mode" }).click();
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+
+      const runtimeTab = adminTabs.getByRole("tab", {
+        name: "Runtime",
+        exact: true,
+      });
+      await runtimeTab.click();
+      await page.getByRole("heading", { name: "Run mode" }).waitFor();
+      const providerEndpoints = page
+        .locator("details")
+        .filter({ hasText: /Provider endpoints/ });
+      await providerEndpoints.locator("summary").click();
+      await providerEndpoints.locator("#runtime-openai_base_url").waitFor();
+      const executionResources = page
+        .locator("details")
+        .filter({ hasText: /Execution resources/ });
+      await executionResources.locator("summary").click();
+      await executionResources
+        .getByLabel("Default engine", { exact: true })
+        .waitFor();
+      assert.equal(
+        await page.locator("#admin-panel").getByRole("alert").count(),
+        0
+      );
+      await page.locator("#admin-panel").screenshot({
+        path: join(EVIDENCE, "admin-runtime-desktop.png"),
+        animations: "disabled",
+      });
+
+      await adminTabs
+        .getByRole("tab", { name: "Memories", exact: true })
+        .click();
+      await page.getByRole("heading", { name: "Memories" }).last().waitFor();
+
+      await adminTabs.getByRole("tab", { name: "Search", exact: true }).click();
+      await page.getByRole("heading", { name: "Search library" }).waitFor();
+      const copilotEmbedding = page.getByRole("button", {
+        name: /Copilot API/,
+      });
+      await copilotEmbedding.click();
+      await page
+        .getByText("Custom override saved by an admin", { exact: true })
+        .waitFor();
+      assert.deepEqual(connectivityPutBodies.at(-1), {
+        embedding_provider: "copilot",
+      });
+      await page
+        .getByText("Embeddings now use copilot-api", { exact: true })
+        .waitFor({ state: "hidden", timeout: 6_000 });
+
+      await adminTabs
+        .getByRole("tab", { name: "Newsletters", exact: true })
+        .click();
+      await page.getByRole("heading", { name: "Newsletters" }).last().waitFor();
+
+      const sourcesTab = page.getByRole("tab", { name: "Sources" });
+      await sourcesTab.focus();
       await page.keyboard.press("Enter");
       await assert.doesNotReject(() =>
-        page.getByText("Tier model allowlists").waitFor()
+        page.getByRole("heading", { name: "Source images" }).waitFor()
       );
-      assert.equal(await modelsTab.getAttribute("aria-selected"), "true");
+      assert.equal(await sourcesTab.getAttribute("aria-selected"), "true");
+
+      await page.locator("#admin-panel").screenshot({
+        path: join(EVIDENCE, "admin-sources-overview-desktop.png"),
+        animations: "disabled",
+      });
+      const serverConfiguration = page
+        .locator("details")
+        .filter({ hasText: /Server configuration/ })
+        .locator("summary");
+      await serverConfiguration.click();
+      await page.getByRole("button", { name: "Save server" }).waitFor();
+      await serverConfiguration.click();
+
+      const attachmentSwitch = page.getByRole("switch", {
+        name: "Chat file and image uploads",
+      });
+      await attachmentSwitch.waitFor();
+      await attachmentSwitch.click();
+      await page
+        .getByText("Custom override saved by an admin", { exact: true })
+        .waitFor();
+      assert.deepEqual(connectivityPutBodies.at(-1), {
+        proxy_attachments_enabled: false,
+      });
 
       const sourceDisclosure = page
         .locator("details")
-        .filter({ hasText: /Source images/ })
+        .filter({ hasText: /Tier policies/ })
         .locator("summary");
       await sourceDisclosure.focus();
       await page.keyboard.press("Enter");
@@ -474,7 +932,10 @@ test(
         path: join(EVIDENCE, "admin-source-controls-desktop.png"),
       });
 
+      await page.setViewportSize({ width: 375, height: 844 });
+      await assertAdminTabBounds("375px");
       await page.setViewportSize({ width: 390, height: 844 });
+      await assertAdminTabBounds("390px");
       await userSection.scrollIntoViewIfNeeded();
       const overflow = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
@@ -511,7 +972,7 @@ test(
         localStorage.setItem("vsda_workspace_tab", "connectivity")
       );
       await page.getByRole("button", { name: "Workspace" }).click();
-      await page.getByRole("heading", { name: "Connectivity" }).waitFor();
+      await page.getByRole("heading", { name: "Connections" }).waitFor();
       const policyAlert = page.getByRole("alert").filter({
         hasText: "Source image preference could not be loaded",
       });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Save, Server, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { SectionHeader } from "@/app/components/admin/primitives";
+import {
+  DisclosureSection,
+  SectionHeader,
+} from "@/app/components/admin/primitives";
 import {
   deleteScmServer,
   listAdminScmServers,
@@ -33,6 +36,7 @@ export function ScmServersSection() {
   const [draft, setDraft] = useState<ScmServerInput>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const configurationRef = useRef<HTMLDetailsElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -75,7 +79,12 @@ export function ScmServersSection() {
         title="SCM servers"
         subtitle="Named Gerrit and Plastic sources available for read-only code analysis."
       />
-      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+      <DisclosureSection
+        title="Server configuration"
+        subtitle={`${servers.length} configured · add or update Gerrit and Plastic connections`}
+        contentClassName="space-y-3"
+        detailsRef={configurationRef}
+      >
         <div className="flex items-center gap-2 text-sm font-semibold">
           <Server className="h-4 w-4 text-primary" /> Add or update server
         </div>
@@ -162,7 +171,7 @@ export function ScmServersSection() {
             Save server
           </Button>
         </fieldset>
-      </div>
+      </DisclosureSection>
       {loading ? (
         <div className="flex justify-center py-4">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -188,7 +197,7 @@ export function ScmServersSection() {
                   variant="outline"
                   size="sm"
                   disabled={saving}
-                  onClick={() =>
+                  onClick={() => {
                     setDraft({
                       id: server.id,
                       provider: server.provider,
@@ -197,8 +206,11 @@ export function ScmServersSection() {
                       auth_profile: server.auth_profile,
                       enabled: server.enabled,
                       validation: server.validation,
-                    })
-                  }
+                    });
+                    if (configurationRef.current) {
+                      configurationRef.current.open = true;
+                    }
+                  }}
                 >
                   Edit
                 </Button>

@@ -440,7 +440,7 @@ export function ModelSidebar() {
           header duplicated the eyebrow + title that WorkspacePanel already
           shows; we keep only the content. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-8 p-5">
+        <div className="space-y-6 p-4">
           {usage && (
             <section
               className="space-y-2.5"

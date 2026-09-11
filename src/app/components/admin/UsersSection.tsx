@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
-import { UsageLimitControls } from "@/app/components/admin/UsageLimitControls";
 import { roleVisual } from "@/app/utils/roleVisual";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   ActionPill,
+  DisclosureSection,
   LoadingRow,
   SectionHeader,
 } from "@/app/components/admin/primitives";
@@ -258,8 +258,6 @@ export function UsersSection() {
         </div>
       </div>
 
-      <UsageLimitControls />
-
       {isLoading ? (
         <LoadingRow />
       ) : (
@@ -363,8 +361,11 @@ export function UsersSection() {
         </div>
       )}
 
-      <div className="aptiv-glass-soft space-y-2 rounded-lg p-2.5">
-        <p className="aptiv-eyebrow">Bulk operations</p>
+      <DisclosureSection
+        title="Bulk account operations"
+        subtitle="Reset weekly usage or issue temporary passwords"
+        contentClassName="space-y-2"
+      >
         <Button
           type="button"
           variant="outline"
@@ -383,7 +384,7 @@ export function UsersSection() {
           <Download className="mr-2 h-4 w-4" />
           Reset all non-admin passwords
         </Button>
-      </div>
+      </DisclosureSection>
     </div>
   );
 }

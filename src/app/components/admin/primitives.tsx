@@ -12,7 +12,7 @@
  */
 
 import { ChevronDown, Loader2 } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 import type { ActionIntent } from "@/app/components/admin/primitives-utils";
@@ -53,15 +53,18 @@ export function DisclosureSection({
   children,
   className,
   contentClassName,
+  detailsRef,
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  detailsRef?: Ref<HTMLDetailsElement>;
 }) {
   return (
     <details
+      ref={detailsRef}
       className={cn(
         "aptiv-glass-soft group overflow-hidden rounded-lg shadow-sm",
         className
