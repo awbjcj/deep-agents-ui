@@ -190,7 +190,7 @@ export function ToolPermissionsSidebar() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="min-w-0 space-y-5 p-5">
+      <div className="min-w-0 space-y-4 p-4">
         <header className="space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-base font-semibold tracking-tight">
@@ -215,11 +215,11 @@ export function ToolPermissionsSidebar() {
         {error ? (
           <div
             role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+            className="rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs text-foreground"
           >
             <div className="flex gap-2">
               <AlertTriangle
-                className="mt-0.5 h-4 w-4 shrink-0"
+                className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">

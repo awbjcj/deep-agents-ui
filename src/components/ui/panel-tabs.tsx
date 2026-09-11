@@ -119,16 +119,14 @@ export function PanelTabs<Id extends string>({
       style={
         isTwoRow
           ? {
-              gridTemplateColumns: `repeat(${Math.ceil(
-                tabs.length / 2
-              )}, minmax(0, 1fr))`,
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             }
           : undefined
       }
       className={cn(
         isUnderline
           ? isTwoRow
-            ? "grid items-stretch gap-x-1.5 gap-y-1 overflow-visible px-4 pb-1"
+            ? "grid items-stretch gap-1 overflow-visible px-2 pb-1"
             : "flex items-end gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
         className
@@ -164,7 +162,8 @@ export function PanelTabs<Id extends string>({
               isUnderline
                 ? cn(
                     "rounded-t-md px-3 py-2 text-[11px] uppercase tracking-[0.14em]",
-                    isTwoRow && "w-full justify-center px-2"
+                    isTwoRow &&
+                      "w-full min-w-0 justify-center gap-1 px-1 text-[11px] normal-case tracking-normal"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive
@@ -180,7 +179,10 @@ export function PanelTabs<Id extends string>({
           >
             {Icon ? (
               <Icon
-                className="h-3.5 w-3.5 shrink-0"
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0",
+                  isTwoRow && "hidden h-3 w-3 min-[400px]:block"
+                )}
                 aria-hidden="true"
               />
             ) : null}

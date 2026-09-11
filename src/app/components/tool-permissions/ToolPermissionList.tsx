@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CheckCircle2 } from "lucide-react";
+import { Ban, CheckCircle2, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { canToggleTool, type ToolCatalogEntry } from "@/lib/tool-permissions";
@@ -10,7 +10,9 @@ interface ToolPermissionListProps {
   selectedIds: readonly string[];
   allowedIds: readonly string[];
   effectiveIds?: readonly string[];
+  savedSelectedIds?: readonly string[];
   selectedStatusLabel?: string;
+  compactGroups?: boolean;
   idPrefix: string;
   saving: boolean;
   onToggle: (toolId: string) => void;
@@ -21,7 +23,9 @@ export function ToolPermissionList({
   selectedIds,
   allowedIds,
   effectiveIds = selectedIds,
+  savedSelectedIds = selectedIds,
   selectedStatusLabel = "Active",
+  compactGroups = false,
   idPrefix,
   saving,
   onToggle,
@@ -34,19 +38,17 @@ export function ToolPermissionList({
   }
 
   return (
-    <div className="space-y-5">
-      {[...groups].map(([group, tools]) => (
-        <section
-          key={group}
-          aria-labelledby={`${idPrefix}-group-${toDomId(group)}`}
-          className="space-y-2"
-        >
-          <h4
-            id={`${idPrefix}-group-${toDomId(group)}`}
-            className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
-          >
-            {group}
-          </h4>
+    <div className={compactGroups ? "space-y-2" : "space-y-5"}>
+      {[...groups].map(([group, tools]) => {
+        const groupId = `${idPrefix}-group-${toDomId(group)}`;
+        const selectedCount = tools.filter((tool) =>
+          selectedIds.includes(tool.id)
+        ).length;
+        const groupChanged = tools.some(
+          (tool) =>
+            selectedIds.includes(tool.id) !== savedSelectedIds.includes(tool.id)
+        );
+        const rows = (
           <div className="overflow-hidden rounded-lg border border-border/80 bg-card/65 shadow-sm">
             {tools.map((tool, index) => {
               const checked = selectedIds.includes(tool.id);
@@ -87,19 +89,19 @@ export function ToolPermissionList({
                         {tool.label}
                       </label>
                       {checked && !allowed ? (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-destructive/25 bg-destructive/5 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-destructive/35 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                           <Ban
-                            className="h-3 w-3"
+                            className="h-3 w-3 text-destructive"
                             aria-hidden="true"
                           />
                           Blocked by administrator
                         </span>
                       ) : pendingSelection ? (
-                        <span className="border-[var(--aptiv-orange)]/30 bg-[var(--aptiv-orange)]/5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-[var(--aptiv-orange)]">
+                        <span className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-foreground">
                           Pending save
                         </span>
                       ) : pendingRemoval ? (
-                        <span className="border-[var(--aptiv-orange)]/30 bg-[var(--aptiv-orange)]/5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-[var(--aptiv-orange)]">
+                        <span className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-foreground">
                           Pending removal
                         </span>
                       ) : effective ? (
@@ -118,7 +120,7 @@ export function ToolPermissionList({
                     >
                       <p>{tool.description}</p>
                       {tool.prerequisites ? (
-                        <p className="font-medium text-muted-foreground/90">
+                        <p className="font-medium text-muted-foreground">
                           {tool.prerequisites}
                         </p>
                       ) : null}
@@ -134,8 +136,60 @@ export function ToolPermissionList({
               );
             })}
           </div>
-        </section>
-      ))}
+        );
+
+        if (compactGroups) {
+          return (
+            <details
+              key={group}
+              className="aptiv-glass-soft group overflow-hidden rounded-lg shadow-sm"
+            >
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
+                <span
+                  id={groupId}
+                  className="min-w-0 flex-1 text-xs font-semibold text-foreground"
+                >
+                  {group}
+                </span>
+                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                  {selectedCount} of {tools.length} allowed
+                </span>
+                {groupChanged ? (
+                  <span className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold text-foreground">
+                    Draft changed
+                  </span>
+                ) : null}
+                <ChevronDown
+                  className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </summary>
+              <div
+                aria-labelledby={groupId}
+                className="border-t border-border/70 p-2"
+              >
+                {rows}
+              </div>
+            </details>
+          );
+        }
+
+        return (
+          <section
+            key={group}
+            aria-labelledby={groupId}
+            className="space-y-2"
+          >
+            <h4
+              id={groupId}
+              className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              {group}
+            </h4>
+            {rows}
+          </section>
+        );
+      })}
     </div>
   );
 }

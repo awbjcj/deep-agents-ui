@@ -28,9 +28,9 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { id: "models", label: "Models" },
-  { id: "tokens", label: "Tokens" },
-  { id: "connectivity", label: "Connectivity" },
   { id: "tools", label: "Tools" },
+  { id: "tokens", label: "Tokens" },
+  { id: "connectivity", label: "Connections" },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
@@ -97,7 +97,7 @@ export function WorkspacePanel({
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="gap-0.5 px-2 pt-4 [&_[role=tab]]:gap-1 [&_[role=tab]]:px-2 [&_[role=tab]]:tracking-[0.1em]"
+          className="grid grid-cols-4 gap-1 px-2 pt-4 [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1 [&_[role=tab]]:px-1 [&_[role=tab]]:normal-case [&_[role=tab]]:tracking-normal"
         />
       </div>
 

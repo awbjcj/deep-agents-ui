@@ -2,10 +2,13 @@
 
 import { useState, type ComponentType } from "react";
 import {
+  Activity,
+  GitBranch,
   Layers,
+  Mail,
+  Search,
   Shield,
   Sliders,
-  Ticket,
   Wrench,
   Users,
   X,
@@ -16,15 +19,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { PanelTabs } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 
-import { UsersSection } from "@/app/components/admin/UsersSection";
+import { PeopleSection } from "@/app/components/admin/PeopleSection";
 import { ScopesSection } from "@/app/components/admin/ScopesSection";
-import { RunModeSection } from "@/app/components/admin/RunModeSection";
+import { RuntimeSection } from "@/app/components/admin/RuntimeSection";
 import { TiersSection } from "@/app/components/admin/TiersSection";
-import { RegistrationSection } from "@/app/components/admin/RegistrationSection";
-import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibrarySection";
+import { SearchSection } from "@/app/components/admin/SearchSection";
 import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
-import { CodeAnalysisSettings } from "@/app/components/admin/CodeAnalysisSettings";
-import { ScmServersSection } from "@/app/components/admin/ScmServersSection";
+import { SourcesSection } from "@/app/components/admin/SourcesSection";
 import { ToolPermissionsSection } from "@/app/components/admin/ToolPermissionsSection";
 
 type AdminTab =
@@ -35,7 +36,6 @@ type AdminTab =
   | "runmode"
   | "tiers"
   | "tools"
-  | "registration"
   | "scm";
 
 const TABS: readonly {
@@ -44,32 +44,25 @@ const TABS: readonly {
   heading?: string;
   icon?: ComponentType<{ className?: string }>;
 }[] = [
-  { id: "users", label: "Users", icon: Users },
-  { id: "scopes", label: "Memories", icon: Layers },
-  { id: "library", label: "Search" },
-  { id: "newsletters", label: "Newsletters" },
-  { id: "runmode", label: "Run mode" },
+  { id: "users", label: "People", icon: Users },
   { id: "tiers", label: "Models", icon: Sliders },
   { id: "tools", label: "Tools", icon: Wrench },
-  { id: "registration", label: "Invites", icon: Ticket },
-  { id: "scm", label: "Sources", heading: "Code sources" },
+  { id: "runmode", label: "Runtime", icon: Activity },
+  { id: "scopes", label: "Memories", icon: Layers },
+  { id: "library", label: "Search", icon: Search },
+  { id: "scm", label: "Sources", icon: GitBranch },
+  { id: "newsletters", label: "Newsletters", icon: Mail },
 ];
 
 const SECTIONS: Record<AdminTab, ComponentType> = {
-  users: UsersSection,
+  users: PeopleSection,
   scopes: ScopesSection,
-  library: OpenSearchLibrarySection,
+  library: SearchSection,
   newsletters: NewsletterSection,
-  runmode: RunModeSection,
+  runmode: RuntimeSection,
   tiers: TiersSection,
   tools: ToolPermissionsSection,
-  registration: RegistrationSection,
-  scm: () => (
-    <div className="space-y-8">
-      <ScmServersSection />
-      <CodeAnalysisSettings />
-    </div>
-  ),
+  scm: SourcesSection,
 };
 
 interface AdminPanelProps {
@@ -128,7 +121,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
       <ScrollArea className="h-0 flex-1">
         <div
           {...panelTabPanelProps("admin", active)}
-          className="space-y-6 p-5 focus-visible:outline-none"
+          className="space-y-6 p-4 focus-visible:outline-none"
         >
           <ActiveSection />
         </div>

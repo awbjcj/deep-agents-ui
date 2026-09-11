@@ -247,6 +247,12 @@ function makePolicyFixture() {
         });
       }
       if (path === "/api/admin/users") return json(route, { users: [] });
+      if (path === "/api/admin/registration-settings") {
+        return json(route, { require_invitation_code: true });
+      }
+      if (path === "/api/admin/invitation-codes") {
+        return json(route, { codes: [] });
+      }
       if (path === "/api/admin/tool-permissions") {
         return json(route, { catalog, tiers });
       }
@@ -494,6 +500,14 @@ async function openAdminTools(page) {
   await page.waitForTimeout(150);
   await toolsTab.click();
   await page.getByRole("heading", { name: "Agent tools" }).waitFor();
+  const groups = page.locator("#admin-panel details");
+  await groups.first().waitFor();
+  for (let index = 0; index < (await groups.count()); index += 1) {
+    const group = groups.nth(index);
+    if ((await group.getAttribute("open")) === null) {
+      await group.locator("summary").click();
+    }
+  }
 }
 
 async function assertWorkspaceTabsFullyVisible(page, context) {
@@ -502,7 +516,21 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
   const tabBoxes = await rail.getByRole("tab").evaluateAll((tabs) =>
     tabs.map((tab) => {
       const box = tab.getBoundingClientRect();
-      return { left: box.left, right: box.right, width: box.width };
+      const textNode = [...tab.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+      );
+      const range = document.createRange();
+      if (textNode) range.selectNode(textNode);
+      const textBox = textNode ? range.getBoundingClientRect() : null;
+      return {
+        left: box.left,
+        right: box.right,
+        width: box.width,
+        scrollWidth: tab.scrollWidth,
+        clientWidth: tab.clientWidth,
+        textLeft: textBox?.left,
+        textRight: textBox?.right,
+      };
     })
   );
   assert(railBox, `${context}: workspace tab rail is missing`);
@@ -515,6 +543,12 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
         railBox,
         box,
       })})`
+    );
+    assert(
+      box.scrollWidth <= box.clientWidth + 1 &&
+        (box.textLeft === undefined || box.textLeft >= box.left - 1) &&
+        (box.textRight === undefined || box.textRight <= box.right + 1),
+      `${context}: workspace tab label is clipped (${JSON.stringify(box)})`
     );
   }
 }
@@ -645,14 +679,76 @@ test(
       await page.getByText("Admin tier tools saved.").waitFor();
       await page.getByRole("button", { name: "Close admin panel" }).click();
       await openWorkspaceTools(page);
-      await page.getByText("Blocked by administrator").waitFor();
+      const blockedBadge = page.getByText("Blocked by administrator");
+      await blockedBadge.waitFor();
       await assertWorkspaceTabsFullyVisible(page, "desktop");
       assert.equal(await email.isChecked(), true);
       assert.equal(await email.isEnabled(), true);
+      const readBlockedContrast = () =>
+        blockedBadge.evaluate((element) => {
+          const sample = (color) => {
+            const canvas = new OffscreenCanvas(1, 1);
+            const context = canvas.getContext("2d");
+            context.clearRect(0, 0, 1, 1);
+            context.fillStyle = color;
+            context.fillRect(0, 0, 1, 1);
+            return [...context.getImageData(0, 0, 1, 1).data];
+          };
+          const composite = (foreground, background) => {
+            const alpha = foreground[3] / 255;
+            return foreground
+              .slice(0, 3)
+              .map((channel, index) =>
+                Math.round(channel * alpha + background[index] * (1 - alpha))
+              );
+          };
+          const luminance = (rgb) => {
+            const channels = rgb.map((channel) => {
+              const value = channel / 255;
+              return value <= 0.04045
+                ? value / 12.92
+                : ((value + 0.055) / 1.055) ** 2.4;
+            });
+            return (
+              channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+            );
+          };
+          const style = getComputedStyle(element);
+          const text = sample(style.color);
+          const body = sample(getComputedStyle(document.body).backgroundColor);
+          const background = composite(sample(style.backgroundColor), body);
+          const lighter = Math.max(luminance(text), luminance(background));
+          const darker = Math.min(luminance(text), luminance(background));
+          return {
+            color: style.color,
+            ratio: (lighter + 0.05) / (darker + 0.05),
+          };
+        });
+      const lightBlockedContrast = await readBlockedContrast();
+      assert.notEqual(lightBlockedContrast.color, "rgb(248, 64, 24)");
+      assert(
+        lightBlockedContrast.ratio >= 4.5,
+        `light blocked badge contrast: ${JSON.stringify(lightBlockedContrast)}`
+      );
       await page.locator("#right-panel").screenshot({
         path: join(EVIDENCE, "personal-tools-blocked-desktop.png"),
         animations: "disabled",
       });
+
+      await page.getByRole("button", { name: "Switch to night mode" }).click();
+      const darkBlockedTheme = await page.evaluate(() => ({
+        theme: document.documentElement.dataset.theme,
+        darkClass: document.documentElement.classList.contains("dark"),
+      }));
+      assert.deepEqual(darkBlockedTheme, { theme: "dark", darkClass: true });
+      const darkBlockedContrast = await readBlockedContrast();
+      assert.notEqual(darkBlockedContrast.color, "rgb(248, 64, 24)");
+      assert(
+        darkBlockedContrast.ratio >= 4.5,
+        `dark blocked badge contrast: ${JSON.stringify(darkBlockedContrast)}`
+      );
+      assert.notEqual(darkBlockedContrast.color, lightBlockedContrast.color);
+      await page.getByRole("button", { name: "Switch to day mode" }).click();
 
       await page.getByRole("checkbox", { name: "Edit Jira ticket" }).click();
       await page.getByRole("button", { name: "Save changes" }).click();
@@ -747,6 +843,8 @@ test(
       await page.getByRole("button", { name: "Close admin panel" }).click();
       await openWorkspaceTools(page);
 
+      await page.setViewportSize({ width: 375, height: 844 });
+      await assertWorkspaceTabsFullyVisible(page, "375px narrow");
       await page.setViewportSize({ width: 390, height: 844 });
       await page.getByRole("tab", { name: "Tools" }).focus();
       await page.keyboard.press("Home");

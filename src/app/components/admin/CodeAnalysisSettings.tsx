@@ -250,7 +250,11 @@ function LimitInput({
 }
 
 /** Nonsecret worker resource controls, deliberately expressed in exact stored units. */
-export function CodeAnalysisSettings() {
+export function CodeAnalysisSettings({
+  showHeader = true,
+}: {
+  showHeader?: boolean;
+} = {}) {
   const [limits, setLimits] = useState<AnalysisLimits | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [engines, setEngines] = useState<EngineSettings | null>(null);
@@ -371,10 +375,12 @@ export function CodeAnalysisSettings() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
-        title="Code-analysis resources"
-        subtitle="Choose the analysis policy, native model budget, and bounded worker capacity. Values are stored in the exact units shown."
-      />
+      {showHeader ? (
+        <SectionHeader
+          title="Code-analysis resources"
+          subtitle="Choose the analysis policy, native model budget, and bounded worker capacity. Values are stored in the exact units shown."
+        />
+      ) : null}
 
       {loading ? (
         <div

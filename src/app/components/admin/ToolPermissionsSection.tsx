@@ -195,7 +195,7 @@ export function ToolPermissionsSection() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <SectionHeader
         title="Agent tools"
         subtitle="Set the maximum tools each account tier may enable"
@@ -227,11 +227,11 @@ export function ToolPermissionsSection() {
       {error ? (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+          className="rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs text-foreground"
         >
           <div className="flex gap-2">
             <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0"
+              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
@@ -326,7 +326,9 @@ export function ToolPermissionsSection() {
             selectedIds={activeDraft}
             allowedIds={allCatalogIds}
             effectiveIds={activeDraft}
+            savedSelectedIds={savedIds}
             selectedStatusLabel="Allowed"
+            compactGroups
             idPrefix={`admin-tools-${activeTier}`}
             saving={saving}
             onToggle={toggleTool}
