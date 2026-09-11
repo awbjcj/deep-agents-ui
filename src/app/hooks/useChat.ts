@@ -13,6 +13,10 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
+import {
+  createInterruptResumeHandler,
+  selectPendingInterrupt,
+} from "@/app/utils/interruptResume";
 import { useClient } from "@/providers/ClientProvider";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
@@ -621,16 +625,30 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [stream, onHistoryRevalidate]);
 
-  const resumeInterrupt = useCallback(
-    (value: any) => {
-      stream.submit(null, {
-        command: { resume: value },
-        config: buildConfig(),
-      });
-      // Update thread list when resuming from interrupt
-      onHistoryRevalidate?.();
-    },
-    [stream, buildConfig, onHistoryRevalidate]
+  const interrupt = selectPendingInterrupt(stream.interrupts);
+  const selectedInterruptId = interrupt?.id;
+  const resumeInterrupt = useMemo(
+    () =>
+      createInterruptResumeHandler({
+        getPending: () => stream.interrupts,
+        selectedId: selectedInterruptId,
+        submit: (resume) => {
+          stream.submit(null, {
+            command: { resume },
+            config: buildConfig(),
+            streamSubgraphs: true,
+            streamMode: STREAM_MODES,
+          });
+          // Update thread list when resuming from interrupt
+          onHistoryRevalidate?.();
+        },
+        onStale: () => {
+          toast.error(
+            "This approval is no longer pending. Review the current action."
+          );
+        },
+      }),
+    [stream, selectedInterruptId, buildConfig, onHistoryRevalidate]
   );
 
   const stopStream = useCallback(() => {
@@ -643,7 +661,7 @@ export function useChat({
   // projection, which additionally preserves per-message and per-tool-call
   // references so a streamed token re-renders only the live message instead of
   // every artifact in the thread.
-  const isInterrupted = stream.interrupt !== undefined;
+  const isInterrupted = stream.interrupts.length > 0;
   const processedMessages = useProcessedMessages(
     stream.messages,
     isInterrupted
@@ -658,7 +676,6 @@ export function useChat({
   const messages = stream.messages;
   const isLoading = stream.isLoading;
   const isThreadLoading = stream.isThreadLoading;
-  const interrupt = stream.interrupt;
   const getMessagesMetadata = stream.getMessagesMetadata;
 
   // The returned object is the ChatProvider context value. Leaving it as a bare

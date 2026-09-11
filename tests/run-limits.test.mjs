@@ -81,6 +81,10 @@ test("interrupt resumes reapply the configured run limit", () => {
     source.indexOf("const resumeInterrupt"),
     source.indexOf("const stopStream")
   );
-  assert.match(resumeBlock, /command: \{ resume: value \}/);
+  assert.match(
+    resumeBlock,
+    /createInterruptResumeHandler\(\{[\s\S]*getPending: \(\) => stream\.interrupts/
+  );
+  assert.match(resumeBlock, /command: \{ resume \}/);
   assert.match(resumeBlock, /config: buildConfig\(\)/);
 });
