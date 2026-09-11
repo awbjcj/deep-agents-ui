@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cpu, Key, Link, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PanelTabs } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";
+import { ToolPermissionsSidebar } from "@/app/components/ToolPermissionsSidebar";
 
-export type WorkspaceTab = "models" | "tokens" | "connectivity";
+export type WorkspaceTab = "models" | "tokens" | "connectivity" | "tools";
 
 interface WorkspacePanelProps {
   /** Tab to show on mount; falls back to "models" if undefined. */
@@ -23,13 +24,13 @@ interface WorkspacePanelProps {
 interface TabDef {
   id: WorkspaceTab;
   label: string;
-  icon: typeof Cpu;
 }
 
 const TABS: TabDef[] = [
-  { id: "models", label: "Models", icon: Cpu },
-  { id: "tokens", label: "Tokens", icon: Key },
-  { id: "connectivity", label: "Connectivity", icon: Link },
+  { id: "models", label: "Models" },
+  { id: "tokens", label: "Tokens" },
+  { id: "connectivity", label: "Connectivity" },
+  { id: "tools", label: "Tools" },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
@@ -96,7 +97,7 @@ export function WorkspacePanel({
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="pt-4"
+          className="gap-0.5 px-2 pt-4 [&_[role=tab]]:gap-1 [&_[role=tab]]:px-2 [&_[role=tab]]:tracking-[0.1em]"
         />
       </div>
 
@@ -128,6 +129,14 @@ export function WorkspacePanel({
             className="absolute inset-0 focus-visible:outline-none"
           >
             <ConnectivitySidebar />
+          </div>
+        )}
+        {active === "tools" && (
+          <div
+            {...panelTabPanelProps("workspace", "tools")}
+            className="absolute inset-0 focus-visible:outline-none"
+          >
+            <ToolPermissionsSidebar />
           </div>
         )}
       </div>

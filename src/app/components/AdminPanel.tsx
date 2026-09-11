@@ -2,14 +2,11 @@
 
 import { useState, type ComponentType } from "react";
 import {
-  Database,
-  GitBranch,
-  Globe,
   Layers,
-  Mail,
   Shield,
   Sliders,
   Ticket,
+  Wrench,
   Users,
   X,
 } from "lucide-react";
@@ -28,6 +25,7 @@ import { OpenSearchLibrarySection } from "@/app/components/admin/OpenSearchLibra
 import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
 import { CodeAnalysisSettings } from "@/app/components/admin/CodeAnalysisSettings";
 import { ScmServersSection } from "@/app/components/admin/ScmServersSection";
+import { ToolPermissionsSection } from "@/app/components/admin/ToolPermissionsSection";
 
 type AdminTab =
   | "users"
@@ -36,22 +34,25 @@ type AdminTab =
   | "newsletters"
   | "runmode"
   | "tiers"
+  | "tools"
   | "registration"
   | "scm";
 
 const TABS: readonly {
   id: AdminTab;
   label: string;
-  icon: ComponentType<{ className?: string }>;
+  heading?: string;
+  icon?: ComponentType<{ className?: string }>;
 }[] = [
   { id: "users", label: "Users", icon: Users },
   { id: "scopes", label: "Memories", icon: Layers },
-  { id: "library", label: "Search", icon: Database },
-  { id: "newsletters", label: "Newsletters", icon: Mail },
-  { id: "runmode", label: "Run mode", icon: Globe },
+  { id: "library", label: "Search" },
+  { id: "newsletters", label: "Newsletters" },
+  { id: "runmode", label: "Run mode" },
   { id: "tiers", label: "Models", icon: Sliders },
+  { id: "tools", label: "Tools", icon: Wrench },
   { id: "registration", label: "Invites", icon: Ticket },
-  { id: "scm", label: "Code sources", icon: GitBranch },
+  { id: "scm", label: "Sources", heading: "Code sources" },
 ];
 
 const SECTIONS: Record<AdminTab, ComponentType> = {
@@ -61,6 +62,7 @@ const SECTIONS: Record<AdminTab, ComponentType> = {
   newsletters: NewsletterSection,
   runmode: RunModeSection,
   tiers: TiersSection,
+  tools: ToolPermissionsSection,
   registration: RegistrationSection,
   scm: () => (
     <div className="space-y-8">
@@ -89,7 +91,9 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
             <div className="flex flex-col leading-none">
               <span className="aptiv-eyebrow">Admin Console</span>
               <h2 className="mt-1.5 text-lg font-semibold tracking-tight">
-                {TABS.find((t) => t.id === active)?.label ?? "Administration"}
+                {TABS.find((t) => t.id === active)?.heading ??
+                  TABS.find((t) => t.id === active)?.label ??
+                  "Administration"}
               </h2>
             </div>
           </div>
