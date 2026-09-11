@@ -9,6 +9,14 @@ const OUT = join(ROOT, "out");
 const EVIDENCE = join(ROOT, "docs", "evidence", "tool-permissions");
 const RUN_BROWSER = process.env.TOOL_PERMISSIONS_BROWSER_TEST === "1";
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
 const catalog = [
   {
     id: "send_email",
@@ -578,6 +586,257 @@ function assertOnlyExpectedHttpDiagnostics(messages, statuses) {
     );
   }
 }
+
+test(
+  "rendered save recovery and independent tier conflict review",
+  { skip: !RUN_BROWSER },
+  async (t) => {
+    const { chromium } = await import(
+      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE ?? "playwright"
+    );
+    const fixture = await staticServer();
+    const browser = await chromium.launch({
+      headless: true,
+      ...(process.env.TOOL_PERMISSIONS_BROWSER_EXECUTABLE
+        ? { executablePath: process.env.TOOL_PERMISSIONS_BROWSER_EXECUTABLE }
+        : {}),
+    });
+    try {
+      for (const panel of ["personal", "admin"]) {
+        for (const failure of ["HTTP 503", "rejected network"]) {
+          await t.test(
+            `${panel} ${failure} PUT requires fresh GET recovery`,
+            async () => {
+              const policy = makePolicyFixture();
+              const { page, context, pageErrors, consoleErrors } =
+                await authenticatedPage(browser, fixture, policy, "admin");
+              const recoveryStarted = deferred();
+              const releaseRecovery = deferred();
+              try {
+                await (panel === "personal"
+                  ? openWorkspaceTools(page)
+                  : openAdminTools(page));
+                const email = page.getByRole("checkbox", {
+                  name: "Send email",
+                  exact: true,
+                });
+                const save = page.getByRole("button", { name: "Save changes" });
+                const retry = page.getByRole("button", {
+                  name: "Retry",
+                  exact: true,
+                });
+                await email.check();
+                let putCount = 0;
+                let getCount = 0;
+                await page.route(
+                  panel === "personal"
+                    ? "**/api/user/tool-permissions"
+                    : "**/api/admin/tool-permissions**",
+                  async (route) => {
+                    if (route.request().method() === "PUT") {
+                      putCount += 1;
+                      if (putCount === 1) {
+                        return failure === "HTTP 503"
+                          ? json(
+                              route,
+                              { detail: "Fixture save unavailable" },
+                              503
+                            )
+                          : route.abort("failed");
+                      }
+                    } else {
+                      getCount += 1;
+                      if (getCount === 1) {
+                        return json(
+                          route,
+                          { detail: "Fixture recovery unavailable" },
+                          503
+                        );
+                      }
+                      recoveryStarted.resolve();
+                      await releaseRecovery.promise;
+                    }
+                    return route.fallback();
+                  }
+                );
+                await save.click();
+                await page
+                  .getByRole("alert")
+                  .getByText(
+                    failure === "HTTP 503"
+                      ? "Fixture save unavailable"
+                      : "Failed to fetch"
+                  )
+                  .waitFor();
+                assert.equal(await save.isDisabled(), true);
+                assert.equal(await retry.isVisible(), true);
+                assert.equal(await email.isChecked(), true);
+                await retry.click();
+                await page
+                  .getByRole("alert")
+                  .getByText("Fixture recovery unavailable")
+                  .waitFor();
+                assert.equal(await save.isDisabled(), true);
+                assert.equal(await retry.isVisible(), true);
+                assert.equal(await email.isChecked(), true);
+
+                // A later save must use the recovery response's current revision.
+                policy.tiers[
+                  panel === "personal" ? "admin" : "user"
+                ].revision = 7;
+                await retry.click();
+                await recoveryStarted.promise;
+                assert.equal(await save.isDisabled(), true);
+                assert.equal(await email.isChecked(), true);
+                releaseRecovery.resolve();
+                await page.waitForFunction(() =>
+                  [...document.querySelectorAll("button")].some(
+                    (button) =>
+                      button.textContent?.trim() === "Save changes" &&
+                      !button.disabled
+                  )
+                );
+                assert.equal(await retry.count(), 0);
+                assert.equal(await email.isChecked(), true);
+                await save.click();
+                await page
+                  .getByText(
+                    panel === "personal"
+                      ? "Your account-wide tool selection was saved."
+                      : "User tier tools saved."
+                  )
+                  .waitFor();
+                assert.equal(await save.isDisabled(), true);
+                assert.equal(putCount, 2);
+                assert.equal(getCount, 2);
+                if (panel === "personal") {
+                  assert.deepEqual(policy.userPutBodies.at(-1).body, {
+                    selected_tool_ids: ["send_email"],
+                    expected_selection_revision: 0,
+                    expected_tier_revision: "admin:7",
+                  });
+                } else {
+                  assert.deepEqual(policy.tierPutBodies.at(-1), {
+                    tier: "user",
+                    body: {
+                      allowed_tool_ids: ["send_email"],
+                      expected_revision: 7,
+                    },
+                  });
+                }
+                assert.deepEqual(pageErrors, []);
+                const httpErrors = consoleErrors.filter(
+                  (message) => !message.includes("net::ERR_FAILED")
+                );
+                assertOnlyExpectedHttpDiagnostics(
+                  httpErrors,
+                  failure === "HTTP 503" ? [503, 503] : [503]
+                );
+                assert.equal(
+                  consoleErrors.length - httpErrors.length,
+                  failure === "HTTP 503" ? 0 : 1
+                );
+              } finally {
+                releaseRecovery.resolve();
+                await context.close();
+              }
+            }
+          );
+        }
+      }
+
+      await t.test(
+        "two conflicting tiers retain independent review gates and revisions",
+        async () => {
+          const policy = makePolicyFixture();
+          const { page, context, pageErrors, consoleErrors } =
+            await authenticatedPage(browser, fixture, policy, "admin");
+          try {
+            await openAdminTools(page);
+            const email = page.getByRole("checkbox", {
+              name: "Send email",
+              exact: true,
+            });
+            const save = page.getByRole("button", { name: "Save changes" });
+            const review = page.getByRole("button", {
+              name: "I reviewed the refreshed policy",
+            });
+            for (const tier of ["user", "developer"]) {
+              await page
+                .getByRole("radio", { name: tier, exact: true })
+                .click();
+              await email.setChecked(tier === "user");
+              policy.conflictTierSave(tier);
+              await save.click();
+              await page
+                .getByRole("alert")
+                .getByText(/Tier policy changed.*draft is still here/)
+                .waitFor();
+              await review.waitFor();
+              assert.equal(await save.isDisabled(), true);
+            }
+            await page
+              .getByRole("radio", { name: "user", exact: true })
+              .click();
+            assert.equal(await email.isChecked(), true);
+            assert.equal(await review.isVisible(), true);
+            assert.equal(await save.isDisabled(), true);
+            await review.click();
+            assert.equal(await save.isEnabled(), true);
+            await page
+              .getByRole("radio", { name: "developer", exact: true })
+              .click();
+            assert.equal(await email.isChecked(), false);
+            assert.equal(await review.isVisible(), true);
+            assert.equal(await save.isDisabled(), true);
+            await page
+              .getByRole("radio", { name: "user", exact: true })
+              .click();
+            assert.equal(await review.count(), 0);
+            await save.click();
+            await page.getByText("User tier tools saved.").waitFor();
+            await page
+              .getByRole("radio", { name: "developer", exact: true })
+              .click();
+            assert.equal(await email.isChecked(), false);
+            assert.equal(await review.isVisible(), true);
+            assert.equal(await save.isDisabled(), true);
+            await review.click();
+            await save.click();
+            await page.getByText("Developer tier tools saved.").waitFor();
+            assert.deepEqual(policy.tierPutBodies.slice(-2), [
+              {
+                tier: "user",
+                body: {
+                  allowed_tool_ids: ["send_email"],
+                  expected_revision: 2,
+                },
+              },
+              {
+                tier: "developer",
+                body: {
+                  allowed_tool_ids: allToolIds
+                    .filter((id) => id !== "send_email")
+                    .sort(),
+                  expected_revision: 2,
+                },
+              },
+            ]);
+            assert.equal(policy.tiers.user.revision, 3);
+            assert.equal(policy.tiers.developer.revision, 3);
+            assert.deepEqual(pageErrors, []);
+            assertOnlyExpectedHttpDiagnostics(consoleErrors, [409, 409]);
+          } finally {
+            await context.close();
+          }
+        }
+      );
+    } finally {
+      await browser.close();
+      await fixture.close();
+    }
+  }
+);
 
 test(
   "rendered admin and personal tool policies preserve durable interaction contracts",

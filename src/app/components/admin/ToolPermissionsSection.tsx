@@ -37,7 +37,13 @@ export function ToolPermissionsSection() {
   const [saving, setSaving] = useState(false);
   const [policyResolved, setPolicyResolved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reviewTier, setReviewTier] = useState<ToolTier | null>(null);
+  const [reviewRequired, setReviewRequired] = useState<
+    Record<ToolTier, boolean>
+  >({
+    user: false,
+    developer: false,
+    admin: false,
+  });
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   const snapshotRef = useRef<AdminToolPermissions | null>(null);
@@ -122,7 +128,7 @@ export function ToolPermissionsSection() {
     hasSnapshot: Boolean(snapshot && policyResolved),
     dirty,
     saving,
-    policyReviewRequired: reviewTier === activeTier,
+    policyReviewRequired: reviewRequired[activeTier],
   });
   const allCatalogIds = useMemo(
     () => snapshot?.catalog.map((tool) => tool.id) ?? [],
@@ -175,18 +181,22 @@ export function ToolPermissionsSection() {
           [activeTier]: updated.allowed_tool_ids,
         });
       }
-      setReviewTier((tier) => (tier === activeTier ? null : tier));
+      setReviewRequired((current) => ({ ...current, [activeTier]: false }));
       setPolicyResolved(true);
       setSavedNotice(`${titleCase(activeTier)} tier tools saved.`);
     } catch (cause) {
       if (controller.signal.aborted) return;
       if (cause instanceof ToolPermissionsApiError && cause.status === 409) {
         await loadPermissions(true);
-        setReviewTier(activeTier);
+        if (controller.signal.aborted) return;
+        setReviewRequired((current) => ({ ...current, [activeTier]: true }));
         setError(
           `${cause.message} Your draft is still here. Review the refreshed policy before saving again.`
         );
       } else {
+        requestGeneration.current += 1;
+        loadController.current?.abort();
+        setPolicyResolved(false);
         setError(errorMessage(cause, "Failed to save tool permissions."));
       }
     } finally {
@@ -254,7 +264,7 @@ export function ToolPermissionsSection() {
         </div>
       ) : null}
 
-      {reviewTier === activeTier ? (
+      {reviewRequired[activeTier] ? (
         <div
           role="status"
           className="border-[var(--aptiv-orange)]/35 bg-[var(--aptiv-orange)]/5 rounded-lg border p-3 text-xs text-foreground"
@@ -269,7 +279,12 @@ export function ToolPermissionsSection() {
             size="sm"
             variant="outline"
             className="mt-2"
-            onClick={() => setReviewTier(null)}
+            onClick={() =>
+              setReviewRequired((current) => ({
+                ...current,
+                [activeTier]: false,
+              }))
+            }
           >
             <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed the
             refreshed policy

@@ -181,6 +181,9 @@ export function ToolPermissionsSidebar() {
           `${cause.message} Your draft is still here. Review the refreshed restrictions before saving again.`
         );
       } else {
+        requestGeneration.current += 1;
+        loadController.current?.abort();
+        setPolicyResolved(false);
         setError(errorMessage(cause, "Failed to save your tool selection."));
       }
     } finally {
