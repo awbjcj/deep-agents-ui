@@ -747,12 +747,14 @@ test(
         .locator("details")
         .filter({ hasText: /Provider endpoints/ });
       await providerEndpoints.locator("summary").click();
-      await page.locator("#runtime-openai_base_url").waitFor();
+      await providerEndpoints.locator("#runtime-openai_base_url").waitFor();
       const executionResources = page
         .locator("details")
         .filter({ hasText: /Execution resources/ });
       await executionResources.locator("summary").click();
-      await page.getByLabel("Default engine", { exact: true }).waitFor();
+      await executionResources
+        .getByLabel("Default engine", { exact: true })
+        .waitFor();
       assert.equal(
         await page.locator("#admin-panel").getByRole("alert").count(),
         0

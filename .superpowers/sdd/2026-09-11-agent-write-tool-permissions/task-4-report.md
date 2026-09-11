@@ -108,3 +108,11 @@ node --import tsx/esm --test tests/tool-permissions-browser.test.mjs
 Result: **1 passed, 0 failed** (`duration_ms 9184.3096`). Scoped ESLint and Prettier checks over both changed browser fixtures passed, and `git diff --check` passed with no whitespace errors. Per the controller's test-only ruling, the production build and full unit suite were not repeated.
 
 Self-review confirmed that zero-width tolerance remains only on optional icon geometry, text geometry is mandatory in both fixtures, both Runtime disclosures are opened through their real summaries, and the representative controls are asserted before the fixture continues. Browser-generated screenshot changes were restored because this round changes acceptance assertions only.
+
+## Fix round 2: Runtime disclosure containment
+
+Scoped both representative Runtime control locators to their intended native disclosures: the OpenAI remote endpoint is resolved through `providerEndpoints`, and **Default engine** is resolved through `executionResources`. The existing disclosure-open actions and administrator-panel no-alert assertion remain unchanged.
+
+The enabled source/all-destinations fixture passed **1/1** (`duration_ms 16186.212`) with the same documented environment command. Scoped ESLint and Prettier checks for `tests/source-image-browser.test.mjs` passed, and `git diff --check` passed with no whitespace errors. Per the controller's test-only ruling, the permission fixture, production build, and full unit suite were not repeated.
+
+Self-review confirmed that each locator is now a descendant query on the exact `details` instance opened immediately before it, closing the remaining review finding without changing runtime behavior or product code. Browser-regenerated screenshot changes were restored because the rendered product is unchanged.
