@@ -78,3 +78,33 @@ Visual inspection compared the provided baseline Admin Tools, Workspace Tools, a
 ## Remaining concerns
 
 No task-specific limitation remains. The production build continues to emit the documented nested-worktree/multiple-lockfile warning. This task changes frontend composition and presentation only; it adds no backend, schema, environment, dependency, or deployment change.
+
+## Fix round 1: browser acceptance findings
+
+Addressed both Important findings from `task-4-review.md` without changing product code:
+
+- Administrator tab assertions now require every text label to produce a non-null, nonzero DOM range fully contained by its tab. Only intentionally hidden narrow-width icons may have a zero-width rectangle.
+- The analogous Workspace assertion now requires a nonzero text range and containment for every one of its four labels.
+- The Runtime browser path now opens **Provider endpoints** and **Execution resources**, locates the OpenAI remote endpoint input and labelled **Default engine** control, and verifies that the administrator panel contains no settings alert.
+
+Final fix commands and results:
+
+```powershell
+$env:SOURCE_IMAGE_BROWSER_TEST='1'
+$env:SOURCE_IMAGE_PLAYWRIGHT_MODULE='file:///C:/Users/24216/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs'
+$env:SOURCE_IMAGE_BROWSER_EXECUTABLE='C:/Program Files/Google/Chrome/Application/chrome.exe'
+node --import tsx/esm --test tests/source-image-browser.test.mjs
+```
+
+Result: **1 passed, 0 failed** (`duration_ms 16673.8729`).
+
+```powershell
+$env:TOOL_PERMISSIONS_BROWSER_TEST='1'
+$env:TOOL_PERMISSIONS_PLAYWRIGHT_MODULE='file:///C:/Users/24216/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs'
+$env:TOOL_PERMISSIONS_BROWSER_EXECUTABLE='C:/Program Files/Google/Chrome/Application/chrome.exe'
+node --import tsx/esm --test tests/tool-permissions-browser.test.mjs
+```
+
+Result: **1 passed, 0 failed** (`duration_ms 9184.3096`). Scoped ESLint and Prettier checks over both changed browser fixtures passed, and `git diff --check` passed with no whitespace errors. Per the controller's test-only ruling, the production build and full unit suite were not repeated.
+
+Self-review confirmed that zero-width tolerance remains only on optional icon geometry, text geometry is mandatory in both fixtures, both Runtime disclosures are opened through their real summaries, and the representative controls are asserted before the fixture continues. Browser-generated screenshot changes were restored because this round changes acceptance assertions only.

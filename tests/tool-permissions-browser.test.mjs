@@ -530,6 +530,7 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
         clientWidth: tab.clientWidth,
         textLeft: textBox?.left,
         textRight: textBox?.right,
+        textWidth: textBox?.width,
       };
     })
   );
@@ -546,8 +547,12 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
     );
     assert(
       box.scrollWidth <= box.clientWidth + 1 &&
-        (box.textLeft === undefined || box.textLeft >= box.left - 1) &&
-        (box.textRight === undefined || box.textRight <= box.right + 1),
+        typeof box.textWidth === "number" &&
+        box.textWidth > 0 &&
+        typeof box.textLeft === "number" &&
+        box.textLeft >= box.left - 1 &&
+        typeof box.textRight === "number" &&
+        box.textRight <= box.right + 1,
       `${context}: workspace tab label is clipped (${JSON.stringify(box)})`
     );
   }

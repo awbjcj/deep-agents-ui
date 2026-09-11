@@ -638,15 +638,21 @@ test(
             tab.scrollWidth <= tab.clientWidth + 1,
             `${viewport} tab label clipped: ${JSON.stringify(tab)}`
           );
-          for (const bounds of [tab.iconBounds, tab.textBounds]) {
+          assert(
+            tab.textBounds && tab.textBounds.width > 0,
+            `${viewport} tab label is hidden: ${JSON.stringify(tab)}`
+          );
+          assert(
+            tab.textBounds.left >= tab.tabBounds.left - 1 &&
+              tab.textBounds.right <= tab.tabBounds.right + 1,
+            `${viewport} tab label escaped its button: ${JSON.stringify(tab)}`
+          );
+          if (tab.iconBounds && tab.iconBounds.width > 0) {
+            const bounds = tab.iconBounds;
             assert(
-              !bounds ||
-                bounds.width === 0 ||
-                (bounds.left >= tab.tabBounds.left - 1 &&
-                  bounds.right <= tab.tabBounds.right + 1),
-              `${viewport} tab content escaped its button: ${JSON.stringify(
-                tab
-              )}`
+              bounds.left >= tab.tabBounds.left - 1 &&
+                bounds.right <= tab.tabBounds.right + 1,
+              `${viewport} tab icon escaped its button: ${JSON.stringify(tab)}`
             );
           }
         }
@@ -737,8 +743,20 @@ test(
       });
       await runtimeTab.click();
       await page.getByRole("heading", { name: "Run mode" }).waitFor();
-      await page.getByText("Provider endpoints", { exact: true }).waitFor();
-      await page.getByText("Execution resources", { exact: true }).waitFor();
+      const providerEndpoints = page
+        .locator("details")
+        .filter({ hasText: /Provider endpoints/ });
+      await providerEndpoints.locator("summary").click();
+      await page.locator("#runtime-openai_base_url").waitFor();
+      const executionResources = page
+        .locator("details")
+        .filter({ hasText: /Execution resources/ });
+      await executionResources.locator("summary").click();
+      await page.getByLabel("Default engine", { exact: true }).waitFor();
+      assert.equal(
+        await page.locator("#admin-panel").getByRole("alert").count(),
+        0
+      );
       await page.locator("#admin-panel").screenshot({
         path: join(EVIDENCE, "admin-runtime-desktop.png"),
         animations: "disabled",
