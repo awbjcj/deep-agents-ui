@@ -172,3 +172,46 @@ test("shared list renders grouped semantic controls and blocked state", () => {
     /aria-describedby="personal-tools-send_email-description"/
   );
 });
+
+test("personal list distinguishes pending selections and removals from saved active tools", () => {
+  const pendingSelection = renderToStaticMarkup(
+    React.createElement(ToolPermissionList, {
+      catalog,
+      selectedIds: ["manage_library"],
+      allowedIds: ["manage_library"],
+      effectiveIds: [],
+      idPrefix: "pending-selection",
+      saving: false,
+      onToggle() {},
+    })
+  );
+  assert.match(pendingSelection, /Pending save/);
+  assert.doesNotMatch(pendingSelection, />Active</);
+
+  const pendingRemoval = renderToStaticMarkup(
+    React.createElement(ToolPermissionList, {
+      catalog,
+      selectedIds: [],
+      allowedIds: ["manage_library"],
+      effectiveIds: ["manage_library"],
+      idPrefix: "pending-removal",
+      saving: false,
+      onToggle() {},
+    })
+  );
+  assert.match(pendingRemoval, /Pending removal/);
+
+  const savedActive = renderToStaticMarkup(
+    React.createElement(ToolPermissionList, {
+      catalog,
+      selectedIds: ["manage_library"],
+      allowedIds: ["manage_library"],
+      effectiveIds: ["manage_library"],
+      idPrefix: "saved-active",
+      saving: false,
+      onToggle() {},
+    })
+  );
+  assert.match(savedActive, />Active</);
+  assert.doesNotMatch(savedActive, /Pending save/);
+});

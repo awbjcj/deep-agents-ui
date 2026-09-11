@@ -41,6 +41,7 @@ export function ToolPermissionsSidebar() {
   const draftGeneration = useRef(0);
   const requestGeneration = useRef(0);
   const mutationGeneration = useRef(0);
+  const accountGeneration = useRef(0);
   const loadController = useRef<AbortController | null>(null);
   const saveController = useRef<AbortController | null>(null);
 
@@ -87,6 +88,7 @@ export function ToolPermissionsSidebar() {
   );
 
   useEffect(() => {
+    accountGeneration.current += 1;
     requestGeneration.current += 1;
     loadController.current?.abort();
     saveController.current?.abort();
@@ -94,6 +96,7 @@ export function ToolPermissionsSidebar() {
     draftRef.current = [];
     setSnapshot(null);
     setDraft([]);
+    setSaving(false);
     setPolicyResolved(false);
     setPolicyReviewRequired(false);
     setSavedNotice(null);
@@ -108,6 +111,7 @@ export function ToolPermissionsSidebar() {
       loadController.current?.abort();
       saveController.current?.abort();
       requestGeneration.current += 1;
+      accountGeneration.current += 1;
     };
   }, [accountKey, loadPermissions]);
 
@@ -138,12 +142,18 @@ export function ToolPermissionsSidebar() {
     if (!baseline || !canSave) return;
     const submittedDraft = [...draftRef.current];
     const submittedGeneration = draftGeneration.current;
+    const submittedAccountGeneration = accountGeneration.current;
+    const submittedAccountKey = accountKey;
     saveController.current?.abort();
     const controller = new AbortController();
     saveController.current = controller;
     setSaving(true);
     setError(null);
     setSavedNotice(null);
+    const isCurrentSave = () =>
+      !controller.signal.aborted &&
+      accountGeneration.current === submittedAccountGeneration &&
+      accountKey === submittedAccountKey;
     try {
       const response = await apiSetUserToolPermissions(
         submittedDraft,
@@ -151,7 +161,7 @@ export function ToolPermissionsSidebar() {
         baseline.tier_revision,
         controller.signal
       );
-      if (controller.signal.aborted) return;
+      if (!isCurrentSave()) return;
       mutationGeneration.current += 1;
       snapshotRef.current = response;
       setSnapshot(response);
@@ -162,9 +172,10 @@ export function ToolPermissionsSidebar() {
       setPolicyReviewRequired(false);
       setSavedNotice("Your account-wide tool selection was saved.");
     } catch (cause) {
-      if (controller.signal.aborted) return;
+      if (!isCurrentSave()) return;
       if (cause instanceof ToolPermissionsApiError && cause.status === 409) {
         await loadPermissions(true);
+        if (!isCurrentSave()) return;
         setPolicyReviewRequired(true);
         setError(
           `${cause.message} Your draft is still here. Review the refreshed restrictions before saving again.`
@@ -173,7 +184,7 @@ export function ToolPermissionsSidebar() {
         setError(errorMessage(cause, "Failed to save your tool selection."));
       }
     } finally {
-      if (!controller.signal.aborted) setSaving(false);
+      if (isCurrentSave()) setSaving(false);
     }
   };
 
@@ -225,20 +236,31 @@ export function ToolPermissionsSidebar() {
                       Retry
                     </Button>
                   ) : null}
-                  {policyReviewRequired ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPolicyReviewRequired(false)}
-                    >
-                      <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed
-                      the refreshed restrictions
-                    </Button>
-                  ) : null}
                 </div>
               </div>
             </div>
+          </div>
+        ) : null}
+
+        {policyReviewRequired ? (
+          <div
+            role="status"
+            className="border-[var(--aptiv-orange)]/35 bg-[var(--aptiv-orange)]/5 rounded-lg border p-3 text-xs text-foreground"
+          >
+            <p>
+              Your tool policy was refreshed. Your unsaved draft is still here;
+              review the current restrictions before saving again.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              onClick={() => setPolicyReviewRequired(false)}
+            >
+              <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed the
+              refreshed restrictions
+            </Button>
           </div>
         ) : null}
 
@@ -327,9 +349,7 @@ export function ToolPermissionsSidebar() {
               catalog={snapshot.catalog}
               selectedIds={draft}
               allowedIds={snapshot.allowed_tool_ids}
-              effectiveIds={draft.filter((id) =>
-                snapshot.allowed_tool_ids.includes(id)
-              )}
+              effectiveIds={snapshot.effective_tool_ids}
               idPrefix={`personal-tools-${accountKey}`}
               saving={saving}
               onToggle={toggleTool}

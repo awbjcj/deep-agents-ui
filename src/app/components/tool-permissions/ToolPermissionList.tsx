@@ -52,6 +52,8 @@ export function ToolPermissionList({
               const checked = selectedIds.includes(tool.id);
               const allowed = allowedIds.includes(tool.id);
               const effective = effectiveIds.includes(tool.id);
+              const pendingSelection = checked && allowed && !effective;
+              const pendingRemoval = !checked && effective;
               const disabled =
                 saving || !canToggleTool(tool.id, selectedIds, allowedIds);
               const controlId = `${idPrefix}-${tool.id}`;
@@ -91,6 +93,14 @@ export function ToolPermissionList({
                             aria-hidden="true"
                           />
                           Blocked by administrator
+                        </span>
+                      ) : pendingSelection ? (
+                        <span className="border-[var(--aptiv-orange)]/30 bg-[var(--aptiv-orange)]/5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-[var(--aptiv-orange)]">
+                          Pending save
+                        </span>
+                      ) : pendingRemoval ? (
+                        <span className="border-[var(--aptiv-orange)]/30 bg-[var(--aptiv-orange)]/5 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-[var(--aptiv-orange)]">
+                          Pending removal
                         </span>
                       ) : effective ? (
                         <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)]">

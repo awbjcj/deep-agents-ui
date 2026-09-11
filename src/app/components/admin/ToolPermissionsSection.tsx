@@ -248,20 +248,32 @@ export function ToolPermissionsSection() {
                     Retry
                   </Button>
                 ) : null}
-                {reviewTier === activeTier ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setReviewTier(null)}
-                  >
-                    <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed the
-                    refreshed policy
-                  </Button>
-                ) : null}
               </div>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {reviewTier === activeTier ? (
+        <div
+          role="status"
+          className="border-[var(--aptiv-orange)]/35 bg-[var(--aptiv-orange)]/5 rounded-lg border p-3 text-xs text-foreground"
+        >
+          <p>
+            The {activeTier} tier policy was refreshed. Your unsaved draft is
+            still here; review the current catalog and restrictions before
+            saving again.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-2"
+            onClick={() => setReviewTier(null)}
+          >
+            <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed the
+            refreshed policy
+          </Button>
         </div>
       ) : null}
 

@@ -177,8 +177,11 @@ function makePolicyFixture() {
   const selectionRevisions = new Map();
   const tierPutBodies = [];
   const userPutBodies = [];
+  let conflictNextTierSave = null;
   let conflictNextPersonalSave = false;
   let failNextPersonalRead = false;
+  let delayedPersonalSave = null;
+  let nextProfileAccountId = null;
 
   const userResponse = (account) => {
     const selected = selections.get(account.user_id) ?? [];
@@ -200,8 +203,26 @@ function makePolicyFixture() {
     selections,
     tierPutBodies,
     userPutBodies,
+    conflictTierSave(tier) {
+      conflictNextTierSave = tier;
+    },
     conflictPersonalSave() {
       conflictNextPersonalSave = true;
+    },
+    delayPersonalSave() {
+      let markStarted;
+      let release;
+      const started = new Promise((resolve) => {
+        markStarted = resolve;
+      });
+      const released = new Promise((resolve) => {
+        release = resolve;
+      });
+      delayedPersonalSave = { markStarted, released };
+      return { started, release };
+    },
+    switchAccountOnProfileUpdate(accountId) {
+      nextProfileAccountId = accountId;
     },
     failPersonalRead() {
       failNextPersonalRead = true;
@@ -211,12 +232,18 @@ function makePolicyFixture() {
       const url = new URL(request.url());
       const path = url.pathname;
       if (path === "/api/user/profile") {
+        if (request.method() === "PUT" && nextProfileAccountId) {
+          const body = request.postDataJSON();
+          account.user_id = nextProfileAccountId;
+          account.username = body.username;
+          nextProfileAccountId = null;
+        }
         return json(route, {
           ...account,
-          username: `${account.role}-fixture`,
           email: `${account.role}@example.test`,
           has_graph_api_token: true,
           has_jira_api_token: true,
+          access_token: "e30.eyJleHAiOjQxMDI0NDQ4MDB9.sig",
         });
       }
       if (path === "/api/admin/users") return json(route, { users: [] });
@@ -230,6 +257,23 @@ function makePolicyFixture() {
         const tier = tierMatch[1];
         const body = request.postDataJSON();
         tierPutBodies.push({ tier, body });
+        if (conflictNextTierSave === tier) {
+          conflictNextTierSave = null;
+          tiers[tier] = {
+            ...tiers[tier],
+            revision: tiers[tier].revision + 1,
+          };
+          return json(
+            route,
+            {
+              detail: {
+                code: "tool_permissions_conflict",
+                message: "Tier policy changed",
+              },
+            },
+            409
+          );
+        }
         if (body.expected_revision !== tiers[tier].revision) {
           return json(
             route,
@@ -258,15 +302,22 @@ function makePolicyFixture() {
           return json(route, userResponse(account));
         }
         const body = request.postDataJSON();
-        userPutBodies.push({ account: account.user_id, body });
+        const requestAccount = { ...account };
+        userPutBodies.push({ account: requestAccount.user_id, body });
+        if (delayedPersonalSave) {
+          const delayed = delayedPersonalSave;
+          delayedPersonalSave = null;
+          delayed.markStarted();
+          await delayed.released;
+        }
         if (conflictNextPersonalSave) {
           conflictNextPersonalSave = false;
-          tiers[account.role] = {
-            ...tiers[account.role],
-            allowed_tool_ids: tiers[account.role].allowed_tool_ids.filter(
-              (id) => id !== "save_scope_note"
-            ),
-            revision: tiers[account.role].revision + 1,
+          tiers[requestAccount.role] = {
+            ...tiers[requestAccount.role],
+            allowed_tool_ids: tiers[
+              requestAccount.role
+            ].allowed_tool_ids.filter((id) => id !== "save_scope_note"),
+            revision: tiers[requestAccount.role].revision + 1,
           };
           return json(
             route,
@@ -279,7 +330,7 @@ function makePolicyFixture() {
             409
           );
         }
-        const current = userResponse(account);
+        const current = userResponse(requestAccount);
         if (
           body.expected_selection_revision !== current.selection_revision ||
           body.expected_tier_revision !== current.tier_revision
@@ -296,11 +347,14 @@ function makePolicyFixture() {
           );
         }
         selections.set(
-          account.user_id,
+          requestAccount.user_id,
           [...new Set(body.selected_tool_ids)].sort()
         );
-        selectionRevisions.set(account.user_id, current.selection_revision + 1);
-        return json(route, userResponse(account));
+        selectionRevisions.set(
+          requestAccount.user_id,
+          current.selection_revision + 1
+        );
+        return json(route, userResponse(requestAccount));
       }
       if (path.endsWith("/assistants/search")) {
         return json(route, [
@@ -331,7 +385,11 @@ function makePolicyFixture() {
 }
 
 async function authenticatedPage(browser, fixture, policy, role) {
-  const account = { user_id: `${role}-account`, role };
+  const account = {
+    user_id: `${role}-account`,
+    username: `${role}-fixture`,
+    role,
+  };
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     colorScheme: "light",
@@ -461,6 +519,15 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
   }
 }
 
+async function refocusPage(context, page) {
+  const alternate = await context.newPage();
+  await alternate.goto("about:blank");
+  await alternate.bringToFront();
+  await page.bringToFront();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await alternate.close();
+}
+
 function assertOnlyExpectedHttpDiagnostics(messages, statuses) {
   assert.equal(messages.length, statuses.length);
   for (const status of statuses) {
@@ -554,10 +621,21 @@ test(
       await email.focus();
       await page.keyboard.press("Space");
       assert.equal(await email.isChecked(), true);
+      const emailDetails = email.locator("xpath=following-sibling::div[1]");
+      await emailDetails.getByText("Pending save", { exact: true }).waitFor();
+      assert.equal(
+        await emailDetails.getByText("Active", { exact: true }).count(),
+        0
+      );
       await page.getByRole("button", { name: "Save changes" }).click();
       await page
         .getByText("Your account-wide tool selection was saved.")
         .waitFor();
+      await emailDetails.getByText("Active", { exact: true }).waitFor();
+      assert.equal(
+        await emailDetails.getByText("Pending save", { exact: true }).count(),
+        0
+      );
 
       await page.getByRole("button", { name: "Close workspace panel" }).click();
       await openAdminTools(page);
@@ -613,17 +691,61 @@ test(
         await page.getByRole("button", { name: "Save changes" }).isDisabled(),
         true
       );
+      await refocusPage(context, page);
       await page
-        .getByRole("button", {
-          name: "I reviewed the refreshed restrictions",
-        })
-        .click();
+        .getByRole("alert")
+        .getByText(/Your draft is still here/)
+        .waitFor({ state: "hidden" });
+      const personalReview = page.getByRole("button", {
+        name: "I reviewed the refreshed restrictions",
+      });
+      await personalReview.waitFor();
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).isDisabled(),
+        true
+      );
+      await personalReview.click();
       await library.click();
       await page.getByRole("checkbox", { name: "Send draft email" }).click();
       await page.getByRole("button", { name: "Save changes" }).click();
       await page
         .getByText("Your account-wide tool selection was saved.")
         .waitFor();
+
+      await page.getByRole("button", { name: "Close workspace panel" }).click();
+      await openAdminTools(page);
+      await adminRadio.click();
+      await page
+        .getByRole("checkbox", { name: "Trigger Jenkins build" })
+        .click();
+      policy.conflictTierSave("admin");
+      await page.getByRole("button", { name: "Save changes" }).click();
+      await page
+        .getByRole("alert")
+        .getByText(/Tier policy changed.*draft is still here/)
+        .waitFor();
+      await refocusPage(context, page);
+      await page
+        .getByRole("alert")
+        .getByText(/Tier policy changed.*draft is still here/)
+        .waitFor({ state: "hidden" });
+      const adminReview = page.getByRole("button", {
+        name: "I reviewed the refreshed policy",
+      });
+      await adminReview.waitFor();
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).isDisabled(),
+        true
+      );
+      await adminReview.click();
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).isEnabled(),
+        true
+      );
+      await page.getByRole("button", { name: "Save changes" }).click();
+      await page.getByText("Admin tier tools saved.").waitFor();
+      await page.getByRole("button", { name: "Close admin panel" }).click();
+      await openWorkspaceTools(page);
 
       await page.setViewportSize({ width: 390, height: 844 });
       await page.getByRole("tab", { name: "Tools" }).focus();
@@ -645,8 +767,76 @@ test(
         path: join(EVIDENCE, "personal-tools-narrow.png"),
         animations: "disabled",
       });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      const mountedHeading = await page
+        .getByRole("heading", { name: "My agent tools" })
+        .elementHandle();
+      assert(mountedHeading, "personal tools heading should be mounted");
+      const createDraft = page.getByRole("checkbox", {
+        name: "Create draft email",
+      });
+      await createDraft.click();
+      const delayedSave = policy.delayPersonalSave();
+      policy.conflictPersonalSave();
+      await page.getByRole("button", { name: "Save changes" }).click();
+      await delayedSave.started;
+
+      await page.evaluate(() =>
+        localStorage.setItem(
+          "vsda_token_setup_dismissed_switched-admin-account",
+          "1"
+        )
+      );
+      policy.switchAccountOnProfileUpdate("switched-admin-account");
+      await page.getByRole("button", { name: "Account settings" }).click();
+      const accountDialog = page.getByRole("dialog", { name: "Account" });
+      await accountDialog.getByLabel("New username").fill("switched-admin");
+      await accountDialog
+        .getByRole("button", { name: "Save username" })
+        .click();
+      await accountDialog.getByText("Signed in as switched-admin.").waitFor();
+      await accountDialog.locator('[data-slot="dialog-close"]').click();
+      await accountDialog.waitFor({ state: "hidden" });
+      await page.getByText(/0 selected · 0 active/).waitFor();
+      assert.equal(
+        await mountedHeading.evaluate((node) => node.isConnected),
+        true
+      );
+      assert.equal(await createDraft.isEnabled(), true);
+      await createDraft.click();
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).isEnabled(),
+        true
+      );
+      delayedSave.release();
+      await page.waitForTimeout(100);
+      assert.equal(
+        await page
+          .getByRole("button", {
+            name: "I reviewed the refreshed restrictions",
+          })
+          .count(),
+        0
+      );
+      assert.equal(await page.getByText(/Your draft is still here/).count(), 0);
+      await refocusPage(context, page);
+      await page
+        .getByRole("button", { name: "Save changes" })
+        .waitFor({ state: "visible" });
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).isEnabled(),
+        true
+      );
+      await page.getByRole("button", { name: "Save changes" }).click();
+      await page
+        .getByText("Your account-wide tool selection was saved.")
+        .waitFor();
+      assert.deepEqual(
+        policy.userPutBodies.slice(-2).map(({ account }) => account),
+        ["admin-account", "switched-admin-account"]
+      );
       assert.deepEqual(pageErrors, []);
-      assertOnlyExpectedHttpDiagnostics(consoleErrors, [409]);
+      assertOnlyExpectedHttpDiagnostics(consoleErrors, [409, 409]);
       await context.close();
 
       for (const role of ["user", "developer"]) {
