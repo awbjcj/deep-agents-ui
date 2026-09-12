@@ -8,6 +8,7 @@ import {
   Cpu,
   Gauge,
   HardDrive,
+  Layers3,
   Loader2,
   RefreshCw,
   Save,
@@ -19,6 +20,7 @@ import { SectionHeader } from "@/app/components/admin/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import {
   analysisLimitsSchema,
+  analysisSettingsSchema,
   getAnalysisEngineSettings,
   getAnalysisEngines,
   getAnalysisSettings,
@@ -36,10 +39,12 @@ import {
   type AnalysisLimits,
   type AnalysisSettings as EngineSettings,
   type EngineCatalog,
+  type MatlabSettings,
 } from "@/lib/code-analysis";
 import { cn } from "@/lib/utils";
 
 type LimitField = keyof AnalysisLimits;
+type MatlabLimitField = keyof MatlabSettings["limits"];
 
 type LimitDefinition = {
   key: string;
@@ -150,6 +155,66 @@ const EDITABLE: readonly LimitField[] = LIMIT_GROUPS.flatMap((group) =>
   group.fields.map((field) => field.key as LimitField)
 );
 
+const MATLAB_LIMITS: readonly LimitDefinition[] = [
+  {
+    key: "startup_timeout_seconds",
+    label: "Startup timeout",
+    description: "Maximum wait for the isolated MATLAB process to start.",
+    unit: "seconds",
+  },
+  {
+    key: "operation_timeout_seconds",
+    label: "Operation timeout",
+    description: "Maximum wait for one MATLAB or Simulink operation.",
+    unit: "seconds",
+  },
+  {
+    key: "max_dependency_depth",
+    label: "Dependency depth",
+    description: "Maximum transitive repository depth.",
+    unit: "levels",
+    min: 0,
+  },
+  {
+    key: "max_dependency_repositories",
+    label: "Dependency repositories",
+    description: "Maximum repositories materialized for one analysis.",
+    unit: "repos",
+    min: 0,
+  },
+  {
+    key: "max_artifacts",
+    label: "Artifact count",
+    description: "Maximum files admitted to the sealed artifact bundle.",
+    unit: "files",
+  },
+  {
+    key: "max_artifact_bytes",
+    label: "Artifact size",
+    description: "Maximum size of one materialized artifact.",
+    unit: "bytes",
+  },
+  {
+    key: "max_download_bytes",
+    label: "Download budget",
+    description: "Maximum aggregate dependency download size.",
+    unit: "bytes",
+  },
+  {
+    key: "max_archive_bytes",
+    label: "Archive budget",
+    description: "Maximum compressed dependency archive size.",
+    unit: "bytes",
+  },
+  {
+    key: "max_dependency_restarts",
+    label: "Dependency restarts",
+    description: "Maximum bounded MATLAB restarts after dependency discovery.",
+    unit: "restarts",
+    min: 0,
+  },
+];
+
 function engineName(engine: AnalysisEngine): string {
   return engine === "deep_agent" ? "Deep Agent" : "Copilot";
 }
@@ -163,44 +228,112 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
     );
   }
 
+  const matlab = catalog.engines.find(
+    (engine) => engine.id === "deep_agent"
+  )?.matlab;
+
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {catalog.engines.map((engine) => {
-        const Icon = engine.ready ? CheckCircle2 : AlertCircle;
-        return (
-          <div
-            key={engine.id}
-            className={cn(
-              "flex min-w-0 items-start gap-2.5 rounded-md border px-3 py-2.5",
-              engine.ready
-                ? "border-success/35 bg-success-primary/60"
-                : "border-warning/35 bg-warning-primary/60"
-            )}
-          >
-            <Icon
+    <div className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {catalog.engines.map((engine) => {
+          const Icon = engine.ready ? CheckCircle2 : AlertCircle;
+          return (
+            <div
+              key={engine.id}
               className={cn(
-                "mt-0.5 h-4 w-4 shrink-0",
+                "flex min-w-0 items-start gap-2.5 rounded-md border px-3 py-2.5",
                 engine.ready
-                  ? "text-success dark:text-emerald-300"
-                  : "text-warning dark:text-amber-300"
+                  ? "border-success/35 bg-success-primary/60"
+                  : "border-warning/35 bg-warning-primary/60"
               )}
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground">
-                {engineName(engine.id)}
-              </p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                {engine.ready
-                  ? "Ready for new analyses"
-                  : engine.blockers.length
-                  ? engine.blockers.join(" · ")
-                  : "Unavailable"}
-              </p>
+            >
+              <Icon
+                className={cn(
+                  "mt-0.5 h-4 w-4 shrink-0",
+                  engine.ready
+                    ? "text-success dark:text-emerald-300"
+                    : "text-warning dark:text-amber-300"
+                )}
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  {engineName(engine.id)}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                  {engine.ready
+                    ? "Ready for new analyses"
+                    : engine.blockers.length
+                    ? engine.blockers.join(" · ")
+                    : "Unavailable"}
+                </p>
+              </div>
             </div>
+          );
+        })}
+      </div>
+      {matlab ? (
+        <div className="rounded-md border border-border/70 bg-background/40 px-3 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-foreground">
+              MATLAB capability
+            </p>
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                matlab.ready
+                  ? "border-success/35 text-success dark:text-emerald-300"
+                  : "border-warning/35 text-warning dark:text-amber-300"
+              )}
+            >
+              {matlab.ready
+                ? "Verified"
+                : matlab.configured
+                ? "Partial"
+                : "Unavailable"}
+            </span>
           </div>
-        );
-      })}
+          <dl className="mt-2 grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
+            <div>
+              <dt className="inline font-medium text-foreground">Runtime: </dt>
+              <dd className="inline">
+                {matlab.runtime_ready ? "ready" : "blocked"}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline font-medium text-foreground">
+                Schemas and skills:{" "}
+              </dt>
+              <dd className="inline">
+                {matlab.toolkit_schemas_ready && matlab.skills_ready
+                  ? "verified"
+                  : "incomplete"}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline font-medium text-foreground">Broker: </dt>
+              <dd className="inline">
+                {matlab.broker_ready ? "ready" : "unavailable"}
+              </dd>
+            </div>
+            <div>
+              <dt className="inline font-medium text-foreground">
+                Last verified:{" "}
+              </dt>
+              <dd className="inline">
+                {matlab.verified_at
+                  ? new Date(matlab.verified_at).toLocaleString()
+                  : "never"}
+              </dd>
+            </div>
+          </dl>
+          {matlab.blockers.length ? (
+            <p className="mt-2 text-[11px] leading-relaxed text-warning dark:text-amber-300">
+              {matlab.blockers.join(" · ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -209,10 +342,12 @@ function LimitInput({
   field,
   value,
   onChange,
+  error,
 }: {
   field: LimitDefinition;
   value: string;
   onChange: (value: string) => void;
+  error?: string;
 }) {
   const inputId = `analysis-${field.key}`;
   const descriptionId = `${inputId}-description`;
@@ -237,13 +372,14 @@ function LimitInput({
         inputMode="numeric"
         value={value}
         aria-describedby={descriptionId}
+        aria-invalid={Boolean(error)}
         onChange={(event) => onChange(event.target.value)}
       />
       <p
         id={descriptionId}
         className="text-[11px] leading-relaxed text-muted-foreground"
       >
-        {field.description}
+        {error ?? field.description}
       </p>
     </div>
   );
@@ -261,15 +397,18 @@ export function CodeAnalysisSettings({
   const [catalog, setCatalog] = useState<EngineCatalog | null>(null);
   const [savedDefaultEngine, setSavedDefaultEngine] =
     useState<AnalysisEngine | null>(null);
+  const [savedMatlabEnabled, setSavedMatlabEnabled] = useState(false);
   const [overrideProvider, setOverrideProvider] = useState("");
   const [overrideModel, setOverrideModel] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    setFieldErrors({});
     try {
       const [value, engineValue, engineCatalog] = await Promise.all([
         getAnalysisSettings(),
@@ -280,12 +419,21 @@ export function CodeAnalysisSettings({
       setEngines(engineValue);
       setCatalog(engineCatalog);
       setSavedDefaultEngine(engineValue.default_engine);
+      setSavedMatlabEnabled(engineValue.matlab.enabled);
       setOverrideProvider(engineValue.model_override?.provider ?? "");
       setOverrideModel(engineValue.model_override?.model ?? "");
       setDraft({
         ...Object.fromEntries(EDITABLE.map((key) => [key, String(value[key])])),
         native_max_tokens: String(engineValue.native_limits.max_tokens),
         native_max_tool_calls: String(engineValue.native_limits.max_tool_calls),
+        matlab_dependency_server_ids:
+          engineValue.matlab.dependency_server_ids.join(", "),
+        ...Object.fromEntries(
+          MATLAB_LIMITS.map((field) => [
+            `matlab_${field.key}`,
+            String(engineValue.matlab.limits[field.key as MatlabLimitField]),
+          ])
+        ),
       });
     } catch (error) {
       const message =
@@ -314,7 +462,15 @@ export function CodeAnalysisSettings({
         String(engines.native_limits.max_tool_calls) ||
       overrideProvider !== (engines.model_override?.provider ?? "") ||
       overrideModel !== (engines.model_override?.model ?? "") ||
-      engines.default_engine !== savedDefaultEngine
+      engines.default_engine !== savedDefaultEngine ||
+      engines.matlab.enabled !== savedMatlabEnabled ||
+      draft.matlab_dependency_server_ids !==
+        engines.matlab.dependency_server_ids.join(", ") ||
+      MATLAB_LIMITS.some(
+        (field) =>
+          draft[`matlab_${field.key}`] !==
+          String(engines.matlab.limits[field.key as MatlabLimitField])
+      )
     );
   }, [
     draft,
@@ -323,6 +479,7 @@ export function CodeAnalysisSettings({
     overrideModel,
     overrideProvider,
     savedDefaultEngine,
+    savedMatlabEnabled,
   ]);
 
   const save = async () => {
@@ -332,8 +489,7 @@ export function CodeAnalysisSettings({
         ...limits,
         ...Object.fromEntries(EDITABLE.map((key) => [key, Number(draft[key])])),
       });
-      setSaving(true);
-      const savedEngines = await saveAnalysisEngineSettings({
+      const candidate = {
         ...engines,
         limits: input,
         native_limits: {
@@ -344,11 +500,50 @@ export function CodeAnalysisSettings({
           overrideProvider.trim() && overrideModel.trim()
             ? { provider: overrideProvider.trim(), model: overrideModel.trim() }
             : null,
-      });
+        matlab: {
+          enabled: engines.matlab.enabled,
+          dependency_server_ids: draft.matlab_dependency_server_ids
+            .split(",")
+            .map((serverId) => serverId.trim())
+            .filter(Boolean),
+          limits: Object.fromEntries(
+            MATLAB_LIMITS.map((field) => [
+              field.key,
+              Number(draft[`matlab_${field.key}`]),
+            ])
+          ) as MatlabSettings["limits"],
+        },
+      };
+      const parsed = analysisSettingsSchema.safeParse(candidate);
+      if (!parsed.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of parsed.error.issues) {
+          const [section, group, name] = issue.path.map(String);
+          const key =
+            section === "limits"
+              ? group
+              : section === "native_limits"
+              ? group === "max_tokens"
+                ? "native-tokens"
+                : "native-tools"
+              : section === "matlab" && group === "limits"
+              ? `matlab-${name}`
+              : section === "matlab" && group === "dependency_server_ids"
+              ? "matlab-dependency-servers"
+              : issue.path.join("-");
+          errors[key] ??= issue.message;
+        }
+        setFieldErrors(errors);
+        return;
+      }
+      setFieldErrors({});
+      setSaving(true);
+      const savedEngines = await saveAnalysisEngineSettings(parsed.data);
       const saved = savedEngines.limits;
       setLimits(saved);
       setEngines(savedEngines);
       setSavedDefaultEngine(savedEngines.default_engine);
+      setSavedMatlabEnabled(savedEngines.matlab.enabled);
       setCatalog((current) =>
         current
           ? { ...current, default_engine: savedEngines.default_engine }
@@ -361,6 +556,14 @@ export function CodeAnalysisSettings({
         native_max_tokens: String(savedEngines.native_limits.max_tokens),
         native_max_tool_calls: String(
           savedEngines.native_limits.max_tool_calls
+        ),
+        matlab_dependency_server_ids:
+          savedEngines.matlab.dependency_server_ids.join(", "),
+        ...Object.fromEntries(
+          MATLAB_LIMITS.map((field) => [
+            `matlab_${field.key}`,
+            String(savedEngines.matlab.limits[field.key as MatlabLimitField]),
+          ])
         ),
       });
       toast.success("Code-analysis settings saved");
@@ -505,6 +708,7 @@ export function CodeAnalysisSettings({
                   unit: "tokens",
                 }}
                 value={draft.native_max_tokens ?? ""}
+                error={fieldErrors["native-tokens"]}
                 onChange={(value) =>
                   setDraft((current) => ({
                     ...current,
@@ -521,6 +725,7 @@ export function CodeAnalysisSettings({
                   unit: "calls",
                 }}
                 value={draft.native_max_tool_calls ?? ""}
+                error={fieldErrors["native-tools"]}
                 onChange={(value) =>
                   setDraft((current) => ({
                     ...current,
@@ -569,6 +774,104 @@ export function CodeAnalysisSettings({
             </div>
           </section>
 
+          <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+            <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
+              <Layers3
+                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-semibold">
+                      MATLAB and Simulink
+                    </h4>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                      Enable isolated native model inspection and bound
+                      dependency materialization.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="analysis-matlab-enabled"
+                      className="text-xs"
+                    >
+                      Enabled
+                    </Label>
+                    <Switch
+                      id="analysis-matlab-enabled"
+                      checked={engines.matlab.enabled}
+                      onCheckedChange={(enabled) =>
+                        setEngines((current) =>
+                          current
+                            ? {
+                                ...current,
+                                matlab: { ...current.matlab, enabled },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </header>
+            <div className="space-y-5 p-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="analysis-matlab-dependency-servers">
+                    Dependency server IDs
+                  </Label>
+                  <Input
+                    id="analysis-matlab-dependency-servers"
+                    value={draft.matlab_dependency_server_ids ?? ""}
+                    placeholder="gerrit-primary, plastic-main"
+                    aria-describedby="analysis-matlab-dependency-servers-help"
+                    aria-invalid={Boolean(
+                      fieldErrors["matlab-dependency-servers"]
+                    )}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        matlab_dependency_server_ids: event.target.value,
+                      }))
+                    }
+                  />
+                  <p
+                    id="analysis-matlab-dependency-servers-help"
+                    className="text-[11px] leading-relaxed text-muted-foreground"
+                  >
+                    {fieldErrors["matlab-dependency-servers"] ??
+                      "Comma-separated IDs of enabled Gerrit or Plastic SCM servers allowed for runtime dependencies."}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2.5 sm:col-span-2">
+                  <p className="text-xs font-semibold text-foreground">
+                    Concurrent MATLAB processes
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    Fixed at one isolated process per worker to preserve session
+                    boundaries.
+                  </p>
+                </div>
+                {MATLAB_LIMITS.map((field) => (
+                  <LimitInput
+                    key={field.key}
+                    field={{ ...field, key: `matlab-${field.key}` }}
+                    value={draft[`matlab_${field.key}`] ?? ""}
+                    error={fieldErrors[`matlab-${field.key}`]}
+                    onChange={(value) =>
+                      setDraft((current) => ({
+                        ...current,
+                        [`matlab_${field.key}`]: value,
+                      }))
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
           {LIMIT_GROUPS.map((group) => {
             const Icon = group.icon;
             return (
@@ -594,6 +897,7 @@ export function CodeAnalysisSettings({
                       key={field.key}
                       field={field}
                       value={draft[field.key] ?? ""}
+                      error={fieldErrors[field.key]}
                       onChange={(value) =>
                         setDraft((current) => ({
                           ...current,
