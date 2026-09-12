@@ -95,6 +95,25 @@ export function ToolPermissionsSection() {
             ];
           })
         ) as TierDrafts;
+        setReviewRequired(
+          (current) =>
+            Object.fromEntries(
+              ROLES.map((tier) => [
+                tier,
+                current[tier] ||
+                  Boolean(
+                    preserveDirty &&
+                      previous &&
+                      !sameToolIds(
+                        currentDrafts[tier],
+                        previous.tiers[tier].allowed_tool_ids
+                      ) &&
+                      previous.tiers[tier].revision !==
+                        response.tiers[tier].revision
+                  ),
+              ])
+            ) as Record<ToolTier, boolean>
+        );
         snapshotRef.current = response;
         setSnapshot(response);
         applyDrafts(nextDrafts);

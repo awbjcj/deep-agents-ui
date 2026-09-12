@@ -73,6 +73,14 @@ export function ToolPermissionsSidebar() {
           preserveDirty &&
           previous &&
           !sameToolIds(draftRef.current, previous.selected_tool_ids);
+        if (
+          keepDirty &&
+          (previous.selection_revision !== response.selection_revision ||
+            previous.tier_revision !== response.tier_revision ||
+            previous.tier !== response.tier)
+        ) {
+          setPolicyReviewRequired(true);
+        }
         snapshotRef.current = response;
         setSnapshot(response);
         if (!keepDirty) applyDraft(response.selected_tool_ids);

@@ -104,6 +104,66 @@ export const nativeAnalysisLimitsSchema = z
   })
   .strict();
 
+export const matlabLimitsSchema = z
+  .object({
+    concurrent_processes: z.literal(1).default(1),
+    startup_timeout_seconds: z.number().int().positive().default(600),
+    operation_timeout_seconds: z.number().int().positive().default(300),
+    max_dependency_depth: z.number().int().min(0).default(8),
+    max_dependency_repositories: z.number().int().min(0).default(10),
+    max_artifacts: z.number().int().positive().default(50_000),
+    max_artifact_bytes: z
+      .number()
+      .int()
+      .positive()
+      .default(256 * 1024 ** 2),
+    max_download_bytes: z
+      .number()
+      .int()
+      .positive()
+      .default(10 * 1024 ** 3),
+    max_archive_bytes: z
+      .number()
+      .int()
+      .positive()
+      .default(512 * 1024 ** 2),
+    max_dependency_restarts: z.number().int().min(0).default(2),
+  })
+  .strict();
+
+export const matlabSettingsSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    dependency_server_ids: z
+      .array(z.string().trim().min(1).max(256))
+      .default([])
+      .refine((values) => new Set(values).size === values.length, {
+        message: "Dependency server IDs must be unique",
+      }),
+    limits: matlabLimitsSchema.prefault({}),
+  })
+  .strict();
+export type MatlabSettings = z.infer<typeof matlabSettingsSchema>;
+
+export const matlabReadinessSchema = z
+  .object({
+    configured: z.boolean(),
+    runtime_ready: z.boolean(),
+    toolkit_schemas_ready: z.boolean(),
+    skills_ready: z.boolean(),
+    initialization_ready: z.boolean(),
+    isolation_ready: z.boolean(),
+    broker_ready: z.boolean(),
+    gerrit_ready: z.boolean(),
+    plastic_ready: z.boolean(),
+    probe_fresh: z.boolean(),
+    verified_at: z.string().nullable().default(null),
+    configuration_digest: z.string().nullable().default(null),
+    blockers: z.array(z.string()).default([]),
+    ready: z.boolean(),
+  })
+  .strict();
+
 export const analysisSettingsSchema = z
   .object({
     limits: analysisLimitsSchema.prefault({}),
@@ -114,6 +174,7 @@ export const analysisSettingsSchema = z
       .strict()
       .nullable()
       .default(null),
+    matlab: matlabSettingsSchema.prefault({}),
   })
   .strict();
 export type AnalysisSettings = z.infer<typeof analysisSettingsSchema>;
@@ -127,6 +188,7 @@ export const engineCatalogSchema = z
           id: engineIdSchema,
           ready: z.boolean(),
           blockers: z.array(z.string()).default([]),
+          matlab: matlabReadinessSchema.optional(),
         })
         .strict()
     ),
@@ -155,6 +217,15 @@ export const analysisJobSchema = z.object({
       provider: z.string().nullable().optional(),
       model: z.string().nullable().optional(),
       native_limits: nativeAnalysisLimitsSchema,
+      matlab: z
+        .object({
+          limits: matlabLimitsSchema,
+          dependency_server_ids: z.array(z.string()),
+          capability_version: z.literal("matlab-analysis-v1"),
+        })
+        .strict()
+        .nullable()
+        .optional(),
     })
     .optional(),
 });
@@ -211,6 +282,44 @@ export function analysisWarnings(result: Record<string, unknown>): string[] {
         )
         .slice(0, 20)
     : [];
+}
+
+export type AnalysisMatlabSummary = {
+  initializationStatus: string;
+  artifactCount: number;
+  modelCount: number;
+  evidenceCount: number;
+};
+
+/** Project only bounded model-evidence state from the durable job summary. */
+export function analysisMatlabSummary(
+  result: Record<string, unknown>
+): AnalysisMatlabSummary | null {
+  const matlab = result.matlab;
+  if (!matlab || typeof matlab !== "object") return null;
+  const section = matlab as {
+    initialization_status?: unknown;
+    summary?: unknown;
+  };
+  if (typeof section.initialization_status !== "string") return null;
+  const counts =
+    section.summary && typeof section.summary === "object"
+      ? (section.summary as Record<string, unknown>)
+      : {};
+  const count = (name: string) => {
+    const value = counts[name];
+    return typeof value === "number" &&
+      Number.isSafeInteger(value) &&
+      value >= 0
+      ? value
+      : 0;
+  };
+  return {
+    initializationStatus: section.initialization_status,
+    artifactCount: count("artifact_count"),
+    modelCount: count("model_count"),
+    evidenceCount: count("evidence_count"),
+  };
 }
 
 async function responseJson(res: Response, fallback: string): Promise<unknown> {

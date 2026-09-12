@@ -209,6 +209,7 @@ function makePolicyFixture() {
   return {
     tiers,
     selections,
+    selectionRevisions,
     tierPutBodies,
     userPutBodies,
     conflictTierSave(tier) {
@@ -689,6 +690,15 @@ test(
                 assert.equal(await save.isDisabled(), true);
                 assert.equal(await email.isChecked(), true);
                 releaseRecovery.resolve();
+                const refreshedReview = page.getByRole("button", {
+                  name:
+                    panel === "personal"
+                      ? "I reviewed the refreshed restrictions"
+                      : "I reviewed the refreshed policy",
+                });
+                await refreshedReview.waitFor();
+                assert.equal(await save.isDisabled(), true);
+                await refreshedReview.click();
                 await page.waitForFunction(() =>
                   [...document.querySelectorAll("button")].some(
                     (button) =>
@@ -743,6 +753,88 @@ test(
             }
           );
         }
+      }
+
+      for (const panel of ["admin", "personal"]) {
+        await t.test(
+          `${panel} dirty focus refresh requires review of concurrent changes`,
+          async () => {
+            const policy = makePolicyFixture();
+            policy.tiers.user.allowed_tool_ids = ["send_email"];
+            policy.selections.set("admin-account", ["send_email"]);
+            const { page, context, pageErrors } = await authenticatedPage(
+              browser,
+              fixture,
+              policy,
+              "admin"
+            );
+            try {
+              await (panel === "admin"
+                ? openAdminTools(page)
+                : openWorkspaceTools(page));
+              const email = page.getByRole("checkbox", {
+                name: "Send email",
+                exact: true,
+              });
+              const draft = page.getByRole("checkbox", {
+                name: "Send draft email",
+                exact: true,
+              });
+              const save = page.getByRole("button", { name: "Save changes" });
+              await draft.check();
+              assert.equal(await email.isChecked(), true);
+              if (panel === "admin") {
+                policy.tiers.user.allowed_tool_ids = [];
+                policy.tiers.user.revision += 1;
+              } else {
+                policy.selections.set("admin-account", []);
+                policy.selectionRevisions.set("admin-account", 1);
+              }
+              await refocusPage(context, page);
+              const review = page.getByRole("button", {
+                name:
+                  panel === "admin"
+                    ? "I reviewed the refreshed policy"
+                    : "I reviewed the refreshed restrictions",
+              });
+              await review.waitFor();
+              assert.equal(await save.isDisabled(), true);
+              assert.equal(await email.isChecked(), true);
+              assert.equal(await draft.isChecked(), true);
+              assert.equal(
+                policy.tierPutBodies.length + policy.userPutBodies.length,
+                0
+              );
+              // An unchanged second refresh must not erase the pending review.
+              await refocusPage(context, page);
+              await review.waitFor();
+              assert.equal(await save.isDisabled(), true);
+              await email.uncheck();
+              await review.click();
+              await save.click();
+              await page
+                .getByText(
+                  panel === "admin"
+                    ? "User tier tools saved."
+                    : "Your account-wide tool selection was saved."
+                )
+                .waitFor();
+              const body =
+                panel === "admin"
+                  ? policy.tierPutBodies.at(-1).body
+                  : policy.userPutBodies.at(-1).body;
+              assert.deepEqual(
+                body[
+                  panel === "admin" ? "allowed_tool_ids" : "selected_tool_ids"
+                ],
+                ["send_draft_email"]
+              );
+              assert.deepEqual(pageErrors, []);
+            } finally {
+              await context.close();
+            }
+          }
+        );
       }
 
       await t.test(
@@ -1182,9 +1274,17 @@ test(
       );
       assert.equal(await page.getByText(/Your draft is still here/).count(), 0);
       await refocusPage(context, page);
-      await page
-        .getByRole("button", { name: "Save changes" })
-        .waitFor({ state: "visible" });
+      // The delayed old-account conflict changed the shared tier revision.
+      // Its response cannot affect this panel, but a fresh GET must require review.
+      const switchedReview = page.getByRole("button", {
+        name: "I reviewed the refreshed restrictions",
+      });
+      await switchedReview.waitFor();
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).isDisabled(),
+        true
+      );
+      await switchedReview.click();
       assert.equal(
         await page.getByRole("button", { name: "Save changes" }).isEnabled(),
         true
