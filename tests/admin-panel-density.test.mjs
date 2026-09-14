@@ -109,6 +109,17 @@ test("admin user quotas default to the token view", async () => {
   assert.doesNotMatch(users, /UsageLimitControls/);
 });
 
+test("workspace model usage defaults to the token view", async () => {
+  const models = await readFile(
+    new URL("../src/app/components/ModelSidebar.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(models, /useState<UsageDimension>\("tokens"\)/);
+  assert.match(models, /value=\{usageView\}/);
+  assert.match(models, /splitUsageByEnforcement\(\s*usage,\s*usageView\s*\)/);
+});
+
 test("workspace tabs preserve ids and use the compact requested order", async () => {
   const workspace = await readFile(
     new URL("../src/app/components/WorkspacePanel.tsx", import.meta.url),
@@ -127,5 +138,32 @@ test("workspace tabs preserve ids and use the compact requested order", async ()
     previous = position;
   }
   assert.match(workspace, /grid grid-cols-4 gap-1/);
+  assert.match(workspace, /icon: Bot/);
+  assert.match(workspace, /icon: Wrench/);
+  assert.match(workspace, /icon: KeyRound/);
+  assert.match(workspace, /icon: PlugZap/);
   assert.match(workspace, /initialTokenFocus/);
+});
+
+test("panel tabs and tool checkboxes remain legible and visible", async () => {
+  const [tabs, permissions] = await Promise.all([
+    readFile(
+      new URL("../src/components/ui/panel-tabs.tsx", import.meta.url),
+      "utf8"
+    ),
+    readFile(
+      new URL(
+        "../src/app/components/tool-permissions/ToolPermissionList.tsx",
+        import.meta.url
+      ),
+      "utf8"
+    ),
+  ]);
+
+  assert.match(tabs, /min-h-10[\s\S]*text-xs/);
+  assert.match(tabs, /"h-4 w-4 shrink-0"/);
+  assert.doesNotMatch(tabs, /isTwoRow && "hidden/);
+  assert.match(permissions, /appearance-none/);
+  assert.match(permissions, /border-2 border-muted-foreground\/70/);
+  assert.match(permissions, /peer-checked:opacity-100/);
 });

@@ -161,9 +161,9 @@ export function PanelTabs<Id extends string>({
               "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
               isUnderline
                 ? cn(
-                    "rounded-t-md px-3 py-2 text-[11px] uppercase tracking-[0.14em]",
+                    "min-h-10 rounded-t-md px-3 py-2.5 text-xs uppercase tracking-[0.1em]",
                     isTwoRow &&
-                      "w-full min-w-0 justify-center gap-1 px-1 text-[11px] normal-case tracking-normal"
+                      "w-full min-w-0 justify-center gap-1.5 px-1.5 text-xs normal-case tracking-normal"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive
@@ -179,10 +179,7 @@ export function PanelTabs<Id extends string>({
           >
             {Icon ? (
               <Icon
-                className={cn(
-                  "h-3.5 w-3.5 shrink-0",
-                  isTwoRow && "hidden h-3 w-3 min-[400px]:block"
-                )}
+                className={cn("h-4 w-4 shrink-0", isTwoRow && "h-3.5 w-3.5")}
                 aria-hidden="true"
               />
             ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CheckCircle2, ChevronDown } from "lucide-react";
+import { Ban, Check, CheckCircle2, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { canToggleTool, type ToolCatalogEntry } from "@/lib/tool-permissions";
@@ -68,15 +68,22 @@ export function ToolPermissionList({
                     !allowed && !checked && "bg-muted/25 opacity-70"
                   )}
                 >
-                  <input
-                    id={controlId}
-                    type="checkbox"
-                    checked={checked}
-                    disabled={disabled}
-                    aria-describedby={`${controlId}-description`}
-                    onChange={() => onToggle(tool.id)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-primary accent-[var(--aptiv-orange)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed"
-                  />
+                  <span className="relative mt-0.5 h-5 w-5 shrink-0">
+                    <input
+                      id={controlId}
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      aria-describedby={`${controlId}-description`}
+                      onChange={() => onToggle(tool.id)}
+                      className="focus-visible:ring-[var(--aptiv-orange)]/45 peer h-5 w-5 appearance-none rounded-[5px] border-2 border-muted-foreground/70 bg-background shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-[var(--aptiv-orange)] checked:bg-[var(--aptiv-orange)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+                    />
+                    <Check
+                      className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
+                      strokeWidth={3}
+                      aria-hidden="true"
+                    />
+                  </span>
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <label

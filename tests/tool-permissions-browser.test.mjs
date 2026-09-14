@@ -192,8 +192,8 @@ function makePolicyFixture() {
   let nextProfileAccountId = null;
 
   const userResponse = (account) => {
-    const selected = selections.get(account.user_id) ?? [];
     const allowed = tiers[account.role].allowed_tool_ids;
+    const selected = selections.get(account.user_id) ?? allowed;
     return {
       catalog,
       tier: account.role,

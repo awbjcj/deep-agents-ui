@@ -247,7 +247,7 @@ export function ModelSidebar() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const usage = useTokenUsage();
-  const [usageView, setUsageView] = useState<UsageDimension | null>(null);
+  const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
   useEffect(() => {
     let mounted = true;
@@ -459,15 +459,12 @@ export function ModelSidebar() {
                   </span>
                 </div>
                 <UsageDimensionToggle
-                  value={usageView ?? usage.enforced}
+                  value={usageView}
                   onChange={setUsageView}
                 />
               </div>
               {(() => {
-                const { primary } = splitUsageByEnforcement(
-                  usage,
-                  usageView ?? usage.enforced
-                );
+                const { primary } = splitUsageByEnforcement(usage, usageView);
                 const label =
                   primary.dimension === "calls"
                     ? "Weekly call budget"

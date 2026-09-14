@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Bot, KeyRound, PlugZap, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PanelTabs } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
@@ -24,13 +24,14 @@ interface WorkspacePanelProps {
 interface TabDef {
   id: WorkspaceTab;
   label: string;
+  icon: typeof Bot;
 }
 
 const TABS: TabDef[] = [
-  { id: "models", label: "Models" },
-  { id: "tools", label: "Tools" },
-  { id: "tokens", label: "Tokens" },
-  { id: "connectivity", label: "Connections" },
+  { id: "models", label: "Models", icon: Bot },
+  { id: "tools", label: "Tools", icon: Wrench },
+  { id: "tokens", label: "Tokens", icon: KeyRound },
+  { id: "connectivity", label: "Connections", icon: PlugZap },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
@@ -97,7 +98,7 @@ export function WorkspacePanel({
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="grid grid-cols-4 gap-1 px-2 pt-4 [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1 [&_[role=tab]]:px-1 [&_[role=tab]]:normal-case [&_[role=tab]]:tracking-normal"
+          className="grid grid-cols-4 gap-1 px-2 pt-4 [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-1.5 [&_[role=tab]]:normal-case [&_[role=tab]]:tracking-normal"
         />
       </div>
 
