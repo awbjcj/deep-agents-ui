@@ -269,8 +269,11 @@ export function ToolPermissionsSidebar() {
               className="mt-2"
               onClick={() => setPolicyReviewRequired(false)}
             >
-              <Check className="mr-1.5 h-3.5 w-3.5" />I reviewed the
-              refreshed restrictions
+              <Check
+                className="mr-1.5 h-3.5 w-3.5"
+                aria-hidden="true"
+              />
+              I reviewed the refreshed restrictions
             </Button>
           </div>
         ) : null}
@@ -340,7 +343,10 @@ export function ToolPermissionsSidebar() {
                     )
                   }
                 >
-                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  <Check
+                    className="mr-1.5 h-3.5 w-3.5"
+                    aria-hidden="true"
+                  />
                   Select available
                 </Button>
                 <Button

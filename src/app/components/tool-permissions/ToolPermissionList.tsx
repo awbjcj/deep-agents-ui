@@ -1,7 +1,8 @@
 "use client";
 
-import { Ban, Check, ChevronDown } from "lucide-react";
+import { Ban, ChevronDown } from "lucide-react";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { canToggleTool, type ToolCatalogEntry } from "@/lib/tool-permissions";
 
@@ -68,26 +69,14 @@ export function ToolPermissionList({
                     !allowed && !checked && "bg-muted/25 opacity-70"
                   )}
                 >
-                  <span className="relative mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
-                    <input
-                      id={controlId}
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled}
-                      aria-describedby={`${controlId}-description`}
-                      onChange={() => onToggle(tool.id)}
-                      className="focus-visible:ring-[var(--aptiv-orange)]/45 peer absolute inset-0 h-5 w-5 appearance-none rounded-[5px] border-2 border-muted-foreground/70 bg-background shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-[var(--aptiv-orange)] checked:bg-[var(--aptiv-orange)] checked:bg-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
-                    />
-                    {/* Also absolutely positioned (not just flex-centered) so
-                        it paints after the input in the same stacking
-                        context — an absolute input otherwise stacks above
-                        static siblings regardless of DOM order and hides it. */}
-                    <Check
-                      className="pointer-events-none absolute inset-0 m-auto h-3.5 w-3.5 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
-                      strokeWidth={3}
-                      aria-hidden="true"
-                    />
-                  </span>
+                  <Checkbox
+                    id={controlId}
+                    className="mt-0.5"
+                    checked={checked}
+                    disabled={disabled}
+                    aria-describedby={`${controlId}-description`}
+                    onChange={() => onToggle(tool.id)}
+                  />
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <label

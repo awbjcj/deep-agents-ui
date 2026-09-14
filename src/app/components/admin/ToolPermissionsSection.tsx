@@ -305,8 +305,11 @@ export function ToolPermissionsSection() {
               }))
             }
           >
-            <Check className="mr-1.5 h-3.5 w-3.5" />I reviewed the
-            refreshed policy
+            <Check
+              className="mr-1.5 h-3.5 w-3.5"
+              aria-hidden="true"
+            />
+            I reviewed the refreshed policy
           </Button>
         </div>
       ) : null}
@@ -339,7 +342,10 @@ export function ToolPermissionsSection() {
                 disabled={saving || sameToolIds(activeDraft, allCatalogIds)}
                 onClick={() => setActiveDraft(allCatalogIds)}
               >
-                <Check className="mr-1.5 h-3.5 w-3.5" />
+                <Check
+                  className="mr-1.5 h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
                 Select all
               </Button>
               <Button

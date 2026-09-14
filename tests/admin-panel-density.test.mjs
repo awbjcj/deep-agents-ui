@@ -146,7 +146,7 @@ test("workspace tabs preserve ids and use the compact requested order", async ()
 });
 
 test("panel tabs and tool checkboxes remain legible and visible", async () => {
-  const [tabs, permissions] = await Promise.all([
+  const [tabs, permissions, checkbox] = await Promise.all([
     readFile(
       new URL("../src/components/ui/panel-tabs.tsx", import.meta.url),
       "utf8"
@@ -158,15 +158,23 @@ test("panel tabs and tool checkboxes remain legible and visible", async () => {
       ),
       "utf8"
     ),
+    readFile(
+      new URL("../src/components/ui/checkbox.tsx", import.meta.url),
+      "utf8"
+    ),
   ]);
 
   assert.match(tabs, /items-center justify-center/);
   assert.match(tabs, /min-\[480px\]:text-sm/);
   assert.match(tabs, /"h-4 w-4 shrink-0"/);
   assert.doesNotMatch(tabs, /isTwoRow && "hidden/);
-  assert.match(permissions, /appearance-none/);
-  assert.match(permissions, /border-2 border-muted-foreground\/70/);
-  assert.match(permissions, /peer-checked:opacity-100/);
+  assert.match(permissions, /import \{ Checkbox \}/);
   assert.match(permissions, /text-\[var\(--aptiv-orange\)\]/);
   assert.doesNotMatch(permissions, /CheckCircle2/);
+  assert.doesNotMatch(permissions, /<Check(?:\s|>)/);
+  assert.match(checkbox, /appearance-none/);
+  assert.match(checkbox, /border-2 border-muted-foreground\/70/);
+  assert.match(checkbox, /peer-checked:opacity-100/);
+  assert.match(checkbox, /checked:bg-\[var\(--aptiv-orange\)\]/);
+  assert.equal((checkbox.match(/<Check(?:\s|>)/g) ?? []).length, 1);
 });
