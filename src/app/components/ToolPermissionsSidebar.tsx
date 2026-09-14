@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
-  CheckCheck,
+  Check,
   Loader2,
   RotateCcw,
   Save,
@@ -269,7 +269,7 @@ export function ToolPermissionsSidebar() {
               className="mt-2"
               onClick={() => setPolicyReviewRequired(false)}
             >
-              <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed the
+              <Check className="mr-1.5 h-3.5 w-3.5" />I reviewed the
               refreshed restrictions
             </Button>
           </div>
@@ -340,7 +340,7 @@ export function ToolPermissionsSidebar() {
                     )
                   }
                 >
-                  <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
                   Select available
                 </Button>
                 <Button

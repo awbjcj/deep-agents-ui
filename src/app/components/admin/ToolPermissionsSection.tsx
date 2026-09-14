@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
-  CheckCheck,
+  Check,
   Loader2,
   RotateCcw,
   Save,
@@ -305,7 +305,7 @@ export function ToolPermissionsSection() {
               }))
             }
           >
-            <CheckCheck className="mr-1.5 h-3.5 w-3.5" />I reviewed the
+            <Check className="mr-1.5 h-3.5 w-3.5" />I reviewed the
             refreshed policy
           </Button>
         </div>
@@ -339,7 +339,7 @@ export function ToolPermissionsSection() {
                 disabled={saving || sameToolIds(activeDraft, allCatalogIds)}
                 onClick={() => setActiveDraft(allCatalogIds)}
               >
-                <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
+                <Check className="mr-1.5 h-3.5 w-3.5" />
                 Select all
               </Button>
               <Button
