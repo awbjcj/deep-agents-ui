@@ -78,11 +78,12 @@ export function ToolPermissionList({
                       onChange={() => onToggle(tool.id)}
                       className="focus-visible:ring-[var(--aptiv-orange)]/45 peer absolute inset-0 h-5 w-5 appearance-none rounded-[5px] border-2 border-muted-foreground/70 bg-background shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-[var(--aptiv-orange)] checked:bg-[var(--aptiv-orange)] checked:bg-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
                     />
-                    {/* Centered via flexbox on the wrapper rather than fixed
-                        inset offsets, so the mark stays true-center regardless
-                        of border width. */}
+                    {/* Also absolutely positioned (not just flex-centered) so
+                        it paints after the input in the same stacking
+                        context — an absolute input otherwise stacks above
+                        static siblings regardless of DOM order and hides it. */}
                     <Check
-                      className="pointer-events-none h-3.5 w-3.5 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
+                      className="pointer-events-none absolute inset-0 m-auto h-3.5 w-3.5 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
                       strokeWidth={3}
                       aria-hidden="true"
                     />
