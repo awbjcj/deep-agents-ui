@@ -68,7 +68,7 @@ export function ToolPermissionList({
                     !allowed && !checked && "bg-muted/25 opacity-70"
                   )}
                 >
-                  <span className="relative mt-0.5 h-5 w-5 shrink-0">
+                  <span className="relative mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center">
                     <input
                       id={controlId}
                       type="checkbox"
@@ -76,10 +76,13 @@ export function ToolPermissionList({
                       disabled={disabled}
                       aria-describedby={`${controlId}-description`}
                       onChange={() => onToggle(tool.id)}
-                      className="focus-visible:ring-[var(--aptiv-orange)]/45 peer h-5 w-5 appearance-none rounded-[5px] border-2 border-muted-foreground/70 bg-background shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-[var(--aptiv-orange)] checked:bg-[var(--aptiv-orange)] checked:bg-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+                      className="focus-visible:ring-[var(--aptiv-orange)]/45 peer absolute inset-0 h-5 w-5 appearance-none rounded-[5px] border-2 border-muted-foreground/70 bg-background shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-[var(--aptiv-orange)] checked:bg-[var(--aptiv-orange)] checked:bg-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
                     />
+                    {/* Centered via flexbox on the wrapper rather than fixed
+                        inset offsets, so the mark stays true-center regardless
+                        of border width. */}
                     <Check
-                      className="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
+                      className="pointer-events-none h-3.5 w-3.5 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
                       strokeWidth={3}
                       aria-hidden="true"
                     />
