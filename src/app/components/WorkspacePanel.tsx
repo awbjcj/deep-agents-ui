@@ -98,7 +98,7 @@ export function WorkspacePanel({
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="grid grid-cols-4 gap-1 px-2 pt-4 [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-1.5 [&_[role=tab]]:normal-case [&_[role=tab]]:tracking-normal"
+          className="grid grid-cols-4 gap-1 px-2 pt-4 [&_[role=tab]]:w-full [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-1.5"
         />
       </div>
 

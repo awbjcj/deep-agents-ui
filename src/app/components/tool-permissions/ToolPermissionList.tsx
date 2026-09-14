@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Check, CheckCircle2, ChevronDown } from "lucide-react";
+import { Ban, Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { canToggleTool, type ToolCatalogEntry } from "@/lib/tool-permissions";
@@ -112,11 +112,7 @@ export function ToolPermissionList({
                           Pending removal
                         </span>
                       ) : effective ? (
-                        <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)]">
-                          <CheckCircle2
-                            className="h-3 w-3"
-                            aria-hidden="true"
-                          />
+                        <span className="shrink-0 text-[10px] font-semibold text-[var(--aptiv-orange)]">
                           {selectedStatusLabel}
                         </span>
                       ) : null}

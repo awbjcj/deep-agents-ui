@@ -157,13 +157,12 @@ export function PanelTabs<Id extends string>({
             }}
             onKeyDown={(event) => onKeyDown(event, index)}
             className={cn(
-              "group relative inline-flex items-center gap-1.5 whitespace-nowrap font-semibold transition-colors motion-reduce:transition-none",
+              "group relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-center font-medium transition-colors motion-reduce:transition-none",
               "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
               isUnderline
                 ? cn(
-                    "min-h-10 rounded-t-md px-3 py-2.5 text-xs uppercase tracking-[0.1em]",
-                    isTwoRow &&
-                      "w-full min-w-0 justify-center gap-1.5 px-1.5 text-xs normal-case tracking-normal"
+                    "min-h-10 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal min-[480px]:min-h-11 min-[480px]:text-sm",
+                    isTwoRow && "w-full min-w-0 gap-1.5 px-1.5 min-[480px]:px-2"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive

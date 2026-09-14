@@ -17,7 +17,7 @@ test("admin navigation uses an exact two-row tab layout", async () => {
 
   assert.match(panel, /layout="two-row"/);
   assert.match(tabs, /gridTemplateColumns: "repeat\(4, minmax\(0, 1fr\)\)"/);
-  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 justify-center/);
+  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 gap-1.5/);
   assert.doesNotMatch(panel, /id: "registration"/);
   const destinations = [
     ["users", "People"],
@@ -160,10 +160,13 @@ test("panel tabs and tool checkboxes remain legible and visible", async () => {
     ),
   ]);
 
-  assert.match(tabs, /min-h-10[\s\S]*text-xs/);
+  assert.match(tabs, /items-center justify-center/);
+  assert.match(tabs, /min-\[480px\]:text-sm/);
   assert.match(tabs, /"h-4 w-4 shrink-0"/);
   assert.doesNotMatch(tabs, /isTwoRow && "hidden/);
   assert.match(permissions, /appearance-none/);
   assert.match(permissions, /border-2 border-muted-foreground\/70/);
   assert.match(permissions, /peer-checked:opacity-100/);
+  assert.match(permissions, /text-\[var\(--aptiv-orange\)\]/);
+  assert.doesNotMatch(permissions, /CheckCircle2/);
 });
