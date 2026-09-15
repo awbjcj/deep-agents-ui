@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Cpu,
   Gauge,
+  Github,
   HardDrive,
   Layers3,
   Loader2,
@@ -30,6 +31,9 @@ import {
 } from "@/components/ui/select";
 import {
   analysisLimitsSchema,
+  copilotSettingsSchema,
+  COPILOT_USAGE_EXPLANATION,
+  analysisBlockerMessage,
   analysisSettingsSchema,
   getAnalysisEngineSettings,
   getAnalysisEngines,
@@ -264,7 +268,7 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
                   {engine.ready
                     ? "Ready for new analyses"
                     : engine.blockers.length
-                    ? engine.blockers.join(" · ")
+                    ? engine.blockers.map(analysisBlockerMessage).join(" ")
                     : "Unavailable"}
                 </p>
               </div>
@@ -398,6 +402,7 @@ export function CodeAnalysisSettings({
   const [savedDefaultEngine, setSavedDefaultEngine] =
     useState<AnalysisEngine | null>(null);
   const [savedMatlabEnabled, setSavedMatlabEnabled] = useState(false);
+  const [copilotEnabled, setCopilotEnabled] = useState(false);
   const [overrideProvider, setOverrideProvider] = useState("");
   const [overrideModel, setOverrideModel] = useState("");
   const [loading, setLoading] = useState(true);
@@ -417,6 +422,7 @@ export function CodeAnalysisSettings({
       ]);
       setLimits(value);
       setEngines(engineValue);
+      setCopilotEnabled(engineValue.copilot.enabled);
       setCatalog(engineCatalog);
       setSavedDefaultEngine(engineValue.default_engine);
       setSavedMatlabEnabled(engineValue.matlab.enabled);
@@ -425,6 +431,12 @@ export function CodeAnalysisSettings({
       setDraft({
         ...Object.fromEntries(EDITABLE.map((key) => [key, String(value[key])])),
         native_max_tokens: String(engineValue.native_limits.max_tokens),
+        copilot_allowed_models: engineValue.copilot.allowed_models.join(", "),
+        copilot_allowed_github_hosts:
+          engineValue.copilot.allowed_github_hosts.join(", "),
+        copilot_default_model: engineValue.copilot.default_model ?? "",
+        copilot_max_tokens: String(engineValue.copilot.max_tokens),
+        copilot_max_tool_calls: String(engineValue.copilot.max_tool_calls),
         native_max_tool_calls: String(engineValue.native_limits.max_tool_calls),
         matlab_dependency_server_ids:
           engineValue.matlab.dependency_server_ids.join(", "),
@@ -453,6 +465,20 @@ export function CodeAnalysisSettings({
 
   const overrideIncomplete =
     Boolean(overrideProvider.trim()) !== Boolean(overrideModel.trim());
+  const copilotValidation = copilotSettingsSchema.safeParse({
+    enabled: copilotEnabled,
+    allowed_github_hosts: (draft.copilot_allowed_github_hosts ?? "github.com")
+      .split(",")
+      .map((host) => host.trim())
+      .filter(Boolean),
+    allowed_models: (draft.copilot_allowed_models ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+    default_model: draft.copilot_default_model || null,
+    max_tokens: Number(draft.copilot_max_tokens),
+    max_tool_calls: Number(draft.copilot_max_tool_calls),
+  });
   const dirty = useMemo(() => {
     if (!limits || !engines) return false;
     return (
@@ -463,6 +489,14 @@ export function CodeAnalysisSettings({
       overrideProvider !== (engines.model_override?.provider ?? "") ||
       overrideModel !== (engines.model_override?.model ?? "") ||
       engines.default_engine !== savedDefaultEngine ||
+      copilotEnabled !== engines.copilot.enabled ||
+      draft.copilot_allowed_github_hosts !==
+        engines.copilot.allowed_github_hosts.join(", ") ||
+      draft.copilot_allowed_models !==
+        engines.copilot.allowed_models.join(", ") ||
+      draft.copilot_default_model !== (engines.copilot.default_model ?? "") ||
+      draft.copilot_max_tokens !== String(engines.copilot.max_tokens) ||
+      draft.copilot_max_tool_calls !== String(engines.copilot.max_tool_calls) ||
       engines.matlab.enabled !== savedMatlabEnabled ||
       draft.matlab_dependency_server_ids !==
         engines.matlab.dependency_server_ids.join(", ") ||
@@ -480,10 +514,12 @@ export function CodeAnalysisSettings({
     overrideProvider,
     savedDefaultEngine,
     savedMatlabEnabled,
+    copilotEnabled,
   ]);
 
   const save = async () => {
-    if (!limits || !engines || overrideIncomplete) return;
+    if (!limits || !engines || overrideIncomplete || !copilotValidation.success)
+      return;
     try {
       const input = analysisLimitsSchema.parse({
         ...limits,
@@ -492,6 +528,7 @@ export function CodeAnalysisSettings({
       const candidate = {
         ...engines,
         limits: input,
+        copilot: copilotValidation.data,
         native_limits: {
           max_tokens: Number(draft.native_max_tokens),
           max_tool_calls: Number(draft.native_max_tool_calls),
@@ -542,18 +579,24 @@ export function CodeAnalysisSettings({
       const saved = savedEngines.limits;
       setLimits(saved);
       setEngines(savedEngines);
+      setCopilotEnabled(savedEngines.copilot.enabled);
       setSavedDefaultEngine(savedEngines.default_engine);
       setSavedMatlabEnabled(savedEngines.matlab.enabled);
-      setCatalog((current) =>
-        current
-          ? { ...current, default_engine: savedEngines.default_engine }
-          : current
-      );
+      // Policy changes can enable or block an engine independently of its default.
+      setCatalog(null);
+      const refreshedCatalog = await getAnalysisEngines().catch(() => null);
+      setCatalog(refreshedCatalog);
       setOverrideProvider(savedEngines.model_override?.provider ?? "");
       setOverrideModel(savedEngines.model_override?.model ?? "");
       setDraft({
         ...Object.fromEntries(EDITABLE.map((key) => [key, String(saved[key])])),
         native_max_tokens: String(savedEngines.native_limits.max_tokens),
+        copilot_allowed_models: savedEngines.copilot.allowed_models.join(", "),
+        copilot_allowed_github_hosts:
+          savedEngines.copilot.allowed_github_hosts.join(", "),
+        copilot_default_model: savedEngines.copilot.default_model ?? "",
+        copilot_max_tokens: String(savedEngines.copilot.max_tokens),
+        copilot_max_tool_calls: String(savedEngines.copilot.max_tool_calls),
         native_max_tool_calls: String(
           savedEngines.native_limits.max_tool_calls
         ),
@@ -774,6 +817,154 @@ export function CodeAnalysisSettings({
             </div>
           </section>
 
+          <section
+            aria-labelledby="copilot-policy-title"
+            className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+          >
+            <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
+              <Github
+                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+              <div className="min-w-0 flex-1">
+                <h4
+                  id="copilot-policy-title"
+                  className="text-sm font-semibold"
+                >
+                  Copilot analysis policy
+                </h4>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  Govern account eligibility, approved models, and per-analysis
+                  safety limits.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-background/70 px-2.5 py-1.5">
+                <Label
+                  htmlFor="analysis-copilot-enabled"
+                  className="text-[11px] font-semibold"
+                >
+                  Enabled
+                </Label>
+                <Switch
+                  id="analysis-copilot-enabled"
+                  checked={copilotEnabled}
+                  onCheckedChange={setCopilotEnabled}
+                />
+              </div>
+            </header>
+            <div className="space-y-4 p-4">
+              <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                {COPILOT_USAGE_EXPLANATION}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="analysis-copilot-hosts">
+                  Allowed GitHub account hostnames
+                </Label>
+                <Input
+                  id="analysis-copilot-hosts"
+                  value={draft.copilot_allowed_github_hosts ?? "github.com"}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      copilot_allowed_github_hosts: event.target.value,
+                    }))
+                  }
+                  aria-describedby="analysis-copilot-hosts-help"
+                />
+                <p
+                  id="analysis-copilot-hosts-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  Comma-separated exact hostnames, such as github.com,
+                  company.ghe.com. Each host also needs worker verification.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="analysis-copilot-models">
+                    Allowed model IDs
+                  </Label>
+                  <Input
+                    id="analysis-copilot-models"
+                    value={draft.copilot_allowed_models ?? ""}
+                    aria-describedby="analysis-copilot-help"
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        copilot_allowed_models: event.target.value,
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter exact model IDs, separated by commas.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="analysis-copilot-default">
+                    Default Copilot model
+                  </Label>
+                  <Input
+                    id="analysis-copilot-default"
+                    value={draft.copilot_default_model ?? ""}
+                    aria-describedby="analysis-copilot-help"
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        copilot_default_model: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <LimitInput
+                  field={{
+                    key: "copilot-tokens",
+                    label: "Reported token threshold",
+                    description:
+                      "Stops after observed usage reaches this threshold.",
+                    unit: "tokens",
+                  }}
+                  value={draft.copilot_max_tokens ?? ""}
+                  onChange={(value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      copilot_max_tokens: value,
+                    }))
+                  }
+                />
+                <LimitInput
+                  field={{
+                    key: "copilot-tools",
+                    label: "Source tool limit",
+                    description:
+                      "Maximum source reads and searches per analysis.",
+                    unit: "calls",
+                  }}
+                  value={draft.copilot_max_tool_calls ?? ""}
+                  onChange={(value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      copilot_max_tool_calls: value,
+                    }))
+                  }
+                />
+              </div>
+              <p
+                id="analysis-copilot-help"
+                role={copilotValidation.success ? undefined : "alert"}
+                className={cn(
+                  "rounded-md border px-3 py-2 text-xs leading-relaxed",
+                  copilotValidation.success
+                    ? "border-border/70 bg-muted/20 text-muted-foreground"
+                    : "border-destructive/30 bg-destructive/5 text-destructive"
+                )}
+              >
+                {copilotValidation.success
+                  ? "Each user supplies their own token. Enabling this policy also requires a verified analysis worker."
+                  : copilotValidation.error.issues[0]?.message}
+              </p>
+            </div>
+          </section>
+
           <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
             <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
               <Layers3
@@ -921,7 +1112,12 @@ export function CodeAnalysisSettings({
             <Button
               type="button"
               onClick={() => void save()}
-              disabled={saving || !dirty || overrideIncomplete}
+              disabled={
+                saving ||
+                !dirty ||
+                overrideIncomplete ||
+                !copilotValidation.success
+              }
             >
               {saving ? (
                 <Loader2

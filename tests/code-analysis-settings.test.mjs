@@ -108,6 +108,10 @@ test("analysis settings UI groups raw limits and validates model overrides inlin
   assert.match(source, /Last verified/);
   assert.match(source, /fieldErrors\[field.key\]/);
   assert.match(source, /aria-invalid=\{Boolean\(error\)\}/);
+  assert.match(
+    source,
+    /copilot_allowed_github_hosts:\s*savedEngines\.copilot\.allowed_github_hosts\.join\(", "\)/
+  );
 });
 
 test("analysis job UI exposes live status, progress, and evidence landmarks", async () => {

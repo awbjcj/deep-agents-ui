@@ -164,6 +164,165 @@ export const matlabReadinessSchema = z
   })
   .strict();
 
+const exactCopilotModel = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine(
+    (value) => value === value.trim() && value.toLowerCase() !== "auto",
+    "Enter an exact model ID"
+  );
+
+export const githubHostSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(
+    /^(github\.com|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.ghe\.com)$/,
+    "Use github.com or an exact tenant.ghe.com hostname"
+  );
+
+export const copilotSettingsSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    allowed_models: z.array(exactCopilotModel).default([]),
+    allowed_github_hosts: z.array(githubHostSchema).default(["github.com"]),
+    default_model: exactCopilotModel.nullable().default(null),
+    max_tokens: z.number().int().positive().default(100000),
+    max_tool_calls: z.number().int().positive().default(200),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (new Set(value.allowed_models).size !== value.allowed_models.length)
+      context.addIssue({
+        code: "custom",
+        path: ["allowed_models"],
+        message: "Allowed models must be unique",
+      });
+    if (
+      (value.enabled && !value.default_model) ||
+      (value.default_model &&
+        !value.allowed_models.includes(value.default_model))
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["default_model"],
+        message: "Choose an allowed default model before enabling Copilot",
+      });
+  });
+
+export const copilotCredentialStatusSchema = z
+  .object({
+    configured: z.boolean(),
+    github_host: githubHostSchema.default("github.com"),
+    generation: z.number().int().nonnegative(),
+    updated_at: z.string().nullable(),
+    expires_at: z.string().nullable(),
+  })
+  .strict();
+export type CopilotCredentialStatus = z.infer<
+  typeof copilotCredentialStatusSchema
+>;
+
+export const copilotQuotaStatusSchema = z
+  .object({
+    quota_type: z.literal("premium_interactions"),
+    entitlement_requests: z.number().int().min(-1),
+    used_requests: z.number().int().nonnegative(),
+    remaining_percentage: z.number().min(0).max(100),
+    reset_date: z.string().nullable(),
+    unlimited: z.boolean(),
+    exhausted: z.boolean(),
+    checked_at: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.unlimited && value.exhausted)
+      context.addIssue({
+        code: "custom",
+        path: ["exhausted"],
+        message: "Unlimited quota cannot be exhausted",
+      });
+  });
+export type CopilotQuotaStatus = z.infer<typeof copilotQuotaStatusSchema>;
+
+export const COPILOT_USAGE_EXPLANATION =
+  "Copilot premium interactions are billed through your GitHub account and are separate from Deep Agents token, call, and cost quotas. Copilot analysis is disabled when this account quota is reached.";
+
+/** Explain safe blocker codes without exposing private runtime configuration. */
+export function analysisBlockerMessage(code: string): string {
+  const messages: Record<string, string> = {
+    credential_missing: "Add your Copilot token in Token settings.",
+    github_host_not_allowed:
+      "Ask an administrator to allow your GitHub account hostname.",
+    github_host_unverified:
+      "An administrator must verify Copilot for your GitHub account hostname.",
+    credential_expired: "Replace your expired Copilot token in Token settings.",
+    disabled: "An administrator must enable Copilot analysis.",
+    sdk_runtime:
+      "Ask an administrator to configure Copilot on the analysis worker.",
+    behavior_probe: "An administrator must verify Copilot before it can run.",
+    cleanup: "The analysis worker needs cleanup before Copilot can run.",
+    access_service: "Copilot authorization is temporarily unavailable.",
+    quota_exhausted:
+      "Your Copilot premium interaction quota is reached. Use Deep Agent or wait for the account reset.",
+    quota_unavailable:
+      "Copilot quota could not be verified. Refresh your account status before using Copilot analysis.",
+    worker_unavailable: "The analysis worker is unavailable.",
+  };
+  return messages[code] ?? code.replaceAll("_", " ");
+}
+
+async function copilotCredentialRequest(
+  options: RequestInit = {}
+): Promise<CopilotCredentialStatus> {
+  const response = await apiFetch("/code-analysis/copilot/credential", {
+    ...options,
+    cache: "no-store",
+  });
+  if (!response.ok)
+    throw new Error(
+      response.status === 401
+        ? "Sign in again to manage your Copilot token."
+        : response.status === 400 || response.status === 422
+        ? "Enter a fine-grained token and a future expiry time."
+        : "Could not update Copilot token settings. Try again."
+    );
+  return copilotCredentialStatusSchema.parse(await response.json());
+}
+
+export function getCopilotCredential(): Promise<CopilotCredentialStatus> {
+  return copilotCredentialRequest();
+}
+
+export function saveCopilotCredential(input: {
+  token: string;
+  github_host?: string;
+  expires_at?: string | null;
+}): Promise<CopilotCredentialStatus> {
+  return copilotCredentialRequest({
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteCopilotCredential(): Promise<CopilotCredentialStatus> {
+  return copilotCredentialRequest({ method: "DELETE" });
+}
+
+export async function getCopilotQuota(
+  signal?: AbortSignal
+): Promise<CopilotQuotaStatus> {
+  const data = await responseJson(
+    await apiFetch("/code-analysis/copilot/quota", {
+      cache: "no-store",
+      signal,
+    }),
+    "Could not load Copilot account quota"
+  );
+  return copilotQuotaStatusSchema.parse(data);
+}
+
 export const analysisSettingsSchema = z
   .object({
     limits: analysisLimitsSchema.prefault({}),
@@ -175,6 +334,7 @@ export const analysisSettingsSchema = z
       .nullable()
       .default(null),
     matlab: matlabSettingsSchema.prefault({}),
+    copilot: copilotSettingsSchema.prefault({}),
   })
   .strict();
 export type AnalysisSettings = z.infer<typeof analysisSettingsSchema>;
@@ -189,6 +349,7 @@ export const engineCatalogSchema = z
           ready: z.boolean(),
           blockers: z.array(z.string()).default([]),
           matlab: matlabReadinessSchema.optional(),
+          quota: copilotQuotaStatusSchema.optional(),
         })
         .strict()
     ),
@@ -217,6 +378,23 @@ export const analysisJobSchema = z.object({
       provider: z.string().nullable().optional(),
       model: z.string().nullable().optional(),
       native_limits: nativeAnalysisLimitsSchema,
+      copilot: z
+        .object({
+          adapter: z.literal("sdk-v1"),
+          model: exactCopilotModel,
+          credential_generation: z.number().int().positive(),
+          github_host: githubHostSchema.default("github.com"),
+          max_tokens: z.number().int().positive(),
+          max_tool_calls: z.number().int().positive(),
+          job_timeout_seconds: z.number().int().positive(),
+          output_max_bytes: z.number().int().positive(),
+          report_markdown_max_bytes: z.number().int().positive(),
+          policy_version: z.literal("copilot-text-v1"),
+          usage_policy: z.literal("copilot_observed_v1"),
+        })
+        .strict()
+        .nullable()
+        .optional(),
       matlab: z
         .object({
           limits: matlabLimitsSchema,

@@ -9,6 +9,8 @@ const OUT = join(ROOT, "out");
 const EVIDENCE = join(ROOT, "docs", "evidence", "tool-permissions");
 const RUN_BROWSER = process.env.TOOL_PERMISSIONS_BROWSER_TEST === "1";
 
+export { staticServer, authenticatedPage, makePolicyFixture };
+
 function deferred() {
   let resolve;
   const promise = new Promise((settle) => {

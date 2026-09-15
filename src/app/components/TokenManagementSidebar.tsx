@@ -14,6 +14,7 @@ import {
 } from "@/app/components/tokenServiceGuides";
 import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
+import { CopilotCredentialPanel } from "@/app/components/CopilotCredentialPanel";
 import {
   CheckCircle,
   Clock,
@@ -610,6 +611,7 @@ export function TokenManagementSidebar({
                 )}
               </Button>
               <ScmCredentials />
+              <CopilotCredentialPanel key={username} />
             </>
           )}
         </div>
