@@ -83,7 +83,7 @@ test("interrupt resumes reapply the configured run limit", () => {
   );
   assert.match(
     resumeBlock,
-    /createInterruptResumeHandler\(\{[\s\S]*getPending: \(\) => stream\.interrupts/
+    /createInterruptResumeHandler\(\{[\s\S]*getPending: \(\) => streamRef\.current\.interrupts/
   );
   assert.match(resumeBlock, /command: \{ resume \}/);
   assert.match(resumeBlock, /config: buildConfig\(\)/);

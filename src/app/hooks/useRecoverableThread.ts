@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import type { Client, ThreadState } from "@langchain/langgraph-sdk";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
@@ -24,16 +24,15 @@ export function useRecoverableThread<
   onError: (error: unknown, threadId: string) => void;
 }): UseStreamThread<StateType> {
   const { mutate: mutateCache } = useSWRConfig();
+  const [refreshFailure, setRefreshFailure] = useState<{
+    threadId: string;
+    error: unknown;
+  } | null>(null);
   const key =
     enabled && threadId
       ? (["thread-history", client, threadId] as const)
       : null;
-  const {
-    data,
-    error,
-    isLoading,
-    mutate: revalidate,
-  } = useSWR<ThreadState<StateType>[]>(
+  const { data, error, isLoading } = useSWR<ThreadState<StateType>[]>(
     key,
     async () => {
       if (!threadId) return [];
@@ -45,37 +44,46 @@ export function useRecoverableThread<
     }
   );
 
+  const historyError =
+    refreshFailure?.threadId === threadId ? refreshFailure.error : error;
   useEffect(() => {
-    if (threadId && error) onError(error, threadId);
-  }, [error, onError, threadId]);
+    if (threadId && historyError) onError(historyError, threadId);
+  }, [historyError, onError, threadId]);
 
   const mutate = useCallback(
     async (requestedThreadId?: string) => {
-      if (!requestedThreadId || requestedThreadId === threadId) {
-        return (await revalidate()) ?? data;
+      const targetThreadId = requestedThreadId ?? threadId;
+      if (!targetThreadId) return undefined;
+      // Publish before the SDK clears live values. Unlike bound SWR
+      // revalidation, this rejects failures instead of returning a stale head.
+      try {
+        const updated = await mutateCache<ThreadState<StateType>[]>(
+          ["thread-history", client, targetThreadId],
+          () =>
+            client.threads.getHistory<StateType>(targetThreadId, {
+              limit: 10,
+            }),
+          { revalidate: false }
+        );
+        setRefreshFailure((previous) =>
+          previous?.threadId === targetThreadId ? null : previous
+        );
+        return updated;
+      } catch (error) {
+        setRefreshFailure({ threadId: targetThreadId, error });
+        throw error;
       }
-      // A new run retains the callback from before its thread ID existed.
-      // Publish the fetched head to that thread's cache before the SDK clears
-      // live values; returning it alone leaves approval tasks invisible.
-      return mutateCache<ThreadState<StateType>[]>(
-        ["thread-history", client, requestedThreadId],
-        () =>
-          client.threads.getHistory<StateType>(requestedThreadId, {
-            limit: 10,
-          }),
-        { revalidate: false }
-      );
     },
-    [client, data, mutateCache, revalidate, threadId]
+    [client, mutateCache, threadId]
   );
 
   return useMemo(
     () => ({
       data,
-      error,
+      error: historyError,
       isLoading,
       mutate,
     }),
-    [data, error, isLoading, mutate]
+    [data, historyError, isLoading, mutate]
   );
 }

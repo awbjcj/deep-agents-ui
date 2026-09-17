@@ -62,6 +62,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       removeSourceImage,
       isLoading,
       isThreadLoading,
+      historyError,
+      retryHistory,
       interrupt,
       sendMessage,
       ensureThreadId,
@@ -121,7 +123,24 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             className="mx-auto w-full max-w-[1120px] px-6 pb-6 pt-4"
             ref={contentRef}
           >
-            {isThreadLoading ? (
+            {historyError && (
+              <div
+                role="alert"
+                className="rounded-lg border border-border p-4 text-sm"
+              >
+                <p>Couldn’t load the latest conversation content.</p>
+                <button
+                  type="button"
+                  onClick={retryHistory}
+                  className="mt-2 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Retry loading conversation
+                </button>
+              </div>
+            )}
+            {isThreadLoading &&
+            processedMessages.length === 0 &&
+            !historyError ? (
               <div className="flex items-center justify-center p-8">
                 <p className="text-muted-foreground">Loading...</p>
               </div>
@@ -138,7 +157,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       toolCalls={data.toolCalls}
                       isLoading={isLoading}
                       ui={messageUi}
-                      stream={stream}
+                      stream={messageUi?.length ? stream : undefined}
                       onResumeInterrupt={resumeInterrupt}
                       graphId={assistant?.graph_id}
                       files={files}

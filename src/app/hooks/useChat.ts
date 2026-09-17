@@ -170,20 +170,16 @@ export function useChat({
 
   const handleThreadHistoryError = useCallback(
     (_error: unknown, failedThreadId: string) => {
-      onHistoryRevalidate?.();
-      clearStreamReconnectState(failedThreadId);
       if (threadIdRef.current !== failedThreadId) return;
       if (!reportedHistoryErrorsRef.current.has(failedThreadId)) {
         reportedHistoryErrorsRef.current.add(failedThreadId);
         toast.error("Couldn't load this conversation", {
           description:
-            "It may have expired or been removed. Starting a new thread.",
+            "Your conversation is still selected. Retry when the connection is available.",
         });
       }
-      threadIdRef.current = null;
-      void setThreadId(null);
     },
-    [onHistoryRevalidate, setThreadId]
+    []
   );
 
   const recoverableThread = useRecoverableThread<StateType>({
@@ -229,74 +225,32 @@ export function useChat({
   );
   const rawStream = useStream<StateType>(streamOptions);
 
-  // `useStream` returns a brand-new object literal on every render (it is not
-  // memoized), so `rawStream`'s identity churns on every streamed token. That
-  // churn breaks `React.memo` on every component the stream is threaded through
-  // (ChatMessage → ToolCallBox → the generative-UI artifacts) AND forces every
-  // stream-dependent `useCallback` below (sendMessage / stopStream /
-  // resumeInterrupt …) to be recreated each token. We expose a single
-  // referentially-stable handle: its identity is frozen (created once) while
-  // every access forwards to the latest stream, so memoized consumers see a
-  // constant identity yet always read live values.
+  // Render consumers need a reactive snapshot. Only event handlers use the
+  // latest-value ref, keeping callbacks stable without hiding state changes.
+  const stream = rawStream;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
-  const stream = useMemo(
-    () =>
-      new Proxy({} as unknown as typeof rawStream, {
-        get(_target, prop) {
-          const target = streamRef.current as unknown as Record<
-            string | symbol,
-            unknown
-          >;
-          const value = Reflect.get(target, prop, target);
-          return typeof value === "function"
-            ? (value as (...args: unknown[]) => unknown).bind(target)
-            : value;
-        },
-        has(_target, prop) {
-          return Reflect.has(streamRef.current as object, prop);
-        },
-        ownKeys() {
-          return Reflect.ownKeys(streamRef.current as object);
-        },
-        getOwnPropertyDescriptor(_target, prop) {
-          const desc = Reflect.getOwnPropertyDescriptor(
-            streamRef.current as object,
-            prop
-          );
-          // The throwaway target has no own properties, so the Proxy invariant
-          // requires any descriptor we report to be configurable.
-          if (desc) desc.configurable = true;
-          return desc;
-        },
-      }),
-    []
-  );
 
-  // Recover from a stale or unreachable thread referenced in the URL. The SDK
-  // keeps `isThreadLoading` true until the thread's history resolves; if that
-  // request never settles (the thread was deleted, belongs to another
-  // deployment, or the backend hangs) the chat pane is stuck on "Loading…"
-  // forever. After a grace period we drop the bad threadId so the user falls
-  // back to a fresh conversation instead of an endless spinner.
-  const stuckThreadRef = useRef<string | null>(null);
+  const [slowThreadId, setSlowThreadId] = useState<string | null>(null);
   useEffect(() => {
     if (!threadId || !stream.isThreadLoading) {
-      stuckThreadRef.current = null;
+      setSlowThreadId(null);
       return;
     }
-    stuckThreadRef.current = threadId;
-    const timer = setTimeout(() => {
-      if (stuckThreadRef.current !== threadId) return;
-      clearStreamReconnectState(threadId);
-      toast.error("Couldn't load this conversation", {
-        description: "It may have been removed. Starting a new thread.",
-      });
-      threadIdRef.current = null;
-      void setThreadId(null);
-    }, 20000);
+    const timer = setTimeout(() => setSlowThreadId(threadId), 20000);
     return () => clearTimeout(timer);
-  }, [threadId, stream.isThreadLoading, setThreadId]);
+  }, [threadId, stream.isThreadLoading]);
+
+  const history = thread ?? recoverableThread;
+  const historyError =
+    Boolean(history.error) || (threadId !== null && slowThreadId === threadId);
+  const retryHistory = useCallback(() => {
+    setSlowThreadId(null);
+    if (threadId) reportedHistoryErrorsRef.current.delete(threadId);
+    void history.mutate(threadId ?? undefined).catch(() => {
+      // The history hook exposes the failure for the retry UI.
+    });
+  }, [history, threadId]);
 
   const sendMessage = useCallback(
     (
@@ -311,7 +265,7 @@ export function useChat({
           ? { additional_kwargs: additionalKwargs }
           : {}),
       };
-      stream.submit(
+      streamRef.current.submit(
         { messages: [newMessage] },
         {
           optimisticValues: (prev) => ({
@@ -328,7 +282,7 @@ export function useChat({
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
     },
-    [stream, buildConfig, onHistoryRevalidate, threadCreationMetadata]
+    [buildConfig, onHistoryRevalidate, threadCreationMetadata]
   );
 
   const runSingleStep = useCallback(
@@ -339,7 +293,7 @@ export function useChat({
       optimisticMessages?: Message[]
     ) => {
       if (checkpoint) {
-        stream.submit(undefined, {
+        streamRef.current.submit(undefined, {
           ...(optimisticMessages
             ? { optimisticValues: { messages: optimisticMessages } }
             : {}),
@@ -352,7 +306,7 @@ export function useChat({
           streamMode: STREAM_MODES,
         });
       } else {
-        stream.submit(
+        streamRef.current.submit(
           { messages },
           {
             config: buildConfig(),
@@ -363,7 +317,7 @@ export function useChat({
         );
       }
     },
-    [stream, buildConfig]
+    [buildConfig]
   );
 
   // Optimistic file state.
@@ -605,7 +559,7 @@ export function useChat({
 
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {
-      stream.submit(undefined, {
+      streamRef.current.submit(undefined, {
         config: buildConfig(),
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }
@@ -616,24 +570,26 @@ export function useChat({
       // Update thread list when continuing stream
       onHistoryRevalidate?.();
     },
-    [stream, buildConfig, onHistoryRevalidate]
+    [buildConfig, onHistoryRevalidate]
   );
 
   const markCurrentThreadAsResolved = useCallback(() => {
-    stream.submit(null, { command: { goto: "__end__", update: null } });
+    streamRef.current.submit(null, {
+      command: { goto: "__end__", update: null },
+    });
     // Update thread list when marking thread as resolved
     onHistoryRevalidate?.();
-  }, [stream, onHistoryRevalidate]);
+  }, [onHistoryRevalidate]);
 
   const interrupt = selectPendingInterrupt(stream.interrupts);
   const selectedInterruptId = interrupt?.id;
   const resumeInterrupt = useMemo(
     () =>
       createInterruptResumeHandler({
-        getPending: () => stream.interrupts,
+        getPending: () => streamRef.current.interrupts,
         selectedId: selectedInterruptId,
         submit: (resume) => {
-          stream.submit(null, {
+          streamRef.current.submit(null, {
             command: { resume },
             config: buildConfig(),
             streamSubgraphs: true,
@@ -648,12 +604,12 @@ export function useChat({
           );
         },
       }),
-    [stream, selectedInterruptId, buildConfig, onHistoryRevalidate]
+    [selectedInterruptId, buildConfig, onHistoryRevalidate]
   );
 
   const stopStream = useCallback(() => {
-    stream.stop();
-  }, [stream]);
+    streamRef.current.stop();
+  }, []);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -667,9 +623,7 @@ export function useChat({
     isInterrupted
   );
 
-  // Read the live stream values once per render. `stream` is a Proxy that
-  // forwards to the latest raw stream, so each property access is a trap
-  // invocation — pulling them out here keeps the memo deps cheap and explicit.
+  // Expose the current snapshot alongside stable event handlers.
   const todos = stream.values.todos ?? EMPTY_TODOS;
   const email = stream.values.email;
   const ui = stream.values.ui;
@@ -695,6 +649,8 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
+      historyError,
+      retryHistory,
       interrupt,
       getMessagesMetadata,
       sendMessage,
@@ -718,6 +674,8 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
+      historyError,
+      retryHistory,
       interrupt,
       getMessagesMetadata,
       sendMessage,

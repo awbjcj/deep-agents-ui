@@ -27,8 +27,9 @@ and architecture discussions so names stay stable. Architecture vocabulary
   stream (`stream.messages`) into `Rendered Message[]`. It reconciles tool
   results into their calls **and** preserves the referential identity of every
   message and tool call whose render-relevant content is unchanged, so the
-  `React.memo`'d renderers (`ChatMessage`, `ToolCallBox`, the Artifacts) skip
-  work during streaming. Lives in
+  `React.memo`'d message and tool renderers skip unchanged work during streaming.
+  Artifacts additionally receive a reactive stream snapshot so graph-state
+  updates remain visible. Lives in
   `src/app/hooks/internal/conversationProjection.ts`; consumed by `useChat` via
   `useProcessedMessages`. Without it, per-token render cost scales with the
   total number of artifacts in the thread rather than with what changed.
