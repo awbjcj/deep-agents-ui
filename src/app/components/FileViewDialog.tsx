@@ -1,13 +1,6 @@
 "use client";
 
-import React, {
-  useMemo,
-  useCallback,
-  useState,
-  useEffect,
-  lazy,
-  Suspense,
-} from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import {
   Copy,
   Download,
@@ -30,98 +23,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { FileContentView } from "@/app/components/FileContentView";
 import type { FileItem } from "@/app/types/types";
 import { imageMimeForPath } from "@/lib/uploads";
-import useSWRMutation from "swr/mutation";
 import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
 
-// Lazy: Prism + its theme together push ~300KB. We only need them when the
-// user opens a non-markdown file in the viewer.
-const SyntaxHighlighter = lazy(() =>
-  import("react-syntax-highlighter").then((m) => ({ default: m.Prism }))
-);
-let oneDarkTheme: unknown = undefined;
-import("react-syntax-highlighter/dist/esm/styles/prism").then((m) => {
-  oneDarkTheme = m.oneDark;
-});
-
-// Above this size, line-numbered syntax highlighting becomes painful in the
-// browser. Show truncated head with a "Download to view full" affordance.
-const LARGE_FILE_BYTES = 250_000;
-
-const LANGUAGE_MAP: Record<string, string> = {
-  js: "javascript",
-  jsx: "javascript",
-  ts: "typescript",
-  tsx: "typescript",
-  py: "python",
-  rb: "ruby",
-  go: "go",
-  rs: "rust",
-  java: "java",
-  cpp: "cpp",
-  c: "c",
-  cs: "csharp",
-  php: "php",
-  swift: "swift",
-  kt: "kotlin",
-  scala: "scala",
-  sh: "bash",
-  bash: "bash",
-  zsh: "bash",
-  json: "json",
-  xml: "xml",
-  html: "html",
-  css: "css",
-  scss: "scss",
-  sass: "sass",
-  less: "less",
-  sql: "sql",
-  yaml: "yaml",
-  yml: "yaml",
-  toml: "toml",
-  ini: "ini",
-  dockerfile: "dockerfile",
-  makefile: "makefile",
-};
-
-export const FileViewDialog = React.memo<{
+interface FileViewDialogProps {
   file: FileItem | null;
   onSaveFile: (fileName: string, content: string) => Promise<void>;
   onClose: () => void;
   editDisabled: boolean;
-}>(({ file, onSaveFile, onClose, editDisabled }) => {
+}
+
+export const FileViewDialog = React.memo(function FileViewDialog(
+  props: FileViewDialogProps
+) {
+  return (
+    <FileViewDialogSession
+      key={props.file?.path ?? "new-file"}
+      {...props}
+    />
+  );
+});
+
+function FileViewDialogSession({
+  file,
+  onSaveFile,
+  onClose,
+  editDisabled,
+}: FileViewDialogProps) {
   const [isEditingMode, setIsEditingMode] = useState(file === null);
   const [fileName, setFileName] = useState(String(file?.path || ""));
   const [fileContent, setFileContent] = useState(String(file?.content || ""));
 
-  const fileUpdate = useSWRMutation(
-    { kind: "files-update", fileName, fileContent },
-    async ({ fileName, fileContent }) => {
-      if (!fileName || !fileContent) return;
-      return await onSaveFile(fileName, fileContent);
-    },
-    {
-      onSuccess: () => setIsEditingMode(false),
-      onError: (error) => toast.error(`Failed to save file: ${error}`),
-    }
-  );
-
-  useEffect(() => {
-    setFileName(String(file?.path || ""));
-    setFileContent(String(file?.content || ""));
-    setIsEditingMode(file === null);
-  }, [file]);
-
-  const fileExtension = useMemo(() => {
-    const fileNameStr = String(fileName || "");
-    return fileNameStr.split(".").pop()?.toLowerCase() || "";
-  }, [fileName]);
-
-  const isMarkdown = useMemo(() => {
-    return fileExtension === "md" || fileExtension === "markdown";
-  }, [fileExtension]);
+  const [isSaving, setIsSaving] = useState(false);
+  // Read directly from the current graph snapshot; only edits need a draft.
+  const displayedContent = isEditingMode
+    ? fileContent
+    : file?.content ?? fileContent;
 
   const imageMime = useMemo<string | null>(
     () => imageMimeForPath(fileName),
@@ -134,30 +73,31 @@ export const FileViewDialog = React.memo<{
     ? safeSourcePageUrl(sourceImage.source_page_url)
     : null;
 
-  const language = useMemo(() => {
-    return LANGUAGE_MAP[fileExtension] || "text";
-  }, [fileExtension]);
-
-  const handleCopy = useCallback(() => {
-    if (fileContent) {
-      navigator.clipboard.writeText(fileContent);
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(displayedContent);
+      toast.success("File copied");
+    } catch {
+      toast.error("Could not copy the file. Try downloading it instead.");
     }
-  }, [fileContent]);
+  }, [displayedContent]);
 
   const handleDownload = useCallback(() => {
-    if (fileContent && displayName) {
+    if (displayName) {
       let blob: Blob;
       if (isImage && imageMime) {
         // Image content is base64; decode to real bytes so the download is a
         // valid image rather than a text file full of base64.
-        const byteChars = atob(fileContent);
+        const byteChars = atob(displayedContent);
         const bytes = new Uint8Array(byteChars.length);
         for (let i = 0; i < byteChars.length; i++) {
           bytes[i] = byteChars.charCodeAt(i);
         }
         blob = new Blob([bytes], { type: imageMime });
       } else {
-        blob = new Blob([fileContent], { type: "text/plain" });
+        blob = new Blob([displayedContent], {
+          type: "text/plain;charset=utf-8",
+        });
       }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -168,11 +108,12 @@ export const FileViewDialog = React.memo<{
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }
-  }, [displayName, fileContent, isImage, imageMime]);
+  }, [displayName, displayedContent, isImage, imageMime]);
 
   const handleEdit = useCallback(() => {
+    setFileContent(file?.content ?? "");
     setIsEditingMode(true);
-  }, []);
+  }, [file?.content]);
 
   const handleCancel = useCallback(() => {
     if (file === null) {
@@ -186,16 +127,33 @@ export const FileViewDialog = React.memo<{
 
   const fileNameIsValid = useMemo(() => {
     return (
-      fileName.trim() !== "" &&
-      !fileName.includes("/") &&
-      !fileName.includes(" ")
+      file !== null ||
+      (fileName.trim() !== "" &&
+        !fileName.includes("/") &&
+        !fileName.includes("\\") &&
+        !fileName.includes(" "))
     );
-  }, [fileName]);
+  }, [file, fileName]);
+
+  const handleSave = async () => {
+    if (isSaving || editDisabled || !fileNameIsValid) return;
+    setIsSaving(true);
+    try {
+      await onSaveFile(fileName, fileContent);
+      setIsEditingMode(false);
+    } catch (error) {
+      toast.error(`Failed to save file: ${error}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Dialog
       open={true}
-      onOpenChange={onClose}
+      onOpenChange={(open) => {
+        if (!open && !isSaving) onClose();
+      }}
     >
       <DialogContent className="flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
         <DialogTitle className="sr-only">{displayName}</DialogTitle>
@@ -228,6 +186,8 @@ export const FileViewDialog = React.memo<{
                 placeholder="Enter filename..."
                 className="text-base font-medium"
                 aria-invalid={!fileNameIsValid}
+                aria-label="File name"
+                disabled={isSaving}
               />
             ) : (
               <div className="min-w-0">
@@ -320,28 +280,26 @@ export const FileViewDialog = React.memo<{
               value={fileContent}
               onChange={(e) => setFileContent(e.target.value)}
               placeholder="Enter file content..."
-              className="h-full min-h-[400px] resize-none font-mono text-sm"
+              aria-label="File content"
+              readOnly={isSaving}
+              className="h-full min-h-0 resize-none font-mono text-sm"
             />
           ) : (
-            <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20">
+            <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20 [&_[data-slot=scroll-area-viewport]>div]:!block">
               <div className="p-4">
-                {fileContent ? (
+                {displayedContent ? (
                   isImage && imageMime ? (
                     <div className="flex min-h-[min(52dvh,520px)] items-center justify-center p-4 sm:p-8">
                       <img
-                        src={`data:${imageMime};base64,${fileContent}`}
+                        src={`data:${imageMime};base64,${displayedContent}`}
                         alt={displayName}
                         className="max-h-[52dvh] max-w-full rounded-lg border border-border/60 bg-background object-contain shadow-sm"
                       />
                     </div>
-                  ) : isMarkdown ? (
-                    <div className="rounded-md p-6">
-                      <MarkdownContent content={fileContent} />
-                    </div>
                   ) : (
-                    <FileCodeView
-                      content={fileContent}
-                      language={language}
+                    <FileContentView
+                      content={displayedContent}
+                      path={fileName}
                     />
                   )
                 ) : (
@@ -361,6 +319,7 @@ export const FileViewDialog = React.memo<{
               onClick={handleCancel}
               variant="outline"
               size="sm"
+              disabled={isSaving}
             >
               <X
                 size={16}
@@ -369,16 +328,11 @@ export const FileViewDialog = React.memo<{
               Cancel
             </Button>
             <Button
-              onClick={() => fileUpdate.trigger()}
+              onClick={handleSave}
               size="sm"
-              disabled={
-                fileUpdate.isMutating ||
-                !fileName.trim() ||
-                !fileContent.trim() ||
-                !fileNameIsValid
-              }
+              disabled={isSaving || editDisabled || !fileNameIsValid}
             >
-              {fileUpdate.isMutating ? (
+              {isSaving ? (
                 <Loader2
                   size={16}
                   className="mr-1 animate-spin"
@@ -396,63 +350,6 @@ export const FileViewDialog = React.memo<{
       </DialogContent>
     </Dialog>
   );
-});
-
-FileViewDialog.displayName = "FileViewDialog";
-
-interface FileCodeViewProps {
-  content: string;
-  language: string;
 }
 
-// Memoized so toggling unrelated dialog state (edit mode flag, etc.) does not
-// re-mount the heavy Prism subtree. Also handles the large-file truncation.
-const FileCodeView = React.memo<FileCodeViewProps>(({ content, language }) => {
-  const isLarge = content.length > LARGE_FILE_BYTES;
-  const displayContent = useMemo(() => {
-    if (!isLarge) return content;
-    // Show the first ~250KB worth of lines; keep boundary on a line break.
-    const slice = content.slice(0, LARGE_FILE_BYTES);
-    const lastNewline = slice.lastIndexOf("\n");
-    return slice.slice(0, lastNewline > 0 ? lastNewline : slice.length);
-  }, [content, isLarge]);
-
-  return (
-    <>
-      {isLarge && (
-        <div className="border-warning/40 bg-warning/10 mb-3 rounded-md border px-3 py-2 text-xs text-foreground/80">
-          File is {Math.round(content.length / 1024)} KB; showing the first{" "}
-          {Math.round(displayContent.length / 1024)} KB. Use Download to view in
-          full.
-        </div>
-      )}
-      <Suspense
-        fallback={
-          <pre className="bg-surface-alt overflow-auto rounded-md p-4 font-mono text-sm">
-            {displayContent}
-          </pre>
-        }
-      >
-        <SyntaxHighlighter
-          language={language}
-          style={oneDarkTheme as any}
-          customStyle={{
-            margin: 0,
-            borderRadius: "0.5rem",
-            fontSize: "0.875rem",
-            fontFamily: "var(--font-family-mono)",
-            fontWeight: 500,
-            fontFeatureSettings: '"ss01", "cv11"',
-          }}
-          showLineNumbers
-          wrapLines={true}
-          lineProps={{ style: { whiteSpace: "pre-wrap" } }}
-        >
-          {displayContent}
-        </SyntaxHighlighter>
-      </Suspense>
-    </>
-  );
-});
-
-FileCodeView.displayName = "FileCodeView";
+FileViewDialog.displayName = "FileViewDialog";

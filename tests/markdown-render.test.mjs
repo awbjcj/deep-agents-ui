@@ -135,7 +135,7 @@ test("keeps inline code spans verbatim", () => {
 
 test("keeps footnote links in the current document", () => {
   const html = render("A claim[^1].\n\n[^1]: The note.");
-  const footnoteLink = /<a href="#user-content-fn-1"[^>]*>/.exec(html);
+  const footnoteLink = /<a\b[^>]*href="#user-content-fn-1"[^>]*>/.exec(html);
   assert.ok(footnoteLink, "expected a footnote reference link");
   assert.doesNotMatch(footnoteLink[0], /target="_blank"/);
 });
@@ -168,4 +168,31 @@ test("renders GFM tables as a labelled scrollable region", () => {
   const html = render("| a | b |\n| --- | --- |\n| 1 | 2 |");
   assert.match(html, /aria-label="Markdown table"/);
   assert.match(html, /<table/);
+});
+
+test("preserves numbered-list starts in middleware documents", () => {
+  assert.match(
+    render("7. Continue investigation\n8. Verify the result"),
+    /<ol[^>]*start="7"/
+  );
+});
+
+test("keeps footnote return targets and accessible reference attributes", () => {
+  const html = render("A claim[^1].\n\n[^1]: The note.");
+  assert.match(html, /id="user-content-fnref-1"/);
+  assert.match(html, /<li\b[^>]*id="user-content-fn-1"/);
+  assert.match(html, /aria-describedby="footnote-label"/);
+  assert.match(html, /aria-label="Back to reference 1"/);
+});
+
+test("document mode preserves intentional Markdown emphasis and literal brackets", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(MarkdownContent, {
+      content: "__API__\n\n[x=1]",
+      mode: "document",
+    })
+  );
+  assert.match(html, /<strong>API<\/strong>/);
+  assert.match(html, /\[x=1\]/);
+  assert.equal(mathAnnotations(html).length, 0);
 });
