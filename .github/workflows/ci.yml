@@ -1,4 +1,4 @@
-# Run formatting on all PRs
+# Run quality checks on main and PRs targeting main.
 
 name: CI
 
@@ -6,7 +6,7 @@ on:
   push:
     branches: ["main"]
   pull_request:
-  workflow_dispatch: # Allows triggering the workflow manually in GitHub UI
+    branches: ["main"]
 
 permissions:
   contents: read

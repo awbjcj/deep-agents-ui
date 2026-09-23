@@ -409,7 +409,11 @@ export function ModelSidebar() {
       provider,
       model,
       effort: defaultEffort,
-      thinking: entry.supports_thinking ? false : null,
+      thinking: entry.thinking_required
+        ? true
+        : entry.supports_thinking
+        ? false
+        : null,
     });
   }
 
@@ -707,7 +711,9 @@ export function ModelSidebar() {
                       Adaptive thinking
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {currentModelEntry?.supports_thinking
+                      {currentModelEntry?.thinking_required
+                        ? "Always on for this model; choose effort to adjust depth"
+                        : currentModelEntry?.supports_thinking
                         ? "Let the model take longer on hard prompts"
                         : "Not supported by this model"}
                     </span>
@@ -717,7 +723,11 @@ export function ModelSidebar() {
                     onCheckedChange={(checked) =>
                       updateDraft({ thinking: checked })
                     }
-                    disabled={!currentModelEntry?.supports_thinking || isSaving}
+                    disabled={
+                      !currentModelEntry?.supports_thinking ||
+                      currentModelEntry.thinking_required ||
+                      isSaving
+                    }
                   />
                 </div>
               </section>

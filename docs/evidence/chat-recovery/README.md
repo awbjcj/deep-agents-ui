@@ -33,10 +33,10 @@ of approximately 117 characters, followed by one changing assistant message.
 After 20 warm-up frames, measured five batches of 100 frames and took the
 median time per frame:
 
-| Projection | Milliseconds per frame |
-| --- | ---: |
-| Original | 5.159 |
-| Cached immutable tool-result text | 0.090 |
+| Projection                        | Milliseconds per frame |
+| --------------------------------- | ---------------------: |
+| Original                          |                  5.159 |
+| Cached immutable tool-result text |                  0.090 |
 
 The cache uses weak content-array keys so old threads can be collected. A
 regression verifies new content blocks replace the cached result. These are
