@@ -16,14 +16,19 @@ import {
   type SourceImageRecord,
 } from "@/lib/source-images";
 
+const NO_PENDING_PATHS: ReadonlySet<string> = new Set();
+
 export function FilesPopover({
   files,
+  pendingFilePaths = NO_PENDING_PATHS,
   setFiles,
   sourceImageAttachments,
   removeSourceImage,
   editDisabled,
 }: {
   files: Record<string, string>;
+  /** Files a running subagent saved that the thread has not received yet. */
+  pendingFilePaths?: ReadonlySet<string>;
   setFiles: (files: Record<string, string>) => Promise<void>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
   removeSourceImage: (record: SourceImageRecord) => Promise<void>;
@@ -117,6 +122,7 @@ export function FilesPopover({
             const sourcePageUrl = sourceRecord
               ? safeSourcePageUrl(sourceRecord.source_page_url)
               : null;
+            const pending = pendingFilePaths.has(filePath);
 
             return (
               <div
@@ -153,6 +159,14 @@ export function FilesPopover({
                       {SOURCE_IMAGE_LABELS[sourceRecord.source]} source image
                     </span>
                   )}
+                  {pending && (
+                    <span
+                      className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground"
+                      title="Saved by a running agent step; it joins the conversation when that step finishes."
+                    >
+                      Saving
+                    </span>
+                  )}
                 </button>
                 {sourcePageUrl && (
                   <a
@@ -169,7 +183,7 @@ export function FilesPopover({
                     />
                   </a>
                 )}
-                {!editDisabled && (
+                {!editDisabled && !pending && (
                   <button
                     type="button"
                     aria-label={`Delete ${label}`}

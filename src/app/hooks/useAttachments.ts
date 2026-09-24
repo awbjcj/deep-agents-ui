@@ -68,6 +68,11 @@ interface UseAttachmentsOpts {
   threadId: string | null;
   ensureThreadId: () => Promise<string | null>;
   files: Record<string, string>;
+  /**
+   * Called after an upload or delete lands in the thread. Those writes run
+   * outside the chat stream, so the Files list must re-read thread state.
+   */
+  onFilesChanged?: (threadId: string) => void;
 }
 
 const ALL_EXTS = new Set<string>([
@@ -96,6 +101,7 @@ export function useAttachments({
   threadId,
   ensureThreadId,
   files,
+  onFilesChanged,
 }: UseAttachmentsOpts) {
   const [items, setItems] = useState<AttachmentState[]>([]);
   const aborters = useRef(new Map<string, AbortController>());
@@ -200,6 +206,7 @@ export function useAttachments({
           meta,
           threadId: uploadThreadId,
         });
+        onFilesChanged?.(uploadThreadId);
       } catch (err) {
         if (controller.signal.aborted) return;
         const msg = err instanceof Error ? err.message : "Upload failed";
@@ -214,7 +221,7 @@ export function useAttachments({
         aborters.current.delete(item.localId);
       }
     },
-    [ensureThreadId, threadId, update]
+    [ensureThreadId, onFilesChanged, threadId, update]
   );
 
   const addFiles = useCallback(
@@ -321,6 +328,7 @@ export function useAttachments({
         void (async () => {
           try {
             await deleteUpload(cleanupThreadId, stateFilesKey);
+            onFilesChanged?.(cleanupThreadId);
             toast.success(`Removed "${name}" from thread`);
           } catch (err) {
             // The server still owns the artifact, so put the chip back instead
@@ -353,7 +361,7 @@ export function useAttachments({
         toast.success(`Removed "${name}"`);
       }
     },
-    [update]
+    [onFilesChanged, update]
   );
 
   const clear = useCallback(() => {

@@ -34,6 +34,15 @@ import {
   type SourceImageRecord,
   type SourceImageRecordMap,
 } from "@/lib/source-images";
+import {
+  EMPTY_PENDING_FILES,
+  applyPendingDelta,
+  mergePendingFiles,
+  prunePendingFiles,
+  subagentFileDelta,
+  withoutPendingFiles,
+  type PendingSubagentFiles,
+} from "@/lib/pending-files";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -123,6 +132,19 @@ export function useChat({
       });
     },
     [ingestStreamEvent]
+  );
+
+  // Files saved by a running or review-paused subagent reach the root thread
+  // state only when its `task` returns; overlay them from namespaced updates.
+  const [pendingSubagentFiles, setPendingSubagentFiles] =
+    useState<PendingSubagentFiles>(EMPTY_PENDING_FILES);
+  const handleUpdateEvent = useCallback(
+    (data: unknown, options: { namespace: string[] | undefined }) => {
+      const delta = subagentFileDelta(data, options.namespace);
+      if (!delta) return;
+      setPendingSubagentFiles((previous) => applyPendingDelta(previous, delta));
+    },
+    []
   );
 
   // Metadata to tag new threads with the current user's ID for session filtering.
@@ -219,6 +241,7 @@ export function useChat({
       onFinish: onHistoryRevalidate,
       onError: handleRunError,
       onCreated: onHistoryRevalidate,
+      onUpdateEvent: handleUpdateEvent,
       thread: thread ?? recoverableThread,
     },
     { onCustomEvent: handleCustomEvent }
@@ -339,9 +362,35 @@ export function useChat({
     () => stream.values.files ?? {},
     [stream.values.files]
   );
-  const files = optimisticFiles ?? serverFiles;
-  const filesRef = useRef(files);
-  filesRef.current = files;
+  const serverFilesRef = useRef(serverFiles);
+  serverFilesRef.current = serverFiles;
+  const rootFiles = optimisticFiles ?? serverFiles;
+  const filesRef = useRef(rootFiles);
+  filesRef.current = rootFiles;
+
+  const runSettled = !stream.isLoading && stream.interrupts.length === 0;
+  useEffect(() => {
+    setPendingSubagentFiles((previous) =>
+      prunePendingFiles(previous, serverFiles, runSettled)
+    );
+  }, [serverFiles, runSettled]);
+  const livePendingFiles = useMemo(
+    () => prunePendingFiles(pendingSubagentFiles, serverFiles, runSettled),
+    [pendingSubagentFiles, serverFiles, runSettled]
+  );
+  const files = useMemo(
+    () => mergePendingFiles(rootFiles, livePendingFiles),
+    [rootFiles, livePendingFiles]
+  );
+  const pendingFilePaths = useMemo(
+    () =>
+      new Set(
+        Object.keys(livePendingFiles.files).filter(
+          (path) => !(path in rootFiles)
+        )
+      ),
+    [livePendingFiles, rootFiles]
+  );
 
   const rawServerSourceImageAttachments = useMemo(
     () => stream.values.source_image_attachments ?? {},
@@ -352,6 +401,8 @@ export function useChat({
       reconcileSourceImageRecords(rawServerSourceImageAttachments, serverFiles),
     [rawServerSourceImageAttachments, serverFiles]
   );
+  const serverSourceImageAttachmentsRef = useRef(serverSourceImageAttachments);
+  serverSourceImageAttachmentsRef.current = serverSourceImageAttachments;
   const [
     optimisticSourceImageAttachments,
     setOptimisticSourceImageAttachments,
@@ -363,8 +414,16 @@ export function useChat({
   const sourceImageAttachments = useMemo(
     () =>
       optimisticSourceImageAttachments ??
-      reconcileSourceImageRecords(rawServerSourceImageAttachments, files),
-    [optimisticSourceImageAttachments, rawServerSourceImageAttachments, files]
+      reconcileSourceImageRecords(
+        { ...livePendingFiles.records, ...rawServerSourceImageAttachments },
+        files
+      ),
+    [
+      optimisticSourceImageAttachments,
+      livePendingFiles,
+      rawServerSourceImageAttachments,
+      files,
+    ]
   );
   const sourceImageAttachmentsRef = useRef(sourceImageAttachments);
   sourceImageAttachmentsRef.current = sourceImageAttachments;
@@ -427,6 +486,7 @@ export function useChat({
     sourceOverrideBaselineRef.current = null;
     setOptimisticFiles(null);
     setOptimisticSourceImageAttachments(null);
+    setPendingSubagentFiles(EMPTY_PENDING_FILES);
   }, [threadId]);
 
   const removeSourceImageNow = useCallback(
@@ -515,12 +575,16 @@ export function useChat({
     async (next: Record<string, string>) => {
       if (!threadId) return;
       const previous = optimisticFiles ?? serverFiles;
+      // `next` comes from the displayed map, which includes the subagent
+      // overlay; its task hands those entries to the root thread itself.
+      const rootNext = withoutPendingFiles(next, previous, livePendingFiles);
 
       const removedSource = Object.values(
         sourceImageAttachmentsRef.current
       ).find(
         (record) =>
-          record.artifact_path in previous && !(record.artifact_path in next)
+          record.artifact_path in previous &&
+          !(record.artifact_path in rootNext)
       );
       if (removedSource) {
         await removeSourceImage(removedSource);
@@ -535,15 +599,15 @@ export function useChat({
       // tombstones — so we don't clobber untouched files written by the agent.
       const delta: Record<string, unknown> = {};
       for (const key of Object.keys(previous)) {
-        if (!(key in next)) delta[key] = null;
+        if (!(key in rootNext)) delta[key] = null;
       }
-      for (const key of Object.keys(next)) {
-        if (previous[key] !== next[key]) delta[key] = next[key];
+      for (const key of Object.keys(rootNext)) {
+        if (previous[key] !== rootNext[key]) delta[key] = rootNext[key];
       }
       if (Object.keys(delta).length === 0) return;
 
       filesOverrideBaselineRef.current = serverFiles;
-      setOptimisticFiles(next);
+      setOptimisticFiles(rootNext);
       try {
         await client.threads.updateState(threadId, {
           values: { files: delta },
@@ -554,7 +618,44 @@ export function useChat({
         throw err;
       }
     },
-    [client, threadId, optimisticFiles, serverFiles, removeSourceImage]
+    [
+      client,
+      threadId,
+      optimisticFiles,
+      serverFiles,
+      removeSourceImage,
+      livePendingFiles,
+    ]
+  );
+
+  // Uploads and deletes run as separate attachment-maintenance runs that this
+  // stream never observes, so re-read the thread state once they complete.
+  const refreshFiles = useCallback(
+    async (targetThreadId?: string | null) => {
+      const target = targetThreadId ?? threadIdRef.current;
+      if (!target) return;
+      try {
+        const refreshed = await client.threads.getState<StateType>(target);
+        if (threadIdRef.current !== target) return;
+        const refreshedFiles = refreshed.values?.files ?? {};
+        // Read the live baselines: this runs after a long upload, and a stale
+        // closure baseline would make the override clear itself immediately.
+        filesOverrideBaselineRef.current = serverFilesRef.current;
+        sourceOverrideBaselineRef.current =
+          serverSourceImageAttachmentsRef.current;
+        filesRef.current = refreshedFiles;
+        const refreshedRecords = reconcileSourceImageRecords(
+          refreshed.values?.source_image_attachments ?? {},
+          refreshedFiles
+        );
+        sourceImageAttachmentsRef.current = refreshedRecords;
+        setOptimisticFiles(refreshedFiles);
+        setOptimisticSourceImageAttachments(refreshedRecords);
+      } catch {
+        // The next stream snapshot or thread hydration supplies fresh files.
+      }
+    },
+    [client]
   );
 
   const continueStream = useCallback(
@@ -640,10 +741,12 @@ export function useChat({
       stream,
       todos,
       files,
+      pendingFilePaths,
       sourceImageAttachments,
       email,
       ui,
       setFiles,
+      refreshFiles,
       removeSourceImage,
       messages,
       processedMessages,
@@ -665,10 +768,12 @@ export function useChat({
       stream,
       todos,
       files,
+      pendingFilePaths,
       sourceImageAttachments,
       email,
       ui,
       setFiles,
+      refreshFiles,
       removeSourceImage,
       messages,
       processedMessages,
