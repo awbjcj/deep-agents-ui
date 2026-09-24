@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ExternalLink, FileText, Trash2 } from "lucide-react";
-import type { FileItem } from "@/app/types/types";
 import { toast } from "sonner";
 import {
   attachmentDisplayName,
@@ -17,20 +16,25 @@ import {
   type SourceImageRecord,
 } from "@/lib/source-images";
 
+const NO_PENDING_PATHS: ReadonlySet<string> = new Set();
+
 export function FilesPopover({
   files,
+  pendingFilePaths = NO_PENDING_PATHS,
   setFiles,
   sourceImageAttachments,
   removeSourceImage,
   editDisabled,
 }: {
   files: Record<string, string>;
+  /** Files a running subagent saved that the thread has not received yet. */
+  pendingFilePaths?: ReadonlySet<string>;
   setFiles: (files: Record<string, string>) => Promise<void>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
   removeSourceImage: (record: SourceImageRecord) => Promise<void>;
   editDisabled: boolean;
 }) {
-  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const sourceByPath = useMemo(
     () =>
       new Map(
@@ -41,11 +45,27 @@ export function FilesPopover({
       ),
     [sourceImageAttachments]
   );
+  const selectedContent =
+    selectedPath === null ? undefined : files[selectedPath];
+  const selectedSource =
+    selectedPath === null ? undefined : sourceByPath.get(selectedPath);
+  const selectedFile = useMemo(
+    () =>
+      selectedPath !== null && selectedContent != null
+        ? {
+            path: selectedPath,
+            content: fileContentToText(selectedContent),
+            sourceImage: selectedSource,
+          }
+        : null,
+    [selectedPath, selectedContent, selectedSource]
+  );
+  const closeFile = useCallback(() => setSelectedPath(null), []);
 
   const handleSaveFile = useCallback(
     async (fileName: string, content: string) => {
       await setFiles({ ...files, [fileName]: content });
-      setSelectedFile({ path: fileName, content: content });
+      setSelectedPath(fileName);
     },
     [files, setFiles]
   );
@@ -58,9 +78,7 @@ export function FilesPopover({
       if (sourceRecord) {
         try {
           await removeSourceImage(sourceRecord);
-          setSelectedFile((current) =>
-            current?.path === filePath ? null : current
-          );
+          setSelectedPath((current) => (current === filePath ? null : current));
           toast.success(`Deleted "${label}" from thread`);
         } catch (err) {
           toast.error(`Couldn't delete "${label}"`, {
@@ -73,7 +91,7 @@ export function FilesPopover({
       delete next[filePath];
       try {
         await setFiles(next as Record<string, string>);
-        setSelectedFile((cur) => (cur?.path === filePath ? null : cur));
+        setSelectedPath((cur) => (cur === filePath ? null : cur));
         toast.success(`Deleted "${label}" from thread`);
       } catch (err) {
         toast.error(`Couldn't delete "${label}"`, {
@@ -94,8 +112,9 @@ export function FilesPopover({
         <div className="grid grid-cols-[repeat(auto-fill,minmax(256px,1fr))] gap-2">
           {Object.keys(files).map((file) => {
             const filePath = String(file);
-            const fileContent = fileContentToText(files[file]);
             const mime = imageMimeForPath(filePath);
+            // Text is decoded only for the open file, never for every card.
+            const fileContent = mime ? fileContentToText(files[file]) : "";
             const thumbnailSrc =
               mime && fileContent ? `data:${mime};base64,${fileContent}` : null;
             const label = attachmentDisplayName(filePath);
@@ -103,6 +122,7 @@ export function FilesPopover({
             const sourcePageUrl = sourceRecord
               ? safeSourcePageUrl(sourceRecord.source_page_url)
               : null;
+            const pending = pendingFilePaths.has(filePath);
 
             return (
               <div
@@ -111,13 +131,7 @@ export function FilesPopover({
               >
                 <button
                   type="button"
-                  onClick={() =>
-                    setSelectedFile({
-                      path: filePath,
-                      content: fileContent,
-                      sourceImage: sourceRecord,
-                    })
-                  }
+                  onClick={() => setSelectedPath(filePath)}
                   title={filePath}
                   className={cn(
                     "flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border px-2 py-3 shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
@@ -145,6 +159,14 @@ export function FilesPopover({
                       {SOURCE_IMAGE_LABELS[sourceRecord.source]} source image
                     </span>
                   )}
+                  {pending && (
+                    <span
+                      className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground"
+                      title="Saved by a running agent step; it joins the conversation when that step finishes."
+                    >
+                      Saving
+                    </span>
+                  )}
                 </button>
                 {sourcePageUrl && (
                   <a
@@ -161,7 +183,7 @@ export function FilesPopover({
                     />
                   </a>
                 )}
-                {!editDisabled && (
+                {!editDisabled && !pending && (
                   <button
                     type="button"
                     aria-label={`Delete ${label}`}
@@ -191,7 +213,7 @@ export function FilesPopover({
         <FileViewDialog
           file={selectedFile}
           onSaveFile={handleSaveFile}
-          onClose={() => setSelectedFile(null)}
+          onClose={closeFile}
           editDisabled={editDisabled}
         />
       )}

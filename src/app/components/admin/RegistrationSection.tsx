@@ -19,9 +19,9 @@ import {
 } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import {
+  DisclosureSection,
   EmptyState,
   LoadingRow,
-  SectionHeader,
 } from "@/app/components/admin/primitives";
 
 export function RegistrationSection() {
@@ -136,16 +136,25 @@ export function RegistrationSection() {
   };
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        title="Registration"
-        subtitle="Gate new sign-ups behind one-time invitation codes"
-      />
-
+    <DisclosureSection
+      title="Registration & invitations"
+      subtitle={`${
+        isLoadingSettings
+          ? "Loading policy"
+          : requireCode
+          ? "Invitation required"
+          : "Open registration"
+      } · ${
+        codes.filter((code) => code.status === "active").length
+      } active code${
+        codes.filter((code) => code.status === "active").length === 1 ? "" : "s"
+      }`}
+      contentClassName="space-y-5"
+    >
       {isLoadingSettings ? (
         <LoadingRow />
       ) : (
-        <div className="aptiv-glass-soft flex items-center justify-between rounded-lg p-4 shadow-sm">
+        <div className="flex items-center justify-between rounded-lg border border-border/70 bg-card/60 p-3">
           <div className="pr-4">
             <p className="text-sm font-semibold">Require invitation code</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -161,12 +170,14 @@ export function RegistrationSection() {
         </div>
       )}
 
-      <div className="space-y-3 border-t border-border/40 pt-5">
-        <SectionHeader
-          title="Generate code"
-          subtitle="Create a single-use invitation code to share with one new user"
-        />
-        <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
+      <section className="space-y-3 border-t border-border/60 pt-4">
+        <div>
+          <h4 className="text-sm font-semibold">Generate code</h4>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Create a single-use invitation for one new user
+          </p>
+        </div>
+        <div className="space-y-3 rounded-lg border border-border/70 bg-card/60 p-3">
           <div className="space-y-1.5">
             <Label
               htmlFor="invite-note"
@@ -242,13 +253,15 @@ export function RegistrationSection() {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-3 border-t border-border/40 pt-5">
-        <SectionHeader
-          title="Invitation codes"
-          subtitle="Codes are single-use; the plaintext is only shown at creation"
-        />
+      <section className="space-y-3 border-t border-border/60 pt-4">
+        <div>
+          <h4 className="text-sm font-semibold">Invitation codes</h4>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Plaintext is only shown when a code is created
+          </p>
+        </div>
         {isLoadingCodes ? (
           <LoadingRow />
         ) : codes.length === 0 ? (
@@ -295,8 +308,8 @@ export function RegistrationSection() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </DisclosureSection>
   );
 }
 

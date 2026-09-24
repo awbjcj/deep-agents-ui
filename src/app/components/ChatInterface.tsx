@@ -3,17 +3,9 @@
 import React, { useState, useRef, useMemo, Fragment } from "react";
 import { CheckCircle, Clock, Circle, FileIcon, X } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
-import { BatchToolApprovalInterrupt } from "@/app/components/BatchToolApprovalInterrupt";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
-import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
-import type {
-  TodoItem,
-  ToolCall,
-  ActionRequest,
-  RawReviewConfig,
-  ReviewConfig,
-  ToolApprovalInterruptData,
-} from "@/app/types/types";
+import { PendingToolApproval } from "@/app/components/PendingToolApproval";
+import type { TodoItem } from "@/app/types/types";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
@@ -64,12 +56,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       processedMessages,
       todos,
       files,
+      pendingFilePaths,
       sourceImageAttachments,
       ui,
       setFiles,
+      refreshFiles,
       removeSourceImage,
       isLoading,
       isThreadLoading,
+      historyError,
+      retryHistory,
       interrupt,
       sendMessage,
       ensureThreadId,
@@ -113,61 +109,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       return m;
     }, [ui]);
 
-    const interruptData = useMemo(() => {
-      const value = interrupt?.value as
-        | Partial<ToolApprovalInterruptData>
-        | undefined;
-      if (!value || !Array.isArray(value.action_requests)) {
-        return undefined;
-      }
-
-      return {
-        action_requests: value.action_requests,
-        review_configs: Array.isArray(value.review_configs)
-          ? value.review_configs
-          : [],
-      } satisfies ToolApprovalInterruptData;
-    }, [interrupt]);
-
-    const actionRequests = interruptData?.action_requests ?? [];
-    const hasGroupedInterrupt = actionRequests.length > 1;
-    const singleActionRequest =
-      actionRequests.length === 1 ? actionRequests[0] : undefined;
-
-    const actionRequestsMap = useMemo(() => {
-      if (!singleActionRequest) return new Map<string, ActionRequest>();
-      return new Map([[singleActionRequest.name, singleActionRequest]]);
-    }, [singleActionRequest]);
-
-    const reviewConfigsMap = useMemo(() => {
-      const entries = (interruptData?.review_configs ?? [])
-        .map((rc: RawReviewConfig) => {
-          const actionName = rc.actionName ?? rc.action_name;
-          if (!actionName) {
-            return null;
-          }
-
-          const allowedDecisions = rc.allowedDecisions ?? rc.allowed_decisions;
-          return [actionName, { actionName, allowedDecisions } as ReviewConfig];
-        })
-        .filter((entry): entry is [string, ReviewConfig] => entry !== null);
-
-      return new Map(entries);
-    }, [interruptData]);
-
-    // Check if there are unmatched action requests (e.g. subagent tool interrupts)
-    // that don't correspond to any tool call in the parent messages
-    const unmatchedActionRequests = useMemo(() => {
-      if (hasGroupedInterrupt || !singleActionRequest) return [];
-      const allToolCallNames = new Set<string>();
-      processedMessages.forEach((data) => {
-        data.toolCalls.forEach((tc: ToolCall) => allToolCallNames.add(tc.name));
-      });
-      return allToolCallNames.has(singleActionRequest.name)
-        ? []
-        : [singleActionRequest];
-    }, [hasGroupedInterrupt, processedMessages, singleActionRequest]);
-
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Sticky banner stack lives outside the scroll container so urgent
@@ -184,35 +125,41 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             className="mx-auto w-full max-w-[1120px] px-6 pb-6 pt-4"
             ref={contentRef}
           >
-            {isThreadLoading ? (
+            {historyError && (
+              <div
+                role="alert"
+                className="rounded-lg border border-border p-4 text-sm"
+              >
+                <p>Couldn’t load the latest conversation content.</p>
+                <button
+                  type="button"
+                  onClick={retryHistory}
+                  className="mt-2 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  Retry loading conversation
+                </button>
+              </div>
+            )}
+            {isThreadLoading &&
+            processedMessages.length === 0 &&
+            !historyError ? (
               <div className="flex items-center justify-center p-8">
                 <p className="text-muted-foreground">Loading...</p>
               </div>
             ) : (
               <>
-                {processedMessages.map((data, index) => {
+                {processedMessages.map((data) => {
                   const messageUi = data.message.id
                     ? uiByMessageId.get(data.message.id)
                     : undefined;
-                  const isLastMessage = index === processedMessages.length - 1;
                   return (
                     <ChatMessage
                       key={data.stableKey}
                       message={data.message}
                       toolCalls={data.toolCalls}
                       isLoading={isLoading}
-                      actionRequestsMap={
-                        isLastMessage && !hasGroupedInterrupt
-                          ? actionRequestsMap
-                          : undefined
-                      }
-                      reviewConfigsMap={
-                        isLastMessage && !hasGroupedInterrupt
-                          ? reviewConfigsMap
-                          : undefined
-                      }
                       ui={messageUi}
-                      stream={stream}
+                      stream={messageUi?.length ? stream : undefined}
                       onResumeInterrupt={resumeInterrupt}
                       graphId={assistant?.graph_id}
                       files={files}
@@ -220,29 +167,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     />
                   );
                 })}
-                {hasGroupedInterrupt && (
-                  <BatchToolApprovalInterrupt
-                    actionRequests={actionRequests}
-                    reviewConfigsMap={reviewConfigsMap}
-                    onResume={resumeInterrupt}
-                    isLoading={isLoading}
-                  />
-                )}
-                {/* Render standalone interrupt UI for subagent tool calls
-                  that don't appear in the parent message list */}
-                {!hasGroupedInterrupt && unmatchedActionRequests.length > 0 && (
-                  <div className="mt-4 flex w-full flex-col gap-3">
-                    {unmatchedActionRequests.map((ar) => (
-                      <ToolApprovalInterrupt
-                        key={ar.name}
-                        actionRequest={ar}
-                        reviewConfig={reviewConfigsMap?.get(ar.name)}
-                        onResume={resumeInterrupt}
-                        isLoading={isLoading}
-                      />
-                    ))}
-                  </div>
-                )}
+                <PendingToolApproval
+                  key={interrupt?.id}
+                  interrupt={interrupt}
+                  onResume={resumeInterrupt}
+                  isLoading={isLoading}
+                />
               </>
             )}
           </div>
@@ -467,6 +397,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                         <div className="mb-6">
                           <FilesPopover
                             files={files}
+                            pendingFilePaths={pendingFilePaths}
                             setFiles={setFiles}
                             sourceImageAttachments={sourceImageAttachments}
                             removeSourceImage={removeSourceImage}
@@ -489,6 +420,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               sendMessage={sendMessage}
               stopStream={stopStream}
               ensureThreadId={ensureThreadId}
+              onThreadFilesChanged={refreshFiles}
             />
           </div>
         </div>

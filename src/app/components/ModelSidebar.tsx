@@ -247,7 +247,7 @@ export function ModelSidebar() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const usage = useTokenUsage();
-  const [usageView, setUsageView] = useState<UsageDimension | null>(null);
+  const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
   useEffect(() => {
     let mounted = true;
@@ -409,7 +409,11 @@ export function ModelSidebar() {
       provider,
       model,
       effort: defaultEffort,
-      thinking: entry.supports_thinking ? false : null,
+      thinking: entry.thinking_required
+        ? true
+        : entry.supports_thinking
+        ? false
+        : null,
     });
   }
 
@@ -440,7 +444,7 @@ export function ModelSidebar() {
           header duplicated the eyebrow + title that WorkspacePanel already
           shows; we keep only the content. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-8 p-5">
+        <div className="space-y-6 p-4">
           {usage && (
             <section
               className="space-y-2.5"
@@ -459,15 +463,12 @@ export function ModelSidebar() {
                   </span>
                 </div>
                 <UsageDimensionToggle
-                  value={usageView ?? usage.enforced}
+                  value={usageView}
                   onChange={setUsageView}
                 />
               </div>
               {(() => {
-                const { primary } = splitUsageByEnforcement(
-                  usage,
-                  usageView ?? usage.enforced
-                );
+                const { primary } = splitUsageByEnforcement(usage, usageView);
                 const label =
                   primary.dimension === "calls"
                     ? "Weekly call budget"
@@ -710,7 +711,9 @@ export function ModelSidebar() {
                       Adaptive thinking
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {currentModelEntry?.supports_thinking
+                      {currentModelEntry?.thinking_required
+                        ? "Always on for this model; choose effort to adjust depth"
+                        : currentModelEntry?.supports_thinking
                         ? "Let the model take longer on hard prompts"
                         : "Not supported by this model"}
                     </span>
@@ -720,7 +723,11 @@ export function ModelSidebar() {
                     onCheckedChange={(checked) =>
                       updateDraft({ thinking: checked })
                     }
-                    disabled={!currentModelEntry?.supports_thinking || isSaving}
+                    disabled={
+                      !currentModelEntry?.supports_thinking ||
+                      currentModelEntry.thinking_required ||
+                      isSaving
+                    }
                   />
                 </div>
               </section>

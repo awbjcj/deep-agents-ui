@@ -9,6 +9,83 @@ import { reconcileConversation } from "../src/app/hooks/internal/conversationPro
 // fresh envelopes that share the originals' nested refs.
 const frame = (msgs) => msgs.map((m) => ({ ...m }));
 
+test("empty provider fields do not hide normalized or content-block tools", () => {
+  for (const message of [
+    {
+      additional_kwargs: { tool_calls: [] },
+      tool_calls: [{ id: "tc", name: "read", args: { path: "a" } }],
+    },
+    {
+      tool_calls: [],
+      content: [
+        { type: "tool_use", id: "tc", name: "read", input: { path: "a" } },
+      ],
+    },
+  ]) {
+    const projected = reconcileConversation(
+      null,
+      [{ type: "ai", id: "ai", content: "", ...message }],
+      false
+    );
+    assert.equal(projected[0].toolCalls.length, 1);
+    assert.equal(projected[0].toolCalls[0].name, "read");
+  }
+});
+
+test("normalized arguments win over provider JSON and duplicate calls render once", () => {
+  const args = { subagent_type: "research" };
+  const [bucket] = reconcileConversation(
+    null,
+    [
+      {
+        type: "ai",
+        id: "ai",
+        content: "",
+        additional_kwargs: {
+          tool_calls: [
+            {
+              id: "tc",
+              function: { name: "task", arguments: JSON.stringify(args) },
+            },
+          ],
+        },
+        tool_calls: [{ id: "tc", name: "task", args }],
+      },
+    ],
+    false
+  );
+  assert.equal(bucket.toolCalls.length, 1);
+  assert.equal(bucket.toolCalls[0].args, args);
+});
+
+test("provider JSON arguments are parsed and partial JSON stays renderable", () => {
+  for (const [argumentsValue, expected] of [
+    ['{"path":"a"}', { path: "a" }],
+    ['{"path":', {}],
+  ]) {
+    const [bucket] = reconcileConversation(
+      null,
+      [
+        {
+          type: "ai",
+          id: "ai",
+          content: "",
+          additional_kwargs: {
+            tool_calls: [
+              {
+                id: "tc",
+                function: { name: "read", arguments: argumentsValue },
+              },
+            ],
+          },
+        },
+      ],
+      false
+    );
+    assert.deepEqual(bucket.toolCalls[0].args, expected);
+  }
+});
+
 // Identity-independent view, for asserting values are correct regardless of refs.
 const strip = (projected) =>
   projected.map((b) => ({
@@ -32,6 +109,31 @@ test("unchanged messages keep their bucket references across frames", () => {
 
   assert.equal(p2[0], p1[0], "human bucket reused by reference");
   assert.equal(p2[1], p1[1], "ai bucket reused by reference");
+});
+
+test("cached tool content is replaced when new result blocks arrive", () => {
+  const ai = {
+    type: "ai",
+    id: "a",
+    content: "",
+    tool_calls: [{ id: "tc", name: "read", args: {} }],
+  };
+  const result = {
+    type: "tool",
+    id: "r",
+    tool_call_id: "tc",
+    content: [{ type: "text", text: "first" }],
+  };
+  const first = reconcileConversation(null, [ai, result], false);
+  const unchanged = reconcileConversation(first, frame([ai, result]), false);
+  assert.equal(unchanged[0], first[0]);
+  const updated = reconcileConversation(
+    unchanged,
+    [ai, { ...result, content: [{ type: "text", text: "latest" }] }],
+    false
+  );
+  assert.equal(updated[0].toolCalls[0].result, "latest");
+  assert.notEqual(updated[0].toolCalls[0], first[0].toolCalls[0]);
 });
 
 test("a growing live message gets a new bucket; siblings stay stable", () => {

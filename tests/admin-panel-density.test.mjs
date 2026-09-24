@@ -16,48 +16,86 @@ test("admin navigation uses an exact two-row tab layout", async () => {
   ]);
 
   assert.match(panel, /layout="two-row"/);
-  assert.match(tabs, /Math\.ceil\(\s*tabs\.length \/ 2\s*\)/);
-  assert.match(tabs, /gridTemplateColumns/);
-  assert.match(tabs, /isTwoRow && "w-full justify-center px-2"/);
+  assert.match(tabs, /gridTemplateColumns: "repeat\(4, minmax\(0, 1fr\)\)"/);
+  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 gap-1.5/);
+  assert.doesNotMatch(panel, /id: "registration"/);
+  const destinations = [
+    ["users", "People"],
+    ["tiers", "Models"],
+    ["tools", "Tools"],
+    ["runmode", "Runtime"],
+    ["scopes", "Memories"],
+    ["library", "Search"],
+    ["scm", "Sources"],
+    ["newsletters", "Newsletters"],
+  ];
+  let previous = -1;
+  for (const [id, label] of destinations) {
+    const position = panel.indexOf(`id: "${id}", label: "${label}"`);
+    assert(position > previous, `${label} should appear in row-major order`);
+    previous = position;
+  }
   assert.match(
     page,
     /id="admin-panel"[\s\S]*defaultSize=\{34\}[\s\S]*minSize=\{30\}[\s\S]*min-w-\[500px\]/
   );
 });
 
-test("detailed admin settings are collapsed by default", async () => {
-  const [primitives, limits, runMode, tiers] = await Promise.all([
-    readFile(
-      new URL("../src/app/components/admin/primitives.tsx", import.meta.url),
-      "utf8"
-    ),
-    readFile(
-      new URL(
-        "../src/app/components/admin/UsageLimitControls.tsx",
-        import.meta.url
+test("relocated detailed settings are independently mounted and collapsed", async () => {
+  const [primitives, limits, runtime, tiers, sourcePolicy, connectivity] =
+    await Promise.all([
+      readFile(
+        new URL("../src/app/components/admin/primitives.tsx", import.meta.url),
+        "utf8"
       ),
-      "utf8"
-    ),
-    readFile(
-      new URL(
-        "../src/app/components/admin/RunModeSection.tsx",
-        import.meta.url
+      readFile(
+        new URL(
+          "../src/app/components/admin/UsageLimitControls.tsx",
+          import.meta.url
+        ),
+        "utf8"
       ),
-      "utf8"
-    ),
-    readFile(
-      new URL("../src/app/components/admin/TiersSection.tsx", import.meta.url),
-      "utf8"
-    ),
-  ]);
+      readFile(
+        new URL(
+          "../src/app/components/admin/RuntimeSection.tsx",
+          import.meta.url
+        ),
+        "utf8"
+      ),
+      readFile(
+        new URL(
+          "../src/app/components/admin/TiersSection.tsx",
+          import.meta.url
+        ),
+        "utf8"
+      ),
+      readFile(
+        new URL(
+          "../src/app/components/admin/SourceImagePolicySection.tsx",
+          import.meta.url
+        ),
+        "utf8"
+      ),
+      readFile(
+        new URL(
+          "../src/app/components/admin/ConnectivitySettingsSections.tsx",
+          import.meta.url
+        ),
+        "utf8"
+      ),
+    ]);
 
   assert.match(primitives, /<details/);
   assert.match(primitives, /<summary/);
   assert.doesNotMatch(primitives, /<details[^>]*\sopen(?:=|\s|>)/);
   assert.match(primitives, /group-open:rotate-180/);
   assert.match(limits, /<DisclosureSection[\s\S]*title="Usage limits"/);
-  assert.match(runMode, /<DisclosureSection[\s\S]*title="URL overrides"/);
-  assert.match(tiers, /<DisclosureSection[\s\S]*title="Source images"/);
+  assert.match(runtime, /title="Execution resources"/);
+  assert.match(connectivity, /title="Provider endpoints"/);
+  assert.match(sourcePolicy, /title="Tier policies"/);
+  assert.match(tiers, /<UsageLimitControls \/>/);
+  assert.doesNotMatch(tiers, /SourceImageControls/);
+  assert.doesNotMatch(connectivity, /apiGetRunMode|RunModeSection/);
 });
 
 test("admin user quotas default to the token view", async () => {
@@ -68,4 +106,75 @@ test("admin user quotas default to the token view", async () => {
 
   assert.match(users, /useState<UsageDimension>\("tokens"\)/);
   assert.match(users, /const usageDim = usageView;/);
+  assert.doesNotMatch(users, /UsageLimitControls/);
+});
+
+test("workspace model usage defaults to the token view", async () => {
+  const models = await readFile(
+    new URL("../src/app/components/ModelSidebar.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(models, /useState<UsageDimension>\("tokens"\)/);
+  assert.match(models, /value=\{usageView\}/);
+  assert.match(models, /splitUsageByEnforcement\(\s*usage,\s*usageView\s*\)/);
+});
+
+test("workspace tabs preserve ids and use the compact requested order", async () => {
+  const workspace = await readFile(
+    new URL("../src/app/components/WorkspacePanel.tsx", import.meta.url),
+    "utf8"
+  );
+  const destinations = [
+    ["models", "Models"],
+    ["tools", "Tools"],
+    ["tokens", "Tokens"],
+    ["connectivity", "Connections"],
+  ];
+  let previous = -1;
+  for (const [id, label] of destinations) {
+    const position = workspace.indexOf(`id: "${id}", label: "${label}"`);
+    assert(position > previous, `${label} should appear in order`);
+    previous = position;
+  }
+  assert.match(workspace, /grid grid-cols-4 gap-1/);
+  assert.match(workspace, /icon: Bot/);
+  assert.match(workspace, /icon: Wrench/);
+  assert.match(workspace, /icon: KeyRound/);
+  assert.match(workspace, /icon: PlugZap/);
+  assert.match(workspace, /initialTokenFocus/);
+});
+
+test("panel tabs and tool checkboxes remain legible and visible", async () => {
+  const [tabs, permissions, checkbox] = await Promise.all([
+    readFile(
+      new URL("../src/components/ui/panel-tabs.tsx", import.meta.url),
+      "utf8"
+    ),
+    readFile(
+      new URL(
+        "../src/app/components/tool-permissions/ToolPermissionList.tsx",
+        import.meta.url
+      ),
+      "utf8"
+    ),
+    readFile(
+      new URL("../src/components/ui/checkbox.tsx", import.meta.url),
+      "utf8"
+    ),
+  ]);
+
+  assert.match(tabs, /items-center justify-center/);
+  assert.match(tabs, /min-\[480px\]:text-sm/);
+  assert.match(tabs, /"h-4 w-4 shrink-0"/);
+  assert.doesNotMatch(tabs, /isTwoRow && "hidden/);
+  assert.match(permissions, /import \{ Checkbox \}/);
+  assert.match(permissions, /text-\[var\(--aptiv-orange\)\]/);
+  assert.doesNotMatch(permissions, /CheckCircle2/);
+  assert.doesNotMatch(permissions, /<Check(?:\s|>)/);
+  assert.match(checkbox, /appearance-none/);
+  assert.match(checkbox, /border-2 border-muted-foreground\/70/);
+  assert.match(checkbox, /peer-checked:opacity-100/);
+  assert.match(checkbox, /checked:bg-\[var\(--aptiv-orange\)\]/);
+  assert.equal((checkbox.match(/<Check(?:\s|>)/g) ?? []).length, 1);
 });

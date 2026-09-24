@@ -14,6 +14,7 @@ import {
 } from "@/app/components/tokenServiceGuides";
 import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
+import { CopilotCredentialPanel } from "@/app/components/CopilotCredentialPanel";
 import {
   CheckCircle,
   Clock,
@@ -174,7 +175,7 @@ export function TokenManagementSidebar({
     <div className="absolute inset-0 flex flex-col">
       {/* Title bar is supplied by parent WorkspacePanel. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-6 p-4">
+        <div className="space-y-5 p-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -610,6 +611,7 @@ export function TokenManagementSidebar({
                 )}
               </Button>
               <ScmCredentials />
+              <CopilotCredentialPanel key={username} />
             </>
           )}
         </div>

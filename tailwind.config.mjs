@@ -297,69 +297,69 @@ export default {
         slideIn: "slideIn 150ms cubic-bezier(0.16, 1, 0.3, 1)",
         swipeOut: "swipeOut 100ms ease-out",
       },
-    },
-    typography: {
-      playground: {
-        css: {
-          "h1, h2, h3, h4, h5, h6": {
-            fontWeight: "bold",
-          },
-          h1: {
-            fontSize: "24px",
-          },
-          h2: {
-            fontSize: "20px",
-          },
-          h3: {
-            fontSize: "18px",
-          },
-          h4: {
-            fontSize: "16px",
-          },
-          h5: {
-            fontSize: "14px",
-          },
-          h6: {
-            fontSize: "12px",
-          },
-          ul: {
-            marginLeft: "20px !important",
-            listStyleType: "disc !important",
-          },
-          ol: {
-            marginLeft: "20px !important",
-            listStyleType: "decimal !important",
-          },
-          a: {
-            color: "#287977",
-            textDecoration: "underline",
-            "&:hover": {
-              textDecoration: "underline",
-            },
-          },
-          table: {
-            width: "100%",
-            borderCollapse: "collapse",
-            th: {
-              padding: "0.5rem",
-              border: "1px solid var(--gray-100)",
+      typography: {
+        playground: {
+          css: {
+            "h1, h2, h3, h4, h5, h6": {
               fontWeight: "bold",
-              textAlign: "left",
             },
-            td: {
-              padding: "0.5rem",
-              border: "1px solid var(--gray-100)",
+            h1: {
+              fontSize: "24px",
             },
-          },
-          blockquote: {
-            borderLeft: "2px solid var(--gray-100)",
-            paddingLeft: "1rem",
-            marginLeft: "0",
-            fontStyle: "italic",
-          },
+            h2: {
+              fontSize: "20px",
+            },
+            h3: {
+              fontSize: "18px",
+            },
+            h4: {
+              fontSize: "16px",
+            },
+            h5: {
+              fontSize: "14px",
+            },
+            h6: {
+              fontSize: "12px",
+            },
+            ul: {
+              marginLeft: "20px !important",
+              listStyleType: "disc !important",
+            },
+            ol: {
+              marginLeft: "20px !important",
+              listStyleType: "decimal !important",
+            },
+            a: {
+              color: "#287977",
+              textDecoration: "underline",
+              "&:hover": {
+                textDecoration: "underline",
+              },
+            },
+            table: {
+              width: "100%",
+              borderCollapse: "collapse",
+              th: {
+                padding: "0.5rem",
+                border: "1px solid var(--gray-100)",
+                fontWeight: "bold",
+                textAlign: "left",
+              },
+              td: {
+                padding: "0.5rem",
+                border: "1px solid var(--gray-100)",
+              },
+            },
+            blockquote: {
+              borderLeft: "2px solid var(--gray-100)",
+              paddingLeft: "1rem",
+              marginLeft: "0",
+              fontStyle: "italic",
+            },
 
-          "s, strike, del": {
-            textDecoration: "line-through",
+            "s, strike, del": {
+              textDecoration: "line-through",
+            },
           },
         },
       },

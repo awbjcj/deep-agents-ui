@@ -382,7 +382,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
           {hasToolCalls && (
             <div className="mt-4 flex w-full flex-col">
               {toolCalls.map((toolCall: ToolCall) => {
-                if (toolCall.name === "task") return null;
+                if (subAgents.some((agent) => agent.id === toolCall.id))
+                  return null;
                 const toolCallGenUiComponent = uiByToolCallId.get(toolCall.id);
                 const actionRequest = actionRequestsMap?.get(toolCall.name);
                 const reviewConfig = reviewConfigsMap?.get(toolCall.name);
@@ -391,7 +392,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     key={toolCall.id}
                     toolCall={toolCall}
                     uiComponent={toolCallGenUiComponent}
-                    stream={stream}
+                    stream={toolCallGenUiComponent ? stream : undefined}
                     graphId={graphId}
                     actionRequest={actionRequest}
                     reviewConfig={reviewConfig}

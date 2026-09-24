@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useCodeAnalysisJob } from "@/app/hooks/useCodeAnalysisJob";
 import { Button } from "@/components/ui/button";
 import {
+  analysisMatlabSummary,
   analysisTargets,
   analysisWarnings,
   downloadAnalysisReport,
@@ -32,8 +33,17 @@ type Action = "cancel" | "refresh" | "download" | "release" | null;
 const TERMINAL_SUCCESS = new Set(["succeeded"]);
 const TERMINAL_FAILURE = new Set(["failed", "cancelled", "interrupted"]);
 
+const PHASE_LABELS: Record<string, string> = {
+  discovering_dependencies: "discovering dependencies",
+  waiting_for_matlab: "waiting for MATLAB",
+  initializing_matlab: "initializing MATLAB",
+  inspecting_models: "inspecting models",
+  validating_evidence: "validating model evidence",
+  cleaning_up_matlab: "cleaning up MATLAB",
+};
+
 function readable(value: string): string {
-  return value.replaceAll("_", " ");
+  return PHASE_LABELS[value] ?? value.replaceAll("_", " ");
 }
 
 function engineName(engine: string): string {
@@ -119,6 +129,7 @@ export function CodeAnalysisJob({ jobId }: { jobId: string }) {
   const failed = Boolean(job && TERMINAL_FAILURE.has(job.status));
   const targets = job ? analysisTargets(job.result) : [];
   const warnings = job ? analysisWarnings(job.result) : [];
+  const matlab = job ? analysisMatlabSummary(job.result) : null;
   const engine =
     job?.configuration?.engine ??
     (typeof job?.result.engine === "string" ? job.result.engine : null);
@@ -267,6 +278,31 @@ export function CodeAnalysisJob({ jobId }: { jobId: string }) {
               <Metric
                 label="Tool calls"
                 value={coverage.tool_calls}
+              />
+            </dl>
+          </div>
+        )}
+
+        {matlab && (
+          <div>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="aptiv-eyebrow">MATLAB model evidence</p>
+              <span className="text-[11px] font-medium capitalize text-muted-foreground">
+                {readable(matlab.initializationStatus)}
+              </span>
+            </div>
+            <dl className="mt-2 grid grid-cols-3 divide-x divide-border/70 overflow-hidden rounded-md border border-border/70 bg-background/35">
+              <Metric
+                label="Artifacts"
+                value={matlab.artifactCount}
+              />
+              <Metric
+                label="Models"
+                value={matlab.modelCount}
+              />
+              <Metric
+                label="Evidence items"
+                value={matlab.evidenceCount}
               />
             </dl>
           </div>

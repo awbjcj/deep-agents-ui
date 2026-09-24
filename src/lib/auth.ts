@@ -445,6 +445,7 @@ export interface ModelEntry extends TierModelEntry {
   supports_effort: boolean;
   efforts: string[];
   supports_thinking: boolean;
+  thinking_required: boolean;
 }
 
 export interface TierAllowlist {

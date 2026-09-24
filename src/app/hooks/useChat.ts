@@ -13,6 +13,10 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
+import {
+  createInterruptResumeHandler,
+  selectPendingInterrupt,
+} from "@/app/utils/interruptResume";
 import { useClient } from "@/providers/ClientProvider";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
@@ -30,6 +34,15 @@ import {
   type SourceImageRecord,
   type SourceImageRecordMap,
 } from "@/lib/source-images";
+import {
+  EMPTY_PENDING_FILES,
+  applyPendingDelta,
+  mergePendingFiles,
+  prunePendingFiles,
+  subagentFileDelta,
+  withoutPendingFiles,
+  type PendingSubagentFiles,
+} from "@/lib/pending-files";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -121,6 +134,19 @@ export function useChat({
     [ingestStreamEvent]
   );
 
+  // Files saved by a running or review-paused subagent reach the root thread
+  // state only when its `task` returns; overlay them from namespaced updates.
+  const [pendingSubagentFiles, setPendingSubagentFiles] =
+    useState<PendingSubagentFiles>(EMPTY_PENDING_FILES);
+  const handleUpdateEvent = useCallback(
+    (data: unknown, options: { namespace: string[] | undefined }) => {
+      const delta = subagentFileDelta(data, options.namespace);
+      if (!delta) return;
+      setPendingSubagentFiles((previous) => applyPendingDelta(previous, delta));
+    },
+    []
+  );
+
   // Metadata to tag new threads with the current user's ID for session filtering.
   // Passed via submit() options so the SDK includes it in client.threads.create().
   const threadCreationMetadata = useMemo(
@@ -166,20 +192,16 @@ export function useChat({
 
   const handleThreadHistoryError = useCallback(
     (_error: unknown, failedThreadId: string) => {
-      onHistoryRevalidate?.();
-      clearStreamReconnectState(failedThreadId);
       if (threadIdRef.current !== failedThreadId) return;
       if (!reportedHistoryErrorsRef.current.has(failedThreadId)) {
         reportedHistoryErrorsRef.current.add(failedThreadId);
         toast.error("Couldn't load this conversation", {
           description:
-            "It may have expired or been removed. Starting a new thread.",
+            "Your conversation is still selected. Retry when the connection is available.",
         });
       }
-      threadIdRef.current = null;
-      void setThreadId(null);
     },
-    [onHistoryRevalidate, setThreadId]
+    []
   );
 
   const recoverableThread = useRecoverableThread<StateType>({
@@ -219,80 +241,39 @@ export function useChat({
       onFinish: onHistoryRevalidate,
       onError: handleRunError,
       onCreated: onHistoryRevalidate,
+      onUpdateEvent: handleUpdateEvent,
       thread: thread ?? recoverableThread,
     },
     { onCustomEvent: handleCustomEvent }
   );
   const rawStream = useStream<StateType>(streamOptions);
 
-  // `useStream` returns a brand-new object literal on every render (it is not
-  // memoized), so `rawStream`'s identity churns on every streamed token. That
-  // churn breaks `React.memo` on every component the stream is threaded through
-  // (ChatMessage → ToolCallBox → the generative-UI artifacts) AND forces every
-  // stream-dependent `useCallback` below (sendMessage / stopStream /
-  // resumeInterrupt …) to be recreated each token. We expose a single
-  // referentially-stable handle: its identity is frozen (created once) while
-  // every access forwards to the latest stream, so memoized consumers see a
-  // constant identity yet always read live values.
+  // Render consumers need a reactive snapshot. Only event handlers use the
+  // latest-value ref, keeping callbacks stable without hiding state changes.
+  const stream = rawStream;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
-  const stream = useMemo(
-    () =>
-      new Proxy({} as unknown as typeof rawStream, {
-        get(_target, prop) {
-          const target = streamRef.current as unknown as Record<
-            string | symbol,
-            unknown
-          >;
-          const value = Reflect.get(target, prop, target);
-          return typeof value === "function"
-            ? (value as (...args: unknown[]) => unknown).bind(target)
-            : value;
-        },
-        has(_target, prop) {
-          return Reflect.has(streamRef.current as object, prop);
-        },
-        ownKeys() {
-          return Reflect.ownKeys(streamRef.current as object);
-        },
-        getOwnPropertyDescriptor(_target, prop) {
-          const desc = Reflect.getOwnPropertyDescriptor(
-            streamRef.current as object,
-            prop
-          );
-          // The throwaway target has no own properties, so the Proxy invariant
-          // requires any descriptor we report to be configurable.
-          if (desc) desc.configurable = true;
-          return desc;
-        },
-      }),
-    []
-  );
 
-  // Recover from a stale or unreachable thread referenced in the URL. The SDK
-  // keeps `isThreadLoading` true until the thread's history resolves; if that
-  // request never settles (the thread was deleted, belongs to another
-  // deployment, or the backend hangs) the chat pane is stuck on "Loading…"
-  // forever. After a grace period we drop the bad threadId so the user falls
-  // back to a fresh conversation instead of an endless spinner.
-  const stuckThreadRef = useRef<string | null>(null);
+  const [slowThreadId, setSlowThreadId] = useState<string | null>(null);
   useEffect(() => {
     if (!threadId || !stream.isThreadLoading) {
-      stuckThreadRef.current = null;
+      setSlowThreadId(null);
       return;
     }
-    stuckThreadRef.current = threadId;
-    const timer = setTimeout(() => {
-      if (stuckThreadRef.current !== threadId) return;
-      clearStreamReconnectState(threadId);
-      toast.error("Couldn't load this conversation", {
-        description: "It may have been removed. Starting a new thread.",
-      });
-      threadIdRef.current = null;
-      void setThreadId(null);
-    }, 20000);
+    const timer = setTimeout(() => setSlowThreadId(threadId), 20000);
     return () => clearTimeout(timer);
-  }, [threadId, stream.isThreadLoading, setThreadId]);
+  }, [threadId, stream.isThreadLoading]);
+
+  const history = thread ?? recoverableThread;
+  const historyError =
+    Boolean(history.error) || (threadId !== null && slowThreadId === threadId);
+  const retryHistory = useCallback(() => {
+    setSlowThreadId(null);
+    if (threadId) reportedHistoryErrorsRef.current.delete(threadId);
+    void history.mutate(threadId ?? undefined).catch(() => {
+      // The history hook exposes the failure for the retry UI.
+    });
+  }, [history, threadId]);
 
   const sendMessage = useCallback(
     (
@@ -307,7 +288,7 @@ export function useChat({
           ? { additional_kwargs: additionalKwargs }
           : {}),
       };
-      stream.submit(
+      streamRef.current.submit(
         { messages: [newMessage] },
         {
           optimisticValues: (prev) => ({
@@ -324,7 +305,7 @@ export function useChat({
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
     },
-    [stream, buildConfig, onHistoryRevalidate, threadCreationMetadata]
+    [buildConfig, onHistoryRevalidate, threadCreationMetadata]
   );
 
   const runSingleStep = useCallback(
@@ -335,7 +316,7 @@ export function useChat({
       optimisticMessages?: Message[]
     ) => {
       if (checkpoint) {
-        stream.submit(undefined, {
+        streamRef.current.submit(undefined, {
           ...(optimisticMessages
             ? { optimisticValues: { messages: optimisticMessages } }
             : {}),
@@ -348,7 +329,7 @@ export function useChat({
           streamMode: STREAM_MODES,
         });
       } else {
-        stream.submit(
+        streamRef.current.submit(
           { messages },
           {
             config: buildConfig(),
@@ -359,7 +340,7 @@ export function useChat({
         );
       }
     },
-    [stream, buildConfig]
+    [buildConfig]
   );
 
   // Optimistic file state.
@@ -381,9 +362,35 @@ export function useChat({
     () => stream.values.files ?? {},
     [stream.values.files]
   );
-  const files = optimisticFiles ?? serverFiles;
-  const filesRef = useRef(files);
-  filesRef.current = files;
+  const serverFilesRef = useRef(serverFiles);
+  serverFilesRef.current = serverFiles;
+  const rootFiles = optimisticFiles ?? serverFiles;
+  const filesRef = useRef(rootFiles);
+  filesRef.current = rootFiles;
+
+  const runSettled = !stream.isLoading && stream.interrupts.length === 0;
+  useEffect(() => {
+    setPendingSubagentFiles((previous) =>
+      prunePendingFiles(previous, serverFiles, runSettled)
+    );
+  }, [serverFiles, runSettled]);
+  const livePendingFiles = useMemo(
+    () => prunePendingFiles(pendingSubagentFiles, serverFiles, runSettled),
+    [pendingSubagentFiles, serverFiles, runSettled]
+  );
+  const files = useMemo(
+    () => mergePendingFiles(rootFiles, livePendingFiles),
+    [rootFiles, livePendingFiles]
+  );
+  const pendingFilePaths = useMemo(
+    () =>
+      new Set(
+        Object.keys(livePendingFiles.files).filter(
+          (path) => !(path in rootFiles)
+        )
+      ),
+    [livePendingFiles, rootFiles]
+  );
 
   const rawServerSourceImageAttachments = useMemo(
     () => stream.values.source_image_attachments ?? {},
@@ -394,6 +401,8 @@ export function useChat({
       reconcileSourceImageRecords(rawServerSourceImageAttachments, serverFiles),
     [rawServerSourceImageAttachments, serverFiles]
   );
+  const serverSourceImageAttachmentsRef = useRef(serverSourceImageAttachments);
+  serverSourceImageAttachmentsRef.current = serverSourceImageAttachments;
   const [
     optimisticSourceImageAttachments,
     setOptimisticSourceImageAttachments,
@@ -405,8 +414,16 @@ export function useChat({
   const sourceImageAttachments = useMemo(
     () =>
       optimisticSourceImageAttachments ??
-      reconcileSourceImageRecords(rawServerSourceImageAttachments, files),
-    [optimisticSourceImageAttachments, rawServerSourceImageAttachments, files]
+      reconcileSourceImageRecords(
+        { ...livePendingFiles.records, ...rawServerSourceImageAttachments },
+        files
+      ),
+    [
+      optimisticSourceImageAttachments,
+      livePendingFiles,
+      rawServerSourceImageAttachments,
+      files,
+    ]
   );
   const sourceImageAttachmentsRef = useRef(sourceImageAttachments);
   sourceImageAttachmentsRef.current = sourceImageAttachments;
@@ -469,6 +486,7 @@ export function useChat({
     sourceOverrideBaselineRef.current = null;
     setOptimisticFiles(null);
     setOptimisticSourceImageAttachments(null);
+    setPendingSubagentFiles(EMPTY_PENDING_FILES);
   }, [threadId]);
 
   const removeSourceImageNow = useCallback(
@@ -557,12 +575,16 @@ export function useChat({
     async (next: Record<string, string>) => {
       if (!threadId) return;
       const previous = optimisticFiles ?? serverFiles;
+      // `next` comes from the displayed map, which includes the subagent
+      // overlay; its task hands those entries to the root thread itself.
+      const rootNext = withoutPendingFiles(next, previous, livePendingFiles);
 
       const removedSource = Object.values(
         sourceImageAttachmentsRef.current
       ).find(
         (record) =>
-          record.artifact_path in previous && !(record.artifact_path in next)
+          record.artifact_path in previous &&
+          !(record.artifact_path in rootNext)
       );
       if (removedSource) {
         await removeSourceImage(removedSource);
@@ -577,15 +599,15 @@ export function useChat({
       // tombstones — so we don't clobber untouched files written by the agent.
       const delta: Record<string, unknown> = {};
       for (const key of Object.keys(previous)) {
-        if (!(key in next)) delta[key] = null;
+        if (!(key in rootNext)) delta[key] = null;
       }
-      for (const key of Object.keys(next)) {
-        if (previous[key] !== next[key]) delta[key] = next[key];
+      for (const key of Object.keys(rootNext)) {
+        if (previous[key] !== rootNext[key]) delta[key] = rootNext[key];
       }
       if (Object.keys(delta).length === 0) return;
 
       filesOverrideBaselineRef.current = serverFiles;
-      setOptimisticFiles(next);
+      setOptimisticFiles(rootNext);
       try {
         await client.threads.updateState(threadId, {
           values: { files: delta },
@@ -596,12 +618,49 @@ export function useChat({
         throw err;
       }
     },
-    [client, threadId, optimisticFiles, serverFiles, removeSourceImage]
+    [
+      client,
+      threadId,
+      optimisticFiles,
+      serverFiles,
+      removeSourceImage,
+      livePendingFiles,
+    ]
+  );
+
+  // Uploads and deletes run as separate attachment-maintenance runs that this
+  // stream never observes, so re-read the thread state once they complete.
+  const refreshFiles = useCallback(
+    async (targetThreadId?: string | null) => {
+      const target = targetThreadId ?? threadIdRef.current;
+      if (!target) return;
+      try {
+        const refreshed = await client.threads.getState<StateType>(target);
+        if (threadIdRef.current !== target) return;
+        const refreshedFiles = refreshed.values?.files ?? {};
+        // Read the live baselines: this runs after a long upload, and a stale
+        // closure baseline would make the override clear itself immediately.
+        filesOverrideBaselineRef.current = serverFilesRef.current;
+        sourceOverrideBaselineRef.current =
+          serverSourceImageAttachmentsRef.current;
+        filesRef.current = refreshedFiles;
+        const refreshedRecords = reconcileSourceImageRecords(
+          refreshed.values?.source_image_attachments ?? {},
+          refreshedFiles
+        );
+        sourceImageAttachmentsRef.current = refreshedRecords;
+        setOptimisticFiles(refreshedFiles);
+        setOptimisticSourceImageAttachments(refreshedRecords);
+      } catch {
+        // The next stream snapshot or thread hydration supplies fresh files.
+      }
+    },
+    [client]
   );
 
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {
-      stream.submit(undefined, {
+      streamRef.current.submit(undefined, {
         config: buildConfig(),
         ...(hasTaskToolCall
           ? { interruptAfter: ["tools"] }
@@ -612,30 +671,46 @@ export function useChat({
       // Update thread list when continuing stream
       onHistoryRevalidate?.();
     },
-    [stream, buildConfig, onHistoryRevalidate]
+    [buildConfig, onHistoryRevalidate]
   );
 
   const markCurrentThreadAsResolved = useCallback(() => {
-    stream.submit(null, { command: { goto: "__end__", update: null } });
+    streamRef.current.submit(null, {
+      command: { goto: "__end__", update: null },
+    });
     // Update thread list when marking thread as resolved
     onHistoryRevalidate?.();
-  }, [stream, onHistoryRevalidate]);
+  }, [onHistoryRevalidate]);
 
-  const resumeInterrupt = useCallback(
-    (value: any) => {
-      stream.submit(null, {
-        command: { resume: value },
-        config: buildConfig(),
-      });
-      // Update thread list when resuming from interrupt
-      onHistoryRevalidate?.();
-    },
-    [stream, buildConfig, onHistoryRevalidate]
+  const interrupt = selectPendingInterrupt(stream.interrupts);
+  const selectedInterruptId = interrupt?.id;
+  const resumeInterrupt = useMemo(
+    () =>
+      createInterruptResumeHandler({
+        getPending: () => streamRef.current.interrupts,
+        selectedId: selectedInterruptId,
+        submit: (resume) => {
+          streamRef.current.submit(null, {
+            command: { resume },
+            config: buildConfig(),
+            streamSubgraphs: true,
+            streamMode: STREAM_MODES,
+          });
+          // Update thread list when resuming from interrupt
+          onHistoryRevalidate?.();
+        },
+        onStale: () => {
+          toast.error(
+            "This approval is no longer pending. Review the current action."
+          );
+        },
+      }),
+    [selectedInterruptId, buildConfig, onHistoryRevalidate]
   );
 
   const stopStream = useCallback(() => {
-    stream.stop();
-  }, [stream]);
+    streamRef.current.stop();
+  }, []);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -643,22 +718,19 @@ export function useChat({
   // projection, which additionally preserves per-message and per-tool-call
   // references so a streamed token re-renders only the live message instead of
   // every artifact in the thread.
-  const isInterrupted = stream.interrupt !== undefined;
+  const isInterrupted = stream.interrupts.length > 0;
   const processedMessages = useProcessedMessages(
     stream.messages,
     isInterrupted
   );
 
-  // Read the live stream values once per render. `stream` is a Proxy that
-  // forwards to the latest raw stream, so each property access is a trap
-  // invocation — pulling them out here keeps the memo deps cheap and explicit.
+  // Expose the current snapshot alongside stable event handlers.
   const todos = stream.values.todos ?? EMPTY_TODOS;
   const email = stream.values.email;
   const ui = stream.values.ui;
   const messages = stream.messages;
   const isLoading = stream.isLoading;
   const isThreadLoading = stream.isThreadLoading;
-  const interrupt = stream.interrupt;
   const getMessagesMetadata = stream.getMessagesMetadata;
 
   // The returned object is the ChatProvider context value. Leaving it as a bare
@@ -669,15 +741,19 @@ export function useChat({
       stream,
       todos,
       files,
+      pendingFilePaths,
       sourceImageAttachments,
       email,
       ui,
       setFiles,
+      refreshFiles,
       removeSourceImage,
       messages,
       processedMessages,
       isLoading,
       isThreadLoading,
+      historyError,
+      retryHistory,
       interrupt,
       getMessagesMetadata,
       sendMessage,
@@ -692,15 +768,19 @@ export function useChat({
       stream,
       todos,
       files,
+      pendingFilePaths,
       sourceImageAttachments,
       email,
       ui,
       setFiles,
+      refreshFiles,
       removeSourceImage,
       messages,
       processedMessages,
       isLoading,
       isThreadLoading,
+      historyError,
+      retryHistory,
       interrupt,
       getMessagesMetadata,
       sendMessage,

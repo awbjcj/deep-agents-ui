@@ -119,16 +119,14 @@ export function PanelTabs<Id extends string>({
       style={
         isTwoRow
           ? {
-              gridTemplateColumns: `repeat(${Math.ceil(
-                tabs.length / 2
-              )}, minmax(0, 1fr))`,
+              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             }
           : undefined
       }
       className={cn(
         isUnderline
           ? isTwoRow
-            ? "grid items-stretch gap-x-1.5 gap-y-1 overflow-visible px-4 pb-1"
+            ? "grid items-stretch gap-1 overflow-visible px-2 pb-1"
             : "flex items-end gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
         className
@@ -159,12 +157,12 @@ export function PanelTabs<Id extends string>({
             }}
             onKeyDown={(event) => onKeyDown(event, index)}
             className={cn(
-              "group relative inline-flex items-center gap-1.5 whitespace-nowrap font-semibold transition-colors motion-reduce:transition-none",
+              "group relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-center font-medium transition-colors motion-reduce:transition-none",
               "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
               isUnderline
                 ? cn(
-                    "rounded-t-md px-3 py-2 text-[11px] uppercase tracking-[0.14em]",
-                    isTwoRow && "w-full justify-center px-2"
+                    "min-h-10 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal min-[480px]:min-h-11 min-[480px]:text-sm",
+                    isTwoRow && "w-full min-w-0 gap-1.5 px-1.5 min-[480px]:px-2"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive
@@ -180,7 +178,7 @@ export function PanelTabs<Id extends string>({
           >
             {Icon ? (
               <Icon
-                className="h-3.5 w-3.5 shrink-0"
+                className={cn("h-4 w-4 shrink-0", isTwoRow && "h-3.5 w-3.5")}
                 aria-hidden="true"
               />
             ) : null}

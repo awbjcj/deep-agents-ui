@@ -1,13 +1,6 @@
 "use client";
 
-import React, {
-  Suspense,
-  lazy,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ImageOff } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -17,41 +10,7 @@ import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 
-// Lazy-load Prism only when the user actually views code. The full Prism
-// languages bundle is ~300KB minified — keeping it out of the initial chunk
-// makes first chat paint noticeably faster. The oneDark theme used to be a
-// loose top-level `import().then(...)` side effect that fired on module load
-// for every chat (~80KB parse cost) even if no code block ever rendered;
-// folding it into the same dynamic import makes the cost truly conditional.
-//
-// The theme must be applied *inside* this same lazily-resolved module rather
-// than stashed in an outer mutable variable and read via `style={oneDarkTheme}`
-// from the caller. That prop value is evaluated once, when the caller's JSX is
-// created (before the dynamic import has resolved), and Suspense's retry after
-// the import resolves does not re-evaluate the caller's props — so the prop
-// stayed frozen at `undefined` forever, silently falling back to Prism's
-// default *light* theme (black text) while our `customStyle` still forced a
-// dark background, rendering permanently unreadable "black on black" code
-// blocks. Wrapping `style={oneDark}` in the same async factory guarantees the
-// theme is already known by the time this component itself ever renders.
-const SyntaxHighlighter = lazy(() =>
-  Promise.all([
-    import("react-syntax-highlighter"),
-    import("react-syntax-highlighter/dist/esm/styles/prism"),
-  ]).then(([sh, themes]) => {
-    const Prism = sh.Prism;
-    const oneDark = themes.oneDark;
-    function ThemedPrism(props: React.ComponentProps<typeof Prism>) {
-      return (
-        <Prism
-          style={oneDark}
-          {...props}
-        />
-      );
-    }
-    return { default: ThemedPrism };
-  })
-);
+import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
 
 const PROSE_CLASS =
   // Base prose typography with dark-mode-aware inversion. We override the
@@ -331,7 +290,7 @@ const COMPONENTS: Components = {
 
     return (
       <div className="not-prose my-4 max-w-full overflow-hidden last:mb-0">
-        {language ? (
+        {language && text.length <= 20_000 ? (
           <Suspense
             fallback={
               <PlainCodeBlock
@@ -395,7 +354,7 @@ const COMPONENTS: Components = {
   code({ children }) {
     return <code className={INLINE_CODE_CLASS}>{children}</code>;
   },
-  a({ href, children }) {
+  a({ href, children, node: _node, ...props }) {
     const safeHref = safeUrl(href);
     if (!safeHref) return <>{children}</>;
     // Fragment links are in-document (GFM footnote refs and back-references),
@@ -403,6 +362,7 @@ const COMPONENTS: Components = {
     const isInDocument = safeHref.startsWith("#");
     return (
       <a
+        {...props}
         href={safeHref}
         target={isInDocument ? undefined : "_blank"}
         rel={isInDocument ? undefined : "noopener noreferrer"}
@@ -460,9 +420,10 @@ const COMPONENTS: Components = {
       </ul>
     );
   },
-  ol({ className, children }) {
+  ol({ className, children, start }) {
     return (
       <ol
+        start={start}
         className={cn(
           "my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1",
           className
@@ -472,9 +433,12 @@ const COMPONENTS: Components = {
       </ol>
     );
   },
-  li({ className, children }) {
+  li({ className, children, node: _node, ...props }) {
     return (
-      <li className={cn("[&.task-list-item]:list-none", className)}>
+      <li
+        {...props}
+        className={cn("[&.task-list-item]:list-none", className)}
+      >
         {children}
       </li>
     );
@@ -543,7 +507,7 @@ const COMPONENTS: Components = {
       </td>
     );
   },
-  img({ src, alt, ...props }) {
+  img({ src, alt, node: _node, ...props }) {
     const safeSrc = safeImageSrc(src);
     if (!safeSrc) return null;
     return (
@@ -559,17 +523,19 @@ const COMPONENTS: Components = {
 interface MarkdownContentProps {
   content: string;
   className?: string;
+  /** Files preserve authored Markdown; chat also repairs provider dialects. */
+  mode?: "assistant" | "document";
 }
 
-// Cap for streamed/loaded markdown. Beyond this, parsing becomes the dominant
-// frame cost (mdast is linear in input length but heavy with GFM + Math).
+// Warn on large chat messages. File previews are bounded before reaching here.
 const LARGE_CONTENT_THRESHOLD = 200_000;
 
 export const MarkdownContent = React.memo<MarkdownContentProps>(
-  ({ content, className = "" }) => {
+  ({ content, className = "", mode = "assistant" }) => {
     const normalizedContent = useMemo(
-      () => normalizeAssistantMarkdown(content),
-      [content]
+      () =>
+        mode === "document" ? content : normalizeAssistantMarkdown(content),
+      [content, mode]
     );
 
     const isLarge = normalizedContent.length > LARGE_CONTENT_THRESHOLD;
@@ -579,8 +545,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         {isLarge && (
           <div className="not-prose border-warning/40 bg-warning/10 mb-3 rounded-md border px-3 py-2 text-xs text-foreground/80">
             Rendering a large document (
-            {Math.round(normalizedContent.length / 1024)} KB). Math and syntax
-            highlighting may render incrementally.
+            {normalizedContent.length.toLocaleString()} characters).
           </div>
         )}
         <ReactMarkdown
