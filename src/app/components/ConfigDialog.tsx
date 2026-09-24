@@ -28,7 +28,12 @@ import { getAuthUser } from "@/lib/auth";
 import { toast } from "sonner";
 import { Client } from "@langchain/langgraph-sdk";
 import { AlertCircle, CheckCircle2, Loader2, Route } from "lucide-react";
-import { getAnalysisEngines, type EngineCatalog } from "@/lib/code-analysis";
+import {
+  getAnalysisEngines,
+  analysisBlockerMessage,
+  COPILOT_USAGE_EXPLANATION,
+  type EngineCatalog,
+} from "@/lib/code-analysis";
 
 interface AssistantOption {
   id: string;
@@ -250,6 +255,23 @@ export function ConfigDialog({
   const selectedAssistant = assistants.find((item) => item.id === assistantId);
   const isCodeAnalyzer =
     selectedAssistant?.graphId === "VSDA Code Analyzer Agent";
+  const defaultEngine = engineCatalog?.engines.find(
+    (engine) => engine.id === engineCatalog.default_engine
+  );
+
+  useEffect(() => {
+    if (!open || !isCodeAnalyzer || !engineCatalog) return;
+    const effectiveEngine =
+      analysisEngine === "__default__"
+        ? engineCatalog.default_engine
+        : analysisEngine;
+    const selectedEngine = engineCatalog.engines.find(
+      (engine) => engine.id === effectiveEngine
+    );
+    if (selectedEngine?.ready) return;
+    const fallback = engineCatalog.engines.find((engine) => engine.ready);
+    if (fallback) setAnalysisEngine(fallback.id);
+  }, [analysisEngine, engineCatalog, isCodeAnalyzer, open]);
 
   return (
     <Dialog
@@ -376,7 +398,10 @@ export function ConfigDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__default__">
+                      <SelectItem
+                        value="__default__"
+                        disabled={defaultEngine?.ready === false}
+                      >
                         Administrator default
                         {engineCatalog
                           ? ` · ${
@@ -428,10 +453,18 @@ export function ConfigDialog({
                                 ? "Deep Agent"
                                 : "Copilot"}
                             </p>
-                            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                            <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
                               {engine.ready
-                                ? "Ready"
-                                : engine.blockers.join(" · ") || "Unavailable"}
+                                ? engine.id === "copilot" && engine.quota
+                                  ? engine.quota.unlimited
+                                    ? "Ready · Unlimited premium interactions"
+                                    : `Ready · ${engine.quota.remaining_percentage.toFixed(
+                                        1
+                                      )}% premium interactions remaining`
+                                  : "Ready"
+                                : engine.blockers
+                                    .map(analysisBlockerMessage)
+                                    .join(" ") || "Unavailable"}
                             </p>
                           </div>
                         </div>
@@ -445,8 +478,9 @@ export function ConfigDialog({
                   </p>
                 )}
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  This choice applies only to new analysis submissions; it does
-                  not change the administrator policy.
+                  {COPILOT_USAGE_EXPLANATION} This choice applies only to new
+                  analysis submissions; it does not change the administrator
+                  policy.
                 </p>
               </div>
             </section>

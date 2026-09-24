@@ -49,6 +49,7 @@ function harness() {
   };
   const config = { provider: () => cache };
   return {
+    cache,
     server,
     cached(id) {
       return cache.get(unstable_serialize(["thread-history", client, id]))
@@ -113,4 +114,24 @@ test("a failed cross-thread history fetch preserves cached data and rejects", as
 
   await assert.rejects(initial.mutate("new-thread"), /history unavailable/);
   assert.deepEqual(h.cached("new-thread")?.[0].tasks[0].interrupts, [approval]);
+});
+
+test("same-thread completion rejects a failed refresh instead of clearing live values with stale history", async () => {
+  const h = harness();
+  const previous = history("current", [approval]);
+  const current = h.render("current");
+  h.server.set("current", previous);
+  await current.mutate("current");
+  assert.equal(h.cache.size, 1);
+  const cacheKey = [...h.cache.keys()][0];
+  h.server.set("current", new Error("temporary history outage"));
+  await assert.rejects(current.mutate("current"), /temporary history outage/);
+  assert.deepEqual(h.cache.get(cacheKey).data, previous);
+  const latest = history("current");
+  latest[0].values.messages = [
+    { type: "ai", id: "answer", content: "Recovered answer" },
+  ];
+  h.server.set("current", latest);
+  await current.mutate("current");
+  assert.deepEqual(h.cache.get(cacheKey).data, latest);
 });

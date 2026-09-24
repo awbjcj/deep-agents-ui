@@ -13,10 +13,9 @@ import { extractStringFromMessageContent } from "@/app/utils/utils";
  *
  * Identity stability is the whole point: `ChatMessage`, `ToolCallBox`, and the
  * generative-UI artifacts they host are all `React.memo`'d, so when a streamed
- * token only changes the live message, every other message — and every
- * artifact in the conversation — keeps its props by reference and skips
- * re-rendering. Without this, the per-token render cost scales with the total
- * number of artifacts in the thread rather than with what actually changed.
+ * token only changes the live message, ordinary historical rows keep their
+ * props by reference and skip re-rendering. Generative UI also receives the
+ * reactive stream snapshot so its state-dependent content stays current.
  */
 export interface ProcessedMessage {
   message: Message;
@@ -29,6 +28,18 @@ export interface ProcessedMessage {
 // reference across frames (a fresh `[]`/`{}` every render would defeat reuse).
 const EMPTY_TOOL_CALLS: ToolCall[] = [];
 const EMPTY_ARGS: Record<string, unknown> = {};
+const toolResultText = new WeakMap<object, string>();
+
+/** Reuse text from immutable content blocks across token frames. */
+function extractToolResult(message: Message): string {
+  if (!Array.isArray(message.content))
+    return extractStringFromMessageContent(message);
+  const cached = toolResultText.get(message.content);
+  if (cached !== undefined) return cached;
+  const text = extractStringFromMessageContent(message);
+  toolResultText.set(message.content, text);
+  return text;
+}
 
 interface RawBucket {
   message: Message;
@@ -36,12 +47,21 @@ interface RawBucket {
   stableKey: string;
 }
 
-/**
- * Tool-call reconciliation: gather each AI message's tool calls and fold tool
- * results back into the originating call. Lifted verbatim from the previous
- * inline `processedMessages` memo — behaviour is identical; only the identity
- * handling downstream is new.
- */
+/** Parse provider JSON without throwing while arguments are still streaming. */
+function toolArguments(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      return toolArguments(JSON.parse(value));
+    } catch {
+      return EMPTY_ARGS;
+    }
+  }
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : EMPTY_ARGS;
+}
+
+/** Gather all supported tool encodings, then fold results into their calls. */
 function buildRawBuckets(
   messages: Message[],
   isInterrupted: boolean
@@ -62,40 +82,42 @@ function buildRawBuckets(
         args?: unknown;
         input?: unknown;
       }> = [];
-      if (
-        message.additional_kwargs?.tool_calls &&
-        Array.isArray(message.additional_kwargs.tool_calls)
-      ) {
+      // Normalized SDK calls take precedence over duplicate provider blocks.
+      // Empty arrays must not suppress calls supplied by another encoding.
+      if (Array.isArray(message.tool_calls))
+        rawToolCalls.push(...message.tool_calls);
+      if (Array.isArray(message.additional_kwargs?.tool_calls)) {
         rawToolCalls.push(...message.additional_kwargs.tool_calls);
-      } else if (message.tool_calls && Array.isArray(message.tool_calls)) {
+      }
+      if (Array.isArray(message.content)) {
         rawToolCalls.push(
-          ...message.tool_calls.filter(
-            (tc: { name?: string }) => tc.name !== ""
+          ...message.content.filter(
+            (block: { type?: string }) =>
+              typeof block === "object" &&
+              block !== null &&
+              (block.type === "tool_use" || block.type === "tool_call")
           )
         );
-      } else if (Array.isArray(message.content)) {
-        const toolUseBlocks = message.content.filter(
-          (block: { type?: string }) => block.type === "tool_use"
-        );
-        rawToolCalls.push(...toolUseBlocks);
       }
 
       const messageKey = message.id || `ai-${idx}`;
-      const toolCalls: ToolCall[] = rawToolCalls.map((tc, tcIdx) => {
-        const name = tc.function?.name || tc.name || tc.type || "unknown";
-        const args = (tc.function?.arguments ||
-          tc.args ||
-          tc.input ||
-          EMPTY_ARGS) as Record<string, unknown>;
-        const id = tc.id || `tool-${idx}-${tcIdx}-${name}`;
-        toolCallIndex.set(id, { messageKey, index: tcIdx });
-        return {
+      const seen = new Set<string>();
+      const toolCalls: ToolCall[] = [];
+      for (const tc of rawToolCalls) {
+        if (!tc || typeof tc !== "object") continue;
+        const name = tc.function?.name || tc.name;
+        if (!name) continue;
+        const id = tc.id || `tool-${idx}-${toolCalls.length}-${name}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        toolCallIndex.set(id, { messageKey, index: toolCalls.length });
+        toolCalls.push({
           id,
           name,
-          args,
-          status: isInterrupted ? "interrupted" : ("pending" as const),
-        } as ToolCall;
-      });
+          args: toolArguments(tc.args ?? tc.input ?? tc.function?.arguments),
+          status: isInterrupted ? "interrupted" : "pending",
+        });
+      }
 
       messageMap.set(messageKey, {
         message,
@@ -112,7 +134,7 @@ function buildRawBuckets(
       bucket.toolCalls[location.index] = {
         ...bucket.toolCalls[location.index],
         status: "completed" as const,
-        result: extractStringFromMessageContent(message),
+        result: extractToolResult(message),
       };
     } else if (message.type === "human") {
       const humanKey = message.id || `human-${idx}`;

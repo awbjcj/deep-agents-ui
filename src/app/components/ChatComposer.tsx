@@ -30,6 +30,8 @@ interface ChatComposerProps {
   ) => void;
   stopStream: () => void;
   ensureThreadId: () => Promise<string | null>;
+  /** Re-read thread files after an upload or delete completes server-side. */
+  onThreadFilesChanged?: (threadId: string) => void;
 }
 
 /**
@@ -50,6 +52,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     sendMessage,
     stopStream,
     ensureThreadId,
+    onThreadFilesChanged,
   }) => {
     const [threadId] = useQueryState("threadId");
     const [input, setInput] = useState("");
@@ -68,7 +71,12 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       takeAttachments,
       hasUploading,
       accept: acceptAttr,
-    } = useAttachments({ threadId, ensureThreadId, files });
+    } = useAttachments({
+      threadId,
+      ensureThreadId,
+      files,
+      onFilesChanged: onThreadFilesChanged,
+    });
 
     // Attachments are available in every run mode; under Proxy they follow an
     // admin switch surfaced by the connectivity endpoint. Every entry point
