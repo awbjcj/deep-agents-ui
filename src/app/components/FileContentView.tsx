@@ -3,6 +3,10 @@
 import React, { Suspense, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { fileLanguage, filePreview, isMarkdownFile } from "@/lib/file-preview";
+import {
+  defaultMarkdownViewMode,
+  markdownPreviewContent,
+} from "@/app/utils/artifactPreview";
 import { MarkdownContent } from "./MarkdownContent";
 import { ThemedSyntaxHighlighter } from "./ThemedSyntaxHighlighter";
 
@@ -14,9 +18,20 @@ export const FileContentView = React.memo(function FileContentView({
   path: string;
   content: string;
 }) {
-  const [showSource, setShowSource] = useState(false);
+  // Conversation-history artifacts default to Preview (rebuilt into a
+  // transcript); legacy plain-text tool records saved as `.md` without
+  // Markdown structure default to Source so they aren't reflowed.
+  const [showSource, setShowSource] = useState(
+    () => defaultMarkdownViewMode(path, content) === "source"
+  );
   const preview = useMemo(() => filePreview(content), [content]);
   const isMarkdown = isMarkdownFile(path);
+  // Stored files are never rewritten; the transcript rebuild and gutter
+  // stripping are display-only and operate on the (possibly bounded) preview.
+  const markdownPreview = useMemo(
+    () => (isMarkdown ? markdownPreviewContent(path, preview) : preview),
+    [isMarkdown, path, preview]
+  );
   const language = fileLanguage(path);
   const plain = (
     <pre
@@ -67,7 +82,7 @@ export const FileContentView = React.memo(function FileContentView({
       )}
       {isMarkdown && !showSource ? (
         <MarkdownContent
-          content={preview}
+          content={markdownPreview}
           mode="document"
         />
       ) : language === "text" || preview.length > 20_000 ? (
