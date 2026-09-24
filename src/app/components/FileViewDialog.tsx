@@ -31,6 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import {
+  defaultMarkdownViewMode,
+  markdownPreviewContent,
+  type MarkdownViewMode,
+} from "@/app/utils/artifactPreview";
 import type { FileItem } from "@/app/types/types";
 import { imageMimeForPath } from "@/lib/uploads";
 import useSWRMutation from "swr/mutation";
@@ -122,6 +127,34 @@ export const FileViewDialog = React.memo<{
   const isMarkdown = useMemo(() => {
     return fileExtension === "md" || fileExtension === "markdown";
   }, [fileExtension]);
+
+  // Stored artifacts are written for the model; the preview may need a
+  // display-only transform (conversation history) or the verbatim source view
+  // (legacy plain-text tool records saved as `.md`).
+  const [markdownViewMode, setMarkdownViewMode] = useState<MarkdownViewMode>(
+    () =>
+      defaultMarkdownViewMode(
+        String(file?.path || ""),
+        String(file?.content || "")
+      )
+  );
+
+  useEffect(() => {
+    setMarkdownViewMode(
+      defaultMarkdownViewMode(
+        String(file?.path || ""),
+        String(file?.content || "")
+      )
+    );
+  }, [file]);
+
+  const markdownPreview = useMemo(
+    () =>
+      isMarkdown && markdownViewMode === "preview"
+        ? markdownPreviewContent(fileName, fileContent)
+        : "",
+    [isMarkdown, markdownViewMode, fileName, fileContent]
+  );
 
   const imageMime = useMemo<string | null>(
     () => imageMimeForPath(fileName),
@@ -269,6 +302,28 @@ export const FileViewDialog = React.memo<{
           <div className="flex shrink-0 items-center gap-1 self-end min-[520px]:self-auto">
             {!isEditingMode && (
               <>
+                {isMarkdown && (
+                  <div
+                    role="group"
+                    aria-label="Markdown view"
+                    className="mr-1 flex items-center rounded-md border border-border/60 p-0.5"
+                  >
+                    {(["preview", "source"] as const).map((mode) => (
+                      <Button
+                        key={mode}
+                        onClick={() => setMarkdownViewMode(mode)}
+                        variant={
+                          markdownViewMode === mode ? "secondary" : "ghost"
+                        }
+                        size="sm"
+                        className="h-7 px-2 capitalize"
+                        aria-pressed={markdownViewMode === mode}
+                      >
+                        {mode}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 {!isImage && (
                   <Button
                     onClick={handleEdit}
@@ -334,14 +389,14 @@ export const FileViewDialog = React.memo<{
                         className="max-h-[52dvh] max-w-full rounded-lg border border-border/60 bg-background object-contain shadow-sm"
                       />
                     </div>
-                  ) : isMarkdown ? (
+                  ) : isMarkdown && markdownViewMode === "preview" ? (
                     <div className="rounded-md p-6">
-                      <MarkdownContent content={fileContent} />
+                      <MarkdownContent content={markdownPreview} />
                     </div>
                   ) : (
                     <FileCodeView
                       content={fileContent}
-                      language={language}
+                      language={isMarkdown ? "markdown" : language}
                     />
                   )
                 ) : (
