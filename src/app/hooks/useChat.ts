@@ -26,6 +26,7 @@ import {
 } from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
 import { clearStreamReconnectState } from "@/app/utils/threadRecovery";
+import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
 import {
   reconcileSourceImageRecords,
@@ -290,8 +291,8 @@ export function useChat({
       };
       streamRef.current.submit(
         { messages: [newMessage] },
-        {
-          optimisticValues: (prev) => ({
+        fromLatestCheckpoint({
+          optimisticValues: (prev: StateType) => ({
             messages: [...(prev.messages ?? []), newMessage],
           }),
           config: buildConfig(),
@@ -300,7 +301,7 @@ export function useChat({
           ...(threadCreationMetadata
             ? { metadata: threadCreationMetadata }
             : {}),
-        }
+        })
       );
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
@@ -331,12 +332,12 @@ export function useChat({
       } else {
         streamRef.current.submit(
           { messages },
-          {
+          fromLatestCheckpoint({
             config: buildConfig(),
             interruptBefore: ["tools"],
             streamSubgraphs: true,
             streamMode: STREAM_MODES,
-          }
+          })
         );
       }
     },
@@ -660,14 +661,17 @@ export function useChat({
 
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {
-      streamRef.current.submit(undefined, {
-        config: buildConfig(),
-        ...(hasTaskToolCall
-          ? { interruptAfter: ["tools"] }
-          : { interruptBefore: ["tools"] }),
-        streamSubgraphs: true,
-        streamMode: STREAM_MODES,
-      });
+      streamRef.current.submit(
+        undefined,
+        fromLatestCheckpoint({
+          config: buildConfig(),
+          ...(hasTaskToolCall
+            ? { interruptAfter: ["tools"] }
+            : { interruptBefore: ["tools"] }),
+          streamSubgraphs: true,
+          streamMode: STREAM_MODES,
+        })
+      );
       // Update thread list when continuing stream
       onHistoryRevalidate?.();
     },
@@ -675,9 +679,10 @@ export function useChat({
   );
 
   const markCurrentThreadAsResolved = useCallback(() => {
-    streamRef.current.submit(null, {
-      command: { goto: "__end__", update: null },
-    });
+    streamRef.current.submit(
+      null,
+      fromLatestCheckpoint({ command: { goto: "__end__", update: null } })
+    );
     // Update thread list when marking thread as resolved
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
@@ -690,12 +695,15 @@ export function useChat({
         getPending: () => streamRef.current.interrupts,
         selectedId: selectedInterruptId,
         submit: (resume) => {
-          streamRef.current.submit(null, {
-            command: { resume },
-            config: buildConfig(),
-            streamSubgraphs: true,
-            streamMode: STREAM_MODES,
-          });
+          streamRef.current.submit(
+            null,
+            fromLatestCheckpoint({
+              command: { resume },
+              config: buildConfig(),
+              streamSubgraphs: true,
+              streamMode: STREAM_MODES,
+            })
+          );
           // Update thread list when resuming from interrupt
           onHistoryRevalidate?.();
         },
