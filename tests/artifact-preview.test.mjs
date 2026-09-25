@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+
+import { FileContentView } from "../src/app/components/FileContentView.tsx";
 
 import {
   conversationHistoryToMarkdown,
@@ -132,12 +135,35 @@ test("only conversation history previews are transformed", () => {
   );
 });
 
-test("file viewer offers preview/source modes backed by the artifact transform", async () => {
-  const source = await readFile(
-    new URL("../src/app/components/FileViewDialog.tsx", import.meta.url),
-    "utf8"
+function renderFileView(path, content) {
+  return renderToString(createElement(FileContentView, { path, content }));
+}
+
+function pressedModes(html) {
+  return [
+    ...html.matchAll(/<button[^>]*aria-pressed="(true|false)"[^>]*>(\w+)</g),
+  ]
+    .filter(([, pressed]) => pressed === "true")
+    .map(([, , label]) => label);
+}
+
+test("file viewer opens conversation history as a rebuilt transcript preview", () => {
+  const html = renderFileView(
+    "/_artifacts/alice/t1/conversation_history/abc.md",
+    HISTORY
   );
-  assert.match(source, /defaultMarkdownViewMode\(/);
-  assert.match(source, /<MarkdownContent content=\{markdownPreview\} \/>/);
-  assert.match(source, /aria-pressed=\{markdownViewMode === mode\}/);
+  assert.deepEqual(pressedModes(html), ["Preview"]);
+  assert.match(html, /Find the projects\./);
+  assert.doesNotMatch(html, /&lt;message type=/);
+});
+
+test("file viewer opens plain-text tool records in source mode", () => {
+  const record =
+    "Key: IKM-1150\nSummary: iACC set speed\nComments: 26\n---\nDescription:\nText";
+  const html = renderFileView(
+    "/_artifacts/alice/t1/jira/120000_call.md",
+    record
+  );
+  assert.deepEqual(pressedModes(html), ["Source"]);
+  assert.match(html, /Key: IKM-1150/);
 });
