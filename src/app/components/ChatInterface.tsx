@@ -312,7 +312,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
 
                 {metaOpen && (
                   <>
-                    <div className="sticky top-0 flex items-stretch bg-sidebar text-sm">
+                    <div className="sticky top-0 z-10 flex shrink-0 items-center border-b border-border bg-sidebar text-sm">
                       {hasTasks && (
                         <button
                           type="button"
@@ -351,8 +351,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       <button
                         type="button"
                         aria-label="Close panel"
+                        title="Close panel"
                         onClick={() => setMetaOpen(null)}
-                        className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="mr-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                       >
                         <X className="h-4 w-4" />
                       </button>

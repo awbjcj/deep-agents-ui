@@ -118,7 +118,8 @@ export const AttachmentChip = React.memo<Props>(({ item, onRemove }) => {
         type="button"
         aria-label={`Remove ${filename}`}
         onClick={() => onRemove(item.localId)}
-        className="ml-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
+        title={`Remove ${filename}`}
+        className="ml-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 motion-reduce:transform-none motion-reduce:transition-none"
       >
         <X className="h-3 w-3" />
       </button>

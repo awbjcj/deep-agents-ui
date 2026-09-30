@@ -106,7 +106,7 @@ export const ReferenceFileDialog = React.memo<Props>(
         onOpenChange={close}
       >
         <DialogContent className="flex h-[min(70dvh,680px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-4xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
-          <DialogTitle className="text-base font-semibold tracking-tight">
+          <DialogTitle className="pr-10 text-base font-semibold tracking-tight">
             Reference an existing file
           </DialogTitle>
           <span
@@ -127,7 +127,7 @@ export const ReferenceFileDialog = React.memo<Props>(
               </div>
             ) : (
               <ScrollArea className="h-full rounded-md">
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2 p-1">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-2 p-1">
                   {entries.map((entry) => {
                     const isSelected = selected.has(entry.path);
                     return (
@@ -138,7 +138,7 @@ export const ReferenceFileDialog = React.memo<Props>(
                         title={entry.path}
                         aria-pressed={isSelected}
                         className={cn(
-                          "relative flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                          "relative flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
                           isSelected
                             ? "border-primary bg-primary/5 ring-2 ring-primary/30"
                             : "hover:border-primary/40 border-border hover:bg-primary/5 hover:shadow-md"
@@ -174,14 +174,22 @@ export const ReferenceFileDialog = React.memo<Props>(
                               : entry.kind}
                           </span>
                         </span>
-                        {isSelected && (
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                            isSelected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-background"
+                          )}
+                        >
+                          {isSelected && (
                             <Check
                               className="h-3 w-3"
                               aria-hidden="true"
                             />
-                          </span>
-                        )}
+                          )}
+                        </span>
                       </button>
                     );
                   })}

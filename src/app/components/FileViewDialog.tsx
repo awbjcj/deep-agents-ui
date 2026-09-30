@@ -164,7 +164,7 @@ function FileViewDialogSession({
               : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
-        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
+        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 pr-10 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
               {sourceImage ? (

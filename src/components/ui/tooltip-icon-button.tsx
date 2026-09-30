@@ -29,6 +29,7 @@ export function TooltipIconButton({
             size="icon"
             onClick={onClick}
             disabled={disabled}
+            aria-label={tooltip}
           >
             {icon}
           </Button>

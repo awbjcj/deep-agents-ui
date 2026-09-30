@@ -109,7 +109,7 @@ export function FilesPopover({
           <p className="text-xs text-muted-foreground">No files created yet</p>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(256px,1fr))] gap-2">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,256px),1fr))] gap-2">
           {Object.keys(files).map((file) => {
             const filePath = String(file);
             const mime = imageMimeForPath(filePath);
@@ -127,7 +127,7 @@ export function FilesPopover({
             return (
               <div
                 key={filePath}
-                className="group relative"
+                className="group relative min-w-0"
               >
                 <button
                   type="button"
@@ -193,8 +193,9 @@ export function FilesPopover({
                       void handleDeleteFile(filePath);
                     }}
                     className={cn(
-                      "absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-card/90 text-muted-foreground shadow-xs transition-[color,background-color,opacity] duration-150 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100 motion-reduce:transition-none",
-                      sourceRecord ? "opacity-100" : "opacity-0"
+                      "absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-card/90 text-muted-foreground shadow-xs transition-[color,background-color,border-color,opacity] duration-150 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none",
+                      !sourceRecord &&
+                        "[@media(hover:hover)_and_(pointer:fine)]:opacity-0"
                     )}
                   >
                     <Trash2
