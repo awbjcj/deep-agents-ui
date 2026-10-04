@@ -14,6 +14,8 @@
     "test": "node --import tsx/esm --test tests/**/*.mjs"
   },
   "dependencies": {
+    "@ag-ui/client": "1.0.1",
+    "@ag-ui/core": "1.0.1",
     "@langchain/core": "1.1.48",
     "@langchain/langgraph": "1.3.2",
     "@langchain/langgraph-sdk": "1.9.9",
@@ -47,6 +49,7 @@
     "rehype-katex": "^7",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6",
+    "rxjs": "7.8.1",
     "sass": "^1.100.0",
     "sonner": "^2.0.7",
     "swr": "^2.4.1",

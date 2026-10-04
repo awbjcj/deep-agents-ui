@@ -55,6 +55,11 @@ import { ChatInterface } from "@/app/components/ChatInterface";
 // by admins; the workspace panel pulls in three independent sidebars; the
 // dialogs are closed on first paint. Keeping them out of the critical path cuts
 // the JS the chat view has to parse before it becomes interactive.
+const AgUiTrial = lazy(() =>
+  import("@/app/components/AgUiTrial").then((m) => ({ default: m.AgUiTrial }))
+);
+const AG_UI_TRIAL_ENABLED = process.env.NEXT_PUBLIC_ENABLE_AG_UI_TRIAL === "1";
+
 const AdminPanel = lazy(() =>
   import("@/app/components/AdminPanel").then((m) => ({ default: m.AdminPanel }))
 );
@@ -105,6 +110,8 @@ function HomePageInner({
   const { user } = useAuth();
   const { theme } = useTheme();
   const [threadId, setThreadId] = useQueryState("threadId");
+  const [chatTransport, setChatTransport] = useQueryState("chatTransport");
+  const trialActive = AG_UI_TRIAL_ENABLED && chatTransport === "ag-ui";
   const [sidebar, setSidebar] = useQueryState("sidebar");
 
   const [interruptCount, setInterruptCount] = useState(0);
@@ -342,6 +349,15 @@ function HomePageInner({
           </div>
 
           <div className="flex min-w-0 items-center gap-1.5 max-sm:gap-1">
+            {AG_UI_TRIAL_ENABLED && !trialActive && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void setChatTransport("ag-ui")}
+              >
+                Try AG-UI
+              </Button>
+            )}
             {/* Assistant name surfaced over its raw ID — full ID is in tooltip
                 for power users who need to copy it. Clicking opens the
                 config dialog so the agent can be switched directly from
@@ -494,18 +510,32 @@ function HomePageInner({
               className="relative flex flex-col"
               order={2}
             >
-              <ChatProvider
-                activeAssistant={assistant}
-                onHistoryRevalidate={handleHistoryRevalidate}
-                userId={user?.user_id}
-                username={user?.username}
-                analysisEngine={config.analysisEngine}
-              >
-                <ChatInterface
-                  assistant={assistant}
+              {trialActive ? (
+                <Suspense fallback={<PanelFallback label="AG-UI trial" />}>
+                  <AgUiTrial
+                    key={user?.user_id}
+                    assistant={assistant}
+                    userId={user?.user_id}
+                    username={user?.username}
+                    analysisEngine={config.analysisEngine}
+                    onHistoryRevalidate={handleHistoryRevalidate}
+                    onExit={() => void setChatTransport(null)}
+                  />
+                </Suspense>
+              ) : (
+                <ChatProvider
+                  activeAssistant={assistant}
+                  onHistoryRevalidate={handleHistoryRevalidate}
                   userId={user?.user_id}
-                />
-              </ChatProvider>
+                  username={user?.username}
+                  analysisEngine={config.analysisEngine}
+                >
+                  <ChatInterface
+                    assistant={assistant}
+                    userId={user?.user_id}
+                  />
+                </ChatProvider>
+              )}
             </ResizablePanel>
 
             {workspaceOpen && (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, Fragment } from "react";
+import React, { useState, useRef, useMemo, useCallback, Fragment } from "react";
 import { CheckCircle, Clock, Circle, FileIcon, X } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
@@ -46,6 +46,16 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
 
 export const ChatInterface = React.memo<ChatInterfaceProps>(
   ({ assistant, userId }) => {
+    const { threadId } = useChatContext();
+    const [evidenceRequest, setEvidenceRequest] = useState<{
+      text: string;
+      threadId: string | null;
+    } | null>(null);
+    const addEvidence = useCallback(
+      (text: string) => setEvidenceRequest({ text, threadId }),
+      [threadId]
+    );
+    const consumeEvidence = useCallback(() => setEvidenceRequest(null), []);
     const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
     const tasksContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -154,6 +164,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     : undefined;
                   return (
                     <ChatMessage
+                      onUseEvidence={addEvidence}
                       key={data.stableKey}
                       message={data.message}
                       toolCalls={data.toolCalls}
@@ -414,6 +425,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               </div>
             )}
             <ChatComposer
+              evidenceRequest={evidenceRequest}
+              onEvidenceConsumed={consumeEvidence}
               assistant={assistant}
               isLoading={isLoading}
               files={files}

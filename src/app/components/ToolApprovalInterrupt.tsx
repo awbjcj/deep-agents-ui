@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,6 +22,8 @@ import type {
 } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+
+import { argumentDrafts, parseArgumentDrafts } from "@/lib/approval-fields";
 
 interface ToolApprovalInterruptProps {
   actionRequest: ActionRequest;
@@ -50,7 +52,13 @@ export function ToolApprovalInterrupt({
 }: ToolApprovalInterruptProps) {
   const [rejectionMessage, setRejectionMessage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [editedArgs, setEditedArgs] = useState<Record<string, unknown>>({});
+  const fieldPrefix = useId();
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const { args: editedArgs, errors: fieldErrors } = useMemo(
+    () => parseArgumentDrafts(actionRequest.args, drafts),
+    [actionRequest.args, drafts]
+  );
+  const hasErrors = Object.keys(fieldErrors).length > 0;
   const [showRejectionInput, setShowRejectionInput] = useState(false);
   const [argsExpanded, setArgsExpanded] = useState(true);
 
@@ -67,9 +75,7 @@ export function ToolApprovalInterrupt({
     }
 
     if (currentDecision?.type === "edit") {
-      setEditedArgs(
-        JSON.parse(JSON.stringify(currentDecision.edited_action.args))
-      );
+      setDrafts(argumentDrafts(currentDecision.edited_action.args));
     }
   }, [currentDecision]);
 
@@ -116,6 +122,7 @@ export function ToolApprovalInterrupt({
   }, [currentDecision]);
 
   const emitDecision = (decision: HumanDecision) => {
+    if (isLoading || !allowedDecisions.includes(decision.type)) return;
     if (onDecisionChange) {
       onDecisionChange(decision);
       return;
@@ -148,7 +155,12 @@ export function ToolApprovalInterrupt({
   };
 
   const handleEdit = () => {
-    if (isEditing) {
+    if (
+      isEditing &&
+      !hasErrors &&
+      !isLoading &&
+      allowedDecisions.includes("edit")
+    ) {
       emitDecision({
         type: "edit",
         edited_action: {
@@ -162,25 +174,19 @@ export function ToolApprovalInterrupt({
 
   const startEditing = () => {
     setIsEditing(true);
-    setEditedArgs(JSON.parse(JSON.stringify(actionRequest.args)));
+    setDrafts(
+      argumentDrafts(
+        currentDecision?.type === "edit"
+          ? currentDecision.edited_action.args
+          : actionRequest.args
+      )
+    );
     setShowRejectionInput(false);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
-    setEditedArgs({});
-  };
-
-  const updateEditedArg = (key: string, value: string) => {
-    try {
-      const parsedValue =
-        value.trim().startsWith("{") || value.trim().startsWith("[")
-          ? JSON.parse(value)
-          : value;
-      setEditedArgs((prev) => ({ ...prev, [key]: parsedValue }));
-    } catch {
-      setEditedArgs((prev) => ({ ...prev, [key]: value }));
-    }
+    setDrafts({});
   };
 
   return (
@@ -208,7 +214,7 @@ export function ToolApprovalInterrupt({
             >
               <span
                 aria-hidden
-                className="bg-warning-strong/25 absolute inset-0 animate-ping rounded-full opacity-60"
+                className="bg-warning-strong/25 absolute inset-0 animate-ping rounded-full opacity-60 motion-reduce:animate-none"
               />
               <ShieldAlert
                 size={15}
@@ -302,30 +308,96 @@ export function ToolApprovalInterrupt({
 
           {isEditing ? (
             <div className="space-y-3 p-4">
-              {Object.entries(actionRequest.args).map(([key, value]) => (
-                <div key={key}>
-                  <label className="mb-1 block font-mono text-[11px] font-medium text-foreground">
-                    {key}
-                  </label>
-                  <Textarea
-                    value={
-                      editedArgs[key] !== undefined
-                        ? typeof editedArgs[key] === "string"
-                          ? (editedArgs[key] as string)
-                          : JSON.stringify(editedArgs[key], null, 2)
-                        : typeof value === "string"
-                        ? value
-                        : JSON.stringify(value, null, 2)
-                    }
-                    onChange={(e) => updateEditedArg(key, e.target.value)}
-                    className="font-mono text-xs"
-                    rows={
-                      typeof value === "string" && value.length < 100 ? 2 : 4
-                    }
-                    disabled={isLoading}
-                  />
-                </div>
-              ))}
+              {Object.entries(actionRequest.args).map(([key, value], index) => {
+                const id = `${fieldPrefix}-${index}`;
+                const changed =
+                  !fieldErrors[key] &&
+                  JSON.stringify(value) !== JSON.stringify(editedArgs[key]);
+                return (
+                  <div
+                    key={key}
+                    className="space-y-2"
+                  >
+                    <label
+                      htmlFor={id}
+                      className="block text-xs font-medium"
+                    >
+                      {key}{" "}
+                      <span className="text-muted-foreground">
+                        (
+                        {value === null
+                          ? "null"
+                          : Array.isArray(value)
+                          ? "array"
+                          : typeof value}
+                        )
+                      </span>
+                    </label>
+                    {typeof value === "boolean" ? (
+                      <select
+                        id={id}
+                        value={drafts[key] ?? String(value)}
+                        onChange={(event) =>
+                          setDrafts((previous) => ({
+                            ...previous,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        disabled={isLoading}
+                        className="rounded-md border border-border bg-background p-2 text-sm"
+                      >
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                      </select>
+                    ) : (
+                      <Textarea
+                        id={id}
+                        value={drafts[key] ?? ""}
+                        onChange={(event) =>
+                          setDrafts((previous) => ({
+                            ...previous,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        aria-invalid={!!fieldErrors[key]}
+                        aria-describedby={
+                          fieldErrors[key] ? `${id}-error` : undefined
+                        }
+                        className="font-mono text-xs"
+                        rows={typeof value === "object" ? 4 : 2}
+                        disabled={isLoading}
+                      />
+                    )}
+                    {fieldErrors[key] && (
+                      <p
+                        id={`${id}-error`}
+                        role="alert"
+                        className="text-xs text-destructive"
+                      >
+                        {fieldErrors[key]}
+                      </p>
+                    )}
+                    {changed && (
+                      <div className="grid min-w-0 gap-2 text-xs sm:grid-cols-2">
+                        <div>
+                          <p className="font-medium text-muted-foreground">
+                            Before
+                          </p>
+                          <pre className="whitespace-pre-wrap break-all">
+                            {JSON.stringify(value, null, 2)}
+                          </pre>
+                        </div>
+                        <div>
+                          <p className="font-medium">After</p>
+                          <pre className="whitespace-pre-wrap break-all">
+                            {JSON.stringify(editedArgs[key], null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : argsExpanded && argFieldCount > 0 ? (
             <div className="px-2 py-1">
@@ -375,11 +447,15 @@ export function ToolApprovalInterrupt({
               <Button
                 size="sm"
                 onClick={handleEdit}
-                disabled={isLoading}
+                disabled={isLoading || hasErrors}
                 className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
               >
                 <Check size={14} />
-                {isLoading ? "Saving..." : "Save & approve"}
+                {isLoading
+                  ? "Saving..."
+                  : onDecisionChange
+                  ? "Mark edited action"
+                  : "Save & approve"}
               </Button>
             </>
           ) : showRejectionInput ? (

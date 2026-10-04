@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
+import { reasoningSummary } from "@/lib/reasoning-summary";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import type {
   SubAgent,
@@ -34,6 +35,7 @@ import {
 } from "@/lib/source-images";
 
 interface ChatMessageProps {
+  onUseEvidence?: (text: string) => void;
   message: Message;
   toolCalls: ToolCall[];
   isLoading?: boolean;
@@ -50,6 +52,7 @@ interface ChatMessageProps {
 export const ChatMessage = React.memo<ChatMessageProps>(
   ({
     message,
+    onUseEvidence,
     toolCalls,
     isLoading,
     actionRequestsMap,
@@ -63,6 +66,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
+    const reasoning = useMemo(() => reasoningSummary(message), [message]);
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
 
@@ -346,6 +350,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               ))}
             </div>
           )}
+          {reasoning && (
+            <details className="my-3 rounded-md border border-border p-3">
+              <summary className="cursor-pointer text-sm text-muted-foreground">
+                Reasoning summary
+              </summary>
+              <div className="mt-2 max-h-64 overflow-y-auto text-sm">
+                <MarkdownContent content={reasoning} />
+              </div>
+            </details>
+          )}
           {hasContent && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
@@ -389,6 +403,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 const reviewConfig = reviewConfigsMap?.get(toolCall.name);
                 return (
                   <ToolCallBox
+                    onUseEvidence={onUseEvidence}
                     key={toolCall.id}
                     toolCall={toolCall}
                     uiComponent={toolCallGenUiComponent}
