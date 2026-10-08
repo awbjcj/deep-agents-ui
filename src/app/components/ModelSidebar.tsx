@@ -40,6 +40,7 @@ import {
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { RunLimitSettings } from "@/app/components/RunLimitSettings";
+import { requiresThinking } from "@/lib/model-controls";
 import {
   apiGetAllowedModels,
   apiGetUserModel,
@@ -392,7 +393,15 @@ export function ModelSidebar() {
   }
 
   function updateDraft(patch: Partial<DraftState>) {
-    setDraft((d) => (d ? { ...d, ...patch } : d));
+    setDraft((d) => {
+      if (!d) return d;
+      const next = { ...d, ...patch };
+      const entry = allowed.find(
+        (m) => m.provider === next.provider && m.model === next.model
+      );
+      if (requiresThinking(entry, next.effort)) next.thinking = true;
+      return next;
+    });
   }
 
   function handleModelChange(value: string) {
@@ -432,6 +441,10 @@ export function ModelSidebar() {
   const effortOptions = currentModelEntry?.efforts.length
     ? currentModelEntry.efforts
     : ["low", "medium", "high"];
+  const thinkingRequired = requiresThinking(
+    currentModelEntry,
+    draft?.effort ?? null
+  );
 
   const resetLabel =
     usage?.display_reset && usage.display_reset !== "-"
@@ -711,21 +724,23 @@ export function ModelSidebar() {
                       Adaptive thinking
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {currentModelEntry?.thinking_required
-                        ? "Always on for this model; choose effort to adjust depth"
+                      {thinkingRequired
+                        ? currentModelEntry?.thinking_required
+                          ? "Always on for this model; choose effort to adjust depth"
+                          : "Required at this effort; choose a lower effort to turn it off"
                         : currentModelEntry?.supports_thinking
                         ? "Let the model take longer on hard prompts"
                         : "Not supported by this model"}
                     </span>
                   </div>
                   <Switch
-                    checked={!!draft.thinking}
+                    checked={thinkingRequired || !!draft.thinking}
                     onCheckedChange={(checked) =>
                       updateDraft({ thinking: checked })
                     }
                     disabled={
                       !currentModelEntry?.supports_thinking ||
-                      currentModelEntry.thinking_required ||
+                      thinkingRequired ||
                       isSaving
                     }
                   />
