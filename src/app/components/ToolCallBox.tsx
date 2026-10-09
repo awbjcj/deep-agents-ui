@@ -23,7 +23,13 @@ import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
 import { CodeAnalysisJob } from "@/app/components/CodeAnalysisJob";
 
+import { parseToolEvidence } from "@/lib/tool-evidence";
+import { ToolEvidenceCards } from "./ToolEvidenceCards";
+import { parsePresentation } from "@/lib/ui-presentation";
+import { StructuredToolResult } from "./StructuredToolResult";
+
 interface ToolCallBoxProps {
+  onUseEvidence?: (text: string) => void;
   toolCall: ToolCall;
   uiComponent?: any;
   stream?: any;
@@ -61,6 +67,7 @@ function codeAnalysisJobId(name: string, result: unknown): string | null {
 export const ToolCallBox = React.memo<ToolCallBoxProps>(
   ({
     toolCall,
+    onUseEvidence,
     uiComponent,
     stream,
     graphId,
@@ -150,7 +157,16 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       }));
     }, []);
 
-    const hasContent = result || Object.keys(args).length > 0;
+    const evidence = useMemo(
+      () => (status === "completed" ? parseToolEvidence(name, result) : []),
+      [name, result, status]
+    );
+    const presentation = useMemo(
+      () => (status === "completed" ? parsePresentation(name, result) : null),
+      [name, result, status]
+    );
+    const hasContent =
+      !!actionRequest || result != null || Object.keys(args).length > 0;
     const analysisJobId = useMemo(
       () => codeAnalysisJobId(name, result),
       [name, result]
@@ -168,8 +184,9 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           size="sm"
           onClick={toggleExpanded}
           className={cn(
-            "flex w-full items-center justify-between gap-2 border-none px-2 py-2 text-left shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-default"
+            "flex w-full items-center justify-between gap-2 border-none px-2 py-2 text-left shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
           )}
+          aria-expanded={isExpanded}
           disabled={!hasContent}
         >
           <div className="flex w-full items-center justify-between gap-2">
@@ -194,6 +211,15 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           </div>
         </Button>
 
+        {presentation && (
+          <div className="px-2 py-3">
+            <StructuredToolResult
+              presentation={presentation}
+              onUseSuggestion={onUseEvidence}
+              disabled={isLoading}
+            />
+          </div>
+        )}
         {isExpanded && hasContent && (
           <div className="px-4 pb-4">
             {uiComponent && stream && graphId ? (
@@ -218,6 +244,14 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               </div>
             ) : (
               <>
+                {evidence.length > 0 && (
+                  <ToolEvidenceCards
+                    key={toolCall.id}
+                    items={evidence}
+                    onUseEvidence={onUseEvidence}
+                    disabled={isLoading}
+                  />
+                )}
                 {analysisJobId && <CodeAnalysisJob jobId={analysisJobId} />}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
@@ -261,16 +295,18 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     </div>
                   </div>
                 )}
-                {result && (
+                {result != null && (
                   <div className="mt-4">
-                    <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Result
-                    </h4>
-                    <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs leading-7 text-foreground">
-                      {typeof result === "string"
-                        ? result
-                        : JSON.stringify(result, null, 2)}
-                    </pre>
+                    <details open={!evidence.length && !presentation}>
+                      <summary className="mb-1 cursor-pointer text-xs font-semibold text-muted-foreground">
+                        Raw result
+                      </summary>
+                      <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs leading-7 text-foreground">
+                        {typeof result === "string"
+                          ? result
+                          : JSON.stringify(result, null, 2)}
+                      </pre>
+                    </details>
                   </div>
                 )}
               </>

@@ -349,7 +349,7 @@ export function UrlOverridesSection() {
   return (
     <DisclosureSection
       title="Provider endpoints"
-      subtitle="9 URL overrides · environment defaults remain active until saved"
+      subtitle="12 URL overrides · environment defaults remain active until saved"
       contentClassName="space-y-4"
     >
       {loading ? (
@@ -365,6 +365,7 @@ export function UrlOverridesSection() {
                 prefix: "claude_base_url",
               },
               { id: "gemini", label: "Gemini", prefix: "google_base_url" },
+              { id: "xai", label: "xAI Grok", prefix: "xai_base_url" },
             ] as const
           ).map((provider) => (
             <fieldset

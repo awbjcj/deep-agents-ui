@@ -20,6 +20,8 @@ import type { MessageAttachment } from "@/lib/uploads";
 import type { SourceImageRecord } from "@/lib/source-images";
 
 interface ChatComposerProps {
+  evidenceRequest?: { text: string; threadId: string | null } | null;
+  onEvidenceConsumed?: () => void;
   assistant: Assistant | null;
   isLoading: boolean;
   files: Record<string, string>;
@@ -46,6 +48,8 @@ interface ChatComposerProps {
 export const ChatComposer = React.memo<ChatComposerProps>(
   ({
     assistant,
+    evidenceRequest,
+    onEvidenceConsumed,
     isLoading,
     files,
     sourceImageAttachments,
@@ -55,13 +59,56 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     onThreadFilesChanged,
   }) => {
     const [threadId] = useQueryState("threadId");
-    const [input, setInput] = useState("");
+    // Keep unsent text (including selected evidence) with its conversation.
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const draftKey = threadId ?? "new-thread";
+    const input = drafts[draftKey] ?? "";
+    const setInput = useCallback(
+      (value: React.SetStateAction<string>) => {
+        setDrafts((previous) => ({
+          ...previous,
+          [draftKey]:
+            typeof value === "function"
+              ? value(previous[draftKey] ?? "")
+              : value,
+        }));
+      },
+      [draftKey]
+    );
     const [isDragging, setIsDragging] = useState(false);
     const [attachMenuOpen, setAttachMenuOpen] = useState(false);
     const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
+    useEffect(() => {
+      if (!evidenceRequest || lastEvidenceRef.current === evidenceRequest)
+        return;
+      lastEvidenceRef.current = evidenceRequest;
+      if (evidenceRequest.threadId === threadId) {
+        setInput((previous) =>
+          previous
+            ? `${previous}\n\n${evidenceRequest.text}`
+            : evidenceRequest.text
+        );
+        textareaRef.current?.focus();
+      }
+      onEvidenceConsumed?.();
+    }, [evidenceRequest, onEvidenceConsumed, threadId, setInput]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const attachMenuRef = useRef<HTMLDivElement | null>(null);
+
+    const ensureAttachmentThreadId = useCallback(async () => {
+      const id = await ensureThreadId();
+      if (!threadId && id) {
+        setDrafts((previous) => {
+          if (!Object.hasOwn(previous, "new-thread")) return previous;
+          const next = { ...previous, [id]: previous["new-thread"] };
+          delete next["new-thread"];
+          return next;
+        });
+      }
+      return id;
+    }, [ensureThreadId, threadId]);
 
     const {
       items: attachments,
@@ -73,7 +120,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       accept: acceptAttr,
     } = useAttachments({
       threadId,
-      ensureThreadId,
+      ensureThreadId: ensureAttachmentThreadId,
       files,
       onFilesChanged: onThreadFilesChanged,
     });
@@ -169,7 +216,14 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         }
         setInput("");
       },
-      [input, hasUploading, sendMessage, submitDisabled, takeAttachments]
+      [
+        input,
+        hasUploading,
+        sendMessage,
+        submitDisabled,
+        takeAttachments,
+        setInput,
+      ]
     );
 
     const handleKeyDown = useCallback(
@@ -217,7 +271,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             onKeyDown={handleKeyDown}
             placeholder={isLoading ? "Running..." : "Write your message..."}
             className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
-            rows={1}
+            rows={Math.min(8, Math.max(1, input.split("\n").length))}
           />
           <div className="flex items-center justify-between gap-2 p-3">
             <div className="flex items-center gap-2">

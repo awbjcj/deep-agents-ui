@@ -746,6 +746,7 @@ export function useChat({
   // re-rendered (opening the workspace panel, toggling the thread sidebar, …).
   return useMemo(
     () => ({
+      threadId,
       stream,
       todos,
       files,
@@ -773,6 +774,7 @@ export function useChat({
       resumeInterrupt,
     }),
     [
+      threadId,
       stream,
       todos,
       files,
