@@ -4,6 +4,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { reasoningSummary } from "@/lib/reasoning-summary";
+import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import type {
   SubAgent,
@@ -385,6 +386,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
             </div>
           )}
+          {!isUser && <ResponseDetails message={message} />}
           {viewedAttachment && (
             <FileViewDialog
               file={viewedAttachment}
