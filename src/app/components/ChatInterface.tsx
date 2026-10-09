@@ -198,7 +198,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
               "pointer-events-auto mx-4 mb-6 flex flex-shrink-0 flex-col rounded-2xl border border-border/60 bg-card/85 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.35),0_6px_18px_-12px_rgba(15,23,42,0.18)] backdrop-blur-md",
-              "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-all duration-200 ease-in-out",
+              "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-[border-color,box-shadow] duration-150",
               "hover:border-primary/30 hover:shadow-[0_22px_55px_-22px_rgba(15,23,42,0.4),0_8px_22px_-12px_rgba(15,23,42,0.22)]",
               "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
             )}
@@ -213,9 +213,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       );
 
                       const totalTasks = todos.length;
-                      const remainingTasks =
-                        totalTasks - groupedTodos.pending.length;
-                      const isCompleted = totalTasks === remainingTasks;
+                      const isCompleted =
+                        totalTasks === groupedTodos.completed.length;
 
                       const tasksTrigger = (() => {
                         if (!hasTasks) return null;

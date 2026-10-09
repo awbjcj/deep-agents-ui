@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -211,10 +212,10 @@ function UsageMeter({
       >
         <div
           className={[
-            "h-full origin-left rounded-full transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
+            "h-full w-full origin-left rounded-full transition-transform duration-200 [transition-timing-function:var(--ease-out)] motion-reduce:transition-none",
             usageBarClass(pct, isUnlimited),
           ].join(" ")}
-          style={{ width: isUnlimited ? "100%" : `${clampedPct.toFixed(1)}%` }}
+          style={{ transform: `scaleX(${isUnlimited ? 1 : clampedPct / 100})` }}
         />
       </div>
       {!isUnlimited && pct >= 80 && (
@@ -247,6 +248,7 @@ export function ModelSidebar() {
   const [saved, setSaved] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const failedDraftRef = useRef<DraftState | null>(null);
   const usage = useTokenUsage();
   const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
@@ -298,6 +300,45 @@ export function ModelSidebar() {
     draft !== null && baseline !== null && !draftsEqual(draft, baseline);
   const isCustom = serverCustom || dirty || customManuallySelected;
 
+  const handleSave = useCallback(
+    (silent = false) => {
+      if (!draft || !dirty || !draft.provider || !draft.model) return;
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      failedDraftRef.current = null;
+      setIsSaving(true);
+      apiSetUserModel({
+        provider: draft.provider,
+        model: draft.model,
+        effort: draft.effort,
+        thinking: draft.thinking,
+        max_tokens: draft.max_tokens,
+      })
+        .then((result) => {
+          setSelection(result);
+          setDraft(draftFromEffective(result.effective));
+          setActivePreset(null);
+          setServerCustom(true);
+          setCustomManuallySelected(false);
+          setSaved(true);
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => {
+            setSaved(false);
+            savedTimerRef.current = null;
+          }, 2000);
+          if (!silent) toast.success("Saved custom configuration");
+        })
+        .catch((err) => {
+          failedDraftRef.current = draft;
+          toast.error(err instanceof Error ? err.message : "Failed to save");
+        })
+        .finally(() => setIsSaving(false));
+    },
+    [draft, dirty]
+  );
+
   // Auto-save the custom configuration a beat after the user stops tweaking
   // controls, mirroring the connectivity panel's debounced autosave. The
   // manual Save button (frozen at the bottom) still commits immediately.
@@ -305,6 +346,9 @@ export function ModelSidebar() {
     if (isLoading || isSaving || !dirty || !draft?.provider || !draft?.model) {
       return;
     }
+    // Retry a failed draft only after another edit or an explicit Save.
+    if (failedDraftRef.current && draftsEqual(draft, failedDraftRef.current))
+      return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
       autosaveTimerRef.current = null;
@@ -316,8 +360,7 @@ export function ModelSidebar() {
         autosaveTimerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, dirty, isLoading, isSaving]);
+  }, [draft, dirty, isLoading, isSaving, handleSave]);
 
   useEffect(() => {
     return () => {
@@ -356,43 +399,9 @@ export function ModelSidebar() {
       });
   }
 
-  function handleSave(silent = false) {
-    if (!draft || !dirty || !draft.provider || !draft.model) return;
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
-    setIsSaving(true);
-    apiSetUserModel({
-      provider: draft.provider,
-      model: draft.model,
-      effort: draft.effort,
-      thinking: draft.thinking,
-      max_tokens: draft.max_tokens,
-    })
-      .then((result) => {
-        setSelection(result);
-        setDraft(draftFromEffective(result.effective));
-        setActivePreset(null);
-        setServerCustom(true);
-        setCustomManuallySelected(false);
-        setSaved(true);
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => {
-          setSaved(false);
-          savedTimerRef.current = null;
-        }, 2000);
-        if (!silent) toast.success("Saved custom configuration");
-      })
-      .catch((err) => {
-        if (!silent) {
-          toast.error(err instanceof Error ? err.message : "Failed to save");
-        }
-      })
-      .finally(() => setIsSaving(false));
-  }
-
   function updateDraft(patch: Partial<DraftState>) {
+    failedDraftRef.current = null;
+    setSaved(false);
     setDraft((d) => {
       if (!d) return d;
       const next = { ...d, ...patch };
@@ -576,12 +585,12 @@ export function ModelSidebar() {
                         onClick={handleClick}
                         disabled={isSaving}
                         className={[
-                          "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-all duration-200",
+                          "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-colors duration-150",
                           "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
                             ? "!border-[var(--aptiv-orange)]/55 !bg-[var(--aptiv-orange)]/10 shadow-[0_2px_10px_-4px_color-mix(in_srgb,var(--aptiv-orange)_30%,transparent)]"
-                            : "hover:-translate-y-px hover:!border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
+                            : "hover:!border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
                         ].join(" ")}
                       >
                         {active && (

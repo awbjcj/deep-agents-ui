@@ -175,12 +175,24 @@ export function ConnectivitySidebar() {
       payload: { run_mode?: RunMode | null; proxy_url?: string | null },
       silent: boolean
     ) => {
+      const submittedMode = pendingMode;
+      const submittedProxyUrl = proxyUrl;
       setIsSaving(true);
       try {
         const updated = await apiSetUserConnectivity(payload);
         setData(updated);
-        setPendingMode(updated.run_mode);
-        setProxyUrl(updated.proxy_url);
+        // A response only reconciles fields it saved, and must not replace
+        // edits made while the request was in flight.
+        if (payload.run_mode !== undefined) {
+          setPendingMode((current) =>
+            current === submittedMode ? updated.run_mode : current
+          );
+        }
+        if (payload.proxy_url !== undefined) {
+          setProxyUrl((current) =>
+            current === submittedProxyUrl ? updated.proxy_url : current
+          );
+        }
         setRunModeLocal(updated.run_mode);
         setSaved(true);
         if (!silent) {
@@ -194,14 +206,12 @@ export function ConnectivitySidebar() {
           savedTimerRef.current = null;
         }, 2000);
       } catch (err) {
-        if (!silent) {
-          toast.error(err instanceof Error ? err.message : "Failed to save");
-        }
+        toast.error(err instanceof Error ? err.message : "Failed to save");
       } finally {
         setIsSaving(false);
       }
     },
-    [setRunModeLocal]
+    [pendingMode, proxyUrl, setRunModeLocal]
   );
 
   // Run mode is a single-tap control, so persist it automatically a beat after
@@ -225,6 +235,12 @@ export function ConnectivitySidebar() {
     };
   }, [applyUpdate, data, isLoading, isSaving, pendingMode]);
 
+  const selectMode = (mode: RunMode) => {
+    lastAutosavedModeRef.current = null;
+    setSaved(false);
+    setPendingMode(mode);
+  };
+
   const handleSave = () => {
     if (!data) return;
     if (autosaveTimerRef.current) {
@@ -247,6 +263,8 @@ export function ConnectivitySidebar() {
   };
 
   const handleReset = async () => {
+    const submittedMode = pendingMode;
+    const submittedProxyUrl = proxyUrl;
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
@@ -258,8 +276,12 @@ export function ConnectivitySidebar() {
         proxy_url: null,
       });
       setData(updated);
-      setPendingMode(updated.run_mode);
-      setProxyUrl(updated.proxy_url);
+      setPendingMode((current) =>
+        current === submittedMode ? updated.run_mode : current
+      );
+      setProxyUrl((current) =>
+        current === submittedProxyUrl ? updated.proxy_url : current
+      );
       setRunModeLocal(updated.run_mode);
       // Clear the autosave guard so re-selecting the just-reset mode still
       // triggers an autosave (the guard only exists to stop failed-save loops).
@@ -316,7 +338,7 @@ export function ConnectivitySidebar() {
     }
     event.preventDefault();
     const target = RUN_MODES[nextIndex]!;
-    setPendingMode(target);
+    selectMode(target);
     radioRefs.current[nextIndex]?.focus();
   };
 
@@ -365,13 +387,13 @@ export function ConnectivitySidebar() {
                           radioRefs.current[index] = el;
                         }}
                         onKeyDown={(event) => handleRadioKeyDown(event, index)}
-                        onClick={() => setPendingMode(mode)}
+                        onClick={() => selectMode(mode)}
                         className={cn(
-                          "group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-all duration-200",
+                          "group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-colors duration-150",
                           "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           active
                             ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--text-button-primary)] shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]"
-                            : "hover:border-[var(--color-primary)]/40 border-border bg-card hover:-translate-y-px hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
+                            : "hover:border-[var(--color-primary)]/40 border-border bg-card hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
                         )}
                       >
                         {active && (
@@ -608,7 +630,7 @@ export function ConnectivitySidebar() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving
                 </>
-              ) : saved ? (
+              ) : saved && !dirty ? (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Saved

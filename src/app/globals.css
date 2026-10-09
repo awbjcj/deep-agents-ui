@@ -312,6 +312,7 @@
       0 10px 10px -5px rgba(10, 10, 10, 0.05);
 
     --transition-base: 200ms ease;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
     /* Layout */
     --sidebar-width: 320px;
@@ -1041,12 +1042,14 @@ button {
   transition: transform 160ms ease;
 }
 
-.aptiv-slider:hover::-webkit-slider-thumb {
-  transform: scale(1.08);
-}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .aptiv-slider:not(:disabled):hover::-webkit-slider-thumb {
+    transform: scale(1.08);
+  }
 
-.aptiv-slider:hover::-moz-range-thumb {
-  transform: scale(1.08);
+  .aptiv-slider:not(:disabled):hover::-moz-range-thumb {
+    transform: scale(1.08);
+  }
 }
 
 .aptiv-slider:disabled {
