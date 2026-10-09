@@ -1389,6 +1389,9 @@ export interface AdminConnectivityUpdatePayload {
   google_base_url?: string;
   google_base_url_gateway?: string;
   google_base_url_proxy?: string;
+  xai_base_url?: string;
+  xai_base_url_gateway?: string;
+  xai_base_url_proxy?: string;
   proxy_attachments_enabled?: boolean;
 }
 
