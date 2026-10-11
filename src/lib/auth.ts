@@ -447,6 +447,16 @@ export interface ModelEntry extends TierModelEntry {
   supports_thinking: boolean;
   thinking_required: boolean;
   disabled_thinking_efforts?: string[];
+  recommended_effort?: string | null;
+  recommended_thinking?: boolean;
+  recommended_max_tokens?: number;
+  control_defaults?: ModelControlDefaults[];
+}
+
+export interface ModelControlDefaults {
+  effort: string | null;
+  thinking: boolean | null;
+  max_tokens: number;
 }
 
 export interface TierAllowlist {
