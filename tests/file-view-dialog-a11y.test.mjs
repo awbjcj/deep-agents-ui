@@ -26,6 +26,6 @@ test("source images download with their displayed source filename", async () => 
     "utf8"
   );
 
-  assert.match(source, /const displayName = sourceImage\?\.filename/);
-  assert.match(source, /a\.download = displayName/);
+  assert.match(source, /const displayName =\s*sourceImage\?\.filename/);
+  assert.match(source, /saveBlob\([\s\S]*?displayName\s*\)/);
 });

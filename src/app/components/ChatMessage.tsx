@@ -386,7 +386,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
             </div>
           )}
-          {!isUser && <ResponseDetails message={message} />}
+          {!isUser && (
+            <ResponseDetails
+              message={message}
+              files={files}
+            />
+          )}
           {viewedAttachment && (
             <FileViewDialog
               file={viewedAttachment}

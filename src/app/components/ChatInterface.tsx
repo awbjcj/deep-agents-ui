@@ -1,4 +1,5 @@
 "use client";
+import { ResponseJobs } from "@/app/components/ResponseJobs";
 
 import React, { useState, useRef, useMemo, useCallback, Fragment } from "react";
 import { CheckCircle, Clock, Circle, FileIcon, X } from "lucide-react";
@@ -423,6 +424,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 )}
               </div>
             )}
+            <ResponseJobs
+              key={threadId}
+              threadId={threadId}
+            />
             <ChatComposer
               evidenceRequest={evidenceRequest}
               onEvidenceConsumed={consumeEvidence}

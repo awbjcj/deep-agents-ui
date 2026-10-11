@@ -1,6 +1,13 @@
 "use client";
 
-import { Ban, ChevronDown } from "lucide-react";
+import {
+  Ban,
+  ChevronDown,
+  Clock3,
+  FileSearch,
+  Globe2,
+  SquareTerminal,
+} from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -60,6 +67,14 @@ export function ToolPermissionList({
               const disabled =
                 saving || !canToggleTool(tool.id, selectedIds, allowedIds);
               const controlId = `${idPrefix}-${tool.id}`;
+              const FeatureIcon = (
+                {
+                  background_response: Clock3,
+                  web_search: Globe2,
+                  file_search: FileSearch,
+                  code_interpreter: SquareTerminal,
+                } as Record<string, typeof Clock3>
+              )[tool.id];
               return (
                 <div
                   key={tool.id}
@@ -86,7 +101,15 @@ export function ToolPermissionList({
                           disabled ? "cursor-not-allowed" : "cursor-pointer"
                         )}
                       >
-                        {tool.label}
+                        <span className="inline-flex items-center gap-2">
+                          {FeatureIcon && (
+                            <FeatureIcon
+                              className="h-4 w-4 shrink-0 text-muted-foreground"
+                              aria-hidden="true"
+                            />
+                          )}
+                          {tool.label}
+                        </span>
                       </label>
                       {checked && !allowed ? (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-destructive/35 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">
@@ -182,6 +205,12 @@ export function ToolPermissionList({
             >
               {group}
             </h4>
+            {group === "Responses" && (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Choose how the model searches, works with files, and runs longer
+                tasks. Availability depends on the selected provider.
+              </p>
+            )}
             {rows}
           </section>
         );

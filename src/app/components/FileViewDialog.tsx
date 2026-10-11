@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { FileContentView } from "@/app/components/FileContentView";
 import type { FileItem } from "@/app/types/types";
 import { imageMimeForPath } from "@/lib/uploads";
+import { fileBlob, saveBlob } from "@/lib/file-downloads";
 import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
 
 interface FileViewDialogProps {
@@ -67,8 +68,10 @@ function FileViewDialogSession({
     [fileName]
   );
   const isImage = imageMime !== null;
+  const isBinary = file?.encoding === "base64";
   const sourceImage = file?.sourceImage;
-  const displayName = sourceImage?.filename || file?.path || "New File";
+  const displayName =
+    sourceImage?.filename || file?.filename || file?.path || "New File";
   const sourcePageUrl = sourceImage
     ? safeSourcePageUrl(sourceImage.source_page_url)
     : null;
@@ -83,32 +86,26 @@ function FileViewDialogSession({
   }, [displayedContent]);
 
   const handleDownload = useCallback(() => {
-    if (displayName) {
-      let blob: Blob;
-      if (isImage && imageMime) {
-        // Image content is base64; decode to real bytes so the download is a
-        // valid image rather than a text file full of base64.
-        const byteChars = atob(displayedContent);
-        const bytes = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-          bytes[i] = byteChars.charCodeAt(i);
-        }
-        blob = new Blob([bytes], { type: imageMime });
-      } else {
-        blob = new Blob([displayedContent], {
-          type: "text/plain;charset=utf-8",
-        });
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = displayName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    try {
+      saveBlob(
+        fileBlob(
+          displayedContent,
+          isBinary || isImage ? "base64" : "utf-8",
+          file?.mimeType || imageMime || undefined
+        ),
+        displayName
+      );
+    } catch {
+      toast.error("This file could not be decoded for download.");
     }
-  }, [displayName, displayedContent, isImage, imageMime]);
+  }, [
+    displayName,
+    displayedContent,
+    isImage,
+    isBinary,
+    imageMime,
+    file?.mimeType,
+  ]);
 
   const handleEdit = useCallback(() => {
     setFileContent(file?.content ?? "");
@@ -229,7 +226,7 @@ function FileViewDialogSession({
           <div className="flex shrink-0 items-center gap-1 self-end min-[520px]:self-auto">
             {!isEditingMode && (
               <>
-                {!isImage && (
+                {!isImage && !isBinary && (
                   <Button
                     onClick={handleEdit}
                     variant="ghost"
@@ -244,7 +241,7 @@ function FileViewDialogSession({
                     Edit
                   </Button>
                 )}
-                {!isImage && (
+                {!isImage && !isBinary && (
                   <Button
                     onClick={handleCopy}
                     variant="ghost"
@@ -296,6 +293,11 @@ function FileViewDialogSession({
                         className="max-h-[52dvh] max-w-full rounded-lg border border-border/60 bg-background object-contain shadow-sm"
                       />
                     </div>
+                  ) : isBinary ? (
+                    <p className="text-sm text-muted-foreground">
+                      This file is ready to download. A text preview is not
+                      available.
+                    </p>
                   ) : (
                     <FileContentView
                       content={displayedContent}
