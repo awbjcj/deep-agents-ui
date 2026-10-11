@@ -211,17 +211,17 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           </div>
         </Button>
 
-        {presentation && (
-          <div className="px-2 py-3">
-            <StructuredToolResult
-              presentation={presentation}
-              onUseSuggestion={onUseEvidence}
-              disabled={isLoading}
-            />
-          </div>
-        )}
         {isExpanded && hasContent && (
           <div className="px-4 pb-4">
+            {presentation && (
+              <div className="py-3">
+                <StructuredToolResult
+                  presentation={presentation}
+                  onUseSuggestion={onUseEvidence}
+                  disabled={isLoading}
+                />
+              </div>
+            )}
             {uiComponent && stream && graphId ? (
               <div className="mt-4">
                 <LoadExternalComponent

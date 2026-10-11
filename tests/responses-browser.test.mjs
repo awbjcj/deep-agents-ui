@@ -259,12 +259,27 @@ test(
       await page
         .getByRole("navigation", { name: "Response sources" })
         .waitFor();
+      const sources = page.getByRole("navigation", {
+        name: "Response sources",
+      });
+      const sourceDisclosure = sources.locator("summary");
+      const sourceLink = sources.getByRole("link", {
+        name: "LangChain Responses integration",
+      });
+      assert.equal(await sourceLink.isVisible(), false);
+      const collapsedHeight = (await sources.boundingBox()).height;
+      await sourceDisclosure.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await sourceLink.isVisible(), true);
+      assert.ok((await sources.boundingBox()).height > collapsedHeight);
       assert.equal(
         await page
           .getByRole("link", { name: "LangChain Responses integration" })
           .getAttribute("rel"),
         "noopener noreferrer"
       );
+      await sourceDisclosure.press("Space");
+      assert.equal(await sourceLink.isVisible(), false);
       await page
         .getByText("The response reached its output limit.", { exact: false })
         .waitFor();
