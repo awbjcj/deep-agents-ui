@@ -119,7 +119,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     }, [ui]);
 
     return (
-      <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* Sticky banner stack lives outside the scroll container so urgent
           notifications (e.g. expired tokens) stay visible while the user
           scrolls long conversations. */}

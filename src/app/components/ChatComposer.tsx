@@ -86,8 +86,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       if (!textarea) return;
       // Reset first so deleting text also shrinks the field. Measuring the
       // rendered content includes soft wrapping as well as explicit newlines.
+      const scrollTop = textarea.scrollTop;
       textarea.style.height = "auto";
       textarea.style.height = `${textarea.scrollHeight}px`;
+      textarea.scrollTop = scrollTop;
     }, []);
     useLayoutEffect(resizeTextarea, [input, draftKey, resizeTextarea]);
     useEffect(() => {
@@ -294,7 +296,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             onKeyDown={handleKeyDown}
             aria-label="Message"
             placeholder={isLoading ? "Running..." : "Write your message..."}
-            className="min-h-14 w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent px-4 py-3 text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
+            className="max-h-[60dvh] min-h-14 w-full shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent px-4 py-3 text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
             rows={1}
           />
           <div className="flex items-center justify-between gap-2 p-3">
