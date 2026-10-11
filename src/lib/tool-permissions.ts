@@ -30,6 +30,8 @@ export interface UserToolPermissions {
   selected_tool_ids: string[];
   effective_tool_ids: string[];
   blocked_tool_ids: string[];
+  connection_mode?: "remote" | "gateway" | "proxy";
+  unavailable_tools?: Record<string, string>;
 }
 
 export interface TierToolPermissionsUpdate {

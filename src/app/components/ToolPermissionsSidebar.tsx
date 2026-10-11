@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToolPermissionList } from "@/app/components/tool-permissions/ToolPermissionList";
 import { useAuth } from "@/providers/AuthProvider";
+import { CONNECTIVITY_CHANGED_EVENT } from "@/lib/auth";
 import {
   ToolPermissionsApiError,
   apiGetUserToolPermissions,
@@ -114,8 +115,10 @@ export function ToolPermissionsSidebar() {
 
     const refreshOnFocus = () => void loadPermissions(true);
     window.addEventListener("focus", refreshOnFocus);
+    window.addEventListener(CONNECTIVITY_CHANGED_EVENT, refreshOnFocus);
     return () => {
       window.removeEventListener("focus", refreshOnFocus);
+      window.removeEventListener(CONNECTIVITY_CHANGED_EVENT, refreshOnFocus);
       loadController.current?.abort();
       saveController.current?.abort();
       requestGeneration.current += 1;
@@ -126,6 +129,9 @@ export function ToolPermissionsSidebar() {
   const dirty = snapshot
     ? !sameToolIds(draft, snapshot.selected_tool_ids)
     : false;
+  const availableIds = (snapshot?.allowed_tool_ids ?? []).filter(
+    (id) => !snapshot?.unavailable_tools?.[id]
+  );
   const canSave = canSaveToolPermissions({
     hasSnapshot: Boolean(snapshot && policyResolved),
     dirty,
@@ -140,7 +146,7 @@ export function ToolPermissionsSidebar() {
   };
 
   const toggleTool = (toolId: string) => {
-    if (!snapshot) return;
+    if (!snapshot || snapshot.unavailable_tools?.[toolId]) return;
     const selected = draft.includes(toolId);
     updateDraft(mergeRetainedSelection(draft, toolId, !selected));
   };
@@ -301,6 +307,11 @@ export function ToolPermissionsSidebar() {
                 {snapshot.selected_tool_ids.length} selected ·{" "}
                 {snapshot.effective_tool_ids.length} active ·{" "}
                 {snapshot.blocked_tool_ids.length} blocked by your administrator
+                {Object.keys(snapshot.unavailable_tools ?? {}).length > 0
+                  ? ` · ${
+                      Object.keys(snapshot.unavailable_tools ?? {}).length
+                    } unavailable in ${snapshot.connection_mode} mode`
+                  : ""}
               </p>
             </div>
 
@@ -332,14 +343,11 @@ export function ToolPermissionsSidebar() {
                   size="sm"
                   variant="outline"
                   disabled={
-                    saving ||
-                    snapshot.allowed_tool_ids.every((id) => draft.includes(id))
+                    saving || availableIds.every((id) => draft.includes(id))
                   }
                   onClick={() =>
                     updateDraft(
-                      [
-                        ...new Set([...draft, ...snapshot.allowed_tool_ids]),
-                      ].sort()
+                      [...new Set([...draft, ...availableIds])].sort()
                     )
                   }
                 >
@@ -367,6 +375,7 @@ export function ToolPermissionsSidebar() {
               selectedIds={draft}
               allowedIds={snapshot.allowed_tool_ids}
               effectiveIds={snapshot.effective_tool_ids}
+              unavailableTools={snapshot.unavailable_tools}
               idPrefix={`personal-tools-${accountKey}`}
               saving={saving}
               onToggle={toggleTool}

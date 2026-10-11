@@ -412,6 +412,14 @@ export interface RunModeInfo {
   run_mode_time_gap: string;
 }
 
+export const CONNECTIVITY_CHANGED_EVENT = "vsda-connectivity-changed";
+
+function notifyConnectivityChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CONNECTIVITY_CHANGED_EVENT));
+  }
+}
+
 export async function apiGetRunMode(): Promise<RunModeInfo> {
   const res = await apiFetch("/admin/run-mode");
   if (!res.ok) {
@@ -431,7 +439,9 @@ export async function apiSetRunMode(mode: RunMode): Promise<RunModeInfo> {
       (data as { detail?: string }).detail || "Failed to set run mode"
     );
   }
-  return res.json();
+  const result: RunModeInfo = await res.json();
+  notifyConnectivityChanged();
+  return result;
 }
 
 // --- Tier model allowlist ---
@@ -1427,7 +1437,9 @@ export async function apiSetAdminConnectivity(
         "Failed to update connectivity settings"
     );
   }
-  return res.json();
+  const result: AdminConnectivityResponse = await res.json();
+  notifyConnectivityChanged();
+  return result;
 }
 
 export interface UserConnectivityResponse {
@@ -1474,5 +1486,7 @@ export async function apiSetUserConnectivity(
         "Failed to update user connectivity"
     );
   }
-  return res.json();
+  const result: UserConnectivityResponse = await res.json();
+  notifyConnectivityChanged();
+  return result;
 }

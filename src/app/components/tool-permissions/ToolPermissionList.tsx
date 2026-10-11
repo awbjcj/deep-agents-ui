@@ -18,6 +18,7 @@ interface ToolPermissionListProps {
   selectedIds: readonly string[];
   allowedIds: readonly string[];
   effectiveIds?: readonly string[];
+  unavailableTools?: Readonly<Record<string, string>>;
   savedSelectedIds?: readonly string[];
   selectedStatusLabel?: string;
   compactGroups?: boolean;
@@ -31,6 +32,7 @@ export function ToolPermissionList({
   selectedIds,
   allowedIds,
   effectiveIds = selectedIds,
+  unavailableTools = {},
   savedSelectedIds = selectedIds,
   selectedStatusLabel = "Active",
   compactGroups = false,
@@ -62,10 +64,13 @@ export function ToolPermissionList({
               const checked = selectedIds.includes(tool.id);
               const allowed = allowedIds.includes(tool.id);
               const effective = effectiveIds.includes(tool.id);
+              const unavailableReason = unavailableTools[tool.id];
               const pendingSelection = checked && allowed && !effective;
               const pendingRemoval = !checked && effective;
               const disabled =
-                saving || !canToggleTool(tool.id, selectedIds, allowedIds);
+                saving ||
+                Boolean(unavailableReason) ||
+                !canToggleTool(tool.id, selectedIds, allowedIds);
               const controlId = `${idPrefix}-${tool.id}`;
               const FeatureIcon = (
                 {
@@ -111,7 +116,11 @@ export function ToolPermissionList({
                           {tool.label}
                         </span>
                       </label>
-                      {checked && !allowed ? (
+                      {unavailableReason ? (
+                        <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+                          Unavailable
+                        </span>
+                      ) : checked && !allowed ? (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-destructive/35 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold text-foreground">
                           <Ban
                             className="h-3 w-3 text-destructive"
@@ -138,6 +147,9 @@ export function ToolPermissionList({
                       className="mt-1 space-y-1 text-[11px] leading-relaxed text-muted-foreground"
                     >
                       <p>{tool.description}</p>
+                      {unavailableReason ? (
+                        <p className="font-medium">{unavailableReason}</p>
+                      ) : null}
                       {tool.prerequisites ? (
                         <p className="font-medium text-muted-foreground">
                           {tool.prerequisites}
