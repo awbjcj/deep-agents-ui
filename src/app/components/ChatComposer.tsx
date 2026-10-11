@@ -4,6 +4,7 @@ import React, {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
   FormEvent,
 } from "react";
@@ -13,6 +14,7 @@ import type { Assistant } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
 import { ReferenceFileDialog } from "@/app/components/ReferenceFileDialog";
+import { ResponseJobs } from "@/app/components/ResponseJobs";
 import { useAttachments } from "@/app/hooks/useAttachments";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
 import { useQueryState } from "nuqs";
@@ -79,6 +81,27 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const [attachMenuOpen, setAttachMenuOpen] = useState(false);
     const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const resizeTextarea = useCallback(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      // Reset first so deleting text also shrinks the field. Measuring the
+      // rendered content includes soft wrapping as well as explicit newlines.
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }, []);
+    useLayoutEffect(resizeTextarea, [input, draftKey, resizeTextarea]);
+    useEffect(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      let width = textarea.clientWidth;
+      const observer = new ResizeObserver(() => {
+        if (textarea.clientWidth === width) return;
+        width = textarea.clientWidth;
+        resizeTextarea();
+      });
+      observer.observe(textarea);
+      return () => observer.disconnect();
+    }, [resizeTextarea]);
     const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
     useEffect(() => {
       if (!evidenceRequest || lastEvidenceRef.current === evidenceRequest)
@@ -269,9 +292,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-label="Message"
             placeholder={isLoading ? "Running..." : "Write your message..."}
-            className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
-            rows={Math.min(8, Math.max(1, input.split("\n").length))}
+            className="min-h-14 w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent px-4 py-3 text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
+            rows={1}
           />
           <div className="flex items-center justify-between gap-2 p-3">
             <div className="flex items-center gap-2">
@@ -369,6 +393,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </div>
                 )}
               </div>
+              <ResponseJobs
+                key={threadId}
+                threadId={threadId}
+              />
             </div>
             <Button
               type={isLoading ? "button" : "submit"}

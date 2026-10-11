@@ -12,7 +12,10 @@ test(
       process.env.RESPONSES_PLAYWRIGHT_MODULE ?? "playwright"
     );
     const root = resolve(import.meta.dirname, "../out");
-    const evidence = resolve(import.meta.dirname, "../docs/evidence/responses");
+    const evidence = resolve(
+      process.env.RESPONSES_BROWSER_EVIDENCE ??
+        resolve(import.meta.dirname, "../docs/evidence/responses")
+    );
     const server = createServer(async (request, response) => {
       const path = new URL(request.url, "http://localhost").pathname
         .replace(/^\/chat\/?/, "")
@@ -40,7 +43,10 @@ test(
       }
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.RESPONSES_BROWSER_EXECUTABLE,
+    });
     const page = await browser.newPage({
       viewport: { width: 1360, height: 940 },
     });
@@ -52,6 +58,7 @@ test(
     let failJobRefresh = true;
     let failJobCancel = true;
     let jobRefreshes = 0;
+    const jobRequests = [];
     let jobs = [
       { id: "job-active", model: "gpt-4.1", status: "queued" },
       {
@@ -169,6 +176,11 @@ test(
         return route.continue();
       let body = {};
       if (path.includes("/response-jobs")) {
+        jobRequests.push(path);
+        if (
+          !/^\/api\/threads\/responses-test\/response-jobs(?:\/|$)/.test(path)
+        )
+          return route.fulfill({ status: 404, body: "Not Found" });
         if (failJobLoad)
           return route.fulfill({ status: 503, body: "Unavailable" });
         const tail = path.split("/response-jobs")[1].split("/").filter(Boolean);
@@ -283,6 +295,11 @@ test(
         .getByRole("alert")
         .getByText("Background jobs could not be loaded.")
         .waitFor();
+      assert.equal(
+        jobRequests[0],
+        "/api/threads/responses-test/response-jobs",
+        "Background jobs must use the backend route with a single /api prefix"
+      );
       assert.equal(
         await dialog
           .getByText("No background jobs yet", { exact: true })

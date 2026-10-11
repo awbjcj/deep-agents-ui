@@ -1,6 +1,4 @@
 "use client";
-import { ResponseJobs } from "@/app/components/ResponseJobs";
-
 import React, { useState, useRef, useMemo, useCallback, Fragment } from "react";
 import { CheckCircle, Clock, Circle, FileIcon, X } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
@@ -121,7 +119,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     }, [ui]);
 
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
         {/* Sticky banner stack lives outside the scroll container so urgent
           notifications (e.g. expired tokens) stay visible while the user
           scrolls long conversations. */}
@@ -424,10 +422,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 )}
               </div>
             )}
-            <ResponseJobs
-              key={threadId}
-              threadId={threadId}
-            />
             <ChatComposer
               evidenceRequest={evidenceRequest}
               onEvidenceConsumed={consumeEvidence}

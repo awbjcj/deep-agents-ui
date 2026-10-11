@@ -55,7 +55,7 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
   const [cursors, setCursors] = useState<string[]>([]);
   const before = cursors.at(-1);
   const base = threadId
-    ? `/api/threads/${encodeURIComponent(threadId)}/response-jobs`
+    ? `/threads/${encodeURIComponent(threadId)}/response-jobs`
     : "";
 
   useEffect(() => {
@@ -160,22 +160,20 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
         setOpen(nextOpen);
       }}
     >
-      <div className="flex justify-end px-4 pb-1">
-        <DialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={!threadId}
-            className="gap-2 text-xs text-muted-foreground"
-          >
-            <Clock3
-              className="h-3.5 w-3.5"
-              aria-hidden="true"
-            />
-            Background jobs
-          </Button>
-        </DialogTrigger>
-      </div>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={!threadId}
+          className="gap-2 text-xs text-muted-foreground"
+        >
+          <Clock3
+            className="h-3.5 w-3.5"
+            aria-hidden="true"
+          />
+          Background jobs
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-h-[85dvh] gap-0 overflow-y-auto p-0 sm:max-w-xl">
         <div className="space-y-2 border-b border-border p-5 pr-12">
           <DialogTitle className="flex items-center gap-2">
