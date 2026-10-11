@@ -32,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
 import {
   formatUsageAmount,
@@ -41,7 +40,16 @@ import {
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { RunLimitSettings } from "@/app/components/RunLimitSettings";
-import { requiresThinking } from "@/lib/model-controls";
+import {
+  AdaptiveThinkingControl,
+  OutputTokenControl,
+  ReasoningEffortControl,
+} from "@/app/components/ModelInferenceControls";
+import {
+  linkedModelControls,
+  recommendedModelControls,
+  requiresThinking,
+} from "@/lib/model-controls";
 import {
   apiGetAllowedModels,
   apiGetUserModel,
@@ -104,10 +112,6 @@ const PRESET_LABELS: Record<ModelPreset, string> = {
 };
 
 const PRESET_VALUES: ModelPreset[] = ["economy", "balanced", "deep_work"];
-
-const MAX_TOKENS_MIN = 512;
-const MAX_TOKENS_MAX = 32768;
-const MAX_TOKENS_STEP = 256;
 
 interface DraftState {
   provider: string;
@@ -408,7 +412,16 @@ export function ModelSidebar() {
       const entry = allowed.find(
         (m) => m.provider === next.provider && m.model === next.model
       );
-      if (requiresThinking(entry, next.effort)) next.thinking = true;
+      const reasoningChanged =
+        next.provider !== d.provider ||
+        next.model !== d.model ||
+        next.effort !== d.effort ||
+        next.thinking !== d.thinking;
+      if (reasoningChanged) {
+        Object.assign(next, linkedModelControls(entry, next));
+      } else if (requiresThinking(entry, next.effort)) {
+        next.thinking = true;
+      }
       return next;
     });
   }
@@ -420,32 +433,12 @@ export function ModelSidebar() {
       (m) => m.provider === provider && m.model === model
     );
     if (!entry) return;
-    const defaultEffort = entry.supports_effort
-      ? entry.efforts[0] ?? null
-      : null;
     updateDraft({
       provider,
       model,
-      effort: defaultEffort,
-      thinking: entry.thinking_required
-        ? true
-        : entry.supports_thinking
-        ? false
-        : null,
+      ...recommendedModelControls(entry),
     });
   }
-
-  const sliderFillPct = draft
-    ? Math.min(
-        100,
-        Math.max(
-          0,
-          ((draft.max_tokens - MAX_TOKENS_MIN) /
-            (MAX_TOKENS_MAX - MAX_TOKENS_MIN)) *
-            100
-        )
-      )
-    : 0;
 
   const effortOptions = currentModelEntry?.efforts.length
     ? currentModelEntry.efforts
@@ -559,7 +552,7 @@ export function ModelSidebar() {
                 <div
                   role="radiogroup"
                   aria-label="Model preset"
-                  className="grid grid-cols-4 gap-2"
+                  className="grid grid-cols-2 gap-2"
                 >
                   {PRESET_OPTIONS.map((option) => {
                     const active =
@@ -668,7 +661,7 @@ export function ModelSidebar() {
                 >
                   <SelectTrigger
                     id="model-select"
-                    className="aptiv-glass-soft"
+                    className="aptiv-glass-soft h-11 rounded-lg"
                   >
                     <SelectValue placeholder="Choose a model" />
                   </SelectTrigger>
@@ -689,112 +682,36 @@ export function ModelSidebar() {
                 </Select>
               </section>
 
-              <section className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Reasoning effort
-                  </Label>
-                  {!currentModelEntry?.supports_effort && (
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Not supported
-                    </span>
-                  )}
-                </div>
-                <div
-                  className="effort-btn-group"
-                  role="group"
-                  aria-label="Reasoning effort"
-                >
-                  {effortOptions.map((effort) => {
-                    const supported = !!currentModelEntry?.supports_effort;
-                    const active = supported && draft.effort === effort;
-                    return (
-                      <button
-                        key={effort}
-                        type="button"
-                        className={[
-                          "effort-btn",
-                          active ? "effort-btn--active" : "",
-                        ].join(" ")}
-                        onClick={() => updateDraft({ effort })}
-                        disabled={!supported || isSaving}
-                      >
-                        {effort}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="space-y-2">
-                <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-sm font-medium text-foreground">
-                      Adaptive thinking
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {thinkingRequired
-                        ? currentModelEntry?.thinking_required
-                          ? "Always on for this model; choose effort to adjust depth"
-                          : "Required at this effort; choose a lower effort to turn it off"
-                        : currentModelEntry?.supports_thinking
-                        ? "Let the model take longer on hard prompts"
-                        : "Not supported by this model"}
-                    </span>
-                  </div>
-                  <Switch
-                    checked={thinkingRequired || !!draft.thinking}
-                    onCheckedChange={(checked) =>
-                      updateDraft({ thinking: checked })
-                    }
-                    disabled={
-                      !currentModelEntry?.supports_thinking ||
-                      thinkingRequired ||
-                      isSaving
-                    }
-                  />
-                </div>
-              </section>
-
-              <section className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="max-tokens-slider"
-                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                  >
-                    Output cap
-                  </Label>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {draft.max_tokens.toLocaleString()}
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      tokens
-                    </span>
-                  </span>
-                </div>
-                <input
-                  id="max-tokens-slider"
-                  type="range"
-                  className="aptiv-slider"
-                  min={MAX_TOKENS_MIN}
-                  max={MAX_TOKENS_MAX}
-                  step={MAX_TOKENS_STEP}
-                  value={draft.max_tokens}
-                  disabled={isSaving}
-                  onChange={(e) =>
-                    updateDraft({ max_tokens: parseInt(e.target.value, 10) })
-                  }
-                  style={
-                    {
-                      ["--aptiv-slider-fill" as string]: `${sliderFillPct}%`,
-                    } as React.CSSProperties
-                  }
-                />
-                <div className="aptiv-slider-ticks">
-                  <span className="aptiv-slider-tick">0.5k</span>
-                  <span className="aptiv-slider-tick">16k</span>
-                  <span className="aptiv-slider-tick">32k</span>
-                </div>
-              </section>
+              <ReasoningEffortControl
+                options={effortOptions}
+                value={draft.effort}
+                supported={!!currentModelEntry?.supports_effort}
+                disabled={isSaving}
+                onChange={(effort) => updateDraft({ effort })}
+              />
+              <AdaptiveThinkingControl
+                checked={thinkingRequired || !!draft.thinking}
+                disabled={
+                  !currentModelEntry?.supports_thinking ||
+                  thinkingRequired ||
+                  isSaving
+                }
+                description={
+                  thinkingRequired
+                    ? currentModelEntry?.thinking_required
+                      ? "Always on for this model; choose effort to adjust depth"
+                      : "Required at this effort; choose a lower effort to turn it off"
+                    : currentModelEntry?.supports_thinking
+                    ? "Let the model take longer on hard prompts"
+                    : "Not supported by this model"
+                }
+                onChange={(thinking) => updateDraft({ thinking })}
+              />
+              <OutputTokenControl
+                value={draft.max_tokens}
+                disabled={isSaving}
+                onChange={(max_tokens) => updateDraft({ max_tokens })}
+              />
             </>
           )}
         </div>

@@ -54,11 +54,14 @@ test(
           setup(build) {
             build.onLoad({ filter: /[\\/]lib[\\/]auth\.ts$/ }, () => ({
               contents: `
-              const effective = {provider: "test", model: "example", effort: "low", thinking: false, max_tokens: 4096};
+              const effective = {provider: "test", model: "example", effort: "low", thinking: false, max_tokens: Number(new URLSearchParams(location.search).get("cap")) || 4096};
               export const apiGetUserModel = async () => ({effective, preset: null});
-              export const apiGetAllowedModels = async () => ({models: [{...effective, supports_effort: true, efforts: ["low", "high"], supports_thinking: true, thinking_required: false}]});
+              const linked = new URLSearchParams(location.search).has("linked");
+              const entry = {...effective, supports_effort: true, efforts: ["none", "minimal", "low", "medium", "high", "xhigh", "max"], supports_thinking: true, thinking_required: false, disabled_thinking_efforts: ["none", "minimal", "low", "medium", "high"]};
+              const defaults = [{effort: "low", thinking: false, max_tokens: 8192}, {effort: "low", thinking: true, max_tokens: 12288}, {effort: "xhigh", thinking: true, max_tokens: 40960}];
+              export const apiGetAllowedModels = async () => ({models: linked ? [{...entry, control_defaults: defaults}, {...entry, model: "alternative", recommended_effort: "medium", recommended_thinking: true, recommended_max_tokens: 16384, control_defaults: [{effort: "medium", thinking: true, max_tokens: 16384}]}] : [entry]});
               window.modelSaves = [];
-              export const apiSetUserModel = async (payload) => { window.modelSaves.push(payload); throw new Error("Save unavailable"); };
+              export const apiSetUserModel = async (payload) => { window.modelSaves.push(payload); if (window.modelSaveSucceeds) return {effective: {...effective, ...payload}, preset: null}; throw new Error("Save unavailable"); };
               let connectivity = {run_mode: "gateway", proxy_url: "https://saved.example", default_run_mode: "gateway", run_mode_source: "user", proxy_url_source: "user"};
               export const apiGetUserConnectivity = async () => connectivity;
               window.connectivitySaves = [];
@@ -71,6 +74,7 @@ test(
               };
               export const apiGetImageFetching = async () => ({enabled: false, effective: false, sources: null});
               export const apiSetImageFetching = apiGetImageFetching;
+              export const apiFetch = async () => new Response(JSON.stringify([]), {headers: {"Content-Type": "application/json"}});
             `,
               loader: "ts",
             }));
@@ -83,10 +87,15 @@ test(
               contents: "export const useTokenUsage = () => null;",
               loader: "ts",
             }));
+            build.onLoad({ filter: /[\\/]AuthProvider\.tsx$/ }, () => ({
+              contents:
+                'export const useAuth = () => ({user: {username: "fixture"}});',
+              loader: "ts",
+            }));
             build.onLoad(
               {
                 filter:
-                  /[\\/](RunLimitSettings|ChatComposer|ChatMessage|NotificationBanner|PendingToolApproval|TasksFilesSidebar)\.tsx$/,
+                  /[\\/](ChatComposer|ChatMessage|NotificationBanner|PendingToolApproval|TasksFilesSidebar)\.tsx$/,
               },
               ({ path }) => ({
                 contents: `export const ${
@@ -142,11 +151,71 @@ test(
       });
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
+      await page.goto(`${url}?view=model&linked=1`);
+      const linkedSlider = page.getByRole("slider", { name: "Output cap" });
+      await linkedSlider.waitFor();
+      await page.evaluate(() => { window.modelSaveSucceeds = true; });
+      await page.getByRole("button", { name: "xhigh", exact: true }).click();
+      const linkedThinking = page.getByRole("switch", { name: "Adaptive thinking" });
+      assert.equal(await linkedThinking.getAttribute("aria-checked"), "true");
+      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "40,960 tokens");
+      await page.waitForFunction(() => window.modelSaves.length === 1);
+      assert.deepEqual(await page.evaluate(() => window.modelSaves[0]), {
+        provider: "test", model: "example", effort: "xhigh", thinking: true, max_tokens: 40960,
+      });
+      await page.getByRole("button", { name: "low", exact: true }).click();
+      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "12,288 tokens");
+      await page.waitForFunction(() => window.modelSaves.length === 2);
+      await linkedThinking.click();
+      assert.equal(await linkedThinking.getAttribute("aria-checked"), "false");
+      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "8,192 tokens");
+      await page.waitForFunction(() => window.modelSaves.length === 3);
+      assert.deepEqual(await page.evaluate(() => window.modelSaves[2]), {
+        provider: "test", model: "example", effort: "low", thinking: false, max_tokens: 8192,
+      });
+      await page.getByRole("combobox", { name: "Model" }).click();
+      await page.getByRole("option", { name: /alternative/ }).click();
+      assert.equal(await linkedThinking.getAttribute("aria-checked"), "true");
+      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "16,384 tokens");
+      await page.waitForFunction(() => window.modelSaves.length === 4);
+      assert.deepEqual(await page.evaluate(() => window.modelSaves[3]), {
+        provider: "test", model: "alternative", effort: "medium", thinking: true, max_tokens: 16384,
+      });
       await page.goto(`${url}?view=model`);
       const slider = page.getByRole("slider", { name: "Output cap" });
+      await slider.waitFor();
+      const steps = page.getByRole("spinbutton", {
+        name: "Maximum agent steps",
+      });
+      await steps.fill("10001");
+      assert.equal(await steps.getAttribute("aria-invalid"), "true");
+      assert.equal(
+        await page.getByRole("button", { name: "Save limit" }).isDisabled(),
+        true
+      );
+      await steps.fill("1500");
+      await page.getByRole("button", { name: "Save limit" }).click();
+      assert.equal(
+        await page.evaluate(() =>
+          localStorage.getItem("vsda:run-limit:fixture")
+        ),
+        "1500"
+      );
+      await page.waitForTimeout(1000);
+      assert.equal(
+        await page.evaluate(() => window.modelSaves.length),
+        0,
+        "Loading settings must not round or save a cap"
+      );
       await slider.focus();
       await page.keyboard.press("ArrowRight");
       await page.waitForFunction(() => window.modelSaves.length === 1);
+      assert.equal(
+        await page.evaluate(() => window.modelSaves[0].max_tokens),
+        8192,
+        "Keyboard movement chooses the next common cap"
+      );
+      assert.equal(await slider.getAttribute("aria-valuetext"), "8,192 tokens");
       await page.waitForTimeout(1900);
       assert.equal(
         await page.evaluate(() => window.modelSaves.length),
@@ -162,6 +231,145 @@ test(
       await page.waitForFunction(() => window.modelSaves.length === 3);
       if (evidence)
         await page.screenshot({ path: join(evidence, "model-settings.png") });
+
+      await page.goto(`${url}?view=model&cap=12345`);
+      await slider.waitFor();
+      assert.equal(await steps.inputValue(), "1500");
+      await page.waitForTimeout(1000);
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "12,345 tokens"
+      );
+      assert.equal(await page.evaluate(() => window.modelSaves.length), 0);
+      await page.getByRole("button", { name: "Increase output cap" }).click();
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "16,384 tokens"
+      );
+      await page.getByRole("button", { name: "Decrease output cap" }).click();
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "12,345 tokens",
+        "Custom stops stay stable while editing"
+      );
+      await slider.focus();
+      await page.keyboard.press("Home");
+      assert.equal(await slider.getAttribute("aria-valuetext"), "512 tokens");
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Decrease output cap" })
+          .isDisabled(),
+        true
+      );
+      await page.keyboard.press("End");
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "65,536 tokens"
+      );
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Increase output cap" })
+          .isDisabled(),
+        true
+      );
+      // Pointer clicks on the native track must also select a discrete stop.
+      const track = await slider.boundingBox();
+      await page.mouse.click(
+        track.x + track.width / 2,
+        track.y + track.height / 2
+      );
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "12,345 tokens"
+      );
+      await page.mouse.move(
+        track.x + track.width / 2,
+        track.y + track.height / 2
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        track.x + track.width * 0.75,
+        track.y + track.height / 2,
+        { steps: 8 }
+      );
+      await page.mouse.up();
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "32,768 tokens",
+        "Dragging snaps to a common cap"
+      );
+      await page.getByRole("button", { name: "xhigh", exact: true }).click();
+      const thinking = page.getByRole("switch", { name: "Adaptive thinking" });
+      assert.equal(await thinking.getAttribute("aria-checked"), "true");
+      assert.equal(await thinking.isDisabled(), true);
+      await page.getByRole("button", { name: "low", exact: true }).click();
+      assert.equal(await thinking.isEnabled(), true);
+
+      await page.evaluate(() => {
+        window.modelSaveSucceeds = true;
+      });
+      await slider.focus();
+      await page.keyboard.press("Home");
+      for (let step = 0; step < 6; step++)
+        await page.keyboard.press("ArrowRight");
+      await page.waitForFunction(
+        () => window.modelSaves.at(-1)?.max_tokens === 16384
+      );
+      await page.getByRole("button", { name: "Increase output cap" }).waitFor();
+      await page.getByRole("button", { name: "Decrease output cap" }).click();
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "12,345 tokens",
+        "A successful autosave retains custom slider stops"
+      );
+      await slider.focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      assert.equal(
+        await slider.getAttribute("aria-valuetext"),
+        "24,576 tokens"
+      );
+
+      for (const width of [320, 420]) {
+        await page.setViewportSize({ width, height: 1000 });
+        for (const theme of ["light", "dark"]) {
+          await page.evaluate(
+            (theme) =>
+              document.documentElement.classList.toggle(
+                "dark",
+                theme === "dark"
+              ),
+            theme
+          );
+          await slider.scrollIntoViewIfNeeded();
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth <= innerWidth
+            ),
+            true,
+            "Settings fit narrow layouts"
+          );
+          assert.equal(
+            await page
+              .getByRole("combobox", { name: "Model", exact: true })
+              .evaluate(
+                (control) => control.getBoundingClientRect().right <= innerWidth
+              ),
+            true,
+            "The settings scroll area must not hide overflow beyond the viewport"
+          );
+          assert.equal(
+            await page
+              .getByRole("button", { name: "xhigh", exact: true })
+              .evaluate((button) => button.scrollWidth <= button.clientWidth),
+            true
+          );
+          if (evidence)
+            await page.screenshot({
+              path: join(evidence, `model-settings-${width}-${theme}.png`),
+            });
+        }
+      }
 
       await page.goto(`${url}?view=connectivity`);
       await page.getByRole("radio", { name: /proxy/ }).click();
