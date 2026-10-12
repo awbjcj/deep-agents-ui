@@ -6,6 +6,8 @@ import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { reasoningSummary } from "@/lib/reasoning-summary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
+import { contextSummary } from "@/lib/context-summary";
 import type {
   SubAgent,
   ToolCall,
@@ -67,6 +69,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
+    const summary = useMemo(
+      () => contextSummary(message, messageContent),
+      [message, messageContent]
+    );
     const reasoning = useMemo(() => reasoningSummary(message), [message]);
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
@@ -183,13 +189,13 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       <div
         className={cn(
           "flex w-full max-w-full overflow-x-hidden",
-          isUser && "flex-row-reverse"
+          isUser && !summary && "flex-row-reverse"
         )}
       >
         <div
           className={cn(
             "min-w-0 max-w-full",
-            isUser ? "max-w-[76%]" : "w-full"
+            isUser && !summary ? "max-w-[76%]" : "w-full"
           )}
         >
           {hasAttachments && (
@@ -361,7 +367,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
             </details>
           )}
-          {hasContent && (
+          {summary && <ContextSummaryCard summary={summary} />}
+          {hasContent && !summary && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
