@@ -569,20 +569,18 @@ function HomePageContent() {
     const savedConfig = getConfig();
     if (savedConfig && savedConfig.assistantId) {
       setConfig(savedConfig);
-      if (!assistantId) {
-        setAssistantId(savedConfig.assistantId);
-      }
     } else if (getDeploymentUrl()) {
       setConfigDialogOpen(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (config && !assistantId) {
+    // nuqs URL writes can cancel an in-flight login redirect. Restore the
+    // saved assistant only after authentication permits staying on this page.
+    if (!authLoading && user && config && !assistantId) {
       setAssistantId(config.assistantId);
     }
-  }, [config, assistantId, setAssistantId]);
+  }, [authLoading, user, config, assistantId, setAssistantId]);
 
   const handleSaveConfig = useCallback((newConfig: StandaloneConfig) => {
     saveConfig(newConfig);
