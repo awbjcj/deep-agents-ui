@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   CircleAlert,
   Clock3,
   Download,
@@ -12,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import { saveBlob } from "@/lib/file-downloads";
 import {
   Dialog,
@@ -174,8 +176,8 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
           Background jobs
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85dvh] gap-0 overflow-y-auto p-0 sm:max-w-xl">
-        <div className="space-y-2 border-b border-border p-5 pr-12">
+      <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl">
+        <div className="shrink-0 space-y-2 border-b border-border p-5 pr-12">
           <DialogTitle className="flex items-center gap-2">
             <Clock3
               className="h-5 w-5 text-primary"
@@ -187,12 +189,12 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
             Track model calls for this conversation and retrieve their results.
           </DialogDescription>
         </div>
-        <div className="space-y-3 p-5">
+        <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <p
               role="status"
               aria-atomic="true"
-              className="text-xs text-muted-foreground"
+              className="text-xs tabular-nums text-muted-foreground"
             >
               {loaded
                 ? `${jobs.filter(active).length} active · ${
@@ -296,13 +298,22 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
           {jobs.map((job) => (
             <div
               key={job.id}
-              className="min-w-0 space-y-3 rounded-xl border border-border bg-muted/15 p-4"
+              className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="min-w-0 break-all text-sm font-semibold">
                   {job.model}
                 </p>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium",
+                    job.status === "completed"
+                      ? "border-border bg-muted/30 text-[var(--text-brand-secondary)]"
+                      : job.status === "failed" || job.status === "incomplete"
+                      ? "border-amber-500/30 bg-amber-500/10 text-[var(--text-warning)]"
+                      : "border-border bg-muted/40 text-muted-foreground"
+                  )}
+                >
                   {active(job) ? (
                     <Clock3
                       className="h-3.5 w-3.5"
@@ -310,7 +321,7 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
                     />
                   ) : job.status === "completed" ? (
                     <CheckCircle2
-                      className="h-3.5 w-3.5 text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)]"
+                      className="h-3.5 w-3.5"
                       aria-hidden="true"
                     />
                   ) : (
@@ -329,101 +340,128 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
                     : "Status refreshes automatically while this panel is open."}
                 </p>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy !== null}
-                onClick={() => void act(job, active(job) ? "cancel" : "delete")}
-              >
-                {busy === job.id ? (
-                  <Loader2
-                    className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
-                    aria-hidden="true"
-                  />
-                ) : active(job) ? (
-                  <Square
-                    className="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Trash2
-                    className="h-3.5 w-3.5"
-                    aria-hidden="true"
-                  />
-                )}
-                {active(job) ? "Cancel job" : "Delete stored response"}
-              </Button>
-              {job.result?.output
-                ?.filter((item) => item.type === "message")
-                .map((item, index) => (
-                  <div
-                    key={index}
-                    className="space-y-2 border-t border-border pt-3"
-                  >
-                    {item.content?.map((part, partIndex) => (
-                      <div key={partIndex}>
-                        {part.text && (
-                          <p className="whitespace-pre-wrap break-words text-sm">
-                            {part.text}
-                          </p>
-                        )}
-                        {part.annotations
-                          ?.filter(
-                            (ref) =>
-                              ref.type === "container_file_citation" &&
-                              ref.file_id &&
-                              ref.filename
-                          )
-                          .map((ref) => (
-                            <Button
-                              key={ref.file_id}
-                              variant="link"
-                              size="sm"
-                              className="h-auto min-h-9 max-w-full whitespace-normal break-all text-left"
-                              onClick={() =>
-                                void (async () => {
-                                  setActionError("");
-                                  try {
-                                    const response = await apiFetch(
-                                      `${base}/${encodeURIComponent(
-                                        job.id
-                                      )}/files/${encodeURIComponent(
-                                        ref.file_id!
-                                      )}`
-                                    );
-                                    if (!response.ok)
-                                      throw new Error(
-                                        "This provider file is unavailable or has expired."
-                                      );
-                                    saveBlob(
-                                      await response.blob(),
-                                      ref.filename!
-                                    );
-                                  } catch (cause) {
-                                    setActionError(
-                                      cause instanceof Error
-                                        ? cause.message
-                                        : "Download failed."
-                                    );
-                                  }
-                                })()
-                              }
+              {job.result?.output?.some((item) => item.type === "message") && (
+                <details className="group/result rounded-lg border border-border/70 bg-muted/15">
+                  <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                    View result
+                    <ChevronDown
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-open/result:rotate-180"
+                      aria-hidden="true"
+                    />
+                  </summary>
+                  <div className="space-y-3 border-t border-border/70 p-3">
+                    {job.result?.output
+                      ?.filter((item) => item.type === "message")
+                      .map((item, index) => (
+                        <div
+                          key={index}
+                          className="space-y-2"
+                        >
+                          {item.content?.map((part, partIndex) => (
+                            <div
+                              key={partIndex}
+                              className="space-y-2"
                             >
-                              <Download
-                                className="h-3.5 w-3.5 shrink-0"
-                                aria-hidden="true"
-                              />
-                              Download {ref.filename}
-                            </Button>
+                              {part.text && (
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">
+                                  {part.text}
+                                </p>
+                              )}
+                              {part.annotations
+                                ?.filter(
+                                  (ref) =>
+                                    ref.type === "container_file_citation" &&
+                                    ref.file_id &&
+                                    ref.filename
+                                )
+                                .map((ref) => (
+                                  <Button
+                                    key={ref.file_id}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-auto min-h-9 max-w-full justify-start whitespace-normal break-all text-left"
+                                    onClick={() =>
+                                      void (async () => {
+                                        setActionError("");
+                                        try {
+                                          const response = await apiFetch(
+                                            `${base}/${encodeURIComponent(
+                                              job.id
+                                            )}/files/${encodeURIComponent(
+                                              ref.file_id!
+                                            )}`
+                                          );
+                                          if (!response.ok)
+                                            throw new Error(
+                                              "This provider file is unavailable or has expired."
+                                            );
+                                          saveBlob(
+                                            await response.blob(),
+                                            ref.filename!
+                                          );
+                                        } catch (cause) {
+                                          setActionError(
+                                            cause instanceof Error
+                                              ? cause.message
+                                              : "Download failed."
+                                          );
+                                        }
+                                      })()
+                                    }
+                                  >
+                                    <Download
+                                      className="h-3.5 w-3.5 shrink-0"
+                                      aria-hidden="true"
+                                    />
+                                    Download {ref.filename}
+                                  </Button>
+                                ))}
+                            </div>
                           ))}
-                      </div>
-                    ))}
+                        </div>
+                      ))}
                   </div>
-                ))}
+                </details>
+              )}
+              <div className="flex justify-end border-t border-border/60 pt-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-auto min-h-8 whitespace-normal text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  disabled={busy !== null}
+                  onClick={() =>
+                    void act(job, active(job) ? "cancel" : "delete")
+                  }
+                >
+                  {busy === job.id ? (
+                    <Loader2
+                      className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  ) : active(job) ? (
+                    <Square
+                      className="h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Trash2
+                      className="h-3.5 w-3.5"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {busy === job.id
+                    ? active(job)
+                      ? "Cancelling…"
+                      : "Deleting…"
+                    : active(job)
+                    ? "Cancel job"
+                    : "Delete stored response"}
+                </Button>
+              </div>
             </div>
           ))}
         </div>
-        <p className="border-t border-border bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground">
+        <p className="shrink-0 border-t border-border bg-muted/20 px-5 py-3 text-[11px] leading-relaxed text-muted-foreground">
           Cancelling stops the model call. Deleting removes its stored response.
           Downloaded thread files remain available.
         </p>

@@ -107,6 +107,12 @@ test(
                     url: "https://docs.langchain.com/oss/python/integrations/chat/openai",
                     title: "LangChain Responses integration",
                   },
+                  ...Array.from({ length: 4 }, (_, index) => ({
+                    type: "url_citation",
+                    url: `https://example.com/source-${index}`,
+                    title:
+                      index === 3 ? "A".repeat(120) : `Reference ${index + 2}`,
+                  })),
                 ],
               },
               { type: "web_search_call", status: "completed" },
@@ -124,6 +130,7 @@ test(
                   filename: "report.xlsx",
                   byte_size: generatedBytes.length,
                 },
+                { path: "/missing-file", filename: "unavailable.csv" },
               ],
             },
           },
@@ -272,6 +279,28 @@ test(
       await page.keyboard.press("Enter");
       assert.equal(await sourceLink.isVisible(), true);
       assert.ok((await sources.boundingBox()).height > collapsedHeight);
+      assert.equal(await sources.getByRole("link").count(), 4);
+      const showSources = sources.getByRole("button", { name: "Show all 5" });
+      await showSources.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await sources.getByRole("link").count(), 5);
+      assert.equal(
+        await sources
+          .getByRole("button", { name: "Show fewer" })
+          .getAttribute("aria-expanded"),
+        "true"
+      );
+      await page.keyboard.press("Enter");
+      assert.equal(await sources.getByRole("link").count(), 4);
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Download unavailable.csv" })
+          .isDisabled(),
+        true
+      );
+      await page
+        .getByText("File unavailable in this conversation", { exact: true })
+        .waitFor();
       assert.equal(
         await page
           .getByRole("link", { name: "LangChain Responses integration" })
@@ -280,6 +309,7 @@ test(
       );
       await sourceDisclosure.press("Space");
       assert.equal(await sourceLink.isVisible(), false);
+      await sourceDisclosure.press("Enter");
       await page
         .getByText("The response reached its output limit.", { exact: false })
         .waitFor();
@@ -330,6 +360,15 @@ test(
           exact: false,
         })
         .waitFor();
+      assert.equal(
+        await dialog.getByText("Report complete", { exact: true }).isVisible(),
+        false
+      );
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .focus();
+      await page.keyboard.press("Enter");
       await dialog.getByText("Report complete", { exact: true }).waitFor();
       failJobRefresh = false;
       await dialog
@@ -417,7 +456,15 @@ test(
         .getByRole("button", { name: "Close panel", exact: true })
         .click();
       await page.screenshot({ path: join(evidence, "chat-desktop.png") });
-      await page.setViewportSize({ width: 390, height: 844 });
+      await page.setViewportSize({ width: 375, height: 812 });
+      await sources.getByRole("button", { name: "Show all 5" }).click();
+      assert.equal(
+        await sources.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth
+        ),
+        true
+      );
+      await sources.getByRole("button", { name: "Show fewer" }).click();
       await page
         .getByRole("navigation", { name: "Response sources" })
         .scrollIntoViewIfNeeded();
@@ -431,6 +478,10 @@ test(
       await page
         .getByRole("button", { name: "Background jobs", exact: true })
         .click();
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .click();
       await dialog.getByText("Report complete", { exact: true }).waitFor();
       await dialog.evaluate(async (element) => {
         await Promise.all(
@@ -442,14 +493,30 @@ test(
         path: join(evidence, "background-jobs-mobile.png"),
       });
       assert.ok(
-        mobileDialog.x >= 0 && mobileDialog.x + mobileDialog.width <= 390,
+        mobileDialog.x >= 0 && mobileDialog.x + mobileDialog.width <= 375,
         JSON.stringify(mobileDialog)
       );
       await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-      await page.evaluate(() => document.documentElement.classList.add("dark"));
+      await page.evaluate(() => {
+        document.documentElement.classList.add("dark");
+        document.documentElement.setAttribute("data-joy-color-scheme", "dark");
+      });
       await page.screenshot({
         path: join(evidence, "background-jobs-mobile-dark.png"),
       });
+      await page.setViewportSize({ width: 812, height: 375 });
+      await dialog
+        .getByRole("button", { name: "Delete stored response", exact: true })
+        .scrollIntoViewIfNeeded();
+      const closeBox = await dialog
+        .getByRole("button", { name: "Close", exact: true })
+        .boundingBox();
+      assert.ok(closeBox.y >= 0 && closeBox.y + closeBox.height <= 375);
+      const landscapeBox = await dialog.boundingBox();
+      assert.ok(
+        landscapeBox.y >= 0 && landscapeBox.y + landscapeBox.height <= 375
+      );
+      await page.setViewportSize({ width: 375, height: 812 });
       await dialog
         .getByRole("button", { name: "Delete stored response", exact: true })
         .click();
@@ -493,6 +560,10 @@ test(
       await dialog
         .getByRole("button", { name: "Older jobs", exact: true })
         .click();
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .click();
       await dialog.getByText("Historical result", { exact: true }).waitFor();
       await page.screenshot({
         path: join(evidence, "background-jobs-history-mobile.png"),
@@ -521,6 +592,10 @@ test(
       );
       await dialog
         .getByRole("button", { name: "Older jobs", exact: true })
+        .click();
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
         .click();
       await dialog.getByText("Historical result", { exact: true }).waitFor();
       jobs = jobs.filter((job) => job.id !== "recent-49");
