@@ -91,6 +91,72 @@ test("API replacement carries a revision but no owner", async (t) => {
   assert.equal(conflict.diagnostics[0].path, "SKILL.md");
 });
 
+test("system copy names skip occupied suffixes and stay valid at the limit", () => {
+  assert.equal(
+    drafts.suggestSkillCopyName("original", [
+      "original-copy",
+      "original-copy-2",
+    ]),
+    "original-copy-3"
+  );
+  const name = "x".repeat(64);
+  const first = drafts.suggestSkillCopyName(name, []);
+  const next = drafts.suggestSkillCopyName(name, [first]);
+  assert.equal(first.length, 64);
+  assert.equal(next.length, 64);
+  assert.match(next, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  assert.notEqual(next, first);
+});
+
+test("personal details omit copy and deployment conflicts provide Rename", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(SkillDetails, {
+      skill: saved,
+      files,
+      onCopy: () => {},
+      onEdit: () => {},
+      availability: "name_conflict",
+    })
+  );
+  assert.doesNotMatch(html, /Copy as draft|Copy to personal library/);
+  assert.match(html, /Discovery is paused until you rename/);
+  assert.match(html, />Rename</);
+});
+
+test("complete nested Markdown package stays copyable in detail", () => {
+  const nested = [
+    root,
+    {
+      path: "references/guide.md",
+      content: "[notes](notes.md) [root](../SKILL.md)",
+    },
+    { path: "references/notes.md", content: "Notes" },
+  ];
+  const html = renderToStaticMarkup(
+    React.createElement(SkillDetails, {
+      skill: {
+        id: "s",
+        name: "original",
+        origin: "system",
+        description: "nested",
+        availability: "available",
+        diagnostics: [],
+        resources: nested.map((f) => ({
+          path: f.path,
+          size_bytes: f.content.length,
+          copyable: true,
+          diagnostics: [],
+        })),
+      },
+      files: nested,
+      onCopy: () => {},
+      occupiedNames: ["original-copy", "original-copy-2"],
+    })
+  );
+  assert.match(html, /value="original-copy-3"/);
+  assert.doesNotMatch(html, /disabled=""/);
+});
+
 test("client creates only files, encodes IDs and paths, propagates abort, and consumes empty DELETE", async (t) => {
   const requests = [];
   t.mock.method(globalThis, "fetch", async (url, init) => {
@@ -516,7 +582,7 @@ test(
         <SkillCatalog entries={[personal,system]} onSelect={entry=>window.selected=entry} onCreate={()=>{}} onImport={()=>setOpen(true)}/>
         <SkillEditor draft={draft} limits={limits} diagnostics={diagnostics} saving={false} onChange={setDraft} onSave={()=>{window.saved=draft;setDiagnostics([{code:"conflict",message:"Changed elsewhere; your draft is preserved",path:"SKILL.md"}])}} onDiscard={()=>setDraft(createSkillDraft("a",saved))}/>
         <SkillDetails skill={system} files={saved.files} limits={limits} onCopy={()=>window.copied=true}/>
-        <SkillImportDialog open={open} preview={preview} limits={limits} diagnostics={[]} loading={false} onOpenChange={setOpen} onFile={()=>{window.fileChosen=true}} onImport={()=>window.imported=true}/>
+        <SkillImportDialog open={open} preview={preview} limits={limits} diagnostics={[]} loading={false} targets={[]} targetId={null} target={null} targetLoading={false} onTarget={()=>{}} onOpenChange={setOpen} onFile={()=>{window.fileChosen=true}} onImport={()=>window.imported=true}/>
       </main>;
     }
     createRoot(document.getElementById("root")).render(<Fixture/>);

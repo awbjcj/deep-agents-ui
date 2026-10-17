@@ -47,6 +47,7 @@ export function usePersonalSkills(accountId: string) {
   const [diagnostics, setDiagnostics] = useState<SkillDiagnostic[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [nameConflict, setNameConflict] = useState(false);
   const [latest, setLatest] = useState<PersonalSkill | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importSession, setImportSession] = useState(0);
@@ -56,9 +57,13 @@ export function usePersonalSkills(accountId: string) {
     []
   );
   const [importError, setImportError] = useState<string | null>(null);
+  const [importTargetId, setImportTargetId] = useState<string | null>(null);
+  const [importTarget, setImportTarget] = useState<PersonalSkill | null>(null);
+  const [importTargetLoading, setImportTargetLoading] = useState(false);
   const lifetime = useRef<AbortController | null>(null);
   const selection = useRef(0);
   const importRequest = useRef(0);
+  const importTargetRequest = useRef(0);
   const catalogRequest = useRef(0);
   const limits = catalog?.limits ?? DEFAULT_SKILL_LIMITS;
   const dirty = !!draft && isSkillDraftDirty(draft);
@@ -81,8 +86,14 @@ export function usePersonalSkills(accountId: string) {
     setDiagnostics(
       failure instanceof SkillsApiError ? failure.diagnostics : []
     );
-    if (failure instanceof SkillsApiError && failure.status === 409)
-      setConflict(true);
+    setConflict(
+      failure instanceof SkillsApiError &&
+        failure.code === "skill_revision_conflict"
+    );
+    setNameConflict(
+      failure instanceof SkillsApiError &&
+        failure.code === "skill_name_conflict"
+    );
   }, []);
   const refresh = useCallback(async () => {
     const controller = lifetime.current;
@@ -131,6 +142,7 @@ export function usePersonalSkills(accountId: string) {
     setDiagnostics([]);
     setSuccess(null);
     setConflict(false);
+    setNameConflict(false);
     setLatest(null);
     setDetail(null);
     setFiles([]);
@@ -221,6 +233,7 @@ export function usePersonalSkills(accountId: string) {
       setFiles(next.files);
       setSelected({ ...next, origin: "personal", availability: "available" });
       setConflict(false);
+      setNameConflict(false);
       setLatest(null);
       setSuccess("Skill saved.");
       void refresh();
@@ -337,6 +350,10 @@ export function usePersonalSkills(accountId: string) {
   function openImport() {
     if (busy || !canLeave()) return;
     importRequest.current += 1;
+    importTargetRequest.current += 1;
+    setImportTargetId(null);
+    setImportTarget(null);
+    setImportTargetLoading(false);
     setImportSession((previous) => previous + 1);
     setPreview(null);
     setImportDiagnostics([]);
@@ -347,6 +364,10 @@ export function usePersonalSkills(accountId: string) {
   function closeImport(open: boolean) {
     if (!open) {
       importRequest.current += 1;
+      importTargetRequest.current += 1;
+      setImportTargetId(null);
+      setImportTarget(null);
+      setImportTargetLoading(false);
       setImportLoading(false);
       setPreview(null);
     }
@@ -380,12 +401,59 @@ export function usePersonalSkills(accountId: string) {
         setImportLoading(false);
     }
   }
+  async function selectImportTarget(id: string | null) {
+    const controller = lifetime.current,
+      request = ++importTargetRequest.current;
+    setImportTargetId(id);
+    setImportTarget(null);
+    setImportTargetLoading(false);
+    setImportError(null);
+    if (!id || !controller || !applicable(controller)) return;
+    if (
+      !catalog?.entries.some(
+        (entry) => entry.origin === "personal" && entry.id === id
+      )
+    )
+      return;
+    setImportTargetLoading(true);
+    try {
+      const target = await apiGetPersonalSkill(id, controller.signal);
+      if (applicable(controller) && request === importTargetRequest.current)
+        setImportTarget(target);
+    } catch (failure) {
+      if (applicable(controller) && request === importTargetRequest.current)
+        setImportError(
+          failure instanceof Error
+            ? failure.message
+            : "Could not load replacement target."
+        );
+    } finally {
+      if (applicable(controller) && request === importTargetRequest.current)
+        setImportTargetLoading(false);
+    }
+  }
   function importDraft(next: SkillImportPreview) {
-    if (next !== preview || importLoading || !canLeave()) return;
+    const controller = lifetime.current;
+    if (
+      !controller ||
+      !applicable(controller) ||
+      next !== preview ||
+      importLoading ||
+      importTargetLoading ||
+      (importTargetId !== null && importTarget?.id !== importTargetId) ||
+      !canLeave()
+    )
+      return;
+    const target = importTarget;
     resetSelection();
-    setSelected(null);
+    setSelected(
+      target
+        ? { ...target, origin: "personal", availability: "available" }
+        : null
+    );
+    setDetail(target);
     setDraft({
-      ...createSkillDraft(accountId, null),
+      ...createSkillDraft(accountId, target),
       files: next.package.files.map((file) => ({ ...file })),
     });
     closeImport(false);
@@ -413,6 +481,7 @@ export function usePersonalSkills(accountId: string) {
     setDetail(latest);
     setFiles(latest.files);
     setConflict(false);
+    setNameConflict(false);
     setLatest(null);
     setError(null);
     setDiagnostics([]);
@@ -436,12 +505,17 @@ export function usePersonalSkills(accountId: string) {
     diagnostics,
     success,
     conflict,
+    nameConflict,
     latest,
     importOpen,
     preview,
     importLoading,
     importDiagnostics,
     importError,
+    importTargetId,
+    importTarget,
+    importTargetLoading,
+    selectImportTarget,
     refresh,
     select,
     create,

@@ -91,6 +91,13 @@ export function SkillEditor({
         <h3 className="text-base font-semibold">
           {draft.sourceId ? "Edit personal skill" : "New personal skill"}
         </h3>
+        {draft.sourceId !== null && (
+          <p className="mt-1 break-all text-xs text-muted-foreground">
+            Saving replaces {draft.sourceName ?? "this owned package"} ·
+            revision {draft.baseRevision}. The complete draft file list becomes
+            the saved package.
+          </p>
+        )}
         <p className="mt-1 text-sm text-muted-foreground">
           Edit the name, description, and instructions in SKILL.md. Supporting
           resources stay in this package.

@@ -12,6 +12,7 @@ export interface SkillDraft {
   accountId: string;
   sourceId: string | null;
   baseRevision: number | null;
+  sourceName?: string;
   files: SkillFile[];
   baselineFiles: SkillFile[];
 }
@@ -56,6 +57,7 @@ export function createSkillDraft(
     accountId,
     sourceId: skill?.id ?? null,
     baseRevision: skill?.revision ?? null,
+    sourceName: skill?.name,
     files: skill
       ? cloneFiles(skill.files)
       : [
@@ -66,6 +68,29 @@ export function createSkillDraft(
         ],
     baselineFiles: skill ? cloneFiles(skill.files) : [],
   };
+}
+
+/** Suggest a valid distinct name against every loaded personal/system entry. */
+export function suggestSkillCopyName(
+  name: string,
+  occupied: readonly string[],
+  maxLength = DEFAULT_SKILL_LIMITS.name_characters
+): string {
+  const taken = new Set([...occupied, name]);
+  const base =
+    name
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "skill";
+  for (let index = 1; index <= taken.size + 1; index++) {
+    const suffix = index === 1 ? "-copy" : `-copy-${index}`;
+    const stem =
+      base.slice(0, maxLength - suffix.length).replace(/-+$/g, "") || "s";
+    const candidate = stem + suffix;
+    if (!taken.has(candidate) && candidate.length <= maxLength)
+      return candidate;
+  }
+  throw new Error("No available copy name within the configured name limit.");
 }
 export function isSkillDraftDirty(draft: SkillDraft): boolean {
   return (

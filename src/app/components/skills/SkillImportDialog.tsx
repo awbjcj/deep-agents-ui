@@ -15,6 +15,8 @@ import type {
   SkillDiagnostic,
   SkillImportPreview,
   SkillLimits,
+  SkillCatalogEntry,
+  PersonalSkill,
 } from "@/lib/skills";
 import {
   SkillDiagnostics,
@@ -31,6 +33,11 @@ export interface SkillImportDialogProps {
   onOpenChange: (open: boolean) => void;
   onFile: (file: File) => void;
   onImport: (preview: SkillImportPreview) => void;
+  targets: SkillCatalogEntry[];
+  targetId: string | null;
+  target: PersonalSkill | null;
+  targetLoading: boolean;
+  onTarget: (id: string | null) => void;
 }
 
 export function SkillImportDialog({
@@ -42,6 +49,11 @@ export function SkillImportDialog({
   onOpenChange,
   onFile,
   onImport,
+  targets,
+  targetId,
+  target,
+  targetLoading,
+  onTarget,
 }: SkillImportDialogProps) {
   const id = useId();
   const [selectedPath, setSelectedPath] = useState("SKILL.md");
@@ -53,10 +65,33 @@ export function SkillImportDialog({
   const selected =
     preview?.package.files.find((file) => file.path === selectedPath) ??
     preview?.package.files[0];
+  const previewDiagnostics = (preview?.diagnostics ?? []).flatMap(
+    (diagnostic) => {
+      if (diagnostic.code !== "skill_name_conflict") return [diagnostic];
+      if (
+        target &&
+        preview &&
+        target.name === preview.package.name &&
+        !targets.some(
+          (entry) => entry.origin === "system" && entry.name === target.name
+        )
+      )
+        return [];
+      return [
+        {
+          ...diagnostic,
+          message:
+            "This name is already in use. Choose a distinct name or explicitly select its owned replacement target. System names stay reserved.",
+        },
+      ];
+    }
+  );
   // Never import a previous preview after another upload was chosen or rejected.
   const canImport =
     !!preview &&
     !loading &&
+    !targetLoading &&
+    (targetId === null || target?.id === targetId) &&
     !localDiagnostics.length &&
     preview !== invalidatedPreview;
   return (
@@ -76,6 +111,53 @@ export function SkillImportDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="min-w-0 space-y-4">
+          <div className="space-y-2">
+            <label
+              htmlFor={`${id}-destination`}
+              className="text-sm font-medium"
+            >
+              Import destination
+            </label>
+            <select
+              id={`${id}-destination`}
+              className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
+              value={targetId ?? ""}
+              onChange={(event) => onTarget(event.target.value || null)}
+            >
+              <option value="">New personal skill</option>
+              {targets
+                .filter((entry) => entry.origin === "personal")
+                .map((entry) => (
+                  <option
+                    key={entry.id}
+                    value={entry.id}
+                  >
+                    Replace {entry.id === target?.id ? target.name : entry.name}{" "}
+                    · revision{" "}
+                    {entry.id === target?.id ? target.revision : entry.revision}
+                  </option>
+                ))}
+            </select>
+            {targetLoading ? (
+              <p
+                role="status"
+                className="text-sm text-muted-foreground"
+              >
+                Loading current replacement package…
+              </p>
+            ) : target ? (
+              <p className="break-words text-sm text-muted-foreground">
+                Replace {target.name} · revision {target.revision}. All saved
+                files will be replaced by the imported package only when you
+                Save the draft.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Choose an owned package explicitly to replace it. Matching names
+                never select a replacement automatically.
+              </p>
+            )}
+          </div>
           <div className="space-y-2">
             <label
               htmlFor={`${id}-upload`}
@@ -121,7 +203,7 @@ export function SkillImportDialog({
             diagnostics={[
               ...diagnostics,
               ...localDiagnostics,
-              ...(preview?.diagnostics ?? []),
+              ...previewDiagnostics,
             ]}
           />
           {loading && (

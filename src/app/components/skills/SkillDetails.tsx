@@ -11,7 +11,7 @@ import type {
   SkillLimits,
   SystemSkill,
 } from "@/lib/skills";
-import { DEFAULT_SKILL_LIMITS } from "@/lib/skill-drafts";
+import { DEFAULT_SKILL_LIMITS, suggestSkillCopyName } from "@/lib/skill-drafts";
 import {
   SkillDiagnostics,
   SkillFileList,
@@ -29,6 +29,8 @@ export interface SkillDetailsProps {
   onCopy: (distinctName: string) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  occupiedNames?: string[];
+  availability?: "available" | "name_conflict" | "unavailable";
 }
 
 export function SkillDetails({
@@ -42,11 +44,15 @@ export function SkillDetails({
   onCopy,
   onEdit,
   onDelete,
+  occupiedNames = [],
+  availability,
 }: SkillDetailsProps) {
   const id = useId();
   const [selectedPath, setSelectedPath] = useState("SKILL.md");
   const [mode, setMode] = useState<"source" | "preview">("preview");
-  const [copyName, setCopyName] = useState("");
+  const [copyName, setCopyName] = useState(() =>
+    suggestSkillCopyName(skill.name, occupiedNames, limits.name_characters)
+  );
   const system = "resources" in skill ? skill : null;
   const resources = system?.resources ?? files;
   const selected = files.find((file) => file.path === selectedPath);
@@ -104,6 +110,7 @@ export function SkillDetails({
     : [];
   const validName =
     copyName !== skill.name &&
+    !occupiedNames.includes(copyName) &&
     copyName.length <= limits.name_characters &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(copyName);
   return (
@@ -134,7 +141,7 @@ export function SkillDetails({
                 onClick={onEdit}
               >
                 <Pencil aria-hidden="true" />
-                Edit
+                {availability === "name_conflict" ? "Rename" : "Edit"}
               </Button>
             )}
             {onDelete && (
@@ -152,6 +159,17 @@ export function SkillDetails({
           </div>
         )}
       </div>
+      {!system && availability === "name_conflict" && (
+        <p
+          role="status"
+          className="rounded-lg border border-amber-500/50 p-3 text-sm"
+        >
+          A deployed system skill now reserves this name. Discovery is paused
+          until you rename this personal skill. You can still read and edit the
+          complete package. Choose Rename and change the name in SKILL.md, then
+          Save.
+        </p>
+      )}
       <SkillDiagnostics diagnostics={[...diagnostics, ...copyBlockers]} />
       <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
         <SkillFileList
@@ -215,54 +233,59 @@ export function SkillDetails({
           )}
         </div>
       </div>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (validName && !copyBlockers.length && !busy && !loading)
-            onCopy(copyName);
-        }}
-        className="space-y-2 rounded-lg border bg-muted/20 p-3"
-      >
-        <label
-          htmlFor={`${id}-copy-name`}
-          className="text-sm font-medium"
+      {system && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (validName && !copyBlockers.length && !busy && !loading)
+              onCopy(copyName);
+          }}
+          className="space-y-2 rounded-lg border bg-muted/20 p-3"
         >
-          Copy to personal library
-        </label>
-        <p
-          id={`${id}-copy-help`}
-          className="text-xs text-muted-foreground"
-        >
-          Choose a distinct name. Copying changes only the name in SKILL.md;
-          other metadata and resources keep their source. Review before saving.
-        </p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            id={`${id}-copy-name`}
-            aria-describedby={`${id}-copy-help`}
-            value={copyName}
-            disabled={busy}
-            placeholder={`${skill.name.slice(0, 59)}-copy`}
-            onChange={(event) => setCopyName(event.target.value)}
-          />
-          <Button
-            type="submit"
-            disabled={!validName || copyBlockers.length > 0 || busy || loading}
+          <label
+            htmlFor={`${id}-copy-name`}
+            className="text-sm font-medium"
           >
-            <Copy aria-hidden="true" />
-            Copy as draft
-          </Button>
-        </div>
-        {copyName && !validName && (
+            Copy to personal library
+          </label>
           <p
-            role="status"
-            className="text-xs text-destructive"
+            id={`${id}-copy-help`}
+            className="text-xs text-muted-foreground"
           >
-            Use a different name with up to {limits.name_characters} lowercase
-            letters, digits, and single internal hyphens.
+            Choose a distinct name. Copying changes only the name in SKILL.md;
+            other metadata and resources keep their source. Review before
+            saving.
           </p>
-        )}
-      </form>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id={`${id}-copy-name`}
+              aria-describedby={`${id}-copy-help`}
+              value={copyName}
+              disabled={busy}
+              placeholder={`${skill.name.slice(0, 59)}-copy`}
+              onChange={(event) => setCopyName(event.target.value)}
+            />
+            <Button
+              type="submit"
+              disabled={
+                !validName || copyBlockers.length > 0 || busy || loading
+              }
+            >
+              <Copy aria-hidden="true" />
+              Copy as draft
+            </Button>
+          </div>
+          {copyName && !validName && (
+            <p
+              role="status"
+              className="text-xs text-destructive"
+            >
+              Use a different name with up to {limits.name_characters} lowercase
+              letters, digits, and single internal hyphens.
+            </p>
+          )}
+        </form>
+      )}
     </section>
   );
 }

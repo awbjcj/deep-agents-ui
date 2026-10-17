@@ -25,3 +25,35 @@ Seven editor-conflict images were refreshed; desktop and 320px dark previews
 were inspected again. The shared worktree's unrelated Markdown source changes
 were preserved and excluded from the feature commits. No live backend/provider,
 production restart, or deployment was exercised by this browser suite.
+
+Final review fix wave adds explicit Import destination selection with canonical
+name/revision, complete imported replacement on Save, cancellation/stale/account
+race checks, name-collision recovery, system-only copy, available suffix naming,
+and deployment-conflict Rename guidance. New screenshot matrices use
+`{1440,320,375,390}-{import-replacement,deployment-name-conflict}-{light,dark}.png`.
+Existing import-error and conflict/editor evidence is refreshed for changed
+controls and revision information. Preview text uses the current foreground
+color so imported Markdown remains readable in dark mode. The selected target
+option and explanation both show the fetched canonical revision.
+
+Controller scoped independent re-review remains pending; final exact commands
+and totals are recorded in the backend verification record.
+
+Final wave validation: full Node303 passed/24 opt-in skips; types/scoped ESLint/
+Prettier and production static export passed. Enabled browser28 passed/0 skips,
+including checks that late import/target responses cannot become applicable after
+the auth store changes, before component remount. Ten added scenarios cover
+explicit stable-ID replacement with resource additions/removals, cancel, stale
+revision, target/upload account races, five name collisions with successful
+rename recovery, and available-copy/deployment Rename. API behavior is mocked;
+all prior live backend/provider/deployment limitations remain. Final evidence
+review inspected320px dark replacement and deployment guidance and1440px light
+replacement for readable text, target revision, actions, and clipping.
+
+Final canonical-target preview guidance was verified against API-shaped name
+conflict diagnostics: choosing the matching owned personal target clears its
+name warning; selecting a target whose name is reserved by a system skill keeps
+it. Final enabled browser28/28 passed in59.10s; final Node303/24 opt-in skips,
+types/scoped ESLint/Prettier and static export passed. Independent controller
+re-review remains pending. Final browser-test formatting-only correction passed
+Prettier without product changes after the behavioral run.

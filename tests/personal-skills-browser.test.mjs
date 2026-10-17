@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { load } from "js-yaml";
 import {
   staticServer,
   authenticatedPage,
@@ -99,6 +100,10 @@ function skillsFixture() {
     failImport = false,
     serverFailure = false,
     catalogFailure = false;
+  let importedFiles = [{ path: "SKILL.md", content: source("imported-skill") }];
+  let delayedImport = null;
+  const packageName = (files) =>
+    load(files.find((f) => f.path === "SKILL.md").content.split("---")[1]).name;
   const system = {
     id: "s1",
     name: "system-skill",
@@ -125,6 +130,13 @@ function skillsFixture() {
     requests,
     chatRequests,
     readPaths,
+    setImportFiles(files) {
+      importedFiles = files;
+    },
+    delayImport() {
+      delayedImport = deferred();
+      return delayedImport;
+    },
     conflict() {
       conflict = true;
     },
@@ -216,7 +228,8 @@ function skillsFixture() {
               ...p,
               files: undefined,
               origin: "personal",
-              availability: "available",
+              availability:
+                p.name === system.name ? "name_conflict" : "available",
             })),
           ],
           limits: DEFAULT_SKILL_LIMITS,
@@ -224,6 +237,11 @@ function skillsFixture() {
           system_revision: "s1",
         });
       if (path === "/api/skills/import/preview") {
+        if (delayedImport) {
+          const wait = delayedImport;
+          delayedImport = null;
+          await wait.promise;
+        }
         if (failImport) {
           failImport = false;
           return json(
@@ -246,12 +264,24 @@ function skillsFixture() {
         }
         return json(route, {
           package: {
-            name: "imported-skill",
+            name: packageName(importedFiles),
             description: "Imported package",
-            files: [{ path: "SKILL.md", content: source("imported-skill") }],
+            files: importedFiles,
             total_bytes: 90,
           },
-          diagnostics: [],
+          diagnostics:
+            [...packages.values()].some(
+              (p) => p.name === packageName(importedFiles)
+            ) || packageName(importedFiles) === system.name
+              ? [
+                  {
+                    code: "skill_name_conflict",
+                    message:
+                      "This name is already reserved. Rename the draft before saving.",
+                    path: "SKILL.md",
+                  },
+                ]
+              : [],
         });
       }
       if (path === "/api/skills/system/s1") return json(route, system);
@@ -266,9 +296,31 @@ function skillsFixture() {
               : "Complete resource.",
         });
       }
+      if (["POST", "PUT"].includes(request.method())) {
+        const body = request.postDataJSON(),
+          name = packageName(body.files),
+          id = path.split("/").at(-1);
+        if (
+          name === system.name ||
+          [...packages.values()].some(
+            (p) =>
+              p.name === name && (request.method() === "POST" || p.id !== id)
+          )
+        )
+          return json(
+            route,
+            {
+              detail: {
+                code: "skill_name_conflict",
+                message: "A skill already uses this name.",
+              },
+            },
+            409
+          );
+      }
       if (request.method() === "POST") {
         const body = request.postDataJSON(),
-          name = /name: (.*)/.exec(body.files[0].content)[1];
+          name = packageName(body.files);
         const saved = {
           ...personal(`p${packages.size + 1}`, name),
           files: body.files,
@@ -324,7 +376,7 @@ function skillsFixture() {
       const body = request.postDataJSON(),
         saved = {
           ...snapshot,
-          name: /name: (.*)/.exec(body.files[0].content)[1],
+          name: packageName(body.files),
           files: body.files,
           revision: snapshot.revision + 1,
         };
@@ -374,6 +426,478 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
   });
   await mkdir(EVIDENCE, { recursive: true });
   try {
+    await t.test(
+      "explicit imported replacement preserves stable identity and replaces all files only on Save",
+      async () => {
+        const policy = skillsFixture();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        const imported = [
+          {
+            path: "SKILL.md",
+            content: source("my-skill", "IMPORTED COMPLETE DRAFT"),
+          },
+          { path: "references/new.md", content: "ADDED RESOURCE" },
+        ];
+        policy.setImportFiles(imported);
+        try {
+          await openSkills(page);
+          policy.packages.set("p1", {
+            ...policy.packages.get("p1"),
+            revision: 7,
+            files: [
+              ...policy.packages.get("p1").files,
+              { path: "removed.md", content: "REMOVE ME" },
+            ],
+          });
+          await page
+            .getByRole("button", { name: "Import", exact: true })
+            .click();
+          await page.getByLabel("Skill file or ZIP").setInputFiles({
+            name: "update.zip",
+            mimeType: "application/zip",
+            buffer: Buffer.from("fixture"),
+          });
+          await page.getByText("my-skill", { exact: true }).last().waitFor();
+          assert.equal(
+            await page.getByLabel("Import destination").inputValue(),
+            ""
+          );
+          await page.getByLabel("Import destination").selectOption("p1");
+          await page
+            .getByText(/Replace my-skill · revision 7\. All saved files/)
+            .waitFor();
+          assert.equal(
+            await page
+              .getByText(/This name is already in use\. Choose a distinct name/)
+              .count(),
+            0
+          );
+          await captureMatrix(
+            page,
+            "import-replacement",
+            page.getByRole("dialog", { name: "Import skill package" })
+          );
+          await page
+            .getByRole("button", { name: "Open draft", exact: true })
+            .click();
+          assert.equal(
+            policy.requests.filter((r) => r.method === "PUT").length,
+            0
+          );
+          assert.equal(
+            policy.packages
+              .get("p1")
+              .files.some((f) => f.path === "removed.md"),
+            true
+          );
+          assert.equal(
+            await editor(page)
+              .getByRole("button", { name: "removed.md", exact: true })
+              .count(),
+            0
+          );
+          await editor(page)
+            .getByText("references/new.md", { exact: true })
+            .waitFor();
+          await page
+            .getByText(/Saving replaces my-skill · revision 7/)
+            .waitFor();
+          await editor(page)
+            .getByRole("button", { name: "Save", exact: true })
+            .click();
+          await page.getByText("Skill saved.", { exact: true }).waitFor();
+          const put = policy.requests.filter((r) => r.method === "PUT");
+          assert.equal(put.length, 1);
+          assert.equal(put[0].path, "/api/skills/personal/p1");
+          assert.equal(JSON.parse(put[0].body).expected_revision, 7);
+          assert.deepEqual(policy.packages.get("p1").files, imported);
+          assert.equal(policy.packages.get("p1").revision, 8);
+          assert.equal(
+            await page.getByRole("button", { name: "Copy as draft" }).count(),
+            0
+          );
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "cancelled replacement fetch and stale imported Save keep the appropriate draft",
+      async () => {
+        const policy = skillsFixture();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await openSkills(page);
+          await page
+            .getByRole("button", { name: "Import", exact: true })
+            .click();
+          const delayed = policy.delayRead();
+          await page.getByLabel("Import destination").selectOption("p1");
+          await page
+            .getByText("Loading current replacement package…")
+            .waitFor();
+          await page
+            .getByRole("button", { name: "Cancel", exact: true })
+            .click();
+          delayed.release();
+          assert.equal(await editor(page).count(), 0);
+          await page
+            .getByRole("button", { name: "Import", exact: true })
+            .click();
+          assert.equal(
+            await page.getByLabel("Import destination").inputValue(),
+            ""
+          );
+          await page.getByLabel("Import destination").selectOption("p1");
+          await page
+            .getByText(/Replace my-skill · revision 1\. All saved files/)
+            .waitFor();
+          await page.getByLabel("Skill file or ZIP").setInputFiles({
+            name: "SKILL.md",
+            mimeType: "text/markdown",
+            buffer: Buffer.from(source("imported-skill")),
+          });
+          await page
+            .getByRole("button", { name: "Open draft", exact: true })
+            .click();
+          policy.conflict();
+          const unsaved = await content(page).inputValue();
+          await editor(page)
+            .getByRole("button", { name: "Save", exact: true })
+            .click();
+          await page
+            .getByRole("button", { name: "View latest version" })
+            .waitFor();
+          assert.equal(await content(page).inputValue(), unsaved);
+          assert.equal(
+            policy.requests.filter((r) => r.method === "PUT").length,
+            1
+          );
+          assert.equal(
+            JSON.parse(policy.requests.find((r) => r.method === "PUT").body)
+              .expected_revision,
+            1
+          );
+          assert.equal(policy.packages.get("p1").revision, 2);
+          await page
+            .getByRole("button", { name: "View latest version" })
+            .click();
+          await page
+            .getByRole("heading", { name: /Latest saved version · revision 2/ })
+            .waitFor();
+          assert.equal(await content(page).inputValue(), unsaved);
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    for (const requestType of ["target", "upload"])
+      await t.test(
+        `account switch during import ${requestType} discards late private results`,
+        async () => {
+          const policy = skillsFixture();
+          const { page, context, pageErrors } = await authenticatedPage(
+            browser,
+            server,
+            policy,
+            "admin"
+          );
+          try {
+            await openSkills(page);
+            await page
+              .getByRole("button", { name: "Import", exact: true })
+              .click();
+            const delayed =
+              requestType === "target"
+                ? policy.delayRead()
+                : policy.delayImport();
+            if (requestType === "target") {
+              await page.getByLabel("Import destination").selectOption("p1");
+              await page
+                .getByText("Loading current replacement package…")
+                .waitFor();
+            } else {
+              await page.getByLabel("Skill file or ZIP").setInputFiles({
+                name: "SKILL.md",
+                mimeType: "text/markdown",
+                buffer: Buffer.from("fixture"),
+              });
+              await page.getByText("Validating package…").waitFor();
+            }
+            // Exercise the live auth-store guard before the account-keyed render.
+            await page.evaluate(() => {
+              const user = JSON.parse(localStorage.getItem("deep-agent-auth"));
+              localStorage.setItem(
+                "deep-agent-auth",
+                JSON.stringify({
+                  ...user,
+                  user_id: "account-b",
+                  username: "account-b",
+                })
+              );
+            });
+            const completed = page.waitForResponse((response) =>
+              response
+                .url()
+                .endsWith(
+                  requestType === "target"
+                    ? "/api/skills/personal/p1"
+                    : "/api/skills/import/preview"
+                )
+            );
+            delayed.release();
+            await completed;
+            await page.evaluate(
+              () =>
+                new Promise((resolve) =>
+                  requestAnimationFrame(() => requestAnimationFrame(resolve))
+                )
+            );
+            assert.equal(
+              await page
+                .getByRole("button", { name: "Open draft", exact: true })
+                .isDisabled(),
+              true
+            );
+            assert.equal(
+              await page
+                .getByText(/Replace my-skill · revision 1\. All saved files/)
+                .count(),
+              0
+            );
+            assert.equal(
+              await page
+                .getByRole("heading", { name: "imported-skill", exact: true })
+                .count(),
+              0
+            );
+            await page
+              .getByRole("button", { name: "Cancel", exact: true })
+              .click();
+            await switchAccount(page, policy);
+            await page
+              .getByRole("button", { name: "Import", exact: true })
+              .click();
+            assert.equal(
+              await page.getByLabel("Import destination").inputValue(),
+              ""
+            );
+            assert.equal(
+              await page
+                .getByText(/Replace my-skill · revision 1\. All saved files/)
+                .count(),
+              0
+            );
+            assert.equal(
+              await page
+                .getByRole("button", { name: "Open draft", exact: true })
+                .isDisabled(),
+              true
+            );
+            assert.equal(
+              policy.requests.filter(
+                (r) =>
+                  ["PUT", "POST"].includes(r.method) &&
+                  r.path !== "/api/skills/import/preview"
+              ).length,
+              0
+            );
+            assert.deepEqual(pageErrors, []);
+          } finally {
+            await context.close();
+          }
+        }
+      );
+    for (const scenario of [
+      "create",
+      "import",
+      "system-copy",
+      "rename",
+      "system-reserved",
+    ])
+      await t.test(
+        `${scenario} name collision keeps draft without stale-version recovery`,
+        async () => {
+          const policy = skillsFixture();
+          policy.packages.set("p2", personal("p2", "occupied"));
+          const { page, context, pageErrors } = await authenticatedPage(
+            browser,
+            server,
+            policy,
+            "admin"
+          );
+          try {
+            await openSkills(page);
+            if (scenario === "import") {
+              policy.setImportFiles([
+                { path: "SKILL.md", content: source("occupied") },
+              ]);
+              await page
+                .getByRole("button", { name: "Import", exact: true })
+                .click();
+              await page.getByLabel("Skill file or ZIP").setInputFiles({
+                name: "SKILL.md",
+                mimeType: "text/markdown",
+                buffer: Buffer.from("fixture"),
+              });
+              await page
+                .getByRole("button", { name: "Open draft", exact: true })
+                .click();
+            } else if (scenario === "system-copy") {
+              await page
+                .getByRole("button", { name: /system-skill System/ })
+                .click();
+              await page.getByRole("button", { name: "Copy as draft" }).click();
+              policy.packages.set("p3", personal("p3", "system-skill-copy"));
+            } else if (scenario === "rename") {
+              await selectPersonal(page);
+              await content(page).fill(source("occupied"));
+            } else {
+              await page
+                .getByRole("button", { name: "New skill", exact: true })
+                .click();
+              await content(page).fill(
+                source(
+                  scenario === "system-reserved" ? "system-skill" : "occupied"
+                )
+              );
+            }
+            const retained = await content(page).inputValue();
+            await editor(page)
+              .getByRole("button", { name: "Save", exact: true })
+              .click();
+            await page
+              .getByText(
+                /This name is already in use\. Your draft is still here/
+              )
+              .waitFor();
+            assert.equal(await content(page).inputValue(), retained);
+            assert.equal(
+              await page
+                .getByRole("button", { name: "View latest version" })
+                .count(),
+              0
+            );
+            assert.equal(
+              policy.requests.filter(
+                (r) =>
+                  r.method === "PUT" ||
+                  (r.method === "POST" && r.path === "/api/skills/personal")
+              ).length,
+              1
+            );
+            await content(page).fill(source(`available-after-${scenario}`));
+            await editor(page)
+              .getByRole("button", { name: "Save", exact: true })
+              .click();
+            await page.getByText("Skill saved.", { exact: true }).waitFor();
+            assert.equal(
+              await page
+                .getByText(
+                  /This name is already in use\. Your draft is still here/
+                )
+                .count(),
+              0
+            );
+            assert.deepEqual(pageErrors, []);
+          } finally {
+            await context.close();
+          }
+        }
+      );
+    await t.test(
+      "copy suggests available name and deployment collision exposes explicit Rename",
+      async () => {
+        const policy = skillsFixture();
+        policy.packages.set("p2", personal("p2", "system-skill-copy"));
+        policy.packages.set("p3", personal("p3", "system-skill-copy-2"));
+        policy.packages.set("p1", personal("p1", "system-skill"));
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await openSkills(page);
+          await page
+            .getByRole("button", { name: /system-skill System/ })
+            .click();
+          assert.equal(
+            await page.getByLabel("Copy to personal library").inputValue(),
+            "system-skill-copy-3"
+          );
+          await page
+            .getByRole("button", { name: /system-skill Personal/ })
+            .click();
+          await page
+            .getByText(
+              /Discovery is paused until you rename this personal skill/
+            )
+            .waitFor();
+          assert.equal(
+            await page.getByRole("button", { name: "Copy as draft" }).count(),
+            0
+          );
+          policy.setImportFiles([
+            { path: "SKILL.md", content: source("system-skill") },
+          ]);
+          await page
+            .getByRole("button", { name: "Import", exact: true })
+            .click();
+          await page.getByLabel("Import destination").selectOption("p1");
+          await page
+            .getByText(/Replace system-skill · revision 1\. All saved files/)
+            .waitFor();
+          await page.getByLabel("Skill file or ZIP").setInputFiles({
+            name: "SKILL.md",
+            mimeType: "text/markdown",
+            buffer: Buffer.from("fixture"),
+          });
+          await page
+            .getByText(/This name is already in use\. Choose a distinct name/)
+            .waitFor();
+          await page
+            .getByRole("button", { name: "Cancel", exact: true })
+            .click();
+          await page
+            .getByRole("region", { name: "Skill details" })
+            .scrollIntoViewIfNeeded();
+          await captureMatrix(
+            page,
+            "deployment-name-conflict",
+            page.locator("#right-panel")
+          );
+          await page
+            .getByRole("button", { name: "Rename", exact: true })
+            .click();
+          await content(page).fill(source("renamed-after-deployment"));
+          await editor(page)
+            .getByRole("button", { name: "Save", exact: true })
+            .click();
+          await page.getByText("Skill saved.", { exact: true }).waitFor();
+          assert.equal(
+            policy.packages.get("p1").name,
+            "renamed-after-deployment"
+          );
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
     await t.test(
       "create import copy edit rename delete and preview validation",
       async () => {

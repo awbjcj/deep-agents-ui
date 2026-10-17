@@ -129,7 +129,7 @@ export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
     );
   return (
     <div
-      className="prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border p-4 dark:prose-invert [&_pre]:overflow-auto"
+      className="prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border p-4 text-foreground dark:prose-invert prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current [&_pre]:overflow-auto"
       aria-label={`Markdown preview of ${file.path}`}
     >
       <ReactMarkdown

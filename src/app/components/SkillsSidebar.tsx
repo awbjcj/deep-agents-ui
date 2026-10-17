@@ -102,24 +102,36 @@ function AccountSkills({
           onCreate={skills.create}
           onImport={skills.openImport}
         />
-        {skills.conflict && (
-          <div
+        {skills.nameConflict && (
+          <p
             role="alert"
-            className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/5 p-3 text-sm"
+            className="rounded-lg border border-amber-500/50 p-3 text-sm"
           >
-            <p>
-              The saved package changed. Your draft is still here. View the
-              latest version before deciding whether to discard your changes.
-            </p>
-            <Button
-              variant="outline"
-              disabled={skills.busy}
-              onClick={() => void skills.viewLatest()}
-            >
-              View latest version
-            </Button>
-          </div>
+            This name is already in use. Your draft is still here. Change the
+            name in SKILL.md, or import a package and explicitly choose an owned
+            replacement target.
+          </p>
         )}
+        {skills.conflict &&
+          (skills.draft?.sourceId ||
+            (skills.detail && !("resources" in skills.detail))) && (
+            <div
+              role="alert"
+              className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/5 p-3 text-sm"
+            >
+              <p>
+                The saved package changed. Your draft is still here. View the
+                latest version before deciding whether to discard your changes.
+              </p>
+              <Button
+                variant="outline"
+                disabled={skills.busy}
+                onClick={() => void skills.viewLatest()}
+              >
+                View latest version
+              </Button>
+            </div>
+          )}
         {skills.latest && (
           <section
             aria-label="Latest saved skill"
@@ -160,6 +172,15 @@ function AccountSkills({
             skill={skills.detail}
             files={skills.files}
             limits={skills.limits}
+            occupiedNames={
+              skills.catalog?.entries.map((entry) => entry.name) ?? []
+            }
+            availability={
+              skills.catalog?.entries.find(
+                (entry) =>
+                  entry.id === skills.detail?.id && entry.origin === "personal"
+              )?.availability
+            }
             loading={skills.detailLoading}
             busy={skills.busy}
             diagnostics={skills.diagnostics}
@@ -193,6 +214,11 @@ function AccountSkills({
         onOpenChange={skills.closeImport}
         onFile={(file) => void skills.previewImport(file)}
         onImport={skills.importDraft}
+        targets={skills.catalog?.entries ?? []}
+        targetId={skills.importTargetId}
+        target={skills.importTarget}
+        targetLoading={skills.importTargetLoading}
+        onTarget={(id) => void skills.selectImportTarget(id)}
       />
     </div>
   );
