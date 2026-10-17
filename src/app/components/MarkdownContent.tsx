@@ -9,6 +9,8 @@ import rehypeKatex from "rehype-katex";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
+import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
+import { fileContentToText } from "@/lib/uploads";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
 
@@ -523,6 +525,8 @@ const COMPONENTS: Components = {
 interface MarkdownContentProps {
   content: string;
   className?: string;
+  /** Conversation files resolve virtual artifact links without server requests. */
+  files?: Record<string, unknown>;
   /** Files preserve authored Markdown; chat also repairs provider dialects. */
   mode?: "assistant" | "document";
 }
@@ -530,8 +534,74 @@ interface MarkdownContentProps {
 // Warn on large chat messages. File previews are bounded before reaching here.
 const LARGE_CONTENT_THRESHOLD = 200_000;
 
+function artifactPath(url: unknown): string | null {
+  if (typeof url !== "string" || !url.startsWith("/_artifacts/")) return null;
+  try {
+    return decodeURIComponent(url);
+  } catch {
+    return url;
+  }
+}
+
+function ArtifactDownload({
+  path,
+  value,
+  children,
+}: {
+  path: string;
+  value: unknown;
+  children: React.ReactNode;
+}) {
+  const [error, setError] = useState(false);
+  const available = value !== undefined && value !== null;
+  const metadata = fileMetadata(value);
+  const filename = metadata.filename || path.split("/").pop() || "download";
+  return (
+    <span>
+      <button
+        type="button"
+        disabled={!available}
+        aria-label={`Download ${filename}`}
+        className="text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground"
+        onClick={() => {
+          try {
+            saveBlob(
+              fileBlob(
+                fileContentToText(value),
+                metadata.encoding,
+                metadata.mimeType
+              ),
+              filename
+            );
+            setError(false);
+          } catch {
+            setError(true);
+          }
+        }}
+      >
+        {children}
+      </button>
+      {!available && (
+        <span className="text-xs text-muted-foreground">
+          {" "}
+          (file unavailable)
+        </span>
+      )}
+      {error && (
+        <span
+          role="alert"
+          className="text-xs text-muted-foreground"
+        >
+          {" "}
+          Download failed.
+        </span>
+      )}
+    </span>
+  );
+}
+
 export const MarkdownContent = React.memo<MarkdownContentProps>(
-  ({ content, className = "", mode = "assistant" }) => {
+  ({ content, className = "", mode = "assistant", files }) => {
     const normalizedContent = useMemo(
       () =>
         mode === "document" ? content : normalizeAssistantMarkdown(content),
@@ -539,6 +609,62 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
     );
 
     const isLarge = normalizedContent.length > LARGE_CONTENT_THRESHOLD;
+    const components = useMemo<Components>(
+      () => ({
+        ...COMPONENTS,
+        a(props) {
+          const path = artifactPath(props.href);
+          if (!path)
+            return React.createElement(
+              COMPONENTS.a as React.ComponentType<typeof props>,
+              props
+            );
+          const value =
+            files && Object.hasOwn(files, path) ? files[path] : undefined;
+          return (
+            <ArtifactDownload
+              path={path}
+              value={value}
+            >
+              {props.children}
+            </ArtifactDownload>
+          );
+        },
+        img(props) {
+          const path = artifactPath(props.src);
+          if (!path)
+            return React.createElement(
+              COMPONENTS.img as React.ComponentType<typeof props>,
+              props
+            );
+          const value =
+            files && Object.hasOwn(files, path) ? files[path] : undefined;
+          const metadata = fileMetadata(value);
+          const content = fileContentToText(value);
+          const canPreview =
+            metadata.encoding === "base64" &&
+            /^image\/(png|jpeg|gif|webp)$/.test(metadata.mimeType || "") &&
+            content;
+          return (
+            <span>
+              {canPreview && (
+                <MarkdownImage
+                  src={`data:${metadata.mimeType};base64,${content}`}
+                  alt={props.alt}
+                />
+              )}
+              <ArtifactDownload
+                path={path}
+                value={value}
+              >
+                {props.alt || metadata.filename || "Download image"}
+              </ArtifactDownload>
+            </span>
+          );
+        },
+      }),
+      [files]
+    );
 
     return (
       <div className={cn(PROSE_CLASS, className)}>
@@ -551,7 +677,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         <ReactMarkdown
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
-          components={COMPONENTS}
+          components={components}
           urlTransform={urlTransform}
         >
           {normalizedContent}

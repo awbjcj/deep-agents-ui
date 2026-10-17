@@ -388,7 +388,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     {messageContent}
                   </p>
                 ) : hasContent ? (
-                  <MarkdownContent content={messageContent} />
+                  <MarkdownContent
+                    content={messageContent}
+                    files={files}
+                  />
                 ) : null}
               </div>
             </div>
@@ -466,6 +469,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                             </h4>
                             <MarkdownContent
                               content={extractSubAgentContent(subAgent.output)}
+                              files={files}
                             />
                           </>
                         )}

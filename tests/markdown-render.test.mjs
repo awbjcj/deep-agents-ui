@@ -11,11 +11,82 @@ import { MarkdownContent } from "../src/app/components/MarkdownContent.tsx";
  * lazy Prism to its Suspense fallback, so highlighted code blocks appear as the
  * plain block variant here — the surrounding structure is identical either way.
  */
-function render(content) {
+function render(content, files) {
   return renderToStaticMarkup(
-    React.createElement(MarkdownContent, { content })
+    React.createElement(MarkdownContent, { content, files })
   );
 }
+
+test("renders conversation diagrams from graph files without fetching virtual paths", () => {
+  const path = "/_artifacts/alice/thread/diagrams/id/example.png";
+  const html = render(`![Workflow](${path})`, {
+    [path]: {
+      content: "aW1hZ2U=",
+      encoding: "base64",
+      mime_type: "image/png",
+      filename: "example.png",
+    },
+  });
+  assert.match(html, /src="data:image\/png;base64,aW1hZ2U="/);
+  assert.match(html, /aria-label="Download example.png"/);
+  assert.doesNotMatch(html, /src="\/_artifacts\//);
+});
+
+test("offers generated skill packages as downloads from the current conversation", () => {
+  const path = "/_artifacts/alice/thread/generated/id/example.skill";
+  const html = render(`[Skill package](${path})`, {
+    [path]: {
+      content: "emlw",
+      encoding: "base64",
+      mime_type: "application/zip",
+      filename: "example.skill",
+    },
+  });
+  assert.match(html, /aria-label="Download example.skill"/);
+  assert.match(html, /Skill package<\/button>/);
+  assert.doesNotMatch(html, /href="\/_artifacts\//);
+});
+
+test("missing conversation artifacts are unavailable instead of fetching a server path", () => {
+  const html = render(
+    "![Missing](/_artifacts/another-user/thread/image.png)",
+    {}
+  );
+  assert.match(html, /disabled=""/);
+  assert.match(html, /file unavailable/);
+  assert.doesNotMatch(html, /<img/);
+});
+
+test("resolves encoded artifact filenames without changing the stored file key", () => {
+  const path = "/_artifacts/alice/thread/generated/id/review [final].md";
+  const html = render(
+    `[Review](${encodeURI(path)
+      .replaceAll("[", "%5B")
+      .replaceAll("]", "%5D")})`,
+    {
+      [path]: {
+        content: "Reviewed",
+        encoding: "utf-8",
+        filename: "review [final].md",
+      },
+    }
+  );
+  assert.match(html, /Download review \[final\].md/);
+  assert.doesNotMatch(html, /file unavailable|disabled=""/);
+});
+
+test("SVG and HTML artifacts remain downloads rather than executable inline content", () => {
+  const path = "/_artifacts/alice/thread/generated/id/image.svg";
+  const html = render(`![SVG](${path})`, {
+    [path]: {
+      content: "PHN2Zy8+",
+      encoding: "base64",
+      mime_type: "image/svg+xml",
+    },
+  });
+  assert.match(html, /Download image.svg/);
+  assert.doesNotMatch(html, /<img|<svg|<iframe|<object/);
+});
 
 /** Extracts the LaTeX source KaTeX round-trips into its MathML annotation. */
 function mathAnnotations(html) {
