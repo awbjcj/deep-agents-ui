@@ -233,9 +233,8 @@ export function SkillDetails({
           id={`${id}-copy-help`}
           className="text-xs text-muted-foreground"
         >
-          Choose a distinct name. All text resources are preserved. Copying
-          rewrites YAML formatting and comments; review the source before
-          saving.
+          Choose a distinct name. Copying changes only the name in SKILL.md;
+          other metadata and resources keep their source. Review before saving.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input

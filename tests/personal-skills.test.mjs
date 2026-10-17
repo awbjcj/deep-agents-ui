@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { load } from "js-yaml";
+import { DEFAULT_SCHEMA, Type, load } from "js-yaml";
 import * as api from "../src/lib/skills.ts";
 import * as drafts from "../src/lib/skill-drafts.ts";
 import {
@@ -195,6 +195,69 @@ test("draft copies are independent, use a distinct name, and preserve unknown me
     /name/i
   );
   assert.equal(files[0].content, root.content);
+});
+
+// Match PyYAML SafeLoader's supported legacy booleans and tagged sets for these regressions.
+const backendMetadataSchema = DEFAULT_SCHEMA.extend({
+  implicit: [
+    new Type("tag:yaml.org,2002:bool", {
+      kind: "scalar",
+      resolve: (value) => /^(?:yes|no|true|false|on|off)$/i.test(value ?? ""),
+      construct: (value) => /^(?:yes|true|on)$/i.test(value),
+    }),
+  ],
+  explicit: [
+    new Type("tag:yaml.org,2002:set", {
+      kind: "mapping",
+      resolve: (value) =>
+        value !== null && Object.values(value).every((item) => item === null),
+      construct: (value) => new Set(Object.keys(value)),
+    }),
+  ],
+});
+
+test("copies preserve backend YAML scalar and tag semantics in supported frontmatter shapes", () => {
+  const extra =
+    "metadata: {enabled: off, affirmative: yes, allowed: !!set {one: null, two: null}, name: original}";
+  const shapes = [
+    `name: original # Keep this comment\ndescription: A description\n${extra}\n`,
+    `{"name": "original", description: A description, ${extra}}\n`,
+    `!!map\n? !!str name\n: !!str original\ndescription: A description\n${extra}\n`,
+    `name: >-\n  original\ndescription: A description\n${extra}\n`,
+    `name: # Keep this comment\n  'original'\ndescription: A description\n${extra}\n`,
+    `'name': !!str original\ndescription: A description\n${extra}\n`,
+    `description: A description\n${extra}\nname: original\n\n`,
+    `  name: original\n  description: A description\n  ${extra}\n`,
+  ];
+  for (const source of shapes) {
+    const body = "\n# Instructions\r\nKeep this exact body.\r\n";
+    const originalFiles = [
+      { path: "SKILL.md", content: `---\n${source}---\n${body}` },
+      ...files.slice(1),
+    ];
+    // Quoting the new name must also retain string type for a YAML 1.1 boolean spelling.
+    const copy = drafts.copySystemSkillDraft("account-1", originalFiles, "on");
+    const frontmatter = copy.files[0].content.match(
+      /^---\r?\n([\s\S]*?)^---(?:\r?\n|$)/m
+    )[1];
+    const before = load(source, { schema: backendMetadataSchema });
+    const after = load(frontmatter, { schema: backendMetadataSchema });
+    assert.equal(before.metadata.enabled, false);
+    assert.ok(before.metadata.allowed instanceof Set);
+    assert.equal(after.name, "on");
+    assert.deepEqual({ ...after, name: before.name }, before, source);
+    assert.ok(
+      frontmatter.includes(extra),
+      "untouched unknown YAML stays byte-for-byte intact"
+    );
+    assert.equal(drafts.readSkillFrontmatter(copy.files[0].content).body, body);
+    assert.deepEqual(copy.files.slice(1), originalFiles.slice(1));
+    assert.deepEqual(
+      copy.files.map((file) => file.path),
+      originalFiles.map((file) => file.path)
+    );
+    assert.equal(originalFiles[0].content, `---\n${source}---\n${body}`);
+  }
 });
 
 test("saved draft dirty detection includes all content, addition and removal; root cannot be removed", () => {

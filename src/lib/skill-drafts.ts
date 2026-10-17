@@ -1,4 +1,4 @@
-import { dump, load } from "js-yaml";
+import { load } from "js-yaml";
 import {
   SkillsApiError,
   type PersonalSkill,
@@ -95,7 +95,7 @@ export function readSkillFrontmatter(
   const metadata: unknown = load(match[1]);
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
     throw new Error("Skill frontmatter must be a mapping.");
-  // Bound traversal and reject shared objects before noRefs serialization expands aliases.
+  // Bound traversal and reject shared objects that indicate metadata aliases.
   const seen = new Set<object>();
   let count = 0;
   function visit(value: unknown, depth: number): void {
@@ -109,6 +109,75 @@ export function readSkillFrontmatter(
   }
   visit(metadata, 0);
   return { metadata: metadata as Record<string, unknown>, body: match[2] };
+}
+
+interface YamlSourceNode {
+  start: number;
+  end: number;
+  kind: string | null;
+  result: unknown;
+  children: YamlSourceNode[];
+}
+
+/** Rename the root scalar in place so YAML dialects and tags never get normalized. */
+function renameSkillSource(content: string, name: string): string {
+  const start = content.indexOf("\n") + 1;
+  const source = /^---\r?\n([\s\S]*?)^---(?:\r?\n|$)/m.exec(content)![1];
+  const roots: YamlSourceNode[] = [];
+  const stack: YamlSourceNode[] = [];
+  const metadata = load(source, {
+    listener(event, state) {
+      if (event === "open") {
+        const node: YamlSourceNode = {
+          start: state.position,
+          end: state.position,
+          kind: null,
+          result: null,
+          children: [],
+        };
+        (stack.at(-1)?.children ?? roots).push(node);
+        stack.push(node);
+      } else {
+        Object.assign(stack.pop()!, {
+          end: state.position,
+          kind: state.kind,
+          result: state.result,
+        });
+      }
+    },
+  });
+  function findName(node: YamlSourceNode): YamlSourceNode | undefined {
+    if (node.kind === "mapping" && node.result === metadata) {
+      for (let index = 0; index + 1 < node.children.length; index += 2) {
+        if (
+          node.children[index].kind === "scalar" &&
+          node.children[index].result === "name"
+        )
+          return node.children[index + 1];
+      }
+    }
+    for (const child of node.children) {
+      const found = findName(child);
+      if (found) return found;
+    }
+  }
+  let scalar = roots[0] && findName(roots[0]);
+  // The loader can wrap explicit keys, tags, or a scalar on its own indented line.
+  while (scalar?.children.length === 1 && scalar.children[0].kind === "scalar")
+    scalar = scalar.children[0];
+  if (!scalar || scalar.kind !== "scalar" || scalar.end > source.length)
+    throw new Error(
+      "Cannot locate the skill name safely. Edit SKILL.md source to create a personal copy."
+    );
+  const original = source.slice(scalar.start, scalar.end);
+  const replacement = `${/^\s*/.exec(original)![0]}${JSON.stringify(name)}${
+    /\s*$/.exec(original)![0]
+  }`;
+  return (
+    content.slice(0, start + scalar.start) +
+    replacement +
+    content.slice(start + scalar.end)
+  );
 }
 
 function issue(
@@ -396,7 +465,7 @@ export function copySystemSkillDraft(
       [issue("invalid_skill_entrypoint", "Missing root SKILL.md.", "SKILL.md")]
     );
   try {
-    const { metadata, body } = readSkillFrontmatter(
+    const { metadata } = readSkillFrontmatter(
       root.content,
       limits.skill_file_bytes
     );
@@ -407,10 +476,14 @@ export function copySystemSkillDraft(
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(distinctName)
     )
       throw new Error("Choose a valid lowercase skill name.");
-    root.content = `---\n${dump(
-      { ...metadata, name: distinctName },
-      { noRefs: true, lineWidth: -1 }
-    )}---\n${body}`;
+    root.content = renameSkillSource(root.content, distinctName);
+    if (
+      readSkillFrontmatter(root.content, limits.skill_file_bytes).metadata
+        .name !== distinctName
+    )
+      throw new Error(
+        "Cannot rename this skill safely. Edit SKILL.md source to create a personal copy."
+      );
   } catch (error) {
     const message =
       error instanceof Error
