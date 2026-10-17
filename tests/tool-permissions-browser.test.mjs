@@ -524,29 +524,37 @@ async function openAdminTools(page) {
 async function assertWorkspaceTabsFullyVisible(page, context) {
   const rail = page.getByRole("tablist", { name: "Workspace sections" });
   const railBox = await rail.boundingBox();
-  const tabBoxes = await rail.getByRole("tab").evaluateAll((tabs) =>
-    tabs.map((tab) => {
-      const box = tab.getBoundingClientRect();
-      const textNode = [...tab.childNodes].find(
-        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
-      );
-      const range = document.createRange();
-      if (textNode) range.selectNode(textNode);
-      const textBox = textNode ? range.getBoundingClientRect() : null;
-      return {
-        left: box.left,
-        right: box.right,
-        width: box.width,
-        scrollWidth: tab.scrollWidth,
-        clientWidth: tab.clientWidth,
-        textLeft: textBox?.left,
-        textRight: textBox?.right,
-        textWidth: textBox?.width,
-      };
-    })
-  );
+  const tabs = rail.getByRole("tab");
+  assert.equal(await tabs.count(), 5, `${context}: all five tabs must render`);
+  const tabBoxes = [];
+  for (let index = 0; index < (await tabs.count()); index++) {
+    const tab = tabs.nth(index);
+    await tab.evaluate((node) =>
+      node.scrollIntoView({ block: "nearest", inline: "nearest" })
+    );
+    tabBoxes.push(
+      await tab.evaluate((tab) => {
+        const box = tab.getBoundingClientRect();
+        const textNode = [...tab.childNodes].find(
+          (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+        );
+        const range = document.createRange();
+        if (textNode) range.selectNode(textNode);
+        const textBox = textNode ? range.getBoundingClientRect() : null;
+        return {
+          left: box.left,
+          right: box.right,
+          width: box.width,
+          scrollWidth: tab.scrollWidth,
+          clientWidth: tab.clientWidth,
+          textLeft: textBox?.left,
+          textRight: textBox?.right,
+          textWidth: textBox?.width,
+        };
+      })
+    );
+  }
   assert(railBox, `${context}: workspace tab rail is missing`);
-  assert.equal(tabBoxes.length, 4, `${context}: all four tabs must render`);
   for (const box of tabBoxes) {
     assert(box.width > 0, `${context}: every workspace tab must be visible`);
     assert(
@@ -611,6 +619,10 @@ test(
             `${panel} ${failure} PUT requires fresh GET recovery`,
             async () => {
               const policy = makePolicyFixture();
+              // This recovery case starts with no selection so checking email
+              // creates a dirty draft under the admin tier's allowed defaults.
+              if (panel === "personal")
+                policy.selections.set("admin-account", []);
               const { page, context, pageErrors, consoleErrors } =
                 await authenticatedPage(browser, fixture, policy, "admin");
               const recoveryStarted = deferred();
@@ -943,6 +955,8 @@ test(
     await mkdir(EVIDENCE, { recursive: true });
     const fixture = await staticServer();
     const policy = makePolicyFixture();
+    policy.selections.set("admin-account", []);
+    policy.selections.set("switched-admin-account", []);
     const browser = await chromium.launch({
       headless: true,
       ...(process.env.TOOL_PERMISSIONS_BROWSER_EXECUTABLE
@@ -1013,7 +1027,7 @@ test(
       await email.focus();
       await page.keyboard.press("Space");
       assert.equal(await email.isChecked(), true);
-      const emailDetails = email.locator("xpath=following-sibling::div[1]");
+      const emailDetails = email.locator("xpath=../following-sibling::div[1]");
       await emailDetails.getByText("Pending save", { exact: true }).waitFor();
       assert.equal(
         await emailDetails.getByText("Active", { exact: true }).count(),

@@ -49,6 +49,10 @@ import { ThreadList } from "@/app/components/ThreadList";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { ChatProvider } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
+import {
+  createSkillAuthoringRequest,
+  type SkillAuthoringRequest,
+} from "@/lib/skill-authoring-request";
 
 // Heavy, rarely-opened surfaces are code-split out of the initial chunk. The
 // admin console alone is the largest component in the app and is only reachable
@@ -110,6 +114,41 @@ function HomePageInner({
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const workspaceDirty = useRef<{ accountId: string | null; value: boolean }>({
+    accountId: null,
+    value: false,
+  });
+  const [skillAuthoringRequest, setSkillAuthoringRequest] =
+    useState<SkillAuthoringRequest | null>(null);
+  const handleWorkspaceDirtyChange = useCallback(
+    (value: boolean) => {
+      workspaceDirty.current = { accountId: user?.user_id ?? null, value };
+    },
+    [user?.user_id]
+  );
+  const allowWorkspaceLeave = useCallback(
+    () =>
+      workspaceDirty.current.accountId !== user?.user_id ||
+      !workspaceDirty.current.value ||
+      window.confirm("Discard unsaved skill changes?"),
+    [user?.user_id]
+  );
+  const consumeSkillAuthoringRequest = useCallback(
+    (id: string) =>
+      setSkillAuthoringRequest((previous) =>
+        previous?.id === id ? null : previous
+      ),
+    []
+  );
+  const createWithAgent = useCallback(() => {
+    if (!user || !allowWorkspaceLeave()) return;
+    setSkillAuthoringRequest(
+      createSkillAuthoringRequest(user.user_id, threadId)
+    );
+    workspaceDirty.current = { accountId: user.user_id, value: false };
+    setWorkspaceOpen(false);
+    setWorkspaceTab(undefined);
+  }, [allowWorkspaceLeave, user, threadId]);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab | undefined>(
     undefined
   );
@@ -139,9 +178,11 @@ function HomePageInner({
     void setSidebar(null);
   }, [setSidebar]);
   const handleWorkspaceClose = useCallback(() => {
+    if (!allowWorkspaceLeave()) return;
+    workspaceDirty.current = { accountId: user?.user_id ?? null, value: false };
     setWorkspaceOpen(false);
     setWorkspaceTab(undefined);
-  }, []);
+  }, [allowWorkspaceLeave, user?.user_id]);
   const handleTokenFocusConsumed = useCallback(
     () => requestTokenFocus(null),
     [requestTokenFocus]
@@ -284,14 +325,14 @@ function HomePageInner({
       </Suspense>
       <div className="flex h-screen flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
+        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:gap-2 max-sm:px-3">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
             style={{ background: "var(--aptiv-orange)" }}
           />
 
-          <div className="flex min-w-0 items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4 max-sm:gap-2">
             <div className="flex items-center gap-3">
               <img
                 src={
@@ -305,10 +346,10 @@ function HomePageInner({
                 className="h-5 w-auto"
               />
               <span
-                className="h-5 w-px bg-border"
+                className="h-5 w-px bg-border max-sm:hidden"
                 aria-hidden="true"
               />
-              <div className="flex flex-col leading-none">
+              <div className="flex flex-col leading-none max-sm:hidden">
                 <span
                   className="text-[9px] font-bold uppercase tracking-[0.2em]"
                   style={{ color: "var(--aptiv-orange)" }}
@@ -324,11 +365,12 @@ function HomePageInner({
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Threads"
                 onClick={() => setSidebar("1")}
-                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent"
+                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
               >
-                <MessagesSquare className="mr-2 h-4 w-4" />
-                Threads
+                <MessagesSquare className="h-4 w-4 sm:mr-2" />
+                <span className="max-sm:hidden">Threads</span>
                 {interruptCount > 0 && (
                   <span
                     className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
@@ -384,6 +426,7 @@ function HomePageInner({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
+                    if (workspaceOpen && !allowWorkspaceLeave()) return;
                     setWorkspaceOpen((v) => {
                       const next = !v;
                       if (next) setAdminOpen(false);
@@ -395,15 +438,17 @@ function HomePageInner({
                   aria-pressed={workspaceOpen}
                   className={
                     workspaceOpen
-                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:hidden"
-                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:hidden"
+                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
+                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
                   }
                 >
-                  <LayoutPanelLeft className="mr-2 h-4 w-4" />
-                  Workspace
+                  <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="max-sm:hidden">Workspace</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Models · Tokens · Connectivity</TooltipContent>
+              <TooltipContent>
+                Models · Tools · Skills · Tokens · Connections
+              </TooltipContent>
             </Tooltip>
             {isAdmin && (
               <Tooltip>
@@ -412,6 +457,8 @@ function HomePageInner({
                     variant="ghost"
                     size="icon"
                     onClick={() => {
+                      if (!adminOpen && workspaceOpen && !allowWorkspaceLeave())
+                        return;
                       setAdminOpen((v) => {
                         const next = !v;
                         if (next) {
@@ -502,8 +549,11 @@ function HomePageInner({
                 analysisEngine={config.analysisEngine}
               >
                 <ChatInterface
+                  key={user?.user_id ?? "signed-out"}
                   assistant={assistant}
                   userId={user?.user_id}
+                  skillAuthoringRequest={skillAuthoringRequest}
+                  onSkillAuthoringRequestConsumed={consumeSkillAuthoringRequest}
                 />
               </ChatProvider>
             </ResizablePanel>
@@ -516,7 +566,7 @@ function HomePageInner({
                   order={3}
                   defaultSize={28}
                   minSize={22}
-                  className="relative min-w-[360px]"
+                  className="relative min-w-[360px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0 max-sm:bg-background"
                 >
                   <Suspense fallback={<PanelFallback label="Workspace" />}>
                     <WorkspacePanel
@@ -524,6 +574,8 @@ function HomePageInner({
                       initialTokenFocus={pendingTokenFocus}
                       onTokenFocusConsumed={handleTokenFocusConsumed}
                       onClose={handleWorkspaceClose}
+                      onCreateWithAgent={createWithAgent}
+                      onDirtyChange={handleWorkspaceDirtyChange}
                     />
                   </Suspense>
                 </ResizablePanel>
