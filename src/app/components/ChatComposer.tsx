@@ -20,8 +20,15 @@ import { useConnectivity } from "@/providers/ConnectivityProvider";
 import { useQueryState } from "nuqs";
 import type { MessageAttachment } from "@/lib/uploads";
 import type { SourceImageRecord } from "@/lib/source-images";
+import {
+  skillAuthoringRequestMatches,
+  type SkillAuthoringRequest,
+} from "@/lib/skill-authoring-request";
 
 interface ChatComposerProps {
+  accountId?: string;
+  skillAuthoringRequest?: SkillAuthoringRequest | null;
+  onSkillAuthoringRequestConsumed?: (id: string) => void;
   evidenceRequest?: { text: string; threadId: string | null } | null;
   onEvidenceConsumed?: () => void;
   assistant: Assistant | null;
@@ -49,9 +56,12 @@ interface ChatComposerProps {
  */
 export const ChatComposer = React.memo<ChatComposerProps>(
   ({
+    accountId,
     assistant,
     evidenceRequest,
     onEvidenceConsumed,
+    skillAuthoringRequest,
+    onSkillAuthoringRequestConsumed,
     isLoading,
     files,
     sourceImageAttachments,
@@ -105,6 +115,46 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       return () => observer.disconnect();
     }, [resizeTextarea]);
     const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
+    const handledSkillRequests = useRef(new Set<string>());
+    const [pendingSkillRequest, setPendingSkillRequest] =
+      useState<SkillAuthoringRequest | null>(null);
+    const matchingPendingSkill =
+      pendingSkillRequest &&
+      skillAuthoringRequestMatches(pendingSkillRequest, accountId, threadId)
+        ? pendingSkillRequest
+        : null;
+    useEffect(() => {
+      if (
+        pendingSkillRequest &&
+        !skillAuthoringRequestMatches(pendingSkillRequest, accountId, threadId)
+      )
+        setPendingSkillRequest(null);
+    }, [pendingSkillRequest, threadId, accountId]);
+    useEffect(() => {
+      if (
+        !skillAuthoringRequest ||
+        handledSkillRequests.current.has(skillAuthoringRequest.id)
+      )
+        return;
+      handledSkillRequests.current.add(skillAuthoringRequest.id);
+      if (
+        skillAuthoringRequestMatches(skillAuthoringRequest, accountId, threadId)
+      ) {
+        if (input) setPendingSkillRequest(skillAuthoringRequest);
+        else {
+          setInput(skillAuthoringRequest.text);
+          textareaRef.current?.focus();
+        }
+      }
+      onSkillAuthoringRequestConsumed?.(skillAuthoringRequest.id);
+    }, [
+      skillAuthoringRequest,
+      onSkillAuthoringRequestConsumed,
+      accountId,
+      threadId,
+      input,
+      setInput,
+    ]);
     useEffect(() => {
       if (!evidenceRequest || lastEvidenceRef.current === evidenceRequest)
         return;
@@ -285,6 +335,49 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             if (dropped.length) addFiles(dropped);
           }}
         >
+          {matchingPendingSkill && (
+            <div
+              role="status"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm"
+            >
+              <p className="min-w-0 flex-1">
+                Keep your message and append the skill authoring request?
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  if (
+                    !skillAuthoringRequestMatches(
+                      matchingPendingSkill,
+                      accountId,
+                      threadId
+                    )
+                  )
+                    return;
+                  setInput((previous) =>
+                    previous
+                      ? `${previous}\n\n${matchingPendingSkill.text}`
+                      : matchingPendingSkill.text
+                  );
+                  setPendingSkillRequest(null);
+                  textareaRef.current?.focus();
+                }}
+                aria-label="Append skill request"
+              >
+                Append
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setPendingSkillRequest(null)}
+                aria-label="Cancel skill request"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
           <AttachmentsRow
             items={attachments}
             onRemove={removeAttachment}

@@ -11,10 +11,13 @@ import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { ChatComposer } from "@/app/components/ChatComposer";
+import type { SkillAuthoringRequest } from "@/lib/skill-authoring-request";
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
   userId?: string;
+  skillAuthoringRequest?: SkillAuthoringRequest | null;
+  onSkillAuthoringRequestConsumed?: (id: string) => void;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -44,7 +47,12 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
 };
 
 export const ChatInterface = React.memo<ChatInterfaceProps>(
-  ({ assistant, userId }) => {
+  ({
+    assistant,
+    userId,
+    skillAuthoringRequest,
+    onSkillAuthoringRequestConsumed,
+  }) => {
     const { threadId } = useChatContext();
     const [evidenceRequest, setEvidenceRequest] = useState<{
       text: string;
@@ -423,6 +431,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               </div>
             )}
             <ChatComposer
+              accountId={userId}
+              skillAuthoringRequest={skillAuthoringRequest}
+              onSkillAuthoringRequestConsumed={onSkillAuthoringRequestConsumed}
               evidenceRequest={evidenceRequest}
               onEvidenceConsumed={consumeEvidence}
               assistant={assistant}

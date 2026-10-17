@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bot, KeyRound, PlugZap, Wrench, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bot, BookOpen, KeyRound, PlugZap, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PanelTabs } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
@@ -9,8 +9,15 @@ import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
 import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";
 import { ToolPermissionsSidebar } from "@/app/components/ToolPermissionsSidebar";
+import { SkillsSidebar } from "@/app/components/SkillsSidebar";
+import { useAuth } from "@/providers/AuthProvider";
 
-export type WorkspaceTab = "models" | "tokens" | "connectivity" | "tools";
+export type WorkspaceTab =
+  | "models"
+  | "tokens"
+  | "connectivity"
+  | "tools"
+  | "skills";
 
 interface WorkspacePanelProps {
   /** Tab to show on mount; falls back to "models" if undefined. */
@@ -19,6 +26,8 @@ interface WorkspacePanelProps {
   initialTokenFocus?: string | null;
   onTokenFocusConsumed?: () => void;
   onClose: () => void;
+  onCreateWithAgent: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 interface TabDef {
@@ -30,6 +39,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: "models", label: "Models", icon: Bot },
   { id: "tools", label: "Tools", icon: Wrench },
+  { id: "skills", label: "Skills", icon: BookOpen },
   { id: "tokens", label: "Tokens", icon: KeyRound },
   { id: "connectivity", label: "Connections", icon: PlugZap },
 ];
@@ -41,7 +51,21 @@ export function WorkspacePanel({
   initialTokenFocus,
   onTokenFocusConsumed,
   onClose,
+  onCreateWithAgent,
+  onDirtyChange,
 }: WorkspacePanelProps) {
+  const { user } = useAuth();
+  const dirty = useRef<{ accountId: string | null; value: boolean }>({
+    accountId: null,
+    value: false,
+  });
+  const updateDirty = useCallback(
+    (value: boolean) => {
+      dirty.current = { accountId: user?.user_id ?? null, value };
+      onDirtyChange(value);
+    },
+    [onDirtyChange, user?.user_id]
+  );
   // Remember the last-opened tab across sessions so a user doing iterative
   // token edits → model tweaks doesn't have to re-find the tab each time.
   const [active, setActive] = useState<WorkspaceTab>(() => {
@@ -53,12 +77,28 @@ export function WorkspacePanel({
     if (stored && TABS.some((t) => t.id === stored)) return stored;
     return "models";
   });
+  const changeTab = useCallback(
+    (next: WorkspaceTab) => {
+      if (active === next) return;
+      if (
+        dirty.current.accountId === user?.user_id &&
+        dirty.current.value &&
+        !window.confirm("Discard unsaved skill changes?")
+      )
+        return;
+      updateDirty(false);
+      setActive(next);
+    },
+    [active, updateDirty, user?.user_id]
+  );
 
   // If the parent escalates `initialTab` after mount (e.g. notification deep
   // link asks for "tokens"), honour that without trashing user prefs.
   useEffect(() => {
     if (!initialTab) return;
-    setActive(initialTab);
+    changeTab(initialTab);
+    // A deep link is a navigation event, not a controlled tab value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
 
   useEffect(() => {
@@ -93,18 +133,29 @@ export function WorkspacePanel({
         <PanelTabs
           tabs={TABS}
           value={active}
-          onValueChange={setActive}
+          onValueChange={changeTab}
           idPrefix="workspace"
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="grid grid-cols-4 gap-1 px-2 pt-4 [&_[role=tab]]:w-full [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-1.5"
+          className="overflow-x-auto px-2 pt-4 [&_[role=tab]]:shrink-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-2"
         />
       </div>
 
       {/* Panel bodies. We mount only the active tab to avoid running fetches
           for sections the user hasn't opened. */}
       <div className="relative min-h-0 flex-1">
+        {active === "skills" && (
+          <div
+            {...panelTabPanelProps("workspace", "skills")}
+            className="absolute inset-0 focus-visible:outline-none"
+          >
+            <SkillsSidebar
+              onCreateWithAgent={onCreateWithAgent}
+              onDirtyChange={updateDirty}
+            />
+          </div>
+        )}
         {active === "models" && (
           <div
             {...panelTabPanelProps("workspace", "models")}

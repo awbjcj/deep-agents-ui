@@ -128,6 +128,7 @@ test("workspace tabs preserve ids and use the compact requested order", async ()
   const destinations = [
     ["models", "Models"],
     ["tools", "Tools"],
+    ["skills", "Skills"],
     ["tokens", "Tokens"],
     ["connectivity", "Connections"],
   ];
@@ -137,7 +138,8 @@ test("workspace tabs preserve ids and use the compact requested order", async ()
     assert(position > previous, `${label} should appear in order`);
     previous = position;
   }
-  assert.match(workspace, /grid grid-cols-4 gap-1/);
+  assert.match(workspace, /overflow-x-auto/);
+  assert.doesNotMatch(workspace, /grid-cols-4/);
   assert.match(workspace, /icon: Bot/);
   assert.match(workspace, /icon: Wrench/);
   assert.match(workspace, /icon: KeyRound/);
