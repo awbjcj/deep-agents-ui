@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { ArrowLeft, Check, RefreshCw, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/AuthProvider";
 import { usePersonalSkills } from "@/app/hooks/usePersonalSkills";
@@ -33,6 +34,36 @@ function AccountSkills({
   onDirtyChange,
 }: SkillsSidebarProps & { accountId: string }) {
   const skills = usePersonalSkills(accountId);
+  const scrollArea = useRef<HTMLDivElement>(null);
+  const catalogArea = useRef<HTMLDivElement>(null);
+  const taskArea = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const importTrigger = useRef<HTMLElement | null>(null);
+  const importApplied = useRef(false);
+  const openImport = () => {
+    importTrigger.current = document.activeElement as HTMLElement;
+    importApplied.current = false;
+    skills.openImport();
+  };
+  const mode = skills.draft
+    ? "editor"
+    : skills.selected
+    ? "details"
+    : "catalog";
+  const previousMode = useRef(mode);
+  useEffect(() => {
+    if (mode === previousMode.current) return;
+    if (mode === "catalog") {
+      const target = returnFocus.current;
+      if (target?.isConnected) target.focus();
+      else
+        catalogArea.current?.querySelector<HTMLInputElement>("input")?.focus();
+    } else {
+      if (scrollArea.current) scrollArea.current.scrollTop = 0;
+      taskArea.current?.focus({ preventScroll: true });
+    }
+    previousMode.current = mode;
+  }, [mode]);
   useEffect(() => {
     onDirtyChange(skills.dirty);
     return () => onDirtyChange(false);
@@ -41,22 +72,57 @@ function AccountSkills({
     skills.selected?.id ?? "draft"
   }:${skills.selectionKey}`;
   return (
-    <div className="absolute inset-0 overflow-y-auto overscroll-contain p-4">
-      <div className="min-w-0 space-y-6">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={onCreateWithAgent}
-          >
-            Create with vsda-deep-agent
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={skills.loading || skills.busy}
-            onClick={() => void skills.refresh()}
-          >
-            Refresh catalog
-          </Button>
+    <div
+      ref={scrollArea}
+      className="absolute inset-0 scroll-pb-28 overflow-y-auto overscroll-contain p-4 @container"
+    >
+      <div className="min-w-0 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          {mode !== "catalog" ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={skills.busy}
+              onClick={skills.discard}
+            >
+              <ArrowLeft aria-hidden="true" /> Back to skills
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onCreateWithAgent}
+              aria-label="Create with vsda-deep-agent"
+            >
+              <Sparkles aria-hidden="true" /> Create with agent
+            </Button>
+          )}
+          <div className="flex items-center gap-1">
+            {mode !== "catalog" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={skills.busy}
+                onClick={openImport}
+              >
+                <Upload aria-hidden="true" /> Import
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label="Refresh catalog"
+              title="Refresh catalog"
+              disabled={skills.loading || skills.busy}
+              onClick={() => void skills.refresh()}
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className="size-4"
+              />
+            </Button>
+          </div>
         </div>
         {skills.error && (
           <div
@@ -85,113 +151,148 @@ function AccountSkills({
         {skills.success && (
           <p
             role="status"
-            className="text-sm text-success"
+            className="border-success/30 bg-success/5 flex items-center gap-2 rounded-lg border p-3 text-sm text-success"
           >
+            <Check
+              aria-hidden="true"
+              className="size-4 shrink-0"
+            />
             {skills.success}
           </p>
         )}
-        <SkillCatalog
-          entries={skills.catalog?.entries ?? []}
-          loading={skills.loading}
-          selectedKey={
-            skills.selected
-              ? `${skills.selected.origin}:${skills.selected.id}`
-              : null
+        <div
+          ref={catalogArea}
+          hidden={mode !== "catalog"}
+        >
+          <SkillCatalog
+            entries={skills.catalog?.entries ?? []}
+            loading={skills.loading}
+            unavailable={!skills.catalog && !!skills.catalogError}
+            selectedKey={
+              skills.selected
+                ? `${skills.selected.origin}:${skills.selected.id}`
+                : null
+            }
+            onSelect={(entry) => {
+              returnFocus.current = document.activeElement as HTMLElement;
+              void skills.select(entry);
+            }}
+            onCreate={skills.create}
+            onImport={openImport}
+          />
+        </div>
+        <div
+          ref={taskArea}
+          role="group"
+          tabIndex={-1}
+          className="min-w-0 space-y-4 outline-none"
+          hidden={mode === "catalog"}
+          aria-label={
+            mode === "editor" ? "Edit skill package" : "Selected skill package"
           }
-          onSelect={(entry) => void skills.select(entry)}
-          onCreate={skills.create}
-          onImport={skills.openImport}
-        />
-        {skills.nameConflict && (
-          <p
-            role="alert"
-            className="rounded-lg border border-amber-500/50 p-3 text-sm"
-          >
-            This name is already in use. Your draft is still here. Change the
-            name in SKILL.md, or import a package and explicitly choose an owned
-            replacement target.
-          </p>
-        )}
-        {skills.conflict &&
-          (skills.draft?.sourceId ||
-            (skills.detail && !("resources" in skills.detail))) && (
-            <div
+        >
+          {skills.nameConflict && (
+            <p
               role="alert"
-              className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/5 p-3 text-sm"
+              className="rounded-lg border border-amber-500/50 p-3 text-sm"
             >
-              <p>
-                The saved package changed. Your draft is still here. View the
-                latest version before deciding whether to discard your changes.
-              </p>
+              This name is already in use. Your draft is still here. Change the
+              name in SKILL.md, or import a package and explicitly choose an
+              owned replacement target.
+            </p>
+          )}
+          {skills.conflict &&
+            (skills.draft?.sourceId ||
+              (skills.detail && !("resources" in skills.detail))) && (
+              <div
+                role="alert"
+                className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/5 p-3 text-sm"
+              >
+                <p>
+                  The saved package changed. Your draft is still here. View the
+                  latest version before deciding whether to discard your
+                  changes.
+                </p>
+                <Button
+                  variant="outline"
+                  disabled={skills.busy}
+                  onClick={() => void skills.viewLatest()}
+                >
+                  View latest version
+                </Button>
+              </div>
+            )}
+          {skills.latest && (
+            <section
+              aria-label="Latest saved skill"
+              className="min-w-0 space-y-3 rounded-lg border p-3"
+            >
+              <h3 className="font-semibold">
+                Latest saved version · revision {skills.latest.revision}
+              </h3>
+              {skills.latest.files.map((file) => (
+                <SkillFilePreview
+                  key={file.path}
+                  file={file}
+                  mode="source"
+                />
+              ))}
               <Button
                 variant="outline"
-                disabled={skills.busy}
-                onClick={() => void skills.viewLatest()}
+                onClick={skills.reloadLatest}
               >
-                View latest version
+                Reload latest and discard draft
               </Button>
-            </div>
+            </section>
           )}
-        {skills.latest && (
-          <section
-            aria-label="Latest saved skill"
-            className="min-w-0 space-y-3 rounded-lg border p-3"
-          >
-            <h3 className="font-semibold">
-              Latest saved version · revision {skills.latest.revision}
-            </h3>
-            {skills.latest.files.map((file) => (
-              <SkillFilePreview
-                key={file.path}
-                file={file}
-                mode="source"
-              />
-            ))}
+          {skills.draft ? (
+            <SkillEditor
+              key={`${key}:editor`}
+              draft={skills.draft}
+              limits={skills.limits}
+              diagnostics={skills.diagnostics}
+              saving={skills.busy}
+              onChange={skills.changeDraft}
+              onSave={() => void skills.save()}
+              onDiscard={skills.discard}
+            />
+          ) : skills.detail ? (
+            <SkillDetails
+              key={`${key}:details`}
+              skill={skills.detail}
+              files={skills.files}
+              limits={skills.limits}
+              occupiedNames={
+                skills.catalog?.entries.map((entry) => entry.name) ?? []
+              }
+              availability={
+                skills.catalog?.entries.find(
+                  (entry) =>
+                    entry.id === skills.detail?.id &&
+                    entry.origin === "personal"
+                )?.availability
+              }
+              loading={skills.detailLoading}
+              busy={skills.busy}
+              diagnostics={skills.diagnostics}
+              onReadFile={(path) => void skills.readFile(path)}
+              onCopy={(name) => void skills.copy(name)}
+              onEdit={skills.edit}
+              onDelete={() => void skills.remove()}
+            />
+          ) : skills.detailLoading ? (
+            <p role="status">Loading skill package…</p>
+          ) : skills.selected && skills.error ? (
             <Button
               variant="outline"
-              onClick={skills.reloadLatest}
+              onClick={() =>
+                skills.selected && void skills.select(skills.selected)
+              }
             >
-              Reload latest and discard draft
+              Retry skill
             </Button>
-          </section>
-        )}
-        {skills.draft ? (
-          <SkillEditor
-            key={`${key}:editor`}
-            draft={skills.draft}
-            limits={skills.limits}
-            diagnostics={skills.diagnostics}
-            saving={skills.busy}
-            onChange={skills.changeDraft}
-            onSave={() => void skills.save()}
-            onDiscard={skills.discard}
-          />
-        ) : skills.detail ? (
-          <SkillDetails
-            key={`${key}:details`}
-            skill={skills.detail}
-            files={skills.files}
-            limits={skills.limits}
-            occupiedNames={
-              skills.catalog?.entries.map((entry) => entry.name) ?? []
-            }
-            availability={
-              skills.catalog?.entries.find(
-                (entry) =>
-                  entry.id === skills.detail?.id && entry.origin === "personal"
-              )?.availability
-            }
-            loading={skills.detailLoading}
-            busy={skills.busy}
-            diagnostics={skills.diagnostics}
-            onReadFile={(path) => void skills.readFile(path)}
-            onCopy={(name) => void skills.copy(name)}
-            onEdit={skills.edit}
-            onDelete={() => void skills.remove()}
-          />
-        ) : skills.detailLoading ? (
-          <p role="status">Loading skill package…</p>
-        ) : null}
+          ) : null}
+        </div>
       </div>
       <SkillImportDialog
         key={`${accountId}:${skills.importSession}`}
@@ -213,7 +314,14 @@ function AccountSkills({
         limits={skills.limits}
         onOpenChange={skills.closeImport}
         onFile={(file) => void skills.previewImport(file)}
-        onImport={skills.importDraft}
+        onImport={(preview) => {
+          importApplied.current = skills.importDraft(preview);
+        }}
+        onReturnFocus={() => {
+          if (importApplied.current)
+            taskArea.current?.focus({ preventScroll: true });
+          else importTrigger.current?.focus();
+        }}
         targets={skills.catalog?.entries ?? []}
         targetId={skills.importTargetId}
         target={skills.importTarget}

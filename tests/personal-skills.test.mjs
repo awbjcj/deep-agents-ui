@@ -482,6 +482,25 @@ test("previews render hostile HTML and scripts as inert content and block unsafe
   }
 });
 
+test("instruction preview hides valid entrypoint metadata without changing source or resource Markdown", () => {
+  const render = (file, mode) =>
+    renderToStaticMarkup(React.createElement(SkillFilePreview, { file, mode }));
+  const preview = render(root, "preview");
+  assert.match(preview, /Instructions/);
+  assert.doesNotMatch(preview, /owner: team|name: original/);
+  assert.match(render(root, "source"), /owner: team/);
+  assert.match(
+    render({ ...root, path: "references/example.md" }, "preview"),
+    /owner: team/
+  );
+  const incomplete = {
+    path: "SKILL.md",
+    content: "---\nname: unfinished\n# Keep this draft visible",
+  };
+  assert.match(render(incomplete, "preview"), /Keep this draft visible/);
+  assert.match(preview, /tabindex="0"/);
+});
+
 test("file navigation and editor expose file controls, diagnostics and explicit Save/Discard", () => {
   const navigator = renderToStaticMarkup(
     React.createElement(SkillFileList, {

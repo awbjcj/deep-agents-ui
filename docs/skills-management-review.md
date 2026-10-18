@@ -1,0 +1,42 @@
+# Skill management review and UI refactor
+
+Reviewed on 2026-10-17 against backend `d25dd0be` and UI `ec78b08`, the latest personal-skills merge in each local `dev` checkout. Changes remain local and uncommitted.
+
+The review covered the authenticated skills router, account ownership and revision transactions, bounded upload/package validation, deployed catalog construction, private runtime reads and refresh, and the catalog/import/editor UI. The requested code-review skill's correctness, security, validation, and maintenance priorities apply here; its awesome-copilot submission/editorial criteria do not apply to this application.
+
+No additional backend correctness or security finding was confirmed in those paths. This is a scoped code review and local verification, not certification of live providers or worker deployments.
+
+## Findings and corrections
+
+| Before                                                                                                                                                                                                                                                   | After                                                                                                                                                                                                                                                                       | Why                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **P2 — narrow desktop editing:** `SkillEditor.tsx:109` and `SkillDetails.tsx:174` at the review base used viewport `md` grids with a 12rem file column. The desktop workspace defaults to 28% of the viewport, leaving very little width for the editor. | [Editor](../src/app/components/skills/SkillEditor.tsx) and [details](../src/app/components/skills/SkillDetails.tsx) use container queries and stack until the actual content area reaches 36rem. Copy controls also use available container width.                          | A wide monitor does not imply a wide sidebar. The regression checks full-width editing inside the default narrow desktop panel.      |
+| **P2 — hidden task destination:** the entire catalog preceded the package/editor in `SkillsSidebar.tsx:102-198`; selecting or creating a skill left the user above it with no focus transfer.                                                            | [The workspace](../src/app/components/SkillsSidebar.tsx) presents a dedicated details/editor view with Back to skills, focus transfer, and retained search/filter state.                                                                                                    | Large catalogs no longer push the selected task below the fold. Returning to the catalog restores the selected row's keyboard focus. |
+| **P3 — premature discard prompt:** `usePersonalSkills.ts:350-351` called `canLeave()` when opening Import, although opening/canceling the dialog did not replace the draft; applying the import prompted again.                                          | [Import opening](../src/app/hooks/usePersonalSkills.ts) preserves the draft and confirms only when applying the replacement. The dialog returns focus to its trigger on cancellation and to the workspace after applying.                                                   | Reversible previews should not claim to discard work. Tests check that a canceled replacement keeps the original draft.              |
+| **P3 — misleading empty state:** a failed first catalog request also rendered “No skills yet” from an empty fallback array.                                                                                                                              | The catalog error retains its retry action and suppresses the empty-library message until a successful response. Refreshes retain existing rows.                                                                                                                            | Failed loading must not look like an empty account.                                                                                  |
+| **Readability:** raw SKILL.md metadata rendered as Markdown headings; long preview panes lacked an explicit keyboard focus target.                                                                                                                       | [The preview](../src/app/components/skills/SkillFileList.tsx) displays the instruction body for valid SKILL.md frontmatter and makes the scroll pane focusable. Source retains the original text, supporting Markdown keeps its content, and malformed drafts stay visible. | Readers see the instructions while authors can still inspect every byte in Source. Hostile HTML and unsafe links remain inert.       |
+
+The catalog now has clearer origin icons, visible counts, a recoverable no-results state, and explicit account privacy text. File lists are bounded and omit inherited list indentation. The import dialog keeps its header and actions outside its scrolling body and identifies the chosen upload. Existing theme tokens and icons are retained. No new motion, dependencies, API fields, or backend behavior were introduced.
+
+## Verification
+
+- Backend: `uv run --no-sync python -m pytest tests/unit_tests/personal_skills tests/integration_tests/test_personal_skills_api.py -q` — **199 passed**, one existing langchain-community deprecation warning. The environment also logged a rejected LangSmith tracing request (HTTP 403); it did not fail the tests.
+- UI: `yarn.cmd test` — **304 passed, 24 opt-in browser skips, zero failures**.
+- `yarn.cmd tsc --noEmit` and scoped ESLint passed. Prettier and `git diff --check` passed.
+- Production static build with `NEXT_STATIC_EXPORT=1` and `NEXT_PUBLIC_DEPLOYMENT_URL=http://localhost:8000` passed, exporting all six generated pages.
+- Enabled `tests/personal-skills-browser.test.mjs` against that build — **21 TAP passes** (20 workspace scenarios plus their parent), zero failures, two unrelated tool-policy suites skipped.
+- Enabled the component browser case in `tests/personal-skills.test.mjs` — **one passed**, covering add/edit/remove files, filters, copy blockers, inert preview content, and invalidated imports.
+
+The first workspace browser run exposed a test that tried to query the editor through a modal's accessibility-hidden background. The assertion now runs after Cancel closes the dialog; the full browser suite then passed. No production fix was needed for that test error.
+
+Browser API responses are mocked. Coverage includes account switches and late responses, logout, create/import/copy/rename/delete, stale revisions, failure recovery, draft preservation, explicit chat insertion, search retention, focus return, and initial catalog failure. Screenshots cover 1440/320/375/390px in both themes, plus 812x375 landscape editing. The focused editor checks run with reduced motion. No live model/provider call, production deployment, worker runtime acceptance, commit, or push was performed.
+
+## Visual evidence
+
+- [Desktop-width library in its actual narrow sidebar](evidence/skills-refactor/1440-library-light.png)
+- [Small-screen dark library](evidence/skills-refactor/375-library-dark.png)
+- [Desktop editor with full-width source and visible Save](evidence/skills-refactor/1440-focused-editor-light.png)
+- [Small-screen dark editor](evidence/skills-refactor/375-focused-editor-dark.png)
+- [Narrow dark import replacement](evidence/skills-refactor/320-import-replacement-dark.png)
+
+The complete matrix is in `docs/evidence/skills-refactor/`; previous personal-skills evidence is untouched. Browser checks can redirect their screenshots using `PERSONAL_SKILLS_EVIDENCE_DIR`.

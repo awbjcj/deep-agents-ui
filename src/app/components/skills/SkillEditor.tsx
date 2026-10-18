@@ -84,11 +84,11 @@ export function SkillEditor({
   return (
     <section
       aria-label="Skill editor"
-      className="min-w-0 space-y-4"
+      className="min-w-0 space-y-4 @container"
       aria-busy={saving}
     >
       <div>
-        <h3 className="text-base font-semibold">
+        <h3 className="text-lg font-semibold tracking-tight">
           {draft.sourceId ? "Edit personal skill" : "New personal skill"}
         </h3>
         {draft.sourceId !== null && (
@@ -106,7 +106,7 @@ export function SkillEditor({
       <SkillDiagnostics
         diagnostics={[...diagnostics, ...fileDiagnostics, ...localDiagnostics]}
       />
-      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-3">
           <SkillFileList
             files={draft.files}
@@ -126,7 +126,7 @@ export function SkillEditor({
               event.preventDefault();
               addFile();
             }}
-            className="space-y-2"
+            className="space-y-2 rounded-lg border bg-muted/10 p-3"
           >
             <label
               htmlFor={`${id}-path`}
@@ -162,7 +162,7 @@ export function SkillEditor({
                   {selected.path}
                 </label>
                 <div
-                  className="flex gap-1"
+                  className="flex gap-1 rounded-lg border bg-muted/30 p-0.5"
                   role="group"
                   aria-label="File view"
                 >
@@ -191,7 +191,7 @@ export function SkillEditor({
                   id={`${id}-content`}
                   spellCheck={false}
                   disabled={saving}
-                  className="min-h-80 resize-y font-mono text-xs leading-6"
+                  className="min-h-80 resize-y scroll-mb-28 bg-card p-3 font-mono text-sm leading-6"
                   value={selected.content}
                   onChange={(event) => {
                     setFileDiagnostics([]);
@@ -220,7 +220,7 @@ export function SkillEditor({
           </p>
         </div>
       </div>
-      <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3 shadow-sm">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-3 shadow-sm">
         <p
           role="status"
           className="text-xs text-muted-foreground"

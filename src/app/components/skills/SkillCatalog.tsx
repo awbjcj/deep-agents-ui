@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useId, useState } from "react";
-import { Plus, Search, Upload } from "lucide-react";
+import {
+  BookOpen,
+  ChevronRight,
+  LockKeyhole,
+  Plus,
+  Search,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { SkillCatalogEntry } from "@/lib/skills";
@@ -10,6 +17,7 @@ import { cn } from "@/lib/utils";
 export interface SkillCatalogProps {
   entries: SkillCatalogEntry[];
   loading?: boolean;
+  unavailable?: boolean;
   selectedKey?: string | null;
   onSelect: (entry: SkillCatalogEntry) => void;
   onCreate: () => void;
@@ -19,6 +27,7 @@ export interface SkillCatalogProps {
 export function SkillCatalog({
   entries,
   loading,
+  unavailable,
   selectedKey,
   onSelect,
   onCreate,
@@ -36,36 +45,45 @@ export function SkillCatalog({
   );
   return (
     <section
-      className="min-w-0 space-y-4"
+      className="min-w-0 space-y-4 @container"
       aria-label="Skill catalog"
       aria-busy={loading}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold">Your skills</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Browse system instructions and build your personal library.
+        <div className="min-w-0">
+          <h3 className="text-xl font-semibold tracking-tight">Your skills</h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Reusable instructions for the way you work. Browse system skills or
+            build your own.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2">
+          <Button
+            type="button"
+            onClick={onCreate}
+            className="flex-1"
+          >
+            <Plus aria-hidden="true" /> New skill
+          </Button>
           <Button
             type="button"
             variant="outline"
             onClick={onImport}
+            className="flex-1"
           >
             <Upload aria-hidden="true" />
             Import
           </Button>
-          <Button
-            type="button"
-            onClick={onCreate}
-          >
-            <Plus aria-hidden="true" />
-            New skill
-          </Button>
         </div>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <LockKeyhole
+          aria-hidden="true"
+          className="size-3.5 shrink-0"
+        />
+        Personal skills are private to your account.
+      </p>
+      <div className="flex flex-col gap-2 @sm:flex-row">
         <div className="relative min-w-0 flex-1">
           <label
             htmlFor={`${id}-search`}
@@ -83,7 +101,7 @@ export function SkillCatalog({
             className="pl-9"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search names and descriptions"
+            placeholder="Search skills…"
           />
         </div>
         <div>
@@ -97,7 +115,7 @@ export function SkillCatalog({
             id={`${id}-origin`}
             value={origin}
             onChange={(event) => setOrigin(event.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-auto"
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring @sm:w-auto"
           >
             <option value="all">All origins</option>
             <option value="personal">Personal</option>
@@ -105,15 +123,31 @@ export function SkillCatalog({
           </select>
         </div>
       </div>
-      {loading ? (
+      {!unavailable && (
+        <p
+          role="status"
+          className="text-xs tabular-nums text-muted-foreground"
+        >
+          {loading
+            ? "Updating library…"
+            : `${matches.length} ${matches.length === 1 ? "skill" : "skills"}`}
+          {!loading &&
+            origin === "all" &&
+            !search &&
+            ` · ${
+              entries.filter((entry) => entry.origin === "personal").length
+            } personal`}
+        </p>
+      )}
+      {loading && !entries.length ? (
         <p
           role="status"
           className="rounded-lg border p-6 text-sm text-muted-foreground"
         >
           Loading skills…
         </p>
-      ) : matches.length ? (
-        <ul className="divide-y rounded-lg border bg-card">
+      ) : unavailable ? null : matches.length ? (
+        <ul className="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0">
           {matches.map((entry) => (
             <li key={`${entry.origin}:${entry.id}`}>
               <button
@@ -121,30 +155,49 @@ export function SkillCatalog({
                 onClick={() => onSelect(entry)}
                 aria-pressed={selectedKey === `${entry.origin}:${entry.id}`}
                 className={cn(
-                  "block w-full min-w-0 space-y-2 px-4 py-3 text-left outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none",
+                  "group flex w-full min-w-0 items-start gap-3 px-3 py-4 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent",
                   selectedKey === `${entry.origin}:${entry.id}` && "bg-accent"
                 )}
               >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="break-all text-sm font-medium">
-                    {entry.name}
-                  </span>
-                  <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                    {entry.origin === "system"
-                      ? "System · read only"
-                      : "Personal"}
-                  </span>
-                  {entry.availability !== "available" && (
-                    <span className="text-xs text-destructive">
-                      {entry.availability === "name_conflict"
-                        ? "Name conflict"
-                        : "Unavailable"}
-                    </span>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
+                  {entry.origin === "personal" ? (
+                    <LockKeyhole
+                      aria-hidden="true"
+                      className="size-4"
+                    />
+                  ) : (
+                    <BookOpen
+                      aria-hidden="true"
+                      className="size-4"
+                    />
                   )}
+                </span>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="break-all text-sm font-medium">
+                      {entry.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {entry.origin === "system"
+                        ? "System · read only"
+                        : "Personal"}
+                    </span>
+                    {entry.availability !== "available" && (
+                      <span className="text-xs text-destructive">
+                        {entry.availability === "name_conflict"
+                          ? "Name conflict"
+                          : "Unavailable"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="m-0 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
+                    {entry.description}
+                  </p>
                 </div>
-                <p className="line-clamp-2 break-words text-sm text-muted-foreground">
-                  {entry.description}
-                </p>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="mt-1.5 size-4 shrink-0 text-muted-foreground"
+                />
               </button>
             </li>
           ))}
@@ -152,11 +205,29 @@ export function SkillCatalog({
       ) : (
         <div
           role="status"
-          className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground"
+          className="space-y-3 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground"
         >
-          {entries.length
-            ? "No skills match your search and filter."
-            : "No skills yet. Create a skill or import a SKILL.md package."}
+          <Search
+            aria-hidden="true"
+            className="mx-auto size-5"
+          />
+          <p>
+            {entries.length
+              ? "No skills match your search and filter."
+              : "No skills yet. Create a skill or import a SKILL.md package."}
+          </p>
+          {(search || origin !== "all") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearch("");
+                setOrigin("all");
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
       )}
     </section>

@@ -6,6 +6,7 @@ import { FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SkillDiagnostic, SkillFile } from "@/lib/skills";
+import { readSkillFrontmatter } from "@/lib/skill-drafts";
 
 export interface SkillFileListProps {
   files: Array<{ path: string; copyable?: boolean }>;
@@ -30,7 +31,7 @@ export function SkillFileList({
       <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Package files · {files.length}
       </p>
-      <ul className="space-y-1">
+      <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto overscroll-contain p-0">
         {files.map((file) => (
           <li
             key={file.path}
@@ -93,7 +94,7 @@ export function SkillDiagnostics({
       className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
     >
       <p className="mb-1 font-medium">Needs attention</p>
-      <ul className="space-y-1">
+      <ul className="m-0 list-none space-y-1 p-0">
         {diagnostics.map((diagnostic, index) => (
           <li
             key={`${diagnostic.code}:${diagnostic.path}:${index}`}
@@ -117,6 +118,14 @@ export interface SkillFilePreviewProps {
 
 /** Only Markdown is rendered; HTML and other resources stay escaped source text. */
 export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
+  let markdown = file.content;
+  if (mode === "preview" && file.path === "SKILL.md") {
+    try {
+      markdown = readSkillFrontmatter(file.content).body;
+    } catch {
+      // An incomplete draft must remain visible while its metadata is edited.
+    }
+  }
   if (mode === "source" || !/\.md$/i.test(file.path))
     return (
       <pre
@@ -129,7 +138,8 @@ export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
     );
   return (
     <div
-      className="prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border p-4 text-foreground dark:prose-invert prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current [&_pre]:overflow-auto"
+      className="prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border bg-card p-4 text-foreground outline-none dark:prose-invert focus-visible:ring-2 focus-visible:ring-ring prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current [&_pre]:overflow-auto"
+      tabIndex={0}
       aria-label={`Markdown preview of ${file.path}`}
     >
       <ReactMarkdown
@@ -154,7 +164,7 @@ export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
           ),
         }}
       >
-        {file.content}
+        {markdown}
       </ReactMarkdown>
     </div>
   );

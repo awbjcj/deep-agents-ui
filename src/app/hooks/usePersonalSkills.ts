@@ -348,7 +348,8 @@ export function usePersonalSkills(accountId: string) {
     }
   }
   function openImport() {
-    if (busy || !canLeave()) return;
+    // Previewing is reversible; confirm only when the imported draft is applied.
+    if (busy) return;
     importRequest.current += 1;
     importTargetRequest.current += 1;
     setImportTargetId(null);
@@ -443,7 +444,7 @@ export function usePersonalSkills(accountId: string) {
       (importTargetId !== null && importTarget?.id !== importTargetId) ||
       !canLeave()
     )
-      return;
+      return false;
     const target = importTarget;
     resetSelection();
     setSelected(
@@ -457,6 +458,7 @@ export function usePersonalSkills(accountId: string) {
       files: next.package.files.map((file) => ({ ...file })),
     });
     closeImport(false);
+    return true;
   }
   async function viewLatest() {
     const id =

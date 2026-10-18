@@ -38,6 +38,7 @@ export interface SkillImportDialogProps {
   target: PersonalSkill | null;
   targetLoading: boolean;
   onTarget: (id: string | null) => void;
+  onReturnFocus?: () => void;
 }
 
 export function SkillImportDialog({
@@ -54,9 +55,11 @@ export function SkillImportDialog({
   target,
   targetLoading,
   onTarget,
+  onReturnFocus,
 }: SkillImportDialogProps) {
   const id = useId();
   const [selectedPath, setSelectedPath] = useState("SKILL.md");
+  const [filename, setFilename] = useState("");
   const [localDiagnostics, setLocalDiagnostics] = useState<SkillDiagnostic[]>(
     []
   );
@@ -100,18 +103,24 @@ export function SkillImportDialog({
       onOpenChange={onOpenChange}
     >
       <DialogContent
-        className="max-h-[90dvh] min-w-0 overflow-y-auto sm:max-w-3xl"
+        className="flex max-h-[90dvh] min-w-0 flex-col overflow-hidden sm:max-w-3xl"
         aria-busy={loading}
+        onCloseAutoFocus={(event) => {
+          if (onReturnFocus) {
+            event.preventDefault();
+            onReturnFocus();
+          }
+        }}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 pr-6">
           <DialogTitle>Import skill package</DialogTitle>
           <DialogDescription>
             Choose SKILL.md or a ZIP of text resources. Preview the complete
             package before opening an unsaved draft.
           </DialogDescription>
         </DialogHeader>
-        <div className="min-w-0 space-y-4">
-          <div className="space-y-2">
+        <div className="min-h-0 min-w-0 space-y-5 overflow-y-auto overscroll-contain p-1 @container">
+          <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
             <label
               htmlFor={`${id}-destination`}
               className="text-sm font-medium"
@@ -120,7 +129,7 @@ export function SkillImportDialog({
             </label>
             <select
               id={`${id}-destination`}
-              className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
+              className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={targetId ?? ""}
               onChange={(event) => onTarget(event.target.value || null)}
             >
@@ -174,6 +183,7 @@ export function SkillImportDialog({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
+                setFilename(file.name);
                 setSelectedPath("SKILL.md");
                 setInvalidatedPreview(preview);
                 if (file.size > limits.upload_bytes) {
@@ -191,6 +201,11 @@ export function SkillImportDialog({
                 event.target.value = "";
               }}
             />
+            {filename && (
+              <p className="break-all text-xs font-medium">
+                Selected: {filename}
+              </p>
+            )}
             <p
               id={`${id}-upload-help`}
               className="text-xs text-muted-foreground"
@@ -228,7 +243,7 @@ export function SkillImportDialog({
                   {preview.package.total_bytes.toLocaleString()} UTF-8 bytes
                 </p>
               </div>
-              <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+              <div className="grid min-w-0 gap-3 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
                 <SkillFileList
                   files={preview.package.files}
                   selectedPath={selected?.path ?? null}
@@ -244,7 +259,7 @@ export function SkillImportDialog({
             </>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t pt-4">
           <Button
             type="button"
             variant="outline"

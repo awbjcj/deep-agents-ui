@@ -116,7 +116,7 @@ export function SkillDetails({
   return (
     <section
       aria-label="Skill details"
-      className="min-w-0 space-y-4"
+      className="min-w-0 space-y-4 @container"
       aria-busy={loading || busy}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -171,7 +171,7 @@ export function SkillDetails({
         </p>
       )}
       <SkillDiagnostics diagnostics={[...diagnostics, ...copyBlockers]} />
-      <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
         <SkillFileList
           files={resources}
           selectedPath={selectedPath}
@@ -185,7 +185,7 @@ export function SkillDetails({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="break-all font-mono text-xs">{selectedPath}</span>
             <div
-              className="flex gap-1"
+              className="flex gap-1 rounded-lg border bg-muted/30 p-0.5"
               role="group"
               aria-label="File view"
             >
@@ -256,7 +256,7 @@ export function SkillDetails({
             other metadata and resources keep their source. Review before
             saving.
           </p>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex flex-col gap-2 @[28rem]:flex-row">
             <Input
               id={`${id}-copy-name`}
               aria-describedby={`${id}-copy-help`}

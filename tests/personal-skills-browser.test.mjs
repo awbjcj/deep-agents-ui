@@ -11,7 +11,9 @@ import {
 import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
 
 const RUN = process.env.PERSONAL_SKILLS_BROWSER_TEST === "1";
-const EVIDENCE = resolve("docs/evidence/personal-skills");
+const EVIDENCE = resolve(
+  process.env.PERSONAL_SKILLS_EVIDENCE_DIR ?? "docs/evidence/personal-skills"
+);
 const source = (name, text = "Follow these instructions.") =>
   `---\nname: ${name}\ndescription: Private instructions\n---\n${text}\n`;
 const personal = (id, name, text) => ({
@@ -395,8 +397,19 @@ async function openSkills(page) {
 const editor = (page) => page.getByRole("region", { name: "Skill editor" });
 const content = (page) =>
   editor(page).getByRole("textbox", { name: "SKILL.md", exact: true });
+async function browseSkills(page) {
+  const back = page.getByRole("button", {
+    name: "Back to skills",
+    exact: true,
+  });
+  if (await back.isVisible()) await back.click();
+}
+async function selectCatalogSkill(page, name) {
+  await browseSkills(page);
+  await page.getByRole("button", { name }).click();
+}
 async function selectPersonal(page) {
-  await page.getByRole("button", { name: /my-skill Personal/ }).click();
+  await selectCatalogSkill(page, /my-skill Personal/);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
 }
 async function switchAccount(page, policy) {
@@ -426,6 +439,181 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
   });
   await mkdir(EVIDENCE, { recursive: true });
   try {
+    await t.test(
+      "focused workspace retains search, restores focus, and fits a narrow desktop panel",
+      async () => {
+        const policy = skillsFixture();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await openSkills(page);
+          await page
+            .getByLabel("Search skills", { exact: true })
+            .fill("my-skill");
+          await page
+            .getByRole("button", { name: /my-skill Personal/ })
+            .press("Enter");
+          await page
+            .getByRole("button", { name: "Edit", exact: true })
+            .waitFor();
+          assert.equal(
+            await page
+              .getByRole("region", { name: "Skill catalog" })
+              .isVisible(),
+            false
+          );
+          assert.equal(
+            await page
+              .getByLabel("Selected skill package", { exact: true })
+              .evaluate((el) => el === document.activeElement),
+            true
+          );
+          await browseSkills(page);
+          assert.equal(
+            await page
+              .getByLabel("Search skills", { exact: true })
+              .inputValue(),
+            "my-skill"
+          );
+          assert.equal(
+            await page
+              .getByRole("button", { name: /my-skill Personal/ })
+              .evaluate((el) => el === document.activeElement),
+            true
+          );
+          await page
+            .getByLabel("Search skills", { exact: true })
+            .fill("no-such-skill");
+          await page.getByRole("button", { name: "Clear filters" }).click();
+          await selectPersonal(page);
+          await content(page).fill(
+            source("my-skill", "# Instructions\nA focused editing workspace.")
+          );
+          for (const [width, height] of [
+            [1440, 1000],
+            [375, 812],
+            [812, 375],
+          ]) {
+            await page.setViewportSize({ width, height });
+            await page.emulateMedia({ reducedMotion: "reduce" });
+            for (const theme of ["light", "dark"]) {
+              await page.evaluate(
+                (theme) =>
+                  document.documentElement.classList.toggle(
+                    "dark",
+                    theme === "dark"
+                  ),
+                theme
+              );
+              const panel = page.locator("#right-panel");
+              assert.equal(
+                await panel.evaluate(
+                  (el) => el.scrollWidth <= el.clientWidth + 1
+                ),
+                true
+              );
+              const textarea = await content(page).boundingBox();
+              const editorBounds = await editor(page).boundingBox();
+              assert(
+                textarea.width >= editorBounds.width - 4,
+                "narrow workspace gives the editor full width even on desktop"
+              );
+              await content(page).focus();
+              const save = editor(page).getByRole("button", {
+                name: "Save",
+                exact: true,
+              });
+              await save.focus();
+              const saveBounds = await save.boundingBox();
+              assert(
+                saveBounds.y >= 0 &&
+                  saveBounds.y + saveBounds.height <= height + 1,
+                "focused Save stays visible"
+              );
+              await panel.screenshot({
+                path: join(EVIDENCE, `${width}-focused-editor-${theme}.png`),
+                animations: "disabled",
+              });
+            }
+          }
+          await page.setViewportSize({ width: 1440, height: 1000 });
+          await page.emulateMedia({ reducedMotion: "no-preference" });
+          await page.evaluate(() =>
+            document.documentElement.classList.remove("dark")
+          );
+          page.once("dialog", (d) => d.accept());
+          await browseSkills(page);
+          await captureMatrix(page, "library", page.locator("#right-panel"));
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "import preview can be cancelled without a discard prompt and returns keyboard focus",
+      async () => {
+        const policy = skillsFixture();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        let prompts = 0;
+        page.on("dialog", (d) => {
+          prompts += 1;
+          void d.dismiss();
+        });
+        try {
+          await openSkills(page);
+          await selectPersonal(page);
+          const unsaved = source("my-skill", "RETAIN THIS DRAFT");
+          await content(page).fill(unsaved);
+          const trigger = page.getByRole("button", {
+            name: "Import",
+            exact: true,
+          });
+          await trigger.click();
+          const dialog = page.getByRole("dialog", {
+            name: "Import skill package",
+          });
+          await dialog.waitFor();
+          assert.equal(prompts, 0);
+          await dialog
+            .getByRole("button", { name: "Cancel", exact: true })
+            .click();
+          await dialog.waitFor({ state: "hidden" });
+          assert.equal(await content(page).inputValue(), unsaved);
+          assert.equal(
+            await trigger.evaluate((el) => el === document.activeElement),
+            true
+          );
+          await trigger.click();
+          await page.getByLabel("Skill file or ZIP").setInputFiles({
+            name: "SKILL.md",
+            mimeType: "text/markdown",
+            buffer: Buffer.from(source("imported-skill")),
+          });
+          await dialog
+            .getByRole("button", { name: "Open draft", exact: true })
+            .click();
+          assert.equal(prompts, 1);
+          await dialog
+            .getByRole("button", { name: "Cancel", exact: true })
+            .click();
+          await dialog.waitFor({ state: "hidden" });
+          assert.equal(await content(page).inputValue(), unsaved);
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
     await t.test(
       "explicit imported replacement preserves stable identity and replaces all files only on Save",
       async () => {
@@ -756,9 +944,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
                 .getByRole("button", { name: "Open draft", exact: true })
                 .click();
             } else if (scenario === "system-copy") {
-              await page
-                .getByRole("button", { name: /system-skill System/ })
-                .click();
+              await selectCatalogSkill(page, /system-skill System/);
               await page.getByRole("button", { name: "Copy as draft" }).click();
               policy.packages.set("p3", personal("p3", "system-skill-copy"));
             } else if (scenario === "rename") {
@@ -832,16 +1018,12 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
         );
         try {
           await openSkills(page);
-          await page
-            .getByRole("button", { name: /system-skill System/ })
-            .click();
+          await selectCatalogSkill(page, /system-skill System/);
           assert.equal(
             await page.getByLabel("Copy to personal library").inputValue(),
             "system-skill-copy-3"
           );
-          await page
-            .getByRole("button", { name: /system-skill Personal/ })
-            .click();
+          await selectCatalogSkill(page, /system-skill Personal/);
           await page
             .getByText(
               /Discovery is paused until you rename this personal skill/
@@ -933,9 +1115,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             .getByRole("button", { name: "Save", exact: true })
             .click();
           await page.getByText("Skill saved.", { exact: true }).waitFor();
-          await page
-            .getByRole("button", { name: /system-skill System/ })
-            .click();
+          await selectCatalogSkill(page, /system-skill System/);
           await page.getByLabel("Copy to personal library").fill("system-copy");
           await page.getByRole("button", { name: "Copy as draft" }).click();
           await content(page).waitFor();
@@ -1060,9 +1240,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             .click();
           assert.equal(await content(page).inputValue(), unsavedDraft);
           page.once("dialog", (d) => d.dismiss());
-          await page
-            .getByRole("button", { name: /system-skill System/ })
-            .click();
+          await page.getByRole("button", { name: "Back to skills" }).click();
           assert.equal(await content(page).inputValue(), unsavedDraft);
           for (const width of [1440, 320, 375, 390])
             for (const theme of ["light", "dark"]) {
@@ -1158,7 +1336,13 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           "admin"
         );
         try {
+          policy.failCatalog();
           await openSkills(page);
+          await page
+            .getByText("Catalog unavailable", { exact: true })
+            .waitFor();
+          assert.equal(await page.getByText(/No skills yet/).count(), 0);
+          await page.getByRole("button", { name: "Retry catalog" }).click();
           await selectPersonal(page);
           const unsavedDraft = source("my-skill", "KEEP AFTER FAILURE");
           await content(page).fill(unsavedDraft);
@@ -1180,7 +1364,6 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           await page
             .getByText("Catalog unavailable", { exact: true })
             .waitFor({ state: "hidden", timeout: 1500 });
-          await page.getByRole("heading", { name: "Your skills" }).waitFor();
           assert.equal(await content(page).inputValue(), unsavedDraft);
           page.once("dialog", (d) => d.dismiss());
           await editor(page)
