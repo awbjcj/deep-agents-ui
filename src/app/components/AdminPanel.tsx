@@ -75,7 +75,7 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <div className="flex flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm">
+      <div className="@container/panel flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm">
         <div className="flex items-start justify-between px-4 pt-4">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--aptiv-orange)] shadow-sm">
