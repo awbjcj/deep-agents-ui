@@ -24,7 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FileContentView } from "@/app/components/FileContentView";
+import { ImagePreview } from "@/app/components/ImagePreview";
 import type { FileItem } from "@/app/types/types";
+import { cn } from "@/lib/utils";
 import { imageMimeForPath } from "@/lib/uploads";
 import { fileBlob, saveBlob } from "@/lib/file-downloads";
 import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
@@ -152,7 +154,13 @@ function FileViewDialogSession({
         if (!open && !isSaving) onClose();
       }}
     >
-      <DialogContent className="flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
+      <DialogContent
+        className={cn(
+          "flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6",
+          isImage &&
+            "h-[calc(100dvh-1.5rem)] max-w-none gap-3 transition-none sm:max-w-none"
+        )}
+      >
         <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <DialogDescription className="sr-only">
           {file
@@ -164,7 +172,7 @@ function FileViewDialogSession({
         <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 pr-10 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
-              {sourceImage ? (
+              {isImage ? (
                 <ImageIcon
                   className="h-4 w-4"
                   aria-hidden="true"
@@ -281,19 +289,16 @@ function FileViewDialogSession({
               readOnly={isSaving}
               className="h-full min-h-0 resize-none font-mono text-sm"
             />
+          ) : displayedContent && isImage && imageMime ? (
+            <ImagePreview
+              src={`data:${imageMime};base64,${displayedContent}`}
+              alt={displayName}
+            />
           ) : (
             <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20 [&_[data-slot=scroll-area-viewport]>div]:!block">
               <div className="p-4">
                 {displayedContent ? (
-                  isImage && imageMime ? (
-                    <div className="flex min-h-[min(52dvh,520px)] items-center justify-center p-4 sm:p-8">
-                      <img
-                        src={`data:${imageMime};base64,${displayedContent}`}
-                        alt={displayName}
-                        className="max-h-[52dvh] max-w-full rounded-lg border border-border/60 bg-background object-contain shadow-sm"
-                      />
-                    </div>
-                  ) : isBinary ? (
+                  isBinary ? (
                     <p className="text-sm text-muted-foreground">
                       This file is ready to download. A text preview is not
                       available.

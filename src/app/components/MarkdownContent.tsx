@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ImageOff } from "lucide-react";
+import { ImageOff, Maximize2 } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -13,6 +13,9 @@ import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
 import { fileContentToText } from "@/lib/uploads";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
+import { ImagePreviewDialog } from "./ImagePreviewDialog";
+
+const MarkdownLinkContext = React.createContext(false);
 
 const PROSE_CLASS =
   // Base prose typography with dark-mode-aware inversion. We override the
@@ -169,6 +172,7 @@ function MarkdownImage({
   ...props
 }: React.ImgHTMLAttributes<HTMLImageElement> & { src: string }) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const insideLink = React.useContext(MarkdownLinkContext);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading"
   );
@@ -204,7 +208,7 @@ function MarkdownImage({
   return (
     <span
       className={cn(
-        "not-prose my-4 block overflow-hidden rounded-md border",
+        "not-prose relative my-4 block overflow-hidden rounded-md border",
         isError
           ? "border-dashed border-border bg-muted/30"
           : "border-border bg-muted/30",
@@ -272,6 +276,26 @@ function MarkdownImage({
           status === "loaded" ? "opacity-100" : "opacity-0"
         )}
       />
+      {status === "loaded" && !insideLink && (
+        <ImagePreviewDialog
+          src={src}
+          alt={alt ?? ""}
+        >
+          <button
+            type="button"
+            aria-label={`Preview image: ${alt || "Image"}`}
+            className="absolute inset-0 cursor-zoom-in rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <span className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-md border border-border bg-background/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm">
+              <Maximize2
+                className="size-3.5"
+                aria-hidden="true"
+              />
+              Expand
+            </span>
+          </button>
+        </ImagePreviewDialog>
+      )}
     </span>
   );
 }
@@ -370,7 +394,9 @@ const COMPONENTS: Components = {
         rel={isInDocument ? undefined : "noopener noreferrer"}
         className="text-primary no-underline hover:underline"
       >
-        {children}
+        <MarkdownLinkContext.Provider value={true}>
+          {children}
+        </MarkdownLinkContext.Provider>
       </a>
     );
   },
@@ -579,7 +605,9 @@ function ArtifactDownload({
           }
         }}
       >
-        {children}
+        <MarkdownLinkContext.Provider value={true}>
+          {children}
+        </MarkdownLinkContext.Provider>
       </button>
       {!available && (
         <span className="text-xs text-muted-foreground">
