@@ -108,6 +108,16 @@ export function SkillDetails({
           : []),
       ]
     : [];
+  // External references restrict copying, not access to the deployed skill.
+  const referenceWarnings = copyBlockers.filter(
+    (diagnostic) => diagnostic.code === "system_skill_resource_escape"
+  );
+  const detailDiagnostics = [
+    ...diagnostics,
+    ...copyBlockers.filter(
+      (diagnostic) => diagnostic.code !== "system_skill_resource_escape"
+    ),
+  ];
   const validName =
     copyName !== skill.name &&
     !occupiedNames.includes(copyName) &&
@@ -170,7 +180,7 @@ export function SkillDetails({
           Save.
         </p>
       )}
-      <SkillDiagnostics diagnostics={[...diagnostics, ...copyBlockers]} />
+      <SkillDiagnostics diagnostics={detailDiagnostics} />
       <div className="grid min-w-0 gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
         <SkillFileList
           files={resources}
@@ -256,6 +266,20 @@ export function SkillDetails({
             other metadata and resources keep their source. Review before
             saving.
           </p>
+          {referenceWarnings.length > 0 && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                This skill links to files outside its package. Those files would
+                be missing from a personal copy. This restriction only applies
+                to copying.
+              </p>
+              <SkillDiagnostics
+                diagnostics={referenceWarnings}
+                title="Cannot copy this skill as-is"
+                tone="neutral"
+              />
+            </>
+          )}
           <div className="flex flex-col gap-2 @[28rem]:flex-row">
             <Input
               id={`${id}-copy-name`}

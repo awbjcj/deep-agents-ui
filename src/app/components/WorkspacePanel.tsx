@@ -109,7 +109,7 @@ export function WorkspacePanel({
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Shared shell header with tab strip */}
-      <div className="@container/panel flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm">
+      <div className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
         <div className="flex items-center justify-between px-4 pt-4">
           <div className="flex flex-col leading-none">
             <span className="aptiv-eyebrow">Workspace</span>
@@ -138,7 +138,7 @@ export function WorkspacePanel({
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="overflow-x-auto px-2 pt-4 [&_[role=tab]]:shrink-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-2"
+          className="mt-4 grid auto-cols-[minmax(max-content,1fr)] grid-flow-col items-stretch gap-1 overflow-x-auto px-2 [&_[role=tab]]:w-full [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-2"
         />
       </div>
 

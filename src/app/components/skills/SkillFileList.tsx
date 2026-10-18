@@ -83,17 +83,26 @@ export function SkillFileList({
 /** Display public validation messages without interpreting resource content as HTML. */
 export function SkillDiagnostics({
   diagnostics,
+  title = "Needs attention",
+  tone = "error",
 }: {
   diagnostics: SkillDiagnostic[];
+  title?: string;
+  tone?: "error" | "neutral";
 }) {
   if (!diagnostics.length) return null;
   return (
     <div
       role="status"
       aria-live="polite"
-      className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
+      className={cn(
+        "rounded-lg border p-3 text-sm",
+        tone === "error"
+          ? "border-destructive/30 bg-destructive/5"
+          : "bg-muted/20"
+      )}
     >
-      <p className="mb-1 font-medium">Needs attention</p>
+      <p className="mb-1 font-medium">{title}</p>
       <ul className="m-0 list-none space-y-1 p-0">
         {diagnostics.map((diagnostic, index) => (
           <li
