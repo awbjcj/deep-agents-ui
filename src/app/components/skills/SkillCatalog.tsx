@@ -3,6 +3,7 @@
 import React, { useId, useState } from "react";
 import {
   BookOpen,
+  ChevronDown,
   ChevronRight,
   LockKeyhole,
   Plus,
@@ -104,7 +105,7 @@ export function SkillCatalog({
             placeholder="Search skills…"
           />
         </div>
-        <div>
+        <div className="relative shrink-0">
           <label
             htmlFor={`${id}-origin`}
             className="sr-only"
@@ -115,12 +116,16 @@ export function SkillCatalog({
             id={`${id}-origin`}
             value={origin}
             onChange={(event) => setOrigin(event.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring @sm:w-auto"
+            className="h-10 w-full appearance-none rounded-lg border border-input bg-background bg-none pl-3 pr-10 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring @sm:w-32"
           >
             <option value="all">All origins</option>
             <option value="personal">Personal</option>
             <option value="system">System</option>
           </select>
+          <ChevronDown
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-3 size-4 text-muted-foreground"
+          />
         </div>
       </div>
       {!unavailable && (

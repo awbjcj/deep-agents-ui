@@ -5,6 +5,7 @@ import { ArrowLeft, Check, RefreshCw, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/AuthProvider";
 import { usePersonalSkills } from "@/app/hooks/usePersonalSkills";
+import { cn } from "@/lib/utils";
 import { SkillCatalog } from "./skills/SkillCatalog";
 import { SkillDetails } from "./skills/SkillDetails";
 import { SkillEditor } from "./skills/SkillEditor";
@@ -76,7 +77,7 @@ function AccountSkills({
       ref={scrollArea}
       className="absolute inset-0 scroll-pb-28 overflow-y-auto overscroll-contain p-4 @container"
     >
-      <div className="min-w-0 space-y-4">
+      <div className="flex min-h-full min-w-0 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           {mode !== "catalog" ? (
             <Button
@@ -185,7 +186,10 @@ function AccountSkills({
           ref={taskArea}
           role="group"
           tabIndex={-1}
-          className="min-w-0 space-y-4 outline-none"
+          className={cn(
+            "min-w-0 outline-none",
+            mode === "details" ? "flex flex-1 flex-col gap-4" : "space-y-4"
+          )}
           hidden={mode === "catalog"}
           aria-label={
             mode === "editor" ? "Edit skill package" : "Selected skill package"

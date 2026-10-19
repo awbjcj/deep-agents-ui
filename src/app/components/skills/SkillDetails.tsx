@@ -126,7 +126,7 @@ export function SkillDetails({
   return (
     <section
       aria-label="Skill details"
-      className="min-w-0 space-y-4 @container"
+      className="flex min-w-0 flex-1 flex-col gap-4 @container"
       aria-busy={loading || busy}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -181,7 +181,7 @@ export function SkillDetails({
         </p>
       )}
       <SkillDiagnostics diagnostics={detailDiagnostics} />
-      <div className="grid min-w-0 gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+      <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @[36rem]:grid-rows-1">
         <SkillFileList
           files={resources}
           selectedPath={selectedPath}
@@ -191,7 +191,7 @@ export function SkillDetails({
             if (!files.some((file) => file.path === path)) onReadFile?.(path);
           }}
         />
-        <div className="min-w-0 space-y-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="break-all font-mono text-xs">{selectedPath}</span>
             <div
@@ -223,6 +223,7 @@ export function SkillDetails({
             <SkillFilePreview
               file={selected}
               mode={mode}
+              className="max-h-none min-h-80 flex-1"
             />
           ) : (
             <p

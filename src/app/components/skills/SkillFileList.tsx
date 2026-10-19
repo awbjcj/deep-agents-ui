@@ -123,10 +123,15 @@ export function SkillDiagnostics({
 export interface SkillFilePreviewProps {
   file: SkillFile;
   mode: "source" | "preview";
+  className?: string;
 }
 
 /** Only Markdown is rendered; HTML and other resources stay escaped source text. */
-export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
+export function SkillFilePreview({
+  file,
+  mode,
+  className,
+}: SkillFilePreviewProps) {
   let markdown = file.content;
   if (mode === "preview" && file.path === "SKILL.md") {
     try {
@@ -138,7 +143,10 @@ export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
   if (mode === "source" || !/\.md$/i.test(file.path))
     return (
       <pre
-        className="max-h-96 min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/20 p-4 font-mono text-xs leading-6"
+        className={cn(
+          "max-h-96 min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/20 p-4 font-mono text-xs leading-6",
+          className
+        )}
         tabIndex={0}
         aria-label={`Source of ${file.path}`}
       >
@@ -147,7 +155,10 @@ export function SkillFilePreview({ file, mode }: SkillFilePreviewProps) {
     );
   return (
     <div
-      className="prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border bg-card p-4 text-foreground outline-none dark:prose-invert focus-visible:ring-2 focus-visible:ring-ring prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current [&_pre]:overflow-auto"
+      className={cn(
+        "prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border bg-card p-4 text-foreground outline-none dark:prose-invert focus-visible:ring-2 focus-visible:ring-ring prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current [&_pre]:overflow-auto",
+        className
+      )}
       tabIndex={0}
       aria-label={`Markdown preview of ${file.path}`}
     >
