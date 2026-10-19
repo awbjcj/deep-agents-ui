@@ -4,7 +4,6 @@ import React, {
   useState,
   useRef,
   useEffect,
-  useLayoutEffect,
   useCallback,
   FormEvent,
 } from "react";
@@ -24,6 +23,18 @@ import {
   skillAuthoringRequestMatches,
   type SkillAuthoringRequest,
 } from "@/lib/skill-authoring-request";
+import {
+  reconcileSkillReferences,
+  submittedSkillReferences,
+  type SkillReference,
+} from "@/lib/skill-references";
+import { SkillReferenceInput } from "./skills/SkillReferenceInput";
+
+interface MessageDraft {
+  text: string;
+  references: SkillReference[];
+}
+const EMPTY_DRAFT: MessageDraft = { text: "", references: [] };
 
 interface ChatComposerProps {
   accountId?: string;
@@ -72,18 +83,28 @@ export const ChatComposer = React.memo<ChatComposerProps>(
   }) => {
     const [threadId] = useQueryState("threadId");
     // Keep unsent text (including selected evidence) with its conversation.
-    const [drafts, setDrafts] = useState<Record<string, string>>({});
-    const draftKey = threadId ?? "new-thread";
-    const input = drafts[draftKey] ?? "";
+    const [drafts, setDrafts] = useState<Record<string, MessageDraft>>({});
+    const draftKey = `${accountId ?? ""}:${threadId ?? "new-thread"}`;
+    const draft = drafts[draftKey] ?? EMPTY_DRAFT;
+    const input = draft.text;
     const setInput = useCallback(
       (value: React.SetStateAction<string>) => {
-        setDrafts((previous) => ({
-          ...previous,
-          [draftKey]:
-            typeof value === "function"
-              ? value(previous[draftKey] ?? "")
-              : value,
-        }));
+        setDrafts((previous) => {
+          const oldDraft = previous[draftKey] ?? EMPTY_DRAFT;
+          const text =
+            typeof value === "function" ? value(oldDraft.text) : value;
+          return {
+            ...previous,
+            [draftKey]: {
+              text,
+              references: reconcileSkillReferences(
+                oldDraft.text,
+                text,
+                oldDraft.references
+              ),
+            },
+          };
+        });
       },
       [draftKey]
     );
@@ -91,29 +112,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const [attachMenuOpen, setAttachMenuOpen] = useState(false);
     const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-    const resizeTextarea = useCallback(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      // Reset first so deleting text also shrinks the field. Measuring the
-      // rendered content includes soft wrapping as well as explicit newlines.
-      const scrollTop = textarea.scrollTop;
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight}px`;
-      textarea.scrollTop = scrollTop;
-    }, []);
-    useLayoutEffect(resizeTextarea, [input, draftKey, resizeTextarea]);
-    useEffect(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      let width = textarea.clientWidth;
-      const observer = new ResizeObserver(() => {
-        if (textarea.clientWidth === width) return;
-        width = textarea.clientWidth;
-        resizeTextarea();
-      });
-      observer.observe(textarea);
-      return () => observer.disconnect();
-    }, [resizeTextarea]);
     const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
     const handledSkillRequests = useRef(new Set<string>());
     const [pendingSkillRequest, setPendingSkillRequest] =
@@ -176,14 +174,17 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       const id = await ensureThreadId();
       if (!threadId && id) {
         setDrafts((previous) => {
-          if (!Object.hasOwn(previous, "new-thread")) return previous;
-          const next = { ...previous, [id]: previous["new-thread"] };
-          delete next["new-thread"];
+          if (!Object.hasOwn(previous, draftKey)) return previous;
+          const next = {
+            ...previous,
+            [`${accountId ?? ""}:${id}`]: previous[draftKey],
+          };
+          delete next[draftKey];
           return next;
         });
       }
       return id;
-    }, [ensureThreadId, threadId]);
+    }, [ensureThreadId, threadId, draftKey, accountId]);
 
     const {
       items: attachments,
@@ -274,9 +275,16 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             ? { source_image_ref: r.source_image_ref }
             : {}),
         }));
-        const additionalKwargs = attachmentsKwarg.length
-          ? { attachments: attachmentsKwarg }
-          : undefined;
+        const skillReferences = submittedSkillReferences(
+          input,
+          draft.references
+        );
+        const additionalKwargs = {
+          ...(attachmentsKwarg.length ? { attachments: attachmentsKwarg } : {}),
+          ...(skillReferences.length
+            ? { skill_references: skillReferences }
+            : {}),
+        };
 
         if (imageBlocks.length === 0) {
           // Documents-only or text-only. Keep a single space when the user sent
@@ -293,6 +301,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       },
       [
         input,
+        draft.references,
         hasUploading,
         sendMessage,
         submitDisabled,
@@ -382,15 +391,21 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             items={attachments}
             onRemove={removeAttachment}
           />
-          <textarea
-            ref={textareaRef}
+          <SkillReferenceInput
+            key={accountId}
+            accountId={accountId}
+            inputRef={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            references={draft.references}
+            isLoading={isLoading}
+            onChange={setInput}
+            onSelect={(text, references) =>
+              setDrafts((previous) => ({
+                ...previous,
+                [draftKey]: { text, references },
+              }))
+            }
             onKeyDown={handleKeyDown}
-            aria-label="Message"
-            placeholder={isLoading ? "Running..." : "Write your message..."}
-            className="max-h-[60dvh] min-h-14 w-full shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent px-4 py-3 text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground"
-            rows={1}
           />
           <div className="flex items-center justify-between gap-2 p-3">
             <div className="flex items-center gap-2">
@@ -492,6 +507,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 key={threadId}
                 threadId={threadId}
               />
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                Type <kbd className="rounded border border-border px-1">$</kbd>{" "}
+                for skills
+              </span>
             </div>
             <Button
               type={isLoading ? "button" : "submit"}

@@ -7,6 +7,8 @@ import { reasoningSummary } from "@/lib/reasoning-summary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
+import { SkillReferenceText } from "./skills/SkillReferenceText";
+import { parseSkillReferences } from "@/lib/skill-references";
 import { contextSummary } from "@/lib/context-summary";
 import type {
   SubAgent,
@@ -69,6 +71,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
+    const skillReferences = useMemo(
+      () =>
+        isUser
+          ? parseSkillReferences(
+              message.additional_kwargs?.skill_references,
+              messageContent
+            )
+          : [],
+      [isUser, message, messageContent]
+    );
     const summary = useMemo(
       () => contextSummary(message, messageContent),
       [message, messageContent]
@@ -385,7 +397,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               >
                 {isUser ? (
                   <p className="m-0 whitespace-pre-wrap break-words text-base leading-relaxed">
-                    {messageContent}
+                    <SkillReferenceText
+                      text={messageContent}
+                      references={skillReferences}
+                    />
                   </p>
                 ) : hasContent ? (
                   <MarkdownContent
