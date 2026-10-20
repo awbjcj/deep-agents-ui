@@ -6,7 +6,7 @@ intercepted in the browser.
 
 | Evidence                               | Browser behavior                                                                                                        |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `admin-source-controls-healthy.png`    | Three independent source rows, a saved Jira policy, and visible inactive switch borders.                                |
+| `admin-source-controls-healthy.png`    | Four independent source rows, a saved Jira policy, and explicit Graph attachment access.                                |
 | `admin-source-controls-desktop.png`    | A failed Confluence save rolls that row back without changing Polarion.                                                 |
 | `admin-source-controls-narrow.png`     | The source controls stack without page or row overflow at 390 px.                                                       |
 | `connectivity-source-policy-retry.png` | A failed preference read is shown as unavailable until keyboard Retry hydrates it.                                      |
@@ -39,3 +39,21 @@ save rollback, narrow layout, fail-closed preference loading, decoded image
 dimensions, reference-only run input with no inline source bytes, DELETE 409 and
 500 rollback, successful DELETE plus live-state reload, and the final stale
 reference presentation.
+
+## Microsoft Graph attachment policy
+
+`graph-attachment-policy.png` shows the Graph selector beside the existing source
+controls. `graph-attachment-policy-375px.png`, `graph-attachment-policy-390px.png`,
+and `graph-attachment-policy-dark.png` capture the responsive and dark checks.
+
+After building, set `GRAPH_ATTACHMENT_BROWSER_TEST=1` to run the focused Graph
+browser gate with the same Playwright/browser overrides. It verifies all three
+mode payloads, normalization of an older custom policy, rollback after a failed
+save, source-row bounds at 375 and 390 px, dark rendering, and no browser errors.
+The full source-image gate includes these checks too.
+
+The full gate passed after the review. Admin tabs now retain visible labels
+without horizontal overflow at 375 and 390 px, and source controls respond to
+their containing panel's width. The Graph selector accurately labels older
+policies that default to embedded content while allowing all attachments on
+request; selecting All attachments saves an all-attachment default explicitly.

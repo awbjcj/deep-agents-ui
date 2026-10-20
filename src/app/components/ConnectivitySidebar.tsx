@@ -167,7 +167,7 @@ export function ConnectivitySidebar() {
   const imageFetchingDisabledByAdmin =
     sourceImagePolicies !== null &&
     SOURCE_IMAGE_SOURCES.every(
-      (source) => !sourceImagePolicies[source].enabled
+      (source) => !sourceImagePolicies[source]?.enabled
     );
 
   const applyUpdate = useCallback(
@@ -487,7 +487,8 @@ export function ConnectivitySidebar() {
                     </h3>
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       Let agents include images from connected tickets, work
-                      items, and pages. Chat uploads are controlled separately.
+                      items, pages, emails, and Teams messages. Chat uploads are
+                      controlled separately.
                     </p>
                   </header>
                   <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
@@ -554,6 +555,7 @@ export function ConnectivitySidebar() {
                         <div className="divide-y divide-border/50">
                           {SOURCE_IMAGE_SOURCES.map((source) => {
                             const policy = sourceImagePolicies[source];
+                            if (!policy) return null;
                             return (
                               <div
                                 key={source}

@@ -1,4 +1,9 @@
-export const SOURCE_IMAGE_SOURCES = ["jira", "polarion", "confluence"] as const;
+export const SOURCE_IMAGE_SOURCES = [
+  "jira",
+  "polarion",
+  "confluence",
+  "graph",
+] as const;
 
 export type SourceImageSource = (typeof SOURCE_IMAGE_SOURCES)[number];
 export type SourceImageFetchScope = "embedded" | "all";
@@ -7,12 +12,24 @@ export const SOURCE_IMAGE_LABELS: Record<SourceImageSource, string> = {
   jira: "Jira",
   polarion: "Polarion",
   confluence: "Confluence",
+  graph: "Microsoft Graph",
 };
 
 export interface SourceImagePolicy {
   enabled: boolean;
   default_scope: SourceImageFetchScope;
   allow_all: boolean;
+}
+
+export type GraphAttachmentMode = "none" | "embedded" | "all";
+
+/** Preserve older policies whose default and permitted scopes differ. */
+export function graphAttachmentMode(
+  policy: SourceImagePolicy
+): GraphAttachmentMode | "custom" {
+  if (!policy.enabled) return "none";
+  if (!policy.allow_all) return "embedded";
+  return policy.default_scope === "all" ? "all" : "custom";
 }
 
 export interface SourceImagePolicyResponse extends SourceImagePolicy {
@@ -66,6 +83,7 @@ export type SourceImagePolicyMap = Record<
 >;
 
 export type SourceImagePolicyEdit =
+  | { field: "attachment_mode"; value: GraphAttachmentMode }
   | { field: "enabled"; value: boolean }
   | { field: "allow_all"; value: boolean }
   | { field: "default_scope"; value: SourceImageFetchScope };
@@ -194,6 +212,13 @@ export function applyPolicyEdit(
     default_scope: policy.default_scope,
     allow_all: policy.allow_all,
   };
+  if (edit.field === "attachment_mode") {
+    return {
+      enabled: edit.value !== "none",
+      default_scope: edit.value === "all" ? "all" : "embedded",
+      allow_all: edit.value === "all",
+    };
+  }
   if (edit.field === "enabled") {
     return { ...current, enabled: edit.value };
   }

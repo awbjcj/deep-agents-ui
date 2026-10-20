@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import { GraphAttachmentControl } from "@/app/components/admin/GraphAttachmentControl";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,6 +43,7 @@ const SOURCE_DESCRIPTIONS: Record<SourceImageSource, string> = {
   jira: "Issue content",
   polarion: "Work item content",
   confluence: "Page content",
+  graph: "Email and Teams attachments",
 };
 
 function loadingRows(): PolicyRows {
@@ -221,10 +223,10 @@ export function SourceImageControls({ tier }: { tier: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs">
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs @container/source-policies">
       <div
         aria-hidden="true"
-        className="hidden min-[440px]:grid min-[440px]:grid-cols-[minmax(108px,1fr)_64px_minmax(116px,1fr)_76px] min-[440px]:items-center min-[440px]:gap-3 min-[440px]:border-b min-[440px]:border-border/60 min-[440px]:bg-muted/35 min-[440px]:px-3 min-[440px]:py-2"
+        className="hidden @[440px]/source-policies:grid @[440px]/source-policies:grid-cols-[minmax(108px,1fr)_64px_minmax(116px,1fr)_76px] @[440px]/source-policies:items-center @[440px]/source-policies:gap-3 @[440px]/source-policies:border-b @[440px]/source-policies:border-border/60 @[440px]/source-policies:bg-muted/35 @[440px]/source-policies:px-3 @[440px]/source-policies:py-2"
       >
         <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
           Source
@@ -248,12 +250,18 @@ export function SourceImageControls({ tier }: { tier: string }) {
         return (
           <div
             key={source}
-            className="border-t border-border/60 p-3 first:border-t-0 min-[440px]:first:border-t-0"
+            className="border-t border-border/60 p-3 first:border-t-0 @[440px]/source-policies:first:border-t-0"
             aria-busy={row.isSaving || row.isLoading}
           >
             {policy ? (
-              <div className="grid grid-cols-2 items-end gap-x-4 gap-y-3 min-[440px]:grid-cols-[minmax(108px,1fr)_64px_minmax(116px,1fr)_76px] min-[440px]:items-center min-[440px]:gap-3">
-                <div className="col-span-2 flex min-w-0 items-center gap-2.5 min-[440px]:col-span-1">
+              <div
+                className={
+                  source === "graph"
+                    ? "space-y-3"
+                    : "grid grid-cols-2 items-end gap-x-4 gap-y-3 @[440px]/source-policies:grid-cols-[minmax(108px,1fr)_64px_minmax(116px,1fr)_76px] @[440px]/source-policies:items-center @[440px]/source-policies:gap-3"
+                }
+              >
+                <div className="col-span-2 flex min-w-0 items-center gap-2.5 @[440px]/source-policies:col-span-1">
                   <span
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/45 text-[10px] font-bold text-foreground"
                     aria-hidden="true"
@@ -265,93 +273,115 @@ export function SourceImageControls({ tier }: { tier: string }) {
                       {sourceLabel}
                       {row.isSaving && (
                         <Loader2
-                          className="h-3 w-3 animate-spin text-muted-foreground"
+                          className="h-3 w-3 animate-spin text-muted-foreground motion-reduce:animate-none"
                           aria-hidden="true"
                         />
                       )}
                     </span>
-                    <span className="block truncate text-[10px] text-muted-foreground">
+                    <span
+                      className={
+                        source === "graph"
+                          ? "block text-xs text-muted-foreground"
+                          : "block truncate text-[10px] text-muted-foreground"
+                      }
+                    >
                       {SOURCE_DESCRIPTIONS[source]}
                     </span>
                   </span>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor={`${idBase}-enabled`}
-                    className="text-[10px] font-semibold text-muted-foreground min-[440px]:sr-only"
-                  >
-                    Enabled
-                  </Label>
-                  <div className="flex h-8 items-center">
-                    <Switch
-                      id={`${idBase}-enabled`}
-                      checked={policy.enabled}
-                      onCheckedChange={(value) =>
-                        void handleEdit(source, {
-                          field: "enabled",
-                          value,
-                        })
-                      }
-                      disabled={row.isSaving}
-                      aria-label={`${sourceLabel} source images for ${tier} tier`}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor={`${idBase}-default`}
-                    className="text-[10px] font-semibold text-muted-foreground min-[440px]:sr-only"
-                  >
-                    Default fetch
-                  </Label>
-                  <Select
-                    value={policy.default_scope}
-                    onValueChange={(value: "embedded" | "all") =>
+                {source === "graph" ? (
+                  <GraphAttachmentControl
+                    tier={tier}
+                    policy={policy}
+                    isSaving={row.isSaving}
+                    onChange={(value) =>
                       void handleEdit(source, {
-                        field: "default_scope",
+                        field: "attachment_mode",
                         value,
                       })
                     }
-                    disabled={!policy.enabled || row.isSaving}
-                  >
-                    <SelectTrigger
-                      id={`${idBase}-default`}
-                      className="h-8 min-w-0 border-border/70 bg-background px-2.5 text-xs shadow-none"
-                      aria-label={`Default ${sourceLabel} image fetch for ${tier} tier`}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="embedded">Embedded</SelectItem>
-                      <SelectItem value="all">All attachments</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  />
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`${idBase}-enabled`}
+                        className="text-[10px] font-semibold text-muted-foreground @[440px]/source-policies:sr-only"
+                      >
+                        Enabled
+                      </Label>
+                      <div className="flex h-8 items-center">
+                        <Switch
+                          id={`${idBase}-enabled`}
+                          checked={policy.enabled}
+                          onCheckedChange={(value) =>
+                            void handleEdit(source, {
+                              field: "enabled",
+                              value,
+                            })
+                          }
+                          disabled={row.isSaving}
+                          aria-label={`${sourceLabel} source images for ${tier} tier`}
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor={`${idBase}-allow-all`}
-                    className="text-[10px] font-semibold leading-tight text-muted-foreground min-[440px]:sr-only"
-                  >
-                    Allow all attachments
-                  </Label>
-                  <div className="flex h-8 items-center">
-                    <Switch
-                      id={`${idBase}-allow-all`}
-                      checked={policy.allow_all}
-                      onCheckedChange={(value) =>
-                        void handleEdit(source, {
-                          field: "allow_all",
-                          value,
-                        })
-                      }
-                      disabled={!policy.enabled || row.isSaving}
-                      aria-label={`Allow ${tier} users to fetch all ${sourceLabel} images`}
-                    />
-                  </div>
-                </div>
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`${idBase}-default`}
+                        className="text-[10px] font-semibold text-muted-foreground @[440px]/source-policies:sr-only"
+                      >
+                        Default fetch
+                      </Label>
+                      <Select
+                        value={policy.default_scope}
+                        onValueChange={(value: "embedded" | "all") =>
+                          void handleEdit(source, {
+                            field: "default_scope",
+                            value,
+                          })
+                        }
+                        disabled={!policy.enabled || row.isSaving}
+                      >
+                        <SelectTrigger
+                          id={`${idBase}-default`}
+                          className="h-8 min-w-0 border-border/70 bg-background px-2.5 text-xs shadow-none"
+                          aria-label={`Default ${sourceLabel} image fetch for ${tier} tier`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="embedded">Embedded</SelectItem>
+                          <SelectItem value="all">All attachments</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor={`${idBase}-allow-all`}
+                        className="text-[10px] font-semibold leading-tight text-muted-foreground @[440px]/source-policies:sr-only"
+                      >
+                        Allow all attachments
+                      </Label>
+                      <div className="flex h-8 items-center">
+                        <Switch
+                          id={`${idBase}-allow-all`}
+                          checked={policy.allow_all}
+                          onCheckedChange={(value) =>
+                            void handleEdit(source, {
+                              field: "allow_all",
+                              value,
+                            })
+                          }
+                          disabled={!policy.enabled || row.isSaving}
+                          aria-label={`Allow ${tier} users to fetch all ${sourceLabel} images`}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             ) : row.isLoading ? (
               <div

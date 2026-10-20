@@ -8,6 +8,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "out");
 const EVIDENCE = join(ROOT, "docs", "evidence", "source-images");
 const RUN_BROWSER = process.env.SOURCE_IMAGE_BROWSER_TEST === "1";
+const RUN_GRAPH_ONLY = process.env.GRAPH_ATTACHMENT_BROWSER_TEST === "1";
 const SOURCE_IMAGE_BYTES =
   "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAYAAABOzvzpAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAE2SURBVGhD5ZI5DgIxEAT9EiICAt7Ca4j4OIJkkZEajZq9bffY3qASR101DuH+GDx5vt4unC7XL4EHqeFhpYH44QKwON4PEWBKPtJ1gDlx0G2AJXHQXYA1V7d0E2CrOOgiwF75SNMBUsRBswFSxUFzAXJc3dJMgNzioIkAJcRB1QFKXd1SZQCFOKgugFI+Uk0AtTioIoCHOHAN4HV1S+AHBSw+3M5uyAPUJB+RBWBxvPMgNZIAY+KAB6kpGmDq6hYepKZIgDXigAepyR5grTjgQWqyBdhydQsPUpMcYK844EFqkgKkykd4kJpdAXKIAx6kZnOAXOKAB6lZHSDn1S08SM1igFLigAepmQ1QWj7Cg9SMBlCIAx6k5i+AShzwIDW/AMqrW3iQmuAlDniQmu8P8BAHPEjNB49qD8G9VROZAAAAAElFTkSuQmCC";
 const SOURCE_ARTIFACT_PATH =
@@ -171,18 +172,19 @@ function json(route, body, status = 200) {
 }
 
 function sourcePolicy(tier, source) {
+  const customGraphPolicy = tier === "developer" && source === "graph";
   return {
     tier,
     source,
-    enabled: false,
+    enabled: customGraphPolicy,
     default_scope: "embedded",
-    allow_all: false,
+    allow_all: customGraphPolicy,
   };
 }
 
 function effectivePolicies() {
   return Object.fromEntries(
-    ["jira", "polarion", "confluence"].map((source, index) => [
+    ["jira", "polarion", "confluence", "graph"].map((source, index) => [
       source,
       {
         enabled: index === 0,
@@ -233,8 +235,10 @@ async function staticServer() {
 }
 
 test(
-  "rendered source policy and attachment controls preserve their browser contracts",
-  { skip: !RUN_BROWSER },
+  RUN_GRAPH_ONLY
+    ? "Graph attachment modes save, roll back, and fit narrow and dark layouts"
+    : "rendered source policy and attachment controls preserve their browser contracts",
+  { skip: !RUN_BROWSER && !RUN_GRAPH_ONLY },
   async () => {
     const playwrightModule =
       process.env.SOURCE_IMAGE_PLAYWRIGHT_MODULE ?? "playwright";
@@ -483,7 +487,7 @@ test(
         });
       }
       const policyMatch = path.match(
-        /^\/api\/admin\/tier-source-images\/([^/]+)\/(jira|polarion|confluence)$/
+        /^\/api\/admin\/tier-source-images\/([^/]+)\/(jira|polarion|confluence|graph)$/
       );
       if (policyMatch) {
         const [, tier, source] = policyMatch;
@@ -647,7 +651,11 @@ test(
               tab.textBounds.right <= tab.tabBounds.right + 1,
             `${viewport} tab label escaped its button: ${JSON.stringify(tab)}`
           );
-          if (tab.iconBounds && tab.iconBounds.width > 0) {
+          assert(
+            tab.iconBounds && tab.iconBounds.width > 0,
+            `${viewport} tab icon is hidden: ${JSON.stringify(tab)}`
+          );
+          if (tab.iconBounds) {
             const bounds = tab.iconBounds;
             assert(
               bounds.left >= tab.tabBounds.left - 1 &&
@@ -781,6 +789,8 @@ test(
       assert.deepEqual(connectivityPutBodies.at(-1), {
         embedding_provider: "copilot",
       });
+      // Pointer hover pauses toast dismissal; keep timing independent of its position.
+      await page.mouse.move(0, 0);
       await page
         .getByText("Embeddings now use copilot-api", { exact: true })
         .waitFor({ state: "hidden", timeout: 6_000 });
@@ -832,6 +842,122 @@ test(
         'section[aria-labelledby="source-image-tier-user"]'
       );
       await userSection.getByText("Jira", { exact: true }).waitFor();
+      const graphMode = userSection.getByRole("combobox", {
+        name: "Microsoft Graph attachment access for user tier",
+      });
+      await graphMode.waitFor();
+      assert.equal(await graphMode.innerText(), "None");
+      const developerGraphMode = page.getByRole("combobox", {
+        name: "Microsoft Graph attachment access for developer tier",
+      });
+      await developerGraphMode.waitFor();
+      assert.equal(
+        await developerGraphMode.innerText(),
+        "Embedded default · all on request"
+      );
+      await developerGraphMode.click();
+      await page
+        .getByRole("option", { name: "All attachments", exact: true })
+        .click();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("#source-images-developer-graph-mode")
+            ?.disabled
+      );
+      assert.equal(await developerGraphMode.innerText(), "All attachments");
+      assert.deepEqual(putBodies.at(-1), {
+        tier: "developer",
+        source: "graph",
+        body: { enabled: true, default_scope: "all", allow_all: true },
+      });
+      for (const [label, expected] of [
+        [
+          "Embedded only",
+          { enabled: true, default_scope: "embedded", allow_all: false },
+        ],
+        [
+          "All attachments",
+          { enabled: true, default_scope: "all", allow_all: true },
+        ],
+        [
+          "None",
+          { enabled: false, default_scope: "embedded", allow_all: false },
+        ],
+      ]) {
+        await graphMode.click();
+        await page.getByRole("option", { name: label, exact: true }).click();
+        await page.waitForFunction(
+          () =>
+            !document.querySelector("#source-images-user-graph-mode")?.disabled
+        );
+        assert.deepEqual(putBodies.at(-1), {
+          tier: "user",
+          source: "graph",
+          body: expected,
+        });
+      }
+      failNextSource = "graph";
+      await graphMode.click();
+      await page
+        .getByRole("option", { name: "All attachments", exact: true })
+        .click();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("#source-images-user-graph-mode")?.disabled
+      );
+      assert.equal(await graphMode.innerText(), "None");
+      await graphMode.click();
+      await page
+        .getByRole("option", { name: "Embedded only", exact: true })
+        .click();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("#source-images-user-graph-mode")?.disabled
+      );
+      await userSection.screenshot({
+        path: join(EVIDENCE, "graph-attachment-policy.png"),
+        animations: "disabled",
+      });
+      {
+        const graphRow = graphMode.locator("xpath=ancestor::div[@aria-busy]");
+        for (const width of [375, 390]) {
+          await page.setViewportSize({ width, height: 844 });
+          await graphMode.scrollIntoViewIfNeeded();
+          const bounds = await graphRow.evaluate((element) => ({
+            client: element.clientWidth,
+            scroll: element.scrollWidth,
+          }));
+          assert(
+            bounds.scroll <= bounds.client + 1,
+            `Graph row overflow at ${width}px: ${JSON.stringify(bounds)}`
+          );
+          const rowBox = await graphRow.boundingBox();
+          const modeBox = await graphMode.boundingBox();
+          assert(
+            rowBox &&
+              modeBox &&
+              modeBox.x >= rowBox.x &&
+              modeBox.x + modeBox.width <= rowBox.x + rowBox.width + 1
+          );
+          await graphRow.screenshot({
+            path: join(EVIDENCE, `graph-attachment-policy-${width}px.png`),
+            animations: "disabled",
+          });
+        }
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page
+          .getByRole("button", { name: "Switch to night mode" })
+          .click();
+        await graphMode.scrollIntoViewIfNeeded();
+        await graphRow.screenshot({
+          path: join(EVIDENCE, "graph-attachment-policy-dark.png"),
+          animations: "disabled",
+        });
+        assert.equal(await graphMode.innerText(), "Embedded only");
+        assert.deepEqual(pageErrors, []);
+        if (RUN_GRAPH_ONLY) return;
+        await page.getByRole("button", { name: "Switch to day mode" }).click();
+      }
       assert.equal(
         await userSection.getByText(/^(Issue|Work item|Page) content$/).count(),
         3

@@ -6,18 +6,19 @@ import {
   SectionHeader,
 } from "@/app/components/admin/primitives";
 import { ROLES } from "@/app/components/admin/primitives-utils";
+import { SOURCE_IMAGE_SOURCES } from "@/lib/source-images";
 
-/** Tier-wide defaults for images referenced by connected source systems. */
+/** Tier policies for source images and Graph message attachments. */
 export function SourceImagePolicySection() {
   return (
     <div className="space-y-3">
       <SectionHeader
-        title="Source images"
+        title="Source images and attachments"
         subtitle="Per-source defaults and permissions for each tier"
       />
       <DisclosureSection
         title="Tier policies"
-        subtitle="3 tiers · Jira, Polarion, and Confluence"
+        subtitle="3 tiers · Jira, Polarion, Confluence, and Microsoft Graph"
         contentClassName="space-y-4"
       >
         {ROLES.map((tier, index) => (
@@ -34,7 +35,7 @@ export function SourceImagePolicySection() {
                 {tier}
               </h4>
               <span className="text-[10px] text-muted-foreground">
-                3 sources
+                {SOURCE_IMAGE_SOURCES.length} sources
               </span>
             </div>
             <SourceImageControls tier={tier} />
