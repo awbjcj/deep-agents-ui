@@ -33,6 +33,7 @@ export interface SkillEditorProps {
   onDiscard: () => void;
 }
 
+/** Fill the workspace with the active file while keeping draft actions reachable. */
 export function SkillEditor({
   draft,
   limits,
@@ -84,7 +85,7 @@ export function SkillEditor({
   return (
     <section
       aria-label="Skill editor"
-      className="min-w-0 space-y-4 @container"
+      className="flex min-w-0 flex-1 flex-col gap-4 @container"
       aria-busy={saving}
     >
       <div>
@@ -106,7 +107,7 @@ export function SkillEditor({
       <SkillDiagnostics
         diagnostics={[...diagnostics, ...fileDiagnostics, ...localDiagnostics]}
       />
-      <div className="grid min-w-0 gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+      <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(25rem,1fr)] gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @[36rem]:grid-rows-[minmax(25rem,1fr)]">
         <div className="min-w-0 space-y-3">
           <SkillFileList
             files={draft.files}
@@ -151,7 +152,7 @@ export function SkillEditor({
             </Button>
           </form>
         </div>
-        <div className="min-w-0 space-y-2">
+        <div className="flex min-h-0 min-w-0 flex-col gap-2">
           {selected && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -191,7 +192,7 @@ export function SkillEditor({
                   id={`${id}-content`}
                   spellCheck={false}
                   disabled={saving}
-                  className="min-h-80 resize-y scroll-mb-28 bg-card p-3 font-mono text-sm leading-6"
+                  className="h-0 min-h-80 flex-1 resize-none scroll-mb-28 bg-card p-3 font-mono text-sm leading-6"
                   value={selected.content}
                   onChange={(event) => {
                     setFileDiagnostics([]);
@@ -206,10 +207,13 @@ export function SkillEditor({
                   }}
                 />
               ) : (
-                <SkillFilePreview
-                  file={selected}
-                  mode="preview"
-                />
+                <div className="relative h-0 min-h-80 flex-1">
+                  <SkillFilePreview
+                    file={selected}
+                    mode="preview"
+                    className="absolute inset-0 h-full max-h-none"
+                  />
+                </div>
               )}
             </>
           )}

@@ -181,7 +181,7 @@ export function SkillDetails({
         </p>
       )}
       <SkillDiagnostics diagnostics={detailDiagnostics} />
-      <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @[36rem]:grid-rows-1">
+      <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(25rem,1fr)] gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @[36rem]:grid-rows-[minmax(25rem,1fr)]">
         <SkillFileList
           files={resources}
           selectedPath={selectedPath}
@@ -191,7 +191,7 @@ export function SkillDetails({
             if (!files.some((file) => file.path === path)) onReadFile?.(path);
           }}
         />
-        <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex min-h-0 min-w-0 flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="break-all font-mono text-xs">{selectedPath}</span>
             <div
@@ -220,11 +220,13 @@ export function SkillDetails({
             </div>
           </div>
           {selected ? (
-            <SkillFilePreview
-              file={selected}
-              mode={mode}
-              className="max-h-none min-h-80 flex-1"
-            />
+            <div className="relative h-0 min-h-80 flex-1">
+              <SkillFilePreview
+                file={selected}
+                mode={mode}
+                className="absolute inset-0 h-full max-h-none"
+              />
+            </div>
           ) : (
             <p
               role="status"

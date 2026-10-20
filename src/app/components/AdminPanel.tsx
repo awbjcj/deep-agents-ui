@@ -6,6 +6,8 @@ import {
   GitBranch,
   Layers,
   Mail,
+  Maximize2,
+  Minimize2,
   Search,
   Shield,
   Sliders,
@@ -67,15 +69,21 @@ const SECTIONS: Record<AdminTab, ComponentType> = {
 
 interface AdminPanelProps {
   onClose: () => void;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
-export function AdminPanel({ onClose }: AdminPanelProps) {
+export function AdminPanel({
+  onClose,
+  expanded = false,
+  onToggleExpanded,
+}: AdminPanelProps) {
   const [active, setActive] = useState<AdminTab>("users");
   const ActiveSection = SECTIONS[active];
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <div className="@container/panel flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm">
+      <div className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
         <div className="flex items-start justify-between px-4 pt-4">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--aptiv-orange)] shadow-sm">
@@ -90,15 +98,41 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
               </h2>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8"
-            aria-label="Close admin panel"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {onToggleExpanded && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleExpanded}
+                className="h-8 w-8"
+                aria-label={
+                  expanded ? "Restore admin panel" : "Expand admin panel"
+                }
+                aria-pressed={expanded}
+              >
+                {expanded ? (
+                  <Minimize2
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+                ) : (
+                  <Maximize2
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+                )}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8"
+              aria-label="Close admin panel"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         {/* Manual activation: each section runs its own fetches on mount, so
             arrow-keying across the strip must move focus without mounting

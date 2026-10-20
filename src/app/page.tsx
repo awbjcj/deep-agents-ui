@@ -22,6 +22,7 @@ import { AccountMenu } from "@/app/components/AccountMenu";
 import { LoadingScreen } from "@/app/components/LoadingScreen";
 import { useHasBeenTrue } from "@/app/hooks/useHasBeenTrue";
 import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
@@ -114,6 +115,14 @@ function HomePageInner({
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [expandedPanel, setExpandedPanel] = useState<
+    "workspace" | "admin" | null
+  >(null);
+  const handleSkillEditingChange = useCallback((editing: boolean) => {
+    setExpandedPanel((current) =>
+      editing ? "workspace" : current === "workspace" ? null : current
+    );
+  }, []);
   const workspaceDirty = useRef<{ accountId: string | null; value: boolean }>({
     accountId: null,
     value: false,
@@ -147,6 +156,7 @@ function HomePageInner({
     );
     workspaceDirty.current = { accountId: user.user_id, value: false };
     setWorkspaceOpen(false);
+    setExpandedPanel(null);
     setWorkspaceTab(undefined);
   }, [allowWorkspaceLeave, user, threadId]);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab | undefined>(
@@ -181,13 +191,17 @@ function HomePageInner({
     if (!allowWorkspaceLeave()) return;
     workspaceDirty.current = { accountId: user?.user_id ?? null, value: false };
     setWorkspaceOpen(false);
+    setExpandedPanel(null);
     setWorkspaceTab(undefined);
   }, [allowWorkspaceLeave, user?.user_id]);
   const handleTokenFocusConsumed = useCallback(
     () => requestTokenFocus(null),
     [requestTokenFocus]
   );
-  const handleAdminClose = useCallback(() => setAdminOpen(false), []);
+  const handleAdminClose = useCallback(() => {
+    setAdminOpen(false);
+    setExpandedPanel(null);
+  }, []);
 
   const configDialogEverOpened = useHasBeenTrue(configDialogOpen);
   const accountDialogEverOpened = useHasBeenTrue(accountDialogOpen);
@@ -196,6 +210,7 @@ function HomePageInner({
   // pass the service key through so the matching input scrolls into focus.
   useEffect(() => {
     if (pendingTokenFocus) {
+      setExpandedPanel(null);
       setWorkspaceOpen(true);
       setWorkspaceTab("tokens");
       setAdminOpen(false);
@@ -427,6 +442,7 @@ function HomePageInner({
                   size="sm"
                   onClick={() => {
                     if (workspaceOpen && !allowWorkspaceLeave()) return;
+                    setExpandedPanel(null);
                     setWorkspaceOpen((v) => {
                       const next = !v;
                       if (next) setAdminOpen(false);
@@ -459,6 +475,7 @@ function HomePageInner({
                     onClick={() => {
                       if (!adminOpen && workspaceOpen && !allowWorkspaceLeave())
                         return;
+                      setExpandedPanel(null);
                       setAdminOpen((v) => {
                         const next = !v;
                         if (next) {
@@ -523,6 +540,7 @@ function HomePageInner({
                   defaultSize={25}
                   minSize={20}
                   className="relative min-w-[380px]"
+                  inert={expandedPanel !== null}
                 >
                   <ThreadList
                     onThreadSelect={handleThreadSelect}
@@ -532,7 +550,9 @@ function HomePageInner({
                     userId={user?.user_id}
                   />
                 </ResizablePanel>
-                <ResizableHandle />
+                <ResizableHandle
+                  className={expandedPanel ? "invisible" : undefined}
+                />
               </>
             )}
 
@@ -540,6 +560,7 @@ function HomePageInner({
               id="chat"
               className="relative flex flex-col"
               order={2}
+              inert={expandedPanel !== null}
             >
               <ChatProvider
                 activeAssistant={assistant}
@@ -560,13 +581,19 @@ function HomePageInner({
 
             {workspaceOpen && (
               <>
-                <ResizableHandle />
+                <ResizableHandle
+                  className={expandedPanel ? "invisible" : undefined}
+                />
                 <ResizablePanel
                   id="right-panel"
                   order={3}
                   defaultSize={28}
                   minSize={22}
-                  className="relative min-w-[360px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0 max-sm:bg-background"
+                  className={cn(
+                    "relative min-w-[360px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0 max-sm:bg-background",
+                    expandedPanel === "workspace" &&
+                      "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
+                  )}
                 >
                   <Suspense fallback={<PanelFallback label="Workspace" />}>
                     <WorkspacePanel
@@ -576,6 +603,13 @@ function HomePageInner({
                       onClose={handleWorkspaceClose}
                       onCreateWithAgent={createWithAgent}
                       onDirtyChange={handleWorkspaceDirtyChange}
+                      expanded={expandedPanel === "workspace"}
+                      onToggleExpanded={() =>
+                        setExpandedPanel((current) =>
+                          current === "workspace" ? null : "workspace"
+                        )
+                      }
+                      onEditingChange={handleSkillEditingChange}
                     />
                   </Suspense>
                 </ResizablePanel>
@@ -583,16 +617,30 @@ function HomePageInner({
             )}
             {adminOpen && isAdmin && (
               <>
-                <ResizableHandle className="max-sm:hidden" />
+                <ResizableHandle
+                  className={cn("max-sm:hidden", expandedPanel && "invisible")}
+                />
                 <ResizablePanel
                   id="admin-panel"
                   order={4}
                   defaultSize={34}
                   minSize={30}
-                  className="relative min-w-[500px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0"
+                  className={cn(
+                    "relative min-w-[500px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0",
+                    expandedPanel === "admin" &&
+                      "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
+                  )}
                 >
                   <Suspense fallback={<PanelFallback label="Admin console" />}>
-                    <AdminPanel onClose={handleAdminClose} />
+                    <AdminPanel
+                      onClose={handleAdminClose}
+                      expanded={expandedPanel === "admin"}
+                      onToggleExpanded={() =>
+                        setExpandedPanel((current) =>
+                          current === "admin" ? null : "admin"
+                        )
+                      }
+                    />
                   </Suspense>
                 </ResizablePanel>
               </>

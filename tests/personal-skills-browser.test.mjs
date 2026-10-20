@@ -493,6 +493,19 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           await content(page).fill(
             source("my-skill", "# Instructions\nA focused editing workspace.")
           );
+          const expandedBounds = await page
+            .locator("#right-panel")
+            .boundingBox();
+          assert.equal(expandedBounds.x, 0);
+          assert.equal(expandedBounds.width, 1440);
+          assert.equal(await page.locator("#chat").getAttribute("inert"), "");
+          await page
+            .getByRole("button", { name: "Restore workspace panel" })
+            .click();
+          assert.match(
+            await content(page).inputValue(),
+            /A focused editing workspace/
+          );
           for (const [width, height] of [
             [1440, 1000],
             [375, 812],
@@ -548,6 +561,361 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           page.once("dialog", (d) => d.accept());
           await browseSkills(page);
           await captureMatrix(page, "library", page.locator("#right-panel"));
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "skill source and previews fill the remaining height and scroll long files internally",
+      async () => {
+        const policy = skillsFixture();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await openSkills(page);
+          await selectPersonal(page);
+          const panel = page.locator("#right-panel");
+          const heights = [];
+          for (const [width, height] of [
+            [1440, 1000],
+            [1440, 1440],
+            [2560, 1440],
+          ]) {
+            await page.setViewportSize({ width, height });
+            for (const theme of ["light", "dark"]) {
+              await page.evaluate(
+                (theme) =>
+                  document.documentElement.classList.toggle(
+                    "dark",
+                    theme === "dark"
+                  ),
+                theme
+              );
+              await editor(page)
+                .getByRole("button", { name: "Source", exact: true })
+                .click();
+              const sourceBounds = await content(page).boundingBox();
+              if (theme === "light" && width === 1440)
+                heights.push(sourceBounds.height);
+              const editorBounds = await editor(page).boundingBox();
+              const panelBounds = await panel.boundingBox();
+              assert.equal(panelBounds.x, 0);
+              assert.equal(panelBounds.width, width);
+              const bottomGutter = await page
+                .locator("#workspace-panel-skills > div")
+                .evaluate((el) =>
+                  parseFloat(getComputedStyle(el).paddingBottom)
+                );
+              assert(
+                Math.abs(
+                  editorBounds.y +
+                    editorBounds.height -
+                    (panelBounds.y + panelBounds.height - bottomGutter)
+                ) <= 2,
+                "editor actions reach the bottom workspace gutter"
+              );
+              const saveBounds = await editor(page)
+                .getByRole("button", { name: "Save", exact: true })
+                .boundingBox();
+              assert(
+                saveBounds.y - (sourceBounds.y + sourceBounds.height) < 80,
+                "source canvas uses the space above draft actions"
+              );
+              if (width === 1440 && height === 1000)
+                await panel.screenshot({
+                  path: join(EVIDENCE, `desktop-editor-source-${theme}.png`),
+                  animations: "disabled",
+                });
+              await editor(page)
+                .getByRole("button", { name: "Preview", exact: true })
+                .click();
+              const preview = page.getByLabel("Markdown preview of SKILL.md");
+              const previewBounds = await preview.boundingBox();
+              assert(
+                Math.abs(previewBounds.height - sourceBounds.height) <= 2,
+                "preview uses the same canvas height as source"
+              );
+              await panel.screenshot({
+                path: join(EVIDENCE, `${width}x${height}-canvas-${theme}.png`),
+                animations: "disabled",
+              });
+            }
+          }
+          assert(
+            Math.abs(heights[1] - heights[0] - 440) <= 2,
+            "440 extra viewport pixels become 440 extra editing pixels"
+          );
+          await editor(page)
+            .getByRole("button", { name: "Source", exact: true })
+            .click();
+          const longContent = source(
+            "my-skill",
+            Array.from({ length: 160 }, (_, i) => `Instruction ${i + 1}.`).join(
+              "\n\n"
+            )
+          );
+          const before = await content(page).boundingBox();
+          await content(page).fill(longContent);
+          const after = await content(page).boundingBox();
+          assert.equal(after.height, before.height);
+          assert(
+            await content(page).evaluate(
+              (el) => el.scrollHeight > el.clientHeight
+            ),
+            "long source scrolls inside its canvas"
+          );
+          await editor(page)
+            .getByRole("button", { name: "Preview", exact: true })
+            .click();
+          const preview = page.getByLabel("Markdown preview of SKILL.md");
+          assert(
+            await preview.evaluate((el) => el.scrollHeight > el.clientHeight),
+            "long preview scrolls inside its canvas"
+          );
+          assert.equal((await preview.boundingBox()).height, before.height);
+          page.once("dialog", (dialog) => dialog.accept());
+          await browseSkills(page);
+          assert((await panel.boundingBox()).width < 1000);
+          assert.equal(await page.locator("#chat").getAttribute("inert"), null);
+          policy.packages.get("p1").files[0].content = longContent;
+          await selectCatalogSkill(page, /my-skill Personal/);
+          const detailsPreview = page.getByLabel(
+            "Markdown preview of SKILL.md"
+          );
+          assert(
+            await detailsPreview.evaluate(
+              (el) => el.scrollHeight > el.clientHeight
+            ),
+            "long read-only skill content also scrolls within the available canvas"
+          );
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "all workspace and admin panels fill their shells and preserve tabs when expanded",
+      async () => {
+        const policy = skillsFixture();
+        const originalRoute = policy.route;
+        policy.route = (route, account) => {
+          const path = new URL(route.request().url()).pathname;
+          if (path === "/api/user/model")
+            return json(route, {
+              effective: {
+                provider: "fixture",
+                model: "example",
+                effort: "low",
+                thinking: false,
+                max_tokens: 4096,
+              },
+              preset: null,
+            });
+          if (
+            path === "/api/user/allowed-models" ||
+            path.startsWith("/api/admin/tier-models/")
+          )
+            return json(route, { models: [] });
+          if (path === "/api/user/connectivity")
+            return json(route, {
+              run_mode: "gateway",
+              run_mode_source: "env",
+              default_run_mode: "gateway",
+              proxy_url: "",
+              proxy_url_source: "env",
+              available_modes: ["gateway", "proxy"],
+            });
+          if (path === "/api/user/tokens") return json(route, {});
+          if (path === "/api/user/image-fetching")
+            return json(route, {
+              enabled: false,
+              effective: false,
+              sources: null,
+            });
+          if (
+            [
+              "/api/admin/scopes",
+              "/api/admin/scm/servers",
+              "/api/user/scm/servers",
+            ].includes(path)
+          )
+            return json(route, []);
+          if (path === "/api/admin/broadcasts")
+            return json(route, { broadcasts: [] });
+          if (
+            path.startsWith("/api/") &&
+            ![
+              "/api/user/profile",
+              "/api/user/notifications",
+              "/api/user/tool-permissions",
+              "/api/admin/tool-permissions",
+              "/api/admin/users",
+              "/api/admin/registration-settings",
+              "/api/admin/invitation-codes",
+            ].includes(path) &&
+            !path.startsWith("/api/skills") &&
+            !path.includes("/assistants/")
+          )
+            return json(
+              route,
+              { detail: "Unavailable in this layout fixture" },
+              503
+            );
+          return originalRoute(route, account);
+        };
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await openSkills(page);
+          for (const [width, height] of [
+            [1440, 1000],
+            [375, 812],
+          ]) {
+            await page.setViewportSize({ width, height });
+            for (const theme of ["light", "dark"]) {
+              await page.evaluate(
+                (theme) =>
+                  document.documentElement.classList.toggle(
+                    "dark",
+                    theme === "dark"
+                  ),
+                theme
+              );
+              for (const [id, label] of [
+                ["models", "Models"],
+                ["tools", "Tools"],
+                ["skills", "Skills"],
+                ["tokens", "Tokens"],
+                ["connectivity", "Connections"],
+              ]) {
+                await page
+                  .getByRole("tab", { name: label, exact: true })
+                  .click();
+                const panel = page.locator("#right-panel");
+                const body = page.locator(`#workspace-panel-${id}`);
+                const docked = await panel.boundingBox();
+                const bodyBounds = await body.boundingBox();
+                assert(
+                  Math.abs(bodyBounds.y + bodyBounds.height - height) <= 1
+                );
+                assert.equal(
+                  await panel.evaluate(
+                    (el) => el.scrollWidth <= el.clientWidth + 1
+                  ),
+                  true
+                );
+                await page
+                  .getByRole("button", { name: "Expand workspace panel" })
+                  .click();
+                const expanded = await panel.boundingBox();
+                assert.equal(expanded.x, 0);
+                assert.equal(expanded.width, width);
+                assert.equal(
+                  await page
+                    .getByRole("tab", { name: label, exact: true })
+                    .getAttribute("aria-selected"),
+                  "true"
+                );
+                await page
+                  .getByRole("button", { name: "Restore workspace panel" })
+                  .click();
+                assert.deepEqual(await panel.boundingBox(), docked);
+              }
+            }
+          }
+          await page
+            .getByRole("button", { name: "Close workspace panel" })
+            .click();
+          await page
+            .getByRole("button", { name: "Admin console", exact: true })
+            .click();
+          for (const [width, height] of [
+            [1440, 1000],
+            [375, 812],
+          ]) {
+            await page.setViewportSize({ width, height });
+            for (const theme of ["light", "dark"]) {
+              await page.evaluate(
+                (theme) =>
+                  document.documentElement.classList.toggle(
+                    "dark",
+                    theme === "dark"
+                  ),
+                theme
+              );
+              for (const label of [
+                "People",
+                "Models",
+                "Tools",
+                "Runtime",
+                "Memories",
+                "Search",
+                "Sources",
+                "Newsletters",
+              ]) {
+                await page
+                  .getByRole("tab", { name: label, exact: true })
+                  .click();
+                const panel = page.locator("#admin-panel");
+                const scroll = panel.locator(
+                  '[data-slot="scroll-area-viewport"]'
+                );
+                const docked = await panel.boundingBox();
+                const scrollBounds = await scroll.boundingBox();
+                assert(
+                  Math.abs(scrollBounds.y + scrollBounds.height - height) <= 1
+                );
+                assert.equal(
+                  await panel.evaluate(
+                    (el) => el.scrollWidth <= el.clientWidth + 1
+                  ),
+                  true
+                );
+                await page
+                  .getByRole("button", { name: "Expand admin panel" })
+                  .click();
+                const expanded = await panel.boundingBox();
+                assert.equal(expanded.x, 0);
+                assert.equal(expanded.width, width);
+                assert.equal(
+                  await page
+                    .getByRole("tab", { name: label, exact: true })
+                    .getAttribute("aria-selected"),
+                  "true"
+                );
+                if (label === "Newsletters")
+                  await panel.screenshot({
+                    path: join(
+                      EVIDENCE,
+                      `${width}-admin-expanded-${theme}.png`
+                    ),
+                    animations: "disabled",
+                  });
+                await page
+                  .getByRole("button", { name: "Restore admin panel" })
+                  .click();
+                assert.deepEqual(await panel.boundingBox(), docked);
+              }
+            }
+          }
+          await page
+            .getByRole("button", { name: "Expand admin panel" })
+            .click();
+          await page
+            .getByRole("button", { name: "Admin console", exact: true })
+            .click();
+          assert.equal(await page.locator("#chat").getAttribute("inert"), null);
           assert.deepEqual(pageErrors, []);
         } finally {
           await context.close();

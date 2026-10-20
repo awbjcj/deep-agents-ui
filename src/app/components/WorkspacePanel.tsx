@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, BookOpen, KeyRound, PlugZap, Wrench, X } from "lucide-react";
+import {
+  Bot,
+  BookOpen,
+  KeyRound,
+  Maximize2,
+  Minimize2,
+  PlugZap,
+  Wrench,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PanelTabs } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
@@ -28,6 +37,9 @@ interface WorkspacePanelProps {
   onClose: () => void;
   onCreateWithAgent: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  onEditingChange?: (editing: boolean) => void;
 }
 
 interface TabDef {
@@ -53,6 +65,9 @@ export function WorkspacePanel({
   onClose,
   onCreateWithAgent,
   onDirtyChange,
+  expanded = false,
+  onToggleExpanded,
+  onEditingChange,
 }: WorkspacePanelProps) {
   const { user } = useAuth();
   const dirty = useRef<{ accountId: string | null; value: boolean }>({
@@ -117,15 +132,43 @@ export function WorkspacePanel({
               {TABS.find((t) => t.id === active)?.label ?? "Workspace"}
             </h2>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8"
-            aria-label="Close workspace panel"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {onToggleExpanded && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggleExpanded}
+                className="h-8 w-8"
+                aria-label={
+                  expanded
+                    ? "Restore workspace panel"
+                    : "Expand workspace panel"
+                }
+                aria-pressed={expanded}
+              >
+                {expanded ? (
+                  <Minimize2
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+                ) : (
+                  <Maximize2
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+                )}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8"
+              aria-label="Close workspace panel"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         {/* Manual activation: each panel body runs its own fetches on mount,
             so arrowing across the strip must not mount every section on the
@@ -153,6 +196,7 @@ export function WorkspacePanel({
             <SkillsSidebar
               onCreateWithAgent={onCreateWithAgent}
               onDirtyChange={updateDirty}
+              onEditingChange={onEditingChange}
             />
           </div>
         )}

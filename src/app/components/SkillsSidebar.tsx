@@ -15,6 +15,7 @@ import { SkillDiagnostics, SkillFilePreview } from "./skills/SkillFileList";
 export interface SkillsSidebarProps {
   onCreateWithAgent: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  onEditingChange?: (editing: boolean) => void;
 }
 
 /** Remount before rendering another account, so private state never flashes. */
@@ -33,6 +34,7 @@ function AccountSkills({
   accountId,
   onCreateWithAgent,
   onDirtyChange,
+  onEditingChange,
 }: SkillsSidebarProps & { accountId: string }) {
   const skills = usePersonalSkills(accountId);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -52,6 +54,11 @@ function AccountSkills({
     ? "details"
     : "catalog";
   const previousMode = useRef(mode);
+  useEffect(() => {
+    if (mode !== "editor") return;
+    onEditingChange?.(true);
+    return () => onEditingChange?.(false);
+  }, [mode, onEditingChange]);
   useEffect(() => {
     if (mode === previousMode.current) return;
     if (mode === "catalog") {
@@ -75,9 +82,9 @@ function AccountSkills({
   return (
     <div
       ref={scrollArea}
-      className="absolute inset-0 scroll-pb-28 overflow-y-auto overscroll-contain p-4 @container"
+      className="absolute inset-0 flex scroll-pb-28 flex-col overflow-y-auto overscroll-contain p-4 @container"
     >
-      <div className="flex min-h-full min-w-0 flex-col gap-4">
+      <div className="flex min-h-full min-w-0 flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           {mode !== "catalog" ? (
             <Button
@@ -188,7 +195,7 @@ function AccountSkills({
           tabIndex={-1}
           className={cn(
             "min-w-0 outline-none",
-            mode === "details" ? "flex flex-1 flex-col gap-4" : "space-y-4"
+            mode === "catalog" ? "hidden" : "flex flex-1 flex-col gap-4"
           )}
           hidden={mode === "catalog"}
           aria-label={
