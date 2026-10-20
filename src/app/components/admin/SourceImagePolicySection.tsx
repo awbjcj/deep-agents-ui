@@ -1,12 +1,9 @@
 "use client";
 
 import { SourceImageControls } from "@/app/components/admin/SourceImageControls";
-import {
-  DisclosureSection,
-  SectionHeader,
-} from "@/app/components/admin/primitives";
+import { SectionHeader } from "@/app/components/admin/primitives";
 import { ROLES } from "@/app/components/admin/primitives-utils";
-import { SOURCE_IMAGE_SOURCES } from "@/lib/source-images";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Independent image and document permissions for every source and tier. */
 export function SourceImagePolicySection() {
@@ -14,34 +11,37 @@ export function SourceImagePolicySection() {
     <div className="space-y-3">
       <SectionHeader
         title="Source images and attachments"
-        subtitle="Separate image and document access for each tier. Documents support DOCX, HTML, PPTX, XLSX, PDF, and text, up to 10 MB per file."
+        subtitle="Choose a tier to manage access. Changes save automatically."
       />
-      <DisclosureSection
-        title="Tier policies"
-        subtitle="3 tiers · Jira, Polarion, Confluence, and Microsoft Graph"
-        contentClassName="space-y-4"
+      <Tabs
+        defaultValue="user"
+        className="gap-3"
       >
-        {ROLES.map((tier, index) => (
-          <section
+        <TabsList
+          aria-label="Attachment permission tier"
+          className="grid h-auto w-full grid-cols-3 gap-1 p-1"
+        >
+          {ROLES.map((tier) => (
+            <TabsTrigger
+              key={tier}
+              value={tier}
+              className="min-h-11 capitalize motion-reduce:transition-none"
+            >
+              {tier}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {ROLES.map((tier) => (
+          <TabsContent
             key={tier}
-            aria-labelledby={`source-image-tier-${tier}`}
-            className={index === 0 ? "" : "border-t border-border/60 pt-4"}
+            value={tier}
+            forceMount
+            className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring data-[state=inactive]:hidden"
           >
-            <div className="mb-2 flex items-baseline justify-between gap-3">
-              <h4
-                id={`source-image-tier-${tier}`}
-                className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
-              >
-                {tier}
-              </h4>
-              <span className="text-[10px] text-muted-foreground">
-                {SOURCE_IMAGE_SOURCES.length} sources
-              </span>
-            </div>
             <SourceImageControls tier={tier} />
-          </section>
+          </TabsContent>
         ))}
-      </DisclosureSection>
+      </Tabs>
     </div>
   );
 }

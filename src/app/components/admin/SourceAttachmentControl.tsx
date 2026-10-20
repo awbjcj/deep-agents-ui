@@ -25,19 +25,14 @@ interface SourceAttachmentControlProps {
 }
 
 const PERMISSIONS = [
-  {
-    field: "enabled",
-    title: "Images",
-    description: "Requires user image opt-in",
-  },
-  {
-    field: "documents_enabled",
-    title: "Documents",
-    description: "Download & convert · up to 10 MB",
-  },
+  { field: "enabled", title: "Images", hint: "images" },
+  { field: "documents_enabled", title: "Documents", hint: "documents" },
 ] as const;
 
-/** The same independent grants and shared scope controls for every source. */
+const switchClassName =
+  "relative border-muted-foreground before:absolute before:-inset-x-1 before:-inset-y-3 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none [&>span]:motion-reduce:transition-none";
+
+/** Independent grants with scope shared by images and documents. */
 export function SourceAttachmentControl({
   tier,
   source,
@@ -51,37 +46,36 @@ export function SourceAttachmentControl({
     isSaving || (!policy.enabled && !policy.documents_enabled);
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-      {PERMISSIONS.map(({ field, title, description }) => (
+    <div className="grid min-w-0 grid-cols-2 items-end gap-x-5 gap-y-1 @2xl/permissions:grid-cols-[1fr_1fr_1.3fr_1fr]">
+      {PERMISSIONS.map(({ field, title, hint }) => (
         <div
           key={field}
-          className="min-w-0"
+          className="flex min-w-0 items-center gap-3"
         >
-          <div className="flex min-h-9 items-center justify-between gap-2">
-            <Label
-              htmlFor={`${id}-${field}`}
-              className="text-xs font-medium"
-            >
-              {title}
-            </Label>
-            <Switch
-              id={`${id}-${field}`}
-              checked={Boolean(policy[field])}
-              disabled={isSaving}
-              onCheckedChange={(value) => onChange({ field, value })}
-              aria-label={`${label} ${title.toLowerCase()} for ${tier} tier`}
-              aria-describedby={`${id}-${field}-description`}
-            />
-          </div>
-          <p
-            id={`${id}-${field}-description`}
-            className="text-[11px] leading-relaxed text-muted-foreground"
+          <Label
+            htmlFor={`${id}-${field}`}
+            className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs font-medium leading-5"
           >
-            {description}
-          </p>
+            {title}
+            <span
+              aria-hidden="true"
+              className="text-xs font-normal text-muted-foreground"
+            >
+              {policy[field] ? "On" : "Off"}
+            </span>
+          </Label>
+          <Switch
+            id={`${id}-${field}`}
+            className={switchClassName}
+            checked={Boolean(policy[field])}
+            disabled={isSaving}
+            onCheckedChange={(value) => onChange({ field, value })}
+            aria-label={`${label} ${title.toLowerCase()} for ${tier} tier`}
+            aria-describedby={`source-attachment-${hint}-${tier}`}
+          />
         </div>
       ))}
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 space-y-1">
         <Label
           htmlFor={`${id}-default`}
           className="text-xs font-medium"
@@ -97,8 +91,9 @@ export function SourceAttachmentControl({
         >
           <SelectTrigger
             id={`${id}-default`}
-            className="h-9 min-w-0 gap-1 border-border/70 bg-background px-2 text-[11px] shadow-none [&>svg]:h-3 [&>svg]:w-3"
+            className="h-auto min-h-11 min-w-0 gap-1 border-muted-foreground bg-background px-2 text-left text-xs shadow-none focus:ring-ring [&>span]:line-clamp-none [&>span]:whitespace-normal"
             aria-label={`Default ${label} attachment fetch for ${tier} tier`}
+            aria-describedby={`source-attachment-scope-${tier}`}
           >
             <SelectValue />
           </SelectTrigger>
@@ -108,23 +103,28 @@ export function SourceAttachmentControl({
           </SelectContent>
         </Select>
       </div>
-      <div className="min-w-0 space-y-1.5">
+      <div className="flex min-h-11 min-w-0 items-center gap-3">
         <Label
           htmlFor={`${id}-allow-all`}
-          className="text-xs font-medium"
+          className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs font-medium leading-5"
         >
           Allow all
+          <span
+            aria-hidden="true"
+            className="text-xs font-normal text-muted-foreground"
+          >
+            {policy.allow_all ? "On" : "Off"}
+          </span>
         </Label>
-        <div className="flex h-9 items-center">
-          <Switch
-            id={`${id}-allow-all`}
-            checked={policy.allow_all}
-            disabled={scopeDisabled}
-            onCheckedChange={(value) => onChange({ field: "allow_all", value })}
-            aria-label={`Allow all ${label} attachments for ${tier} tier`}
-            aria-describedby={`source-attachment-scope-${tier}`}
-          />
-        </div>
+        <Switch
+          id={`${id}-allow-all`}
+          className={switchClassName}
+          checked={policy.allow_all}
+          disabled={scopeDisabled}
+          onCheckedChange={(value) => onChange({ field: "allow_all", value })}
+          aria-label={`Allow all ${label} attachments for ${tier} tier`}
+          aria-describedby={`source-attachment-scope-${tier}`}
+        />
       </div>
       <span
         role="status"

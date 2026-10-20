@@ -214,7 +214,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-xs">
+    <div className="rounded-lg border border-border bg-card @container/permissions">
       {SOURCE_IMAGE_SOURCES.map((source) => {
         const row = rows[source];
         const policy = row.current;
@@ -223,20 +223,16 @@ export function SourceImageControls({ tier }: { tier: string }) {
         return (
           <div
             key={source}
-            className="border-t border-border/60 p-3 first:border-t-0"
+            className="border-t border-border p-3 first:border-t-0"
+            role="group"
+            aria-label={`${sourceLabel} permissions for ${tier} tier`}
             aria-busy={row.isSaving || row.isLoading}
           >
             {policy ? (
-              <div className="space-y-3">
+              <div className="grid gap-2 @2xl/permissions:grid-cols-[9rem_minmax(0,1fr)] @2xl/permissions:items-center @2xl/permissions:gap-4">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-muted/45 text-[10px] font-bold text-foreground"
-                    aria-hidden="true"
-                  >
-                    {sourceLabel.slice(0, 1)}
-                  </span>
                   <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                       {sourceLabel}
                       {row.isSaving && (
                         <Loader2
@@ -245,7 +241,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
                         />
                       )}
                     </span>
-                    <span className="block text-[11px] text-muted-foreground">
+                    <span className="block text-xs text-muted-foreground">
                       {SOURCE_DESCRIPTIONS[source]}
                     </span>
                   </span>
@@ -276,7 +272,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
             {row.error && (
               <div
                 role="alert"
-                className="mt-2 flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-2.5 py-2 text-[11px] leading-relaxed text-destructive"
+                className="mt-2 flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-2.5 py-2 text-xs leading-relaxed text-destructive"
               >
                 <AlertCircle
                   className="mt-0.5 h-3 w-3 shrink-0"
@@ -289,7 +285,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
                     variant="ghost"
                     size="sm"
                     onClick={() => void retrySource(source)}
-                    className="h-7 shrink-0 px-2 text-[10px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="min-h-11 shrink-0 px-3 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     <RefreshCw aria-hidden="true" />
                     Retry
@@ -300,14 +296,25 @@ export function SourceImageControls({ tier }: { tier: string }) {
           </div>
         );
       })}
-      <p
-        id={`source-attachment-scope-${tier}`}
-        className="border-t border-border/60 bg-muted/20 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground"
-      >
-        Scope applies to both images and documents. Embedded only includes files
-        referenced in the content. Allow all lets users request other
-        attachments.
-      </p>
+      <div className="space-y-1 border-t border-border bg-muted/20 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+        <p id={`source-attachment-scope-${tier}`}>
+          Scope applies to images and documents. Enable either to edit scope.
+          Embedded only fetches files referenced in content. Allow all lets
+          users request other attachments.
+        </p>
+        <details className="group">
+          <summary className="min-h-11 cursor-pointer rounded-sm py-3 font-medium text-foreground underline decoration-border underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+            File types and limits
+          </summary>
+          <p id={`source-attachment-images-${tier}`}>
+            Images require the user�s image opt-in.
+          </p>
+          <p id={`source-attachment-documents-${tier}`}>
+            Documents are downloaded and converted, up to 10 MB per file.
+            Supported: DOCX, HTML, PPTX, XLSX, PDF, and text.
+          </p>
+        </details>
+      </div>
     </div>
   );
 }

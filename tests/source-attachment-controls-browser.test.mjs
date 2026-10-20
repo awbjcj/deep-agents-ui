@@ -20,17 +20,11 @@ test(
         contents: `
           import React from "react";
           import { createRoot } from "react-dom/client";
-          import { SourceImageControls } from "./src/app/components/admin/SourceImageControls";
+          import { SourceImagePolicySection } from "./src/app/components/admin/SourceImagePolicySection";
           import { Toaster } from "sonner";
           createRoot(document.getElementById("root")).render(
-            <><main className="mx-auto max-w-xl space-y-6 p-4">
-              <h1 className="text-lg font-semibold">Source attachment permissions</h1>
-              {["user", "developer", "admin"].map(tier => (
-                <section key={tier} aria-label={tier + " tier"}>
-                  <h2 className="mb-2 text-sm font-semibold capitalize">{tier}</h2>
-                  <SourceImageControls tier={tier} />
-                </section>
-              ))}
+            <><main className="mx-auto max-w-5xl p-4">
+              <SourceImagePolicySection />
             </main><Toaster /></>
           );
         `,
@@ -151,7 +145,22 @@ test(
             .elementHandle()
         );
       };
+      const userTab = page.getByRole("tab", { name: "user", exact: true });
+      await userTab.focus();
+      await page.keyboard.press("ArrowRight");
+      await page
+        .locator('[role="tab"][data-state="active"]')
+        .filter({ hasText: "developer" })
+        .waitFor();
+      assert.equal(
+        await page
+          .getByRole("tab", { name: "developer", exact: true })
+          .getAttribute("aria-selected"),
+        "true"
+      );
       for (const tier of ["user", "developer", "admin"]) {
+        await page.getByRole("tab", { name: tier, exact: true }).click();
+        assert.equal(await page.getByRole("switch").count(), 12);
         for (const [source, label] of sources) {
           const documents = page.getByRole("switch", {
             name: `${label} documents for ${tier} tier`,
@@ -185,6 +194,7 @@ test(
           });
         }
       }
+      await userTab.click();
       const docs = page.getByRole("switch", {
         name: "Microsoft Graph documents for user tier",
         exact: true,
@@ -227,8 +237,8 @@ test(
       assert.equal(await images.getAttribute("aria-checked"), "true");
       const evidence = process.env.SOURCE_ATTACHMENT_EVIDENCE;
       if (evidence) await mkdir(evidence, { recursive: true });
-      const section = page.getByRole("region", {
-        name: "user tier",
+      const section = page.getByRole("tabpanel", {
+        name: "user",
         exact: true,
       });
       for (const width of [1000, 375, 320]) {
@@ -239,14 +249,28 @@ test(
           scroll: element.scrollWidth,
         }));
         assert(bounds.scroll <= bounds.width + 1, `Overflow at ${width}px`);
+        const clippedScopes = await section
+          .getByRole("combobox")
+          .evaluateAll((controls) =>
+            controls.some((control) => {
+              const value = control.querySelector("span");
+              return (
+                value &&
+                (value.scrollHeight > value.clientHeight + 1 ||
+                  value.scrollWidth > value.clientWidth + 1)
+              );
+            })
+          );
+        assert.equal(clippedScopes, false, `Clipped scope label at ${width}px`);
         if (evidence)
-          await section.screenshot({
+          await page.locator("main").screenshot({
             path: join(evidence, `source-permissions-${width}.png`),
           });
       }
+      await page.setViewportSize({ width: 1000, height: 800 });
       await page.evaluate(() => document.documentElement.classList.add("dark"));
       if (evidence)
-        await section.screenshot({
+        await page.locator("main").screenshot({
           path: join(evidence, "source-permissions-dark.png"),
         });
       assert.deepEqual(errors, []);
