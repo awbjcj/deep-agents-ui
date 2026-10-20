@@ -127,6 +127,14 @@ async function skillJson<T>(path: string, options?: RequestInit): Promise<T> {
 export function apiGetSkills(signal?: AbortSignal): Promise<SkillCatalog> {
   return skillJson("/skills", { signal });
 }
+
+export const SKILL_CATALOG_CHANGED_EVENT = "vsda-skill-catalog-changed";
+
+function catalogChanged<T>(result: T): T {
+  if (typeof window !== "undefined")
+    window.dispatchEvent(new Event(SKILL_CATALOG_CHANGED_EVENT));
+  return result;
+}
 export function apiGetPersonalSkill(
   id: string,
   signal?: AbortSignal
@@ -136,23 +144,26 @@ export function apiGetPersonalSkill(
 export function apiCreatePersonalSkill(
   input: SkillPackageInput
 ): Promise<PersonalSkill> {
-  return skillJson("/skills/personal", {
+  return skillJson<PersonalSkill>("/skills/personal", {
     method: "POST",
     body: JSON.stringify({ files: input.files }),
-  });
+  }).then(catalogChanged);
 }
 export function apiReplacePersonalSkill(
   id: string,
   input: SkillPackageInput,
   expectedRevision: number
 ): Promise<PersonalSkill> {
-  return skillJson(`/skills/personal/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      files: input.files,
-      expected_revision: expectedRevision,
-    }),
-  });
+  return skillJson<PersonalSkill>(
+    `/skills/personal/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        files: input.files,
+        expected_revision: expectedRevision,
+      }),
+    }
+  ).then(catalogChanged);
 }
 export async function apiDeletePersonalSkill(
   id: string,
@@ -166,6 +177,7 @@ export async function apiDeletePersonalSkill(
       { method: "DELETE" }
     )
   );
+  catalogChanged(undefined);
 }
 export function apiPreviewSkillImport(file: File): Promise<SkillImportPreview> {
   const body = new FormData();

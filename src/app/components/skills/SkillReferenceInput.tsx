@@ -13,7 +13,7 @@ import { BookOpen, CornerDownLeft, Loader2, Search } from "lucide-react";
 import { Suggestion } from "@/components/ai-elements/suggestion";
 import { Button } from "@/components/ui/button";
 import { getAuthUser } from "@/lib/auth";
-import { apiGetSkills, type SkillCatalogEntry } from "@/lib/skills";
+import type { SkillCatalogEntry } from "@/lib/skills";
 import {
   activeSkillQuery,
   insertSkillReference,
@@ -32,6 +32,10 @@ export function SkillReferenceInput({
   accountId,
   value,
   references,
+  catalog,
+  catalogLoading: loading,
+  catalogError: error,
+  onRefreshCatalog,
   inputRef,
   isLoading,
   onChange,
@@ -41,6 +45,10 @@ export function SkillReferenceInput({
   accountId?: string;
   value: string;
   references: SkillReference[];
+  catalog: SkillCatalogEntry[];
+  catalogLoading: boolean;
+  catalogError: string | null;
+  onRefreshCatalog: () => void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   isLoading: boolean;
   onChange: (value: string) => void;
@@ -50,13 +58,10 @@ export function SkillReferenceInput({
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
+  const highlightViewportRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [focused, setFocused] = useState(false);
   const [dismissed, setDismissed] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<SkillCatalogEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [retry, setRetry] = useState(0);
   const [active, setActive] = useState(0);
   const [panelHeight, setPanelHeight] = useState(320);
   const signature = `${selection.start}:${value}`;
@@ -68,6 +73,9 @@ export function SkillReferenceInput({
   const matches = searchSkills(catalog, query?.query ?? "");
   const activeIndex = Math.min(active, Math.max(0, matches.length - 1));
   const atLimit = references.length >= MAX_SKILL_REFERENCES;
+  const referencedSkillCount = new Set(
+    references.map((ref) => `${ref.origin}:${ref.id}`)
+  ).size;
   const activeId =
     open && !loading && !error && !atLimit && matches.length
       ? `${id}-option-${activeIndex}`
@@ -85,6 +93,8 @@ export function SkillReferenceInput({
         highlightRef.current.style.width = `${textarea.clientWidth}px`;
         highlightRef.current.style.transform = `translateY(-${textarea.scrollTop}px)`;
       }
+      if (highlightViewportRef.current)
+        highlightViewportRef.current.style.height = `${textarea.clientHeight}px`;
       setPanelHeight(
         Math.max(96, Math.min(320, textarea.getBoundingClientRect().top - 20))
       );
@@ -106,30 +116,8 @@ export function SkillReferenceInput({
   }, [value, inputRef]);
 
   useEffect(() => {
-    if (!open || !accountId) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    setCatalog([]);
-    const applicable = () =>
-      !controller.signal.aborted && getAuthUser()?.user_id === accountId;
-    void apiGetSkills(controller.signal)
-      .then((result) => {
-        if (applicable()) setCatalog(result.entries);
-      })
-      .catch((failure: unknown) => {
-        if (applicable())
-          setError(
-            failure instanceof Error
-              ? failure.message
-              : "Could not load skills."
-          );
-      })
-      .finally(() => {
-        if (applicable()) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [accountId, open, retry]);
+    if (open) onRefreshCatalog();
+  }, [open, onRefreshCatalog]);
 
   useEffect(() => setActive(0), [query?.query]);
   useEffect(() => {
@@ -246,7 +234,7 @@ export function SkillReferenceInput({
                   size="sm"
                   variant="outline"
                   className="mt-2"
-                  onClick={() => setRetry((value) => value + 1)}
+                  onClick={onRefreshCatalog}
                 >
                   Retry skills
                 </Button>
@@ -318,8 +306,9 @@ export function SkillReferenceInput({
         </section>
       )}
       <div
+        ref={highlightViewportRef}
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
+        className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
       >
         <div
           ref={highlightRef}
@@ -368,9 +357,41 @@ export function SkillReferenceInput({
         id={`${id}-hint`}
         className="sr-only"
       >
-        Type $ to find a skill. Use arrow keys to navigate, Enter to select, and
-        Escape to dismiss.
+        Exact skill names are referenced automatically. Type $ to find a skill.
+        Use arrow keys to navigate, Enter to select, and Escape to dismiss.
       </span>
+      {!open && (loading || error || references.length > 0) && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 px-4 pb-2 text-xs text-muted-foreground"
+        >
+          {loading ? (
+            "Checking skills…"
+          ) : error ? (
+            <>
+              <span>Skill matching unavailable.</span>
+              <button
+                type="button"
+                className="rounded underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={onRefreshCatalog}
+              >
+                Retry skills
+              </button>
+            </>
+          ) : (
+            <>
+              <BookOpen
+                aria-hidden="true"
+                className="size-3.5"
+              />
+              {referencedSkillCount}{" "}
+              {referencedSkillCount === 1
+                ? "skill referenced"
+                : "skills referenced"}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

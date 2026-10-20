@@ -44,6 +44,9 @@ function fixture(extraEntries = []) {
   return {
     ...base,
     requests,
+    setExtraEntries(entries) {
+      extraEntries = entries;
+    },
     fail() {
       fail = true;
     },
@@ -59,6 +62,7 @@ function fixture(extraEntries = []) {
     async route(route, account) {
       const path = new URL(route.request().url()).pathname;
       if (path === "/api/skills") {
+        const accountId = account.user_id;
         if (pending) await pending;
         if (fail) {
           fail = false;
@@ -74,9 +78,7 @@ function fixture(extraEntries = []) {
             ),
             entry(
               "p1",
-              account.user_id === "account-b"
-                ? "other-account"
-                : "release-notes",
+              accountId === "account-b" ? "other-account" : "release-notes",
               "Summarize shipped changes for customers"
             ),
             entry(
@@ -133,10 +135,245 @@ test("skill references in the built chat UI", { skip: !RUN }, async (t) => {
   const browser = await chromium.launch({
     headless: true,
     channel: process.env.SKILL_REFERENCES_BROWSER_CHANNEL,
+    ...(process.env.SKILL_REFERENCES_BROWSER_EXECUTABLE
+      ? { executablePath: process.env.SKILL_REFERENCES_BROWSER_EXECUTABLE }
+      : {}),
   });
   const server = await staticServer();
   await mkdir(EVIDENCE, { recursive: true });
   try {
+    await t.test(
+      "late catalogs never match another account's private skill names",
+      async () => {
+        const policy = fixture();
+        policy.delay();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          const message = page.getByRole("textbox", {
+            name: "Message",
+            exact: true,
+          });
+          await message.fill("release-notes");
+          policy.switchAccountOnProfileUpdate("account-b");
+          await page.evaluate(() =>
+            localStorage.setItem("vsda_token_setup_dismissed_account-b", "1")
+          );
+          await page.getByRole("button", { name: "Account settings" }).click();
+          const dialog = page.getByRole("dialog", {
+            name: "Account",
+            exact: true,
+          });
+          await dialog.getByLabel("New username").fill("account-b");
+          await dialog.getByRole("button", { name: "Save username" }).click();
+          await dialog.getByText("Signed in as account-b.").waitFor();
+          await dialog.locator('[data-slot="dialog-close"]').click();
+          assert.equal(await message.inputValue(), "");
+          await message.fill("release-notes and other-account");
+          policy.release();
+          await page
+            .locator('mark[data-skill-reference="other-account"]')
+            .waitFor();
+          assert.equal(
+            await page
+              .locator('mark[data-skill-reference="release-notes"]')
+              .count(),
+            0
+          );
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          policy.release();
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "typed and pasted skill names highlight automatically and reach sent history unchanged",
+      async () => {
+        const policy = fixture();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          const message = page.getByRole("textbox", {
+            name: "Message",
+            exact: true,
+          });
+          await message.fill("Use release-note");
+          assert.equal(
+            await page.locator("mark[data-skill-reference]").count(),
+            0
+          );
+          await message.pressSequentially("s");
+          await page
+            .locator('mark[data-skill-reference="release-notes"]')
+            .waitFor();
+          assert.equal(await message.inputValue(), "Use release-notes");
+          assert.equal(
+            await page.getByRole("listbox", { name: "Skills" }).count(),
+            0
+          );
+          const text = "  Please use RELEASE-NOTES and $clear-writing.  ";
+          await message.fill(
+            `release-notes\n${"Context line.\n".repeat(70)}clear-writing`
+          );
+          await message.evaluate((el) => {
+            el.scrollTop = el.scrollHeight;
+            el.dispatchEvent(new Event("scroll"));
+          });
+          const inputBounds = await message.boundingBox();
+          const lastMark = await page
+            .locator('mark[data-skill-reference="clear-writing"]')
+            .boundingBox();
+          assert(
+            lastMark.y >= inputBounds.y &&
+              lastMark.y + lastMark.height <=
+                inputBounds.y + inputBounds.height + 1,
+            "highlight follows native textarea scrolling"
+          );
+          await message.fill(text);
+          await page
+            .getByText("2 skills referenced", { exact: true })
+            .waitFor();
+          assert.equal(
+            await page.locator("mark[data-skill-reference]").count(),
+            2
+          );
+          for (const [width, height] of [
+            [1440, 900],
+            [375, 812],
+            [812, 375],
+          ]) {
+            await page.setViewportSize({ width, height });
+            for (const theme of ["light", "dark"]) {
+              await page.evaluate(
+                (theme) =>
+                  document.documentElement.classList.toggle(
+                    "dark",
+                    theme === "dark"
+                  ),
+                theme
+              );
+              await page.emulateMedia({ reducedMotion: "reduce" });
+              assert.equal(await message.inputValue(), text);
+              const bounds = await message.boundingBox();
+              assert(bounds.x >= 0 && bounds.x + bounds.width <= width + 1);
+              await page.screenshot({
+                path: join(EVIDENCE, `automatic-${width}-${theme}.png`),
+                animations: "disabled",
+              });
+            }
+          }
+          const sent = page.waitForRequest((request) =>
+            request.url().includes("/runs")
+          );
+          await message.press("Enter");
+          const human = (await sent).postDataJSON().input.messages[0];
+          assert.equal(human.content, text.trim());
+          assert.deepEqual(human.additional_kwargs.skill_references, [
+            {
+              id: "p1",
+              origin: "personal",
+              name: "release-notes",
+              start: 11,
+              end: 24,
+            },
+            {
+              id: "s1",
+              origin: "system",
+              name: "clear-writing",
+              start: 29,
+              end: 43,
+            },
+          ]);
+          await page
+            .locator('p mark[data-skill-reference="release-notes"]')
+            .waitFor();
+          assert.equal(await message.inputValue(), "");
+          await page.screenshot({
+            path: join(EVIDENCE, "automatic-sent.png"),
+            animations: "disabled",
+          });
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "initial catalog loading cannot send an unrecognized pasted name and refresh drops removed matches",
+      async () => {
+        const policy = fixture();
+        policy.delay();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          const message = page.getByRole("textbox", {
+            name: "Message",
+            exact: true,
+          });
+          await message.fill("Use release-notes");
+          await page.getByText("Checking skills…", { exact: true }).waitFor();
+          assert.equal(
+            await page
+              .getByRole("button", { name: "Send message" })
+              .isDisabled(),
+            true
+          );
+          await message.press("Enter");
+          assert.equal(policy.requests.length, 0);
+          policy.release();
+          await page
+            .locator('mark[data-skill-reference="release-notes"]')
+            .waitFor();
+          await message.fill("Use new-skill");
+          assert.equal(
+            await page.locator("mark[data-skill-reference]").count(),
+            0
+          );
+          policy.setExtraEntries([
+            entry("new", "new-skill", "New instructions"),
+          ]);
+          await page.evaluate(() =>
+            window.dispatchEvent(new Event("vsda-skill-catalog-changed"))
+          );
+          await page
+            .locator('mark[data-skill-reference="new-skill"]')
+            .waitFor();
+          policy.setExtraEntries([]);
+          await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+          await page
+            .locator('mark[data-skill-reference="new-skill"]')
+            .waitFor({ state: "hidden" });
+          assert.equal(await message.inputValue(), "Use new-skill");
+          policy.fail();
+          await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+          await page
+            .getByText("Skill matching unavailable.", { exact: true })
+            .waitFor();
+          await message.fill("release-notes");
+          await page.getByRole("button", { name: "Retry skills" }).click();
+          await page
+            .locator('mark[data-skill-reference="release-notes"]')
+            .waitFor();
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          policy.release();
+          await context.close();
+        }
+      }
+    );
     await t.test(
       "description search, keyboard selection, editing, and submitted history",
       async () => {

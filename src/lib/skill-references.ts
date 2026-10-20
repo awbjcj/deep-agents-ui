@@ -1,6 +1,6 @@
 import type { SkillCatalogEntry } from "./skills";
 
-/** Offsets refer to the visible message text, including the leading dollar. */
+/** Offsets refer to the visible name, including a dollar prefix when present. */
 export interface SkillReference {
   id: string;
   origin: SkillCatalogEntry["origin"];
@@ -17,18 +17,98 @@ export interface SkillQuery {
 
 export const MAX_SKILL_REFERENCES = 20;
 
-const nameCharacter = /[\p{L}\p{N}_:-]/u;
+const nameCharacter = /[\p{L}\p{M}\p{N}_:-]/u;
 
 function intact(text: string, reference: SkillReference): boolean {
-  return (
-    Number.isInteger(reference.start) &&
-    Number.isInteger(reference.end) &&
-    reference.start >= 0 &&
-    reference.end <= text.length &&
-    text.slice(reference.start, reference.end) === `$${reference.name}` &&
-    (reference.start === 0 || /[\s([{]/.test(text[reference.start - 1])) &&
-    (reference.end === text.length || !nameCharacter.test(text[reference.end]))
+  if (
+    !Number.isInteger(reference.start) ||
+    !Number.isInteger(reference.end) ||
+    reference.start < 0 ||
+    reference.end > text.length ||
+    reference.end <= reference.start
+  )
+    return false;
+  const token = text.slice(reference.start, reference.end);
+  const prefixed = token.startsWith("$");
+  const nextCharacter = String.fromCodePoint(
+    text.codePointAt(reference.end) ?? 0
   );
+  return (
+    (prefixed ? token.slice(1) : token).toLowerCase() ===
+      reference.name.toLowerCase() &&
+    (reference.start === 0 ||
+      (prefixed ? /[\s([{]/u : /[\s([{'"“‘，、。！？；：]/u).test(
+        text[reference.start - 1]
+      )) &&
+    (reference.end === text.length || !nameCharacter.test(nextCharacter)) &&
+    !/[\\/]/u.test(text[reference.end] ?? "") &&
+    !(
+      text[reference.end] === "." &&
+      nameCharacter.test(text[reference.end + 1] ?? "")
+    )
+  );
+}
+
+/** Resolve exact catalog names without changing text or guessing ambiguous IDs. */
+export function matchSkillReferences(
+  text: string,
+  entries: SkillCatalogEntry[],
+  selected: SkillReference[] = []
+): SkillReference[] {
+  const references = selected
+    .filter((ref) => intact(text, ref))
+    .slice(0, MAX_SKILL_REFERENCES);
+  const names = new Map<string, SkillCatalogEntry | null>();
+  for (const entry of entries) {
+    if (entry.availability !== "available" || !entry.name) continue;
+    const name = entry.name.toLowerCase();
+    const previous = names.get(name);
+    names.set(
+      name,
+      previous === undefined ||
+        (previous?.id === entry.id && previous.origin === entry.origin)
+        ? entry
+        : null
+    );
+  }
+  const candidates = [...names.keys()].filter((name) => names.get(name));
+  if (!candidates.length) return references.sort((a, b) => a.start - b.start);
+  const pattern = candidates
+    .sort((a, b) => b.length - a.length)
+    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  // Code, URLs, and email addresses describe literal content rather than skills.
+  const literals = [
+    ...text.matchAll(
+      /(`+)[\s\S]*?(?:\1|$)|(~{3,})[\s\S]*?(?:\2|$)|(?:https?:\/\/|www\.)\S+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+/gu
+    ),
+  ].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
+  for (const match of text.matchAll(new RegExp(`\\$?(?:${pattern})`, "giu"))) {
+    if (references.length >= MAX_SKILL_REFERENCES) break;
+    const token = match[0];
+    // Numeric skill names remain available through explicit dollar mentions.
+    if (!token.startsWith("$") && !/\p{L}/u.test(token)) continue;
+    const entry = names.get(token.replace(/^\$/, "").toLowerCase());
+    if (!entry) continue;
+    const reference = {
+      id: entry.id,
+      origin: entry.origin,
+      name: entry.name,
+      start: match.index,
+      end: match.index + token.length,
+    };
+    if (
+      intact(text, reference) &&
+      ![...references, ...literals].some(
+        (span) => reference.start < span.end && reference.end > span.start
+      )
+    )
+      references.push(reference);
+  }
+  return references.sort((a, b) => a.start - b.start);
 }
 
 export function activeSkillQuery(

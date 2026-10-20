@@ -5,6 +5,7 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   FormEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,12 @@ import {
   type SkillAuthoringRequest,
 } from "@/lib/skill-authoring-request";
 import {
+  matchSkillReferences,
   reconcileSkillReferences,
   submittedSkillReferences,
   type SkillReference,
 } from "@/lib/skill-references";
+import { useSkillReferenceCatalog } from "@/app/hooks/useSkillReferenceCatalog";
 import { SkillReferenceInput } from "./skills/SkillReferenceInput";
 
 interface MessageDraft {
@@ -87,6 +90,11 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const draftKey = `${accountId ?? ""}:${threadId ?? "new-thread"}`;
     const draft = drafts[draftKey] ?? EMPTY_DRAFT;
     const input = draft.text;
+    const skillCatalog = useSkillReferenceCatalog(accountId);
+    const skillReferences = useMemo(
+      () => matchSkillReferences(input, skillCatalog.entries, draft.references),
+      [input, skillCatalog.entries, draft.references]
+    );
     const setInput = useCallback(
       (value: React.SetStateAction<string>) => {
         setDrafts((previous) => {
@@ -234,12 +242,14 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     }, [attachmentsEnabled]);
 
     const submitDisabled = isLoading || !assistant;
+    const skillsPending = skillCatalog.loading && !!input.trim();
     // Adding attachments is blocked while a run is in flight, before an
     // assistant is selected, or when an admin has turned uploads off for the
     // user's current run mode.
     const attachmentsDisabled = submitDisabled || !attachmentsEnabled;
     const sendDisabled =
       submitDisabled ||
+      skillsPending ||
       hasUploading ||
       (!input.trim() &&
         attachments.every(
@@ -249,7 +259,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const handleSubmit = useCallback(
       (e?: FormEvent) => {
         if (e) e.preventDefault();
-        if (hasUploading || submitDisabled) return;
+        if (hasUploading || submitDisabled || skillsPending) return;
 
         const messageText = input.trim();
         const resolved = takeAttachments();
@@ -275,14 +285,14 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             ? { source_image_ref: r.source_image_ref }
             : {}),
         }));
-        const skillReferences = submittedSkillReferences(
+        const submittedReferences = submittedSkillReferences(
           input,
-          draft.references
+          skillReferences
         );
         const additionalKwargs = {
           ...(attachmentsKwarg.length ? { attachments: attachmentsKwarg } : {}),
-          ...(skillReferences.length
-            ? { skill_references: skillReferences }
+          ...(submittedReferences.length
+            ? { skill_references: submittedReferences }
             : {}),
         };
 
@@ -301,10 +311,11 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       },
       [
         input,
-        draft.references,
+        skillReferences,
         hasUploading,
         sendMessage,
         submitDisabled,
+        skillsPending,
         takeAttachments,
         setInput,
       ]
@@ -396,7 +407,11 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             accountId={accountId}
             inputRef={textareaRef}
             value={input}
-            references={draft.references}
+            references={skillReferences}
+            catalog={skillCatalog.entries}
+            catalogLoading={skillCatalog.loading}
+            catalogError={skillCatalog.error}
+            onRefreshCatalog={skillCatalog.refresh}
             isLoading={isLoading}
             onChange={setInput}
             onSelect={(text, references) =>
