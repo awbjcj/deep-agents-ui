@@ -1,6 +1,13 @@
 "use client";
 import React, { useState, useRef, useMemo, useCallback, Fragment } from "react";
-import { CheckCircle, Clock, Circle, FileIcon, X } from "lucide-react";
+import {
+  ArrowDown,
+  CheckCircle,
+  Clock,
+  Circle,
+  FileIcon,
+  X,
+} from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { PendingToolApproval } from "@/app/components/PendingToolApproval";
@@ -12,6 +19,10 @@ import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { ChatComposer } from "@/app/components/ChatComposer";
 import type { SkillAuthoringRequest } from "@/lib/skill-authoring-request";
+import { useReducedMotion } from "@/app/hooks/useReducedMotion";
+import { agentActivity } from "@/lib/agent-activity";
+import { AgentActivity } from "./AgentActivity";
+import { Button } from "@/components/ui/button";
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
@@ -66,7 +77,34 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
     const tasksContainerRef = useRef<HTMLDivElement | null>(null);
 
-    const { scrollRef, contentRef } = useStickToBottom();
+    const reducedMotion = useReducedMotion();
+    const {
+      scrollRef,
+      contentRef,
+      isAtBottom,
+      scrollToBottom,
+      stopScroll,
+      state,
+    } = useStickToBottom({
+      initial: "instant",
+      resize: reducedMotion ? "instant" : "smooth",
+    });
+
+    React.useEffect(() => {
+      if (
+        !reducedMotion ||
+        !state.animation ||
+        state.animation.behavior === "instant"
+      )
+        return;
+      const wasFollowing = state.isAtBottom;
+      stopScroll();
+      // Let the existing spring observe cancellation before resuming instantly.
+      const frame = requestAnimationFrame(() => {
+        if (wasFollowing) void scrollToBottom("instant");
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [reducedMotion, state, stopScroll, scrollToBottom]);
 
     const {
       stream,
@@ -89,6 +127,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       stopStream,
       resumeInterrupt,
     } = useChatContext();
+    const activity = agentActivity(
+      processedMessages,
+      isLoading && !isThreadLoading,
+      !!interrupt
+    );
 
     // Single-pass bucket instead of three .filter() calls per render.
     // ChatInterface re-renders on every stream token; the old form
@@ -127,7 +170,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     }, [ui]);
 
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex flex-1 flex-col overflow-hidden">
         {/* Sticky banner stack lives outside the scroll container so urgent
           notifications (e.g. expired tokens) stay visible while the user
           scrolls long conversations. */}
@@ -136,7 +179,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         </div>
         <div
           className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+          aria-label="Conversation"
           ref={scrollRef}
+          onWheel={(event) => {
+            // Mixed x/y overflow prevents the hook's wheel ancestor lookup
+            // from recognizing this viewport while a resize is in flight.
+            if (event.deltaY < 0) stopScroll();
+          }}
         >
           <div
             className="mx-auto w-full max-w-[1120px] px-6 pb-6 pt-4"
@@ -191,12 +240,37 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   onResume={resumeInterrupt}
                   isLoading={isLoading}
                 />
+                <AgentActivity label={activity} />
               </>
             )}
           </div>
         </div>
 
-        <div className="pointer-events-none flex-shrink-0">
+        <div className="pointer-events-none relative flex-shrink-0">
+          {!isAtBottom && processedMessages.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 flex justify-center pb-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto gap-1.5 rounded-full bg-background shadow-md"
+                onClick={(event) => {
+                  void scrollToBottom({
+                    animation:
+                      reducedMotion || event.detail === 0
+                        ? "instant"
+                        : "smooth",
+                  });
+                }}
+              >
+                <ArrowDown
+                  size={14}
+                  aria-hidden="true"
+                />
+                Jump to latest
+              </Button>
+            </div>
+          )}
           <div
             className={cn(
               // NOTE: intentionally NOT `overflow-hidden`. The attach menu opens

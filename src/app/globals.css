@@ -802,6 +802,30 @@ button {
    so users who opt out of motion get instantaneous state changes instead
    of slide/scale/blur entries. */
 @media (prefers-reduced-motion: no-preference) {
+  .agent-activity {
+    transition: opacity 160ms var(--ease-out);
+  }
+
+  @starting-style {
+    .agent-activity {
+      opacity: 0;
+    }
+  }
+
+  .agent-activity-dot {
+    animation: activityPulse 1400ms ease-in-out infinite;
+  }
+
+  @keyframes activityPulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;

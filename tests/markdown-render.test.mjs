@@ -180,6 +180,15 @@ test("labels code blocks as focusable regions for keyboard scrolling", () => {
   assert.match(html, /tabindex="0"/i);
 });
 
+test("lazy highlighted code reserves wrapped lines while plain code can scroll", () => {
+  const text = "a".repeat(300);
+  assert.match(
+    render(`\`\`\`js\n${text}\n\`\`\``),
+    /white-space:pre-wrap;word-break:break-all/
+  );
+  assert.match(render(`\`\`\`\n${text}\n\`\`\``), /white-space:pre/);
+});
+
 test("never rewrites math-like or emphasis-like text inside code", () => {
   const html = render(
     [

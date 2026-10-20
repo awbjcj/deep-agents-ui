@@ -161,7 +161,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             toolCall.args["subagent_type"] !== null
           );
         })
-        .map((toolCall: ToolCall) => {
+        .map((toolCall: ToolCall): SubAgent => {
           const subagentType = (toolCall.args as Record<string, unknown>)[
             "subagent_type"
           ] as string;
@@ -172,7 +172,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             input: toolCall.args,
             output: toolCall.result ? { result: toolCall.result } : undefined,
             status: toolCall.status,
-          } as SubAgent;
+          };
         });
     }, [toolCalls]);
 
@@ -451,21 +451,17 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {!isUser && subAgents.length > 0 && (
-            <div className="flex w-fit max-w-full flex-col gap-4">
+            <div className="mt-2 flex w-full max-w-full flex-col gap-3">
               {subAgents.map((subAgent) => (
                 <div
                   key={subAgent.id}
                   className="flex w-full flex-col gap-2"
                 >
-                  <div className="flex items-end gap-2">
-                    <div className="w-[calc(100%-100px)]">
-                      <SubAgentIndicator
-                        subAgent={subAgent}
-                        onClick={() => toggleSubAgent(subAgent.id)}
-                        isExpanded={isSubAgentExpanded(subAgent.id)}
-                      />
-                    </div>
-                  </div>
+                  <SubAgentIndicator
+                    subAgent={subAgent}
+                    onClick={() => toggleSubAgent(subAgent.id)}
+                    isExpanded={isSubAgentExpanded(subAgent.id)}
+                  />
                   {isSubAgentExpanded(subAgent.id) && (
                     <div className="w-full max-w-full">
                       <div className="rounded-xl border border-border bg-muted/30 p-4">

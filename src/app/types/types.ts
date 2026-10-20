@@ -14,7 +14,7 @@ export interface SubAgent {
   subAgentName: string;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
-  status: "pending" | "active" | "completed" | "error";
+  status: ToolCall["status"] | "active";
 }
 
 export interface FileItem {

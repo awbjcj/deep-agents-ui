@@ -729,7 +729,8 @@ export function useChat({
   const isInterrupted = stream.interrupts.length > 0;
   const processedMessages = useProcessedMessages(
     stream.messages,
-    isInterrupted
+    isInterrupted,
+    stream.isLoading || stream.isThreadLoading
   );
 
   // Expose the current snapshot alongside stable event handlers.
