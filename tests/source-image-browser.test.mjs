@@ -6,7 +6,9 @@ import test from "node:test";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "out");
-const EVIDENCE = join(ROOT, "docs", "evidence", "source-images");
+const EVIDENCE =
+  process.env.SOURCE_IMAGE_EVIDENCE ??
+  join(ROOT, "docs", "evidence", "source-images");
 const RUN_BROWSER = process.env.SOURCE_IMAGE_BROWSER_TEST === "1";
 const RUN_GRAPH_ONLY = process.env.GRAPH_ATTACHMENT_BROWSER_TEST === "1";
 const SOURCE_IMAGE_BYTES =
@@ -177,6 +179,7 @@ function sourcePolicy(tier, source) {
     tier,
     source,
     enabled: customGraphPolicy,
+    documents_enabled: customGraphPolicy,
     default_scope: "embedded",
     allow_all: customGraphPolicy,
   };
@@ -236,7 +239,7 @@ async function staticServer() {
 
 test(
   RUN_GRAPH_ONLY
-    ? "Graph attachment modes save, roll back, and fit narrow and dark layouts"
+    ? "Graph image and document grants save and roll back independently"
     : "rendered source policy and attachment controls preserve their browser contracts",
   { skip: !RUN_BROWSER && !RUN_GRAPH_ONLY },
   async () => {
@@ -804,7 +807,9 @@ test(
       await sourcesTab.focus();
       await page.keyboard.press("Enter");
       await assert.doesNotReject(() =>
-        page.getByRole("heading", { name: "Source images" }).waitFor()
+        page
+          .getByRole("heading", { name: "Source images and attachments" })
+          .waitFor()
       );
       assert.equal(await sourcesTab.getAttribute("aria-selected"), "true");
 
@@ -842,135 +847,52 @@ test(
         'section[aria-labelledby="source-image-tier-user"]'
       );
       await userSection.getByText("Jira", { exact: true }).waitFor();
-      const graphMode = userSection.getByRole("combobox", {
-        name: "Microsoft Graph attachment access for user tier",
+      const graphDocuments = userSection.getByRole("switch", {
+        name: "Microsoft Graph documents for user tier",
       });
-      await graphMode.waitFor();
-      assert.equal(await graphMode.innerText(), "None");
-      const developerGraphMode = page.getByRole("combobox", {
-        name: "Microsoft Graph attachment access for developer tier",
+      const graphImages = userSection.getByRole("switch", {
+        name: "Microsoft Graph images for user tier",
       });
-      await developerGraphMode.waitFor();
-      assert.equal(
-        await developerGraphMode.innerText(),
-        "Embedded default · all on request"
-      );
-      await developerGraphMode.click();
-      await page
-        .getByRole("option", { name: "All attachments", exact: true })
-        .click();
+      await graphDocuments.click();
       await page.waitForFunction(
         () =>
-          !document.querySelector("#source-images-developer-graph-mode")
+          !document.querySelector("#source-images-user-graph-documents_enabled")
             ?.disabled
       );
-      assert.equal(await developerGraphMode.innerText(), "All attachments");
       assert.deepEqual(putBodies.at(-1), {
-        tier: "developer",
+        tier: "user",
         source: "graph",
-        body: { enabled: true, default_scope: "all", allow_all: true },
+        body: {
+          enabled: false,
+          documents_enabled: true,
+          default_scope: "embedded",
+          allow_all: false,
+        },
       });
-      for (const [label, expected] of [
-        [
-          "Embedded only",
-          { enabled: true, default_scope: "embedded", allow_all: false },
-        ],
-        [
-          "All attachments",
-          { enabled: true, default_scope: "all", allow_all: true },
-        ],
-        [
-          "None",
-          { enabled: false, default_scope: "embedded", allow_all: false },
-        ],
-      ]) {
-        await graphMode.click();
-        await page.getByRole("option", { name: label, exact: true }).click();
-        await page.waitForFunction(
-          () =>
-            !document.querySelector("#source-images-user-graph-mode")?.disabled
-        );
-        assert.deepEqual(putBodies.at(-1), {
-          tier: "user",
-          source: "graph",
-          body: expected,
-        });
-      }
+      assert.equal(await graphImages.getAttribute("aria-checked"), "false");
       failNextSource = "graph";
-      await graphMode.click();
-      await page
-        .getByRole("option", { name: "All attachments", exact: true })
-        .click();
+      await graphDocuments.click();
+      await userSection
+        .getByRole("alert")
+        .filter({ hasText: "Simulated save failure" })
+        .waitFor();
+      assert.equal(await graphDocuments.getAttribute("aria-checked"), "true");
+      await graphImages.click();
       await page.waitForFunction(
         () =>
-          !document.querySelector("#source-images-user-graph-mode")?.disabled
+          !document.querySelector("#source-images-user-graph-enabled")?.disabled
       );
-      assert.equal(await graphMode.innerText(), "None");
-      await graphMode.click();
-      await page
-        .getByRole("option", { name: "Embedded only", exact: true })
-        .click();
-      await page.waitForFunction(
-        () =>
-          !document.querySelector("#source-images-user-graph-mode")?.disabled
-      );
-      await userSection.screenshot({
-        path: join(EVIDENCE, "graph-attachment-policy.png"),
-        animations: "disabled",
-      });
-      {
-        const graphRow = graphMode.locator("xpath=ancestor::div[@aria-busy]");
-        for (const width of [375, 390]) {
-          await page.setViewportSize({ width, height: 844 });
-          await graphMode.scrollIntoViewIfNeeded();
-          const bounds = await graphRow.evaluate((element) => ({
-            client: element.clientWidth,
-            scroll: element.scrollWidth,
-          }));
-          assert(
-            bounds.scroll <= bounds.client + 1,
-            `Graph row overflow at ${width}px: ${JSON.stringify(bounds)}`
-          );
-          const rowBox = await graphRow.boundingBox();
-          const modeBox = await graphMode.boundingBox();
-          assert(
-            rowBox &&
-              modeBox &&
-              modeBox.x >= rowBox.x &&
-              modeBox.x + modeBox.width <= rowBox.x + rowBox.width + 1
-          );
-          await graphRow.screenshot({
-            path: join(EVIDENCE, `graph-attachment-policy-${width}px.png`),
-            animations: "disabled",
-          });
-        }
-        await page.setViewportSize({ width: 1280, height: 900 });
-        await page
-          .getByRole("button", { name: "Switch to night mode" })
-          .click();
-        await graphMode.scrollIntoViewIfNeeded();
-        await graphRow.screenshot({
-          path: join(EVIDENCE, "graph-attachment-policy-dark.png"),
-          animations: "disabled",
-        });
-        assert.equal(await graphMode.innerText(), "Embedded only");
-        assert.deepEqual(pageErrors, []);
-        if (RUN_GRAPH_ONLY) return;
-        await page.getByRole("button", { name: "Switch to day mode" }).click();
-      }
-      assert.equal(
-        await userSection.getByText(/^(Issue|Work item|Page) content$/).count(),
-        3
-      );
+      assert.equal(await graphDocuments.getAttribute("aria-checked"), "true");
+      if (RUN_GRAPH_ONLY) return;
 
       const jiraEnabled = userSection.getByRole("switch", {
-        name: "Jira source images for user tier",
+        name: "Jira images for user tier",
       });
       const jiraDefault = userSection.getByRole("combobox", {
-        name: "Default Jira image fetch for user tier",
+        name: "Default Jira attachment fetch for user tier",
       });
       const jiraAllowAll = userSection.getByRole("switch", {
-        name: "Allow user users to fetch all Jira images",
+        name: "Allow all Jira attachments for user tier",
       });
       assert.equal(await jiraDefault.isDisabled(), true);
       assert.equal(await jiraAllowAll.isDisabled(), true);
@@ -1008,6 +930,7 @@ test(
       );
       assert.deepEqual(allBody?.body, {
         enabled: true,
+        documents_enabled: false,
         default_scope: "all",
         allow_all: true,
       });
@@ -1018,7 +941,7 @@ test(
         (element) => element?.getAttribute("aria-busy") === "false",
         await jiraCard.elementHandle()
       );
-      assert.equal(await jiraDefault.textContent(), "Embedded");
+      assert.equal(await jiraDefault.textContent(), "Embedded only");
       assert.equal(await jiraAllowAll.getAttribute("aria-checked"), "false");
 
       const adminPanel = page.locator("#admin-panel");
@@ -1028,10 +951,10 @@ test(
       });
 
       const confluenceEnabled = userSection.getByRole("switch", {
-        name: "Confluence source images for user tier",
+        name: "Confluence images for user tier",
       });
       const polarionEnabled = userSection.getByRole("switch", {
-        name: "Polarion source images for user tier",
+        name: "Polarion images for user tier",
       });
       failNextSource = "confluence";
       await confluenceEnabled.focus();
@@ -1084,8 +1007,8 @@ test(
       const allowAllBox = await jiraAllowAll.boundingBox();
       assert(enabledBox && defaultBox && allowAllBox);
       assert(
-        defaultBox.x > enabledBox.x + enabledBox.width &&
-          allowAllBox.y > enabledBox.y + enabledBox.height,
+        defaultBox.y > enabledBox.y + enabledBox.height &&
+          allowAllBox.x > defaultBox.x,
         "narrow layout should keep primary controls readable in two columns"
       );
       await page.screenshot({
