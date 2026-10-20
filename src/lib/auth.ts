@@ -1242,6 +1242,7 @@ export async function updateTierSourceImagePolicy(
       method: "PUT",
       body: JSON.stringify({
         enabled: policy.enabled,
+        documents_enabled: policy.documents_enabled,
         default_scope: policy.default_scope,
         allow_all: policy.allow_all,
       }),

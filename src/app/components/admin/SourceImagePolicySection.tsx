@@ -8,13 +8,13 @@ import {
 import { ROLES } from "@/app/components/admin/primitives-utils";
 import { SOURCE_IMAGE_SOURCES } from "@/lib/source-images";
 
-/** Tier policies for source images and Graph message attachments. */
+/** Independent image and document permissions for every source and tier. */
 export function SourceImagePolicySection() {
   return (
     <div className="space-y-3">
       <SectionHeader
         title="Source images and attachments"
-        subtitle="Per-source defaults and permissions for each tier"
+        subtitle="Separate image and document access for each tier. Documents support DOCX, HTML, PPTX, XLSX, PDF, and text, up to 10 MB per file."
       />
       <DisclosureSection
         title="Tier policies"

@@ -66,14 +66,23 @@ function sourcePolicyDescription(
   policy: EffectiveSourceImagePolicy,
   userEnabled: boolean
 ): string {
-  if (!policy.enabled) return "Admin disabled";
-  if (!userEnabled || !policy.effective_enabled) {
-    return "Text only";
+  const images = userEnabled && policy.effective_enabled;
+  const documents = policy.documents_enabled ?? false;
+  if (!images && !documents) {
+    return policy.enabled ? "Text only" : "Admin disabled";
   }
-  if (policy.default_scope === "all") {
-    return "All by default";
-  }
-  return policy.allow_all ? "Embedded · all on request" : "Embedded only";
+  const types = images
+    ? documents
+      ? "Images & documents"
+      : "Images"
+    : "Documents";
+  const scope =
+    policy.default_scope === "all"
+      ? "All by default"
+      : policy.allow_all
+      ? "Embedded · all on request"
+      : "Embedded only";
+  return `${types} · ${scope}`;
 }
 
 export function ConnectivitySidebar() {
@@ -483,12 +492,13 @@ export function ConnectivitySidebar() {
                 <div className="space-y-3 border-t border-border/40 pt-4">
                   <header className="space-y-1">
                     <h3 className="text-sm font-semibold tracking-tight">
-                      Source images
+                      Source images and attachments
                     </h3>
                     <p className="text-xs leading-relaxed text-muted-foreground">
                       Let agents include images from connected tickets, work
                       items, pages, emails, and Teams messages. Chat uploads are
-                      controlled separately.
+                      controlled separately. Document access follows your tier’s
+                      permissions and does not require image opt-in.
                     </p>
                   </header>
                   <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
@@ -564,7 +574,8 @@ export function ConnectivitySidebar() {
                                 <span
                                   className={cn(
                                     "h-1.5 w-1.5 shrink-0 rounded-full ring-2 ring-background",
-                                    policy.effective_enabled
+                                    policy.effective_enabled ||
+                                      policy.documents_enabled
                                       ? "bg-[var(--color-primary)]"
                                       : "bg-muted-foreground/35"
                                   )}
