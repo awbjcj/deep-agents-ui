@@ -173,6 +173,7 @@ export function SkillFilePreview({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
+              className="rounded-sm text-brand-primary underline underline-offset-2 hover:opacity-100 hover:decoration-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
             >
               {children}
             </a>
