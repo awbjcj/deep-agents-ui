@@ -16,8 +16,8 @@ test("admin navigation uses an exact two-row tab layout", async () => {
   ]);
 
   assert.match(panel, /layout="two-row"/);
-  assert.match(tabs, /gridTemplateColumns: "repeat\(4, minmax\(max-content, 1fr\)\)"/);
-  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 gap-1.5/);
+  assert.match(tabs, /gridTemplateColumns: "repeat\(4, minmax\(0, 1fr\)\)"/);
+  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 gap-1 /);
   assert.doesNotMatch(panel, /id: "registration"/);
   const destinations = [
     ["users", "People"],
