@@ -108,7 +108,7 @@ export function SkillEditor({
         diagnostics={[...diagnostics, ...fileDiagnostics, ...localDiagnostics]}
       />
       <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(25rem,1fr)] gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @[36rem]:grid-rows-[minmax(25rem,1fr)]">
-        <div className="min-w-0 space-y-3">
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
           <SkillFileList
             files={draft.files}
             selectedPath={selected?.path ?? null}
@@ -127,7 +127,7 @@ export function SkillEditor({
               event.preventDefault();
               addFile();
             }}
-            className="space-y-2 rounded-lg border bg-muted/10 p-3"
+            className="shrink-0 space-y-2 rounded-lg border bg-muted/10 p-3"
           >
             <label
               htmlFor={`${id}-path`}

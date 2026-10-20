@@ -26,56 +26,58 @@ export function SkillFileList({
   return (
     <nav
       aria-label="Skill files"
-      className="min-w-0 rounded-lg border bg-muted/20 p-2"
+      className="flex min-h-0 min-w-0 flex-col rounded-lg border bg-muted/20 p-2 @[36rem]:flex-1"
     >
-      <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="shrink-0 px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         Package files · {files.length}
       </p>
-      <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto overscroll-contain p-0">
-        {files.map((file) => (
-          <li
-            key={file.path}
-            className="flex min-w-0 items-center gap-1"
-          >
-            <button
-              type="button"
-              disabled={disabled}
-              aria-current={selectedPath === file.path ? "true" : undefined}
-              className={cn(
-                "flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-                selectedPath === file.path &&
-                  "bg-accent font-medium text-accent-foreground"
-              )}
-              onClick={() => onSelect(file.path)}
+      <div className="min-h-0 @[36rem]:relative @[36rem]:flex-1">
+        <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto overscroll-contain p-0 @[36rem]:absolute @[36rem]:inset-0 @[36rem]:max-h-none">
+          {files.map((file) => (
+            <li
+              key={file.path}
+              className="flex min-w-0 items-center gap-1"
             >
-              <FileText
-                aria-hidden="true"
-                className="size-4 shrink-0"
-              />
-              <span className="min-w-0 break-all">
-                {file.path}
-                {file.copyable === false && (
-                  <span className="block text-xs text-muted-foreground">
-                    Cannot copy
-                  </span>
-                )}
-              </span>
-            </button>
-            {onRemove && file.path !== "SKILL.md" && (
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
                 disabled={disabled}
-                aria-label={`Remove ${file.path}`}
-                onClick={() => onRemove(file.path)}
+                aria-current={selectedPath === file.path ? "true" : undefined}
+                className={cn(
+                  "flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                  selectedPath === file.path &&
+                    "bg-accent font-medium text-accent-foreground"
+                )}
+                onClick={() => onSelect(file.path)}
               >
-                <Trash2 aria-hidden="true" />
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+                <FileText
+                  aria-hidden="true"
+                  className="size-4 shrink-0"
+                />
+                <span className="min-w-0 break-all">
+                  {file.path}
+                  {file.copyable === false && (
+                    <span className="block text-xs text-muted-foreground">
+                      Cannot copy
+                    </span>
+                  )}
+                </span>
+              </button>
+              {onRemove && file.path !== "SKILL.md" && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  disabled={disabled}
+                  aria-label={`Remove ${file.path}`}
+                  onClick={() => onRemove(file.path)}
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </nav>
   );
 }
