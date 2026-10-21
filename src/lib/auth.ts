@@ -360,8 +360,10 @@ export interface UserProfile {
   has_jira_api_token: boolean;
 }
 
-export async function apiGetProfile(): Promise<UserProfile> {
-  const res = await apiFetch("/user/profile");
+export async function apiGetProfile(
+  signal?: AbortSignal
+): Promise<UserProfile> {
+  const res = await apiFetch("/user/profile", { signal });
   if (!res.ok) {
     throw new Error("Failed to fetch profile");
   }

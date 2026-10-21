@@ -18,6 +18,9 @@ import {
   selectPendingInterrupt,
 } from "@/app/utils/interruptResume";
 import { useClient } from "@/providers/ClientProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { useAutopilot } from "@/app/hooks/useAutopilot";
+import type { ResumeInterruptValue } from "@/app/types/types";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
 import {
@@ -93,6 +96,7 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const { user } = useAuth();
   const { ingestStreamEvent } = useNotifications();
   const threadIdRef = useRef(threadId);
   const creatingThreadRef = useRef<Promise<string> | null>(null);
@@ -181,13 +185,15 @@ export function useChat({
   // Read the execution budget on submission, including checkpoint retries/resumes.
   // Do not enable __event_streaming_v2 until the deferred SDK migration lands.
   const buildConfig = useCallback(
-    () =>
-      buildRunConfig(
+    (autopilot = false) => {
+      const config = buildRunConfig(
         activeAssistant?.config ?? {},
         browserRunLimit(username),
         username,
         analysisEngine
-      ),
+      );
+      return { ...config, configurable: { ...config.configurable, autopilot } };
+    },
     [activeAssistant?.config, username, analysisEngine]
   );
 
@@ -687,6 +693,39 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
 
+  const submitAutopilot = useCallback(
+    async (resume: Record<string, ResumeInterruptValue>) => {
+      await streamRef.current.submit(
+        null,
+        fromLatestCheckpoint({
+          command: { resume },
+          config: buildConfig(true),
+          streamSubgraphs: true,
+          streamMode: STREAM_MODES,
+          multitaskStrategy: "reject" as const,
+        })
+      );
+      onHistoryRevalidate?.();
+    },
+    [buildConfig, onHistoryRevalidate]
+  );
+  const autopilot = useAutopilot({
+    connection: client,
+    scope: JSON.stringify([
+      user?.user_id,
+      threadId,
+      activeAssistant?.assistant_id,
+    ]),
+    accountId: user?.user_id,
+    role: user?.role,
+    ready: !!threadId && !!activeAssistant && !stream.isThreadLoading,
+    busy: stream.isLoading,
+    failed: Boolean(stream.error) || historyError,
+    pending: stream.interrupts,
+    submit: submitAutopilot,
+  });
+  const disableAutopilot = autopilot.disable;
+
   const interrupt = selectPendingInterrupt(stream.interrupts);
   const selectedInterruptId = interrupt?.id;
   const resumeInterrupt = useMemo(
@@ -695,6 +734,7 @@ export function useChat({
         getPending: () => streamRef.current.interrupts,
         selectedId: selectedInterruptId,
         submit: (resume) => {
+          disableAutopilot();
           streamRef.current.submit(
             null,
             fromLatestCheckpoint({
@@ -713,12 +753,13 @@ export function useChat({
           );
         },
       }),
-    [selectedInterruptId, buildConfig, onHistoryRevalidate]
+    [selectedInterruptId, buildConfig, onHistoryRevalidate, disableAutopilot]
   );
 
   const stopStream = useCallback(() => {
+    disableAutopilot();
     streamRef.current.stop();
-  }, []);
+  }, [disableAutopilot]);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -773,6 +814,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
+      autopilot,
     }),
     [
       threadId,
@@ -801,6 +843,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
+      autopilot,
     ]
   );
 }
