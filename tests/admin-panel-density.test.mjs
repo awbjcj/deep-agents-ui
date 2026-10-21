@@ -92,7 +92,7 @@ test("relocated detailed settings are independently mounted and collapsed", asyn
   assert.match(limits, /<DisclosureSection[\s\S]*title="Usage limits"/);
   assert.match(runtime, /title="Execution resources"/);
   assert.match(connectivity, /title="Provider endpoints"/);
-  assert.match(sourcePolicy, /title="Tier policies"/);
+  assert.match(sourcePolicy, /title="Source images and attachments"/);
   assert.match(tiers, /<UsageLimitControls \/>/);
   assert.doesNotMatch(tiers, /SourceImageControls/);
   assert.doesNotMatch(connectivity, /apiGetRunMode|RunModeSection/);

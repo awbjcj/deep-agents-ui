@@ -429,10 +429,14 @@ test(
             .getByRole("button", { name: "Enable autopilot", exact: true })
             .waitFor();
           await page.waitForFunction(
-            () => document.activeElement?.textContent === "Enable autopilot"
+            () =>
+              document.activeElement?.getAttribute("aria-label") ===
+              "Enable autopilot"
           );
           assert.equal(
-            await page.evaluate(() => document.activeElement?.textContent),
+            await page.evaluate(() =>
+              document.activeElement?.getAttribute("aria-label")
+            ),
             "Enable autopilot"
           );
         }

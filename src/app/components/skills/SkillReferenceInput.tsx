@@ -346,7 +346,11 @@ export function SkillReferenceInput({
         aria-controls={open ? id : undefined}
         aria-activedescendant={activeId}
         aria-describedby={`${id}-hint`}
-        placeholder={isLoading ? "Running..." : "Write your message..."}
+        placeholder={
+          isLoading
+            ? "Add a message to steer or queue…"
+            : "Write your message..."
+        }
         className={cn(
           textLayout,
           "relative block max-h-[60dvh] min-h-14 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"

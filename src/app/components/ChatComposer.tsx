@@ -9,7 +9,24 @@ import React, {
   FormEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Square, ArrowUp, Paperclip, Upload, Link2 } from "lucide-react";
+import {
+  Square,
+  ArrowUp,
+  Paperclip,
+  Upload,
+  Link2,
+  CornerDownLeft,
+  ListPlus,
+} from "lucide-react";
+import { AutopilotControl } from "./AutopilotControl";
+import type { useAutopilot } from "@/app/hooks/useAutopilot";
+import type { MessageDelivery } from "@/lib/message-delivery";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import type { Assistant } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
@@ -41,18 +58,24 @@ const EMPTY_DRAFT: MessageDraft = { text: "", references: [] };
 
 interface ChatComposerProps {
   accountId?: string;
+  createdThreadId?: string;
+  queuedMessageCount?: number;
+  isStopping?: boolean;
   skillAuthoringRequest?: SkillAuthoringRequest | null;
   onSkillAuthoringRequestConsumed?: (id: string) => void;
   evidenceRequest?: { text: string; threadId: string | null } | null;
   onEvidenceConsumed?: () => void;
   assistant: Assistant | null;
   isLoading: boolean;
+  isThreadLoading?: boolean;
+  autopilot?: ReturnType<typeof useAutopilot>;
   files: Record<string, string>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
   sendMessage: (
     content: string | Array<Record<string, unknown>>,
-    additionalKwargs?: Record<string, unknown>
-  ) => void;
+    additionalKwargs?: Record<string, unknown>,
+    delivery?: MessageDelivery
+  ) => void | boolean | Promise<boolean>;
   stopStream: () => void;
   ensureThreadId: () => Promise<string | null>;
   /** Re-read thread files after an upload or delete completes server-side. */
@@ -71,12 +94,17 @@ interface ChatComposerProps {
 export const ChatComposer = React.memo<ChatComposerProps>(
   ({
     accountId,
+    createdThreadId,
+    queuedMessageCount = 0,
+    isStopping = false,
     assistant,
     evidenceRequest,
     onEvidenceConsumed,
     skillAuthoringRequest,
     onSkillAuthoringRequestConsumed,
     isLoading,
+    isThreadLoading = false,
+    autopilot,
     files,
     sourceImageAttachments,
     sendMessage,
@@ -85,8 +113,27 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     onThreadFilesChanged,
   }) => {
     const [threadId] = useQueryState("threadId");
+    const [delivery, setDelivery] = useState<MessageDelivery>("queue");
+    const [submitting, setSubmitting] = useState(false);
+    const submissionRef = useRef(false);
     // Keep unsent text (including selected evidence) with its conversation.
     const [drafts, setDrafts] = useState<Record<string, MessageDraft>>({});
+    const createdThreadRef = useRef(createdThreadId);
+    createdThreadRef.current = createdThreadId;
+    useEffect(() => {
+      if (!createdThreadId) return;
+      const source = `${accountId ?? ""}:new-thread`;
+      const target = `${accountId ?? ""}:${createdThreadId}`;
+      setDrafts((previous) => {
+        if (!Object.hasOwn(previous, source)) return previous;
+        const next = {
+          ...previous,
+          [target]: previous[target] ?? previous[source],
+        };
+        delete next[source];
+        return next;
+      });
+    }, [accountId, createdThreadId]);
     const draftKey = `${accountId ?? ""}:${threadId ?? "new-thread"}`;
     const draft = drafts[draftKey] ?? EMPTY_DRAFT;
     const input = draft.text;
@@ -199,7 +246,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       addFiles,
       addReferences,
       remove: removeAttachment,
-      takeAttachments,
+      prepareAttachments,
       hasUploading,
       accept: acceptAttr,
     } = useAttachments({
@@ -241,12 +288,18 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       if (!attachmentsEnabled) setAttachMenuOpen(false);
     }, [attachmentsEnabled]);
 
-    const submitDisabled = isLoading || !assistant;
+    const submitDisabled =
+      isThreadLoading || !assistant || submitting || isStopping;
     const skillsPending = skillCatalog.loading && !!input.trim();
     // Adding attachments is blocked while a run is in flight, before an
     // assistant is selected, or when an admin has turned uploads off for the
     // user's current run mode.
-    const attachmentsDisabled = submitDisabled || !attachmentsEnabled;
+    const attachmentsDisabled =
+      submitDisabled || isLoading || !attachmentsEnabled;
+    const hasDraft =
+      !!input.trim() ||
+      attachments.some((a) => a.phase === "ready" || a.phase === "reference");
+    const showDelivery = isLoading && hasDraft;
     const sendDisabled =
       submitDisabled ||
       skillsPending ||
@@ -257,13 +310,23 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         ));
 
     const handleSubmit = useCallback(
-      (e?: FormEvent) => {
+      async (e?: FormEvent) => {
         if (e) e.preventDefault();
-        if (hasUploading || submitDisabled || skillsPending) return;
+        if (
+          submissionRef.current ||
+          hasUploading ||
+          submitDisabled ||
+          skillsPending
+        )
+          return;
 
         const messageText = input.trim();
-        const resolved = takeAttachments();
-        if (!messageText && resolved.length === 0) return;
+        const prepared = prepareAttachments();
+        const resolved = prepared.attachments;
+        if (!messageText && resolved.length === 0) {
+          prepared.release();
+          return;
+        }
 
         // Images are embedded inline as image_url blocks so the model can view
         // them. Every attachment (image or document) is also recorded on
@@ -296,18 +359,45 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             : {}),
         };
 
-        if (imageBlocks.length === 0) {
-          // Documents-only or text-only. Keep a single space when the user sent
-          // attachments without any text so the model still receives a turn.
-          const text = messageText || (resolved.length ? " " : "");
-          sendMessage(text, additionalKwargs);
-        } else {
-          sendMessage(
-            [{ type: "text", text: messageText || " " }, ...imageBlocks],
-            additionalKwargs
-          );
+        submissionRef.current = true;
+        setSubmitting(true);
+        try {
+          let accepted;
+          if (imageBlocks.length === 0) {
+            // Documents-only or text-only. Keep a single space when the user sent
+            // attachments without any text so the model still receives a turn.
+            const text = messageText || (resolved.length ? " " : "");
+            accepted = await sendMessage(
+              text,
+              additionalKwargs,
+              isLoading ? delivery : undefined
+            );
+          } else {
+            accepted = await sendMessage(
+              [{ type: "text", text: messageText || " " }, ...imageBlocks],
+              additionalKwargs,
+              isLoading ? delivery : undefined
+            );
+          }
+          if (accepted !== false) {
+            prepared.commit();
+            // Preserve text typed while the request was being accepted.
+            setDrafts((previous) => {
+              const keys = [draftKey];
+              if (!threadId && createdThreadRef.current)
+                keys.push(`${accountId ?? ""}:${createdThreadRef.current}`);
+              const next = { ...previous };
+              for (const key of keys) {
+                if (next[key]?.text === input) next[key] = EMPTY_DRAFT;
+              }
+              return next;
+            });
+          }
+        } finally {
+          prepared.release();
+          submissionRef.current = false;
+          setSubmitting(false);
         }
-        setInput("");
       },
       [
         input,
@@ -316,15 +406,19 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         sendMessage,
         submitDisabled,
         skillsPending,
-        takeAttachments,
-        setInput,
+        prepareAttachments,
+        isLoading,
+        delivery,
+        draftKey,
+        threadId,
+        accountId,
       ]
     );
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (submitDisabled) return;
-        if (e.key === "Enter" && !e.shiftKey) {
+        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
           e.preventDefault();
           handleSubmit();
         }
@@ -340,7 +434,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             isDragging ? "ring-2 ring-primary/40" : ""
           }`}
           onDragOver={(e) => {
-            if (!attachmentsEnabled) return;
+            if (attachmentsDisabled) return;
             if (e.dataTransfer.types.includes("Files")) {
               e.preventDefault();
               setIsDragging(true);
@@ -348,7 +442,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => {
-            if (!attachmentsEnabled) return;
+            if (attachmentsDisabled) return;
             e.preventDefault();
             setIsDragging(false);
             const dropped = Array.from(e.dataTransfer.files);
@@ -401,6 +495,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           <AttachmentsRow
             items={attachments}
             onRemove={removeAttachment}
+            disabled={submitting}
           />
           <SkillReferenceInput
             key={accountId}
@@ -422,8 +517,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             }
             onKeyDown={handleKeyDown}
           />
-          <div className="flex items-center justify-between gap-2 p-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -518,43 +613,145 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </div>
                 )}
               </div>
+              {autopilot && (
+                <AutopilotControl
+                  key={`${accountId}:${threadId}:${assistant?.assistant_id}`}
+                  autopilot={autopilot}
+                  ready={!!threadId && !!assistant && !isThreadLoading}
+                  unavailableReason={
+                    !assistant
+                      ? "Select an agent to enable autopilot."
+                      : !threadId
+                      ? "Start a conversation to enable autopilot."
+                      : "Loading conversation…"
+                  }
+                />
+              )}
               <ResponseJobs
                 key={threadId}
                 threadId={threadId}
               />
-              <span className="hidden text-xs text-muted-foreground sm:inline">
-                Type <kbd className="rounded border border-border px-1">$</kbd>{" "}
-                for skills
-              </span>
-            </div>
-            <Button
-              type={isLoading ? "button" : "submit"}
-              variant={isLoading ? "destructive" : "default"}
-              size="default"
-              onClick={isLoading ? stopStream : handleSubmit}
-              aria-label={isLoading ? "Stop" : "Send message"}
-              className={cn(
-                "rounded-full px-4 font-medium transition-[color,background-color,box-shadow,transform] duration-150",
-                !isLoading &&
-                  "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
-              )}
-              disabled={!isLoading && sendDisabled}
-            >
-              {isLoading ? (
-                <>
-                  <Square size={14} />
-                  <span>Stop</span>
-                </>
+              {queuedMessageCount > 0 ? (
+                <span
+                  role="status"
+                  className="whitespace-nowrap text-xs text-muted-foreground"
+                >
+                  {queuedMessageCount} queued
+                </span>
               ) : (
+                <span className="hidden text-xs text-muted-foreground lg:inline">
+                  Type{" "}
+                  <kbd className="rounded border border-border px-1">$</kbd> for
+                  skills
+                </span>
+              )}
+            </div>
+            <div className="ml-auto flex items-center gap-1.5">
+              {showDelivery && (
                 <>
-                  <span>Send</span>
-                  <ArrowUp
-                    size={16}
-                    strokeWidth={2.5}
-                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Stop"
+                    title="Stop this run and queued messages"
+                    onClick={stopStream}
+                    className="h-8 w-8 text-muted-foreground"
+                  >
+                    <Square
+                      size={14}
+                      aria-hidden="true"
+                    />
+                  </Button>
+                  <Select
+                    value={delivery}
+                    onValueChange={(value) =>
+                      setDelivery(value as MessageDelivery)
+                    }
+                  >
+                    <SelectTrigger
+                      aria-label="Message delivery"
+                      className="h-8 w-8 justify-center rounded-full border-0 p-0 [&>svg]:h-3.5 [&>svg]:w-3.5"
+                      title="Choose when to send"
+                    />
+                    <SelectContent
+                      side="top"
+                      align="end"
+                      className="!animate-none"
+                    >
+                      <SelectItem value="queue">
+                        Queue · after this run
+                      </SelectItem>
+                      <SelectItem value="steer">Steer · send now</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </>
               )}
-            </Button>
+              <Button
+                type={isLoading && !showDelivery ? "button" : "submit"}
+                variant={isLoading && !showDelivery ? "destructive" : "default"}
+                size="default"
+                onClick={isLoading && !showDelivery ? stopStream : undefined}
+                aria-label={
+                  showDelivery
+                    ? delivery === "queue"
+                      ? "Queue message"
+                      : "Steer now"
+                    : isLoading
+                    ? "Stop"
+                    : "Send message"
+                }
+                title={
+                  showDelivery
+                    ? delivery === "queue"
+                      ? "Send after the current run finishes"
+                      : "Interrupt the current run and replace pending queued messages"
+                    : undefined
+                }
+                className={cn(
+                  "rounded-full px-4 font-medium transition-[color,background-color,box-shadow,transform] duration-150",
+                  !isLoading &&
+                    "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+                )}
+                disabled={(!isLoading || showDelivery) && sendDisabled}
+              >
+                {showDelivery ? (
+                  <>
+                    <span>
+                      {submitting
+                        ? "Sending…"
+                        : delivery === "queue"
+                        ? "Queue"
+                        : "Steer"}
+                    </span>
+                    {delivery === "queue" ? (
+                      <ListPlus
+                        size={16}
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <CornerDownLeft
+                        size={16}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </>
+                ) : isLoading ? (
+                  <>
+                    <Square size={14} />
+                    <span>Stop</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send</span>
+                    <ArrowUp
+                      size={16}
+                      strokeWidth={2.5}
+                    />
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </form>
         <ReferenceFileDialog

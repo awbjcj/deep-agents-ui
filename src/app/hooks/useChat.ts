@@ -20,6 +20,8 @@ import {
 import { useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAutopilot } from "@/app/hooks/useAutopilot";
+import { useMessageRuns } from "@/app/hooks/useMessageRuns";
+import { createMessageRun, type MessageDelivery } from "@/lib/message-delivery";
 import type { ResumeInterruptValue } from "@/app/types/types";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
@@ -28,7 +30,10 @@ import {
   type StreamNotificationEvent,
 } from "@/app/hooks/useNotifications";
 import { useQueryState } from "nuqs";
-import { clearStreamReconnectState } from "@/app/utils/threadRecovery";
+import {
+  clearStreamReconnectState,
+  streamRunStorageKey,
+} from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
 import {
@@ -101,6 +106,31 @@ export function useChat({
   const threadIdRef = useRef(threadId);
   const creatingThreadRef = useRef<Promise<string> | null>(null);
   const reportedHistoryErrorsRef = useRef(new Set<string>());
+  const pendingSendRef = useRef<((accepted: boolean) => void) | null>(null);
+  const restoredValues = useRef<StateType | null>(null);
+  const handleStreamStopped = useCallback(
+    ({ mutate }: { mutate: (values: Partial<StateType>) => void }) => {
+      if (!restoredValues.current) return;
+      const values = { ...restoredValues.current, __interrupt__: undefined };
+      restoredValues.current = null;
+      mutate(values);
+    },
+    []
+  );
+  const [createdThread, setCreatedThread] = useState<{
+    accountId?: string;
+    id: string;
+  } | null>(null);
+  const createdThreadId =
+    createdThread?.accountId === userId ? createdThread?.id : undefined;
+  const handleThreadCreated = useCallback(
+    (id: string) => {
+      threadIdRef.current = id;
+      setCreatedThread({ accountId: userId, id });
+      void setThreadId(id);
+    },
+    [setThreadId, userId]
+  );
 
   useEffect(() => {
     threadIdRef.current = threadId;
@@ -223,12 +253,25 @@ export function useChat({
       _error: unknown,
       run: { thread_id: string; run_id: string } | undefined
     ) => {
+      if (pendingSendRef.current) {
+        pendingSendRef.current(false);
+        pendingSendRef.current = null;
+        toast.error("Message was not sent", {
+          description: "Your draft is still available. Try again.",
+          position: "top-center",
+        });
+      }
       onHistoryRevalidate?.();
       const failedThreadId = run?.thread_id ?? threadIdRef.current;
       if (failedThreadId) clearStreamReconnectState(failedThreadId);
     },
     [onHistoryRevalidate]
   );
+  const handleRunCreated = useCallback(() => {
+    pendingSendRef.current?.(true);
+    pendingSendRef.current = null;
+    onHistoryRevalidate?.();
+  }, [onHistoryRevalidate]);
 
   // The langgraph-sdk's `useStream` accepts an `onCustomEvent(event)`
   // callback at runtime but doesn't expose it in its public types. We attach
@@ -240,14 +283,15 @@ export function useChat({
       client: client ?? undefined,
       reconnectOnMount: true,
       threadId: threadId ?? null,
-      onThreadId: setThreadId,
+      onThreadId: handleThreadCreated,
       defaultHeaders: { "x-auth-scheme": "langsmith" },
       // Enable fetching state history when switching to existing threads
       fetchStateHistory: true,
       // Revalidate thread list when stream finishes, errors, or creates new thread
       onFinish: onHistoryRevalidate,
       onError: handleRunError,
-      onCreated: onHistoryRevalidate,
+      onCreated: handleRunCreated,
+      onStop: handleStreamStopped,
       onUpdateEvent: handleUpdateEvent,
       thread: thread ?? recoverableThread,
     },
@@ -260,6 +304,34 @@ export function useChat({
   const stream = rawStream;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
+  // Follow-up runs belong to the conversation even while the selected agent
+  // hydrates or changes. Autopilot consent remains scoped to the agent below.
+  const messageRunScope = JSON.stringify([userId, threadId]);
+  const messageRuns = useMessageRuns({
+    client,
+    scope: messageRunScope,
+    threadId,
+    loading: stream.isLoading,
+    threadLoading: stream.isThreadLoading,
+    joinStream: (runId) => streamRef.current.joinStream(runId),
+    refreshThread: async (isCurrent) => {
+      if (!threadId) return;
+      const snapshots = await (thread ?? recoverableThread).mutate(threadId);
+      if (!isCurrent()) return;
+      const snapshot = snapshots?.[0];
+      if (!snapshot)
+        throw new Error("Conversation state is not available yet.");
+      // Reconcile both text and approvals if the SSE connection ended before
+      // the server sent its final values. The run is already terminal.
+      restoredValues.current = snapshot.values;
+      clearStreamReconnectState(threadId);
+      await streamRef.current.stop();
+    },
+  });
+  const submitMessageRun = messageRuns.submit;
+  const stopMessageRuns = messageRuns.stop;
+  const messageSubmission = useRef(false);
+  const [submissionPending, setSubmissionPending] = useState(false);
 
   const [slowThreadId, setSlowThreadId] = useState<string | null>(null);
   useEffect(() => {
@@ -283,10 +355,13 @@ export function useChat({
   }, [history, threadId]);
 
   const sendMessage = useCallback(
-    (
+    async (
       content: string | Array<Record<string, unknown>>,
-      additionalKwargs?: Record<string, unknown>
+      additionalKwargs?: Record<string, unknown>,
+      delivery?: MessageDelivery
     ) => {
+      if (messageSubmission.current || messageRuns.stopping || !activeAssistant)
+        return false;
       const newMessage: Message = {
         id: uuidv4(),
         type: "human",
@@ -295,24 +370,88 @@ export function useChat({
           ? { additional_kwargs: additionalKwargs }
           : {}),
       };
-      streamRef.current.submit(
-        { messages: [newMessage] },
-        fromLatestCheckpoint({
-          optimisticValues: (prev: StateType) => ({
-            messages: [...(prev.messages ?? []), newMessage],
-          }),
-          config: buildConfig(),
-          streamSubgraphs: true,
-          streamMode: STREAM_MODES,
-          ...(threadCreationMetadata
-            ? { metadata: threadCreationMetadata }
-            : {}),
-        })
-      );
+      if (delivery) {
+        const target = threadIdRef.current;
+        if (!target) return false;
+        messageSubmission.current = true;
+        setSubmissionPending(true);
+        try {
+          const accepted = await submitMessageRun(
+            () =>
+              createMessageRun(
+                client,
+                target,
+                activeAssistant.assistant_id,
+                newMessage,
+                delivery,
+                buildConfig()
+              ),
+            messageRunScope
+          );
+          if (!accepted) return false;
+          onHistoryRevalidate?.();
+          return true;
+        } catch (error) {
+          toast.error("Message was not sent", {
+            description: error instanceof Error ? error.message : "Try again.",
+            position: "top-center",
+          });
+          return false;
+        } finally {
+          messageSubmission.current = false;
+          setSubmissionPending(false);
+        }
+      }
+      messageSubmission.current = true;
+      setSubmissionPending(true);
+      let settle!: (accepted: boolean) => void;
+      const accepted = new Promise<boolean>((resolve) => {
+        settle = resolve;
+        pendingSendRef.current = resolve;
+      });
+      void streamRef.current
+        .submit(
+          { messages: [newMessage] },
+          fromLatestCheckpoint({
+            config: buildConfig(),
+            streamSubgraphs: true,
+            streamMode: STREAM_MODES,
+            multitaskStrategy: "reject" as const,
+            ...(threadCreationMetadata
+              ? { metadata: threadCreationMetadata }
+              : {}),
+          })
+        )
+        .then(
+          () => {
+            // Proxies may omit Content-Location; completion acknowledges those runs.
+            // The SDK reports rejected requests through onError.
+            settle(!streamRef.current.error);
+          },
+          () => settle(false)
+        )
+        .finally(() => {
+          if (pendingSendRef.current === settle) pendingSendRef.current = null;
+        });
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
+      try {
+        return await accepted;
+      } finally {
+        messageSubmission.current = false;
+        setSubmissionPending(false);
+      }
     },
-    [buildConfig, onHistoryRevalidate, threadCreationMetadata]
+    [
+      buildConfig,
+      onHistoryRevalidate,
+      threadCreationMetadata,
+      client,
+      activeAssistant,
+      submitMessageRun,
+      messageRunScope,
+      messageRuns.stopping,
+    ]
   );
 
   const runSingleStep = useCallback(
@@ -719,7 +858,11 @@ export function useChat({
     accountId: user?.user_id,
     role: user?.role,
     ready: !!threadId && !!activeAssistant && !stream.isThreadLoading,
-    busy: stream.isLoading,
+    busy:
+      stream.isLoading ||
+      messageRuns.pendingCount > 0 ||
+      messageRuns.stopping ||
+      submissionPending,
     failed: Boolean(stream.error) || historyError,
     pending: stream.interrupts,
     submit: submitAutopilot,
@@ -756,10 +899,24 @@ export function useChat({
     [selectedInterruptId, buildConfig, onHistoryRevalidate, disableAutopilot]
   );
 
-  const stopStream = useCallback(() => {
+  const stopStream = useCallback(async () => {
     disableAutopilot();
-    streamRef.current.stop();
-  }, [disableAutopilot]);
+    pendingSendRef.current?.(false);
+    pendingSendRef.current = null;
+    const target = threadIdRef.current;
+    if (!target) {
+      await streamRef.current.stop();
+      return;
+    }
+    // Cancel queued successors before releasing the active run.
+    const currentRunId = sessionStorage.getItem(streamRunStorageKey(target));
+    const stopped = await stopMessageRuns(currentRunId);
+    if (stopped && threadIdRef.current === target) {
+      // The server has already cancelled the connected run.
+      if (target) clearStreamReconnectState(target);
+      streamRef.current.stop();
+    }
+  }, [disableAutopilot, stopMessageRuns]);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -779,8 +936,14 @@ export function useChat({
   const email = stream.values.email;
   const ui = stream.values.ui;
   const messages = stream.messages;
-  const isLoading = stream.isLoading;
+  const isLoading =
+    stream.isLoading ||
+    messageRuns.pendingCount > 0 ||
+    messageRuns.stopping ||
+    submissionPending;
   const isThreadLoading = stream.isThreadLoading;
+  const queuedMessageCount = messageRuns.queuedCount;
+  const isStopping = messageRuns.stopping;
   const getMessagesMetadata = stream.getMessagesMetadata;
 
   // The returned object is the ChatProvider context value. Leaving it as a bare
@@ -789,6 +952,7 @@ export function useChat({
   return useMemo(
     () => ({
       threadId,
+      createdThreadId,
       stream,
       todos,
       files,
@@ -803,6 +967,8 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
+      queuedMessageCount,
+      isStopping,
       historyError,
       retryHistory,
       interrupt,
@@ -818,6 +984,7 @@ export function useChat({
     }),
     [
       threadId,
+      createdThreadId,
       stream,
       todos,
       files,
@@ -832,6 +999,8 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
+      queuedMessageCount,
+      isStopping,
       historyError,
       retryHistory,
       interrupt,

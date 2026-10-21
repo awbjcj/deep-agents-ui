@@ -11,7 +11,6 @@ import {
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { PendingToolApproval } from "@/app/components/PendingToolApproval";
-import { AutopilotControl } from "@/app/components/AutopilotControl";
 import type { TodoItem } from "@/app/types/types";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
@@ -128,6 +127,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       stopStream,
       resumeInterrupt,
       autopilot,
+      createdThreadId,
+      queuedMessageCount,
+      isStopping,
     } = useChatContext();
     const activity = agentActivity(
       processedMessages,
@@ -178,18 +180,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
           scrolls long conversations. */}
         <div className="mx-auto w-full max-w-[1120px]">
           <NotificationBanner />
-          <AutopilotControl
-            key={`${userId}:${threadId}:${assistant?.assistant_id}`}
-            autopilot={autopilot}
-            ready={!!threadId && !!assistant && !isThreadLoading}
-            unavailableReason={
-              !assistant
-                ? "Select an agent to enable autopilot."
-                : !threadId
-                ? "Start a conversation to enable autopilot."
-                : "Loading conversation…"
-            }
-          />
         </div>
         <div
           className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
@@ -520,11 +510,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             )}
             <ChatComposer
               accountId={userId}
+              createdThreadId={createdThreadId}
               skillAuthoringRequest={skillAuthoringRequest}
               onSkillAuthoringRequestConsumed={onSkillAuthoringRequestConsumed}
               evidenceRequest={evidenceRequest}
               onEvidenceConsumed={consumeEvidence}
               assistant={assistant}
+              autopilot={autopilot}
+              isThreadLoading={isThreadLoading}
+              queuedMessageCount={queuedMessageCount}
+              isStopping={isStopping}
               isLoading={isLoading}
               files={files}
               sourceImageAttachments={sourceImageAttachments}

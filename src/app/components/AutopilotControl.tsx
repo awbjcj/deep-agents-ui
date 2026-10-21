@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowRight, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,7 +33,7 @@ export function AutopilotControl({
   const [open, setOpen] = useState(false);
   const actionButton = useRef<HTMLButtonElement>(null);
   const enabled = autopilot.enabled;
-  const Icon = enabled ? ShieldAlert : ShieldCheck;
+  const Icon = enabled || autopilot.error ? ShieldAlert : ShieldCheck;
 
   function closeDialog() {
     autopilot.disable();
@@ -50,83 +50,62 @@ export function AutopilotControl({
         else setOpen(true);
       }}
     >
-      <div className="mx-4 my-2 text-sm [&_p]:!mb-0">
-        <div
+      <div className="flex shrink-0 items-center">
+        <Button
+          ref={actionButton}
+          type="button"
+          variant="ghost"
+          size="sm"
           className={cn(
-            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2.5",
+            "h-8 gap-1.5 rounded-full border px-2.5 text-xs",
+            PRESS_FEEDBACK,
             enabled
-              ? "border-destructive/35 bg-destructive/5"
-              : "border-border/60 bg-card/50"
+              ? "border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10"
+              : autopilot.error
+              ? "border-destructive/30 text-destructive"
+              : "border-border/60 text-muted-foreground"
           )}
+          disabled={!enabled && !ready}
+          aria-label={enabled ? "Turn off autopilot" : "Enable autopilot"}
+          aria-pressed={enabled}
+          aria-haspopup={enabled ? undefined : "dialog"}
+          title={
+            autopilot.error ||
+            (!enabled && !ready
+              ? unavailableReason
+              : enabled
+              ? "Autopilot on · approves actions automatically. Click to turn off."
+              : "Autopilot off · you approve each action. Click to enable.")
+          }
+          onClick={() => {
+            if (enabled) autopilot.disable();
+            else setOpen(true);
+          }}
         >
-          <div
-            className="flex min-w-0 items-center gap-2.5"
-            role="status"
-            aria-live="polite"
-          >
-            <Icon
-              className={cn(
-                "h-4 w-4 shrink-0",
-                enabled ? "text-destructive" : "text-muted-foreground"
-              )}
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="font-medium leading-5">
-                {enabled ? "Autopilot on" : "Manual approval"}
-              </p>
-              <p
-                className={cn(
-                  "text-xs leading-4",
-                  enabled
-                    ? "font-medium text-destructive"
-                    : "text-muted-foreground"
-                )}
-              >
-                {enabled ? "Dangerous · no review" : "You approve each action"}
-              </p>
-            </div>
-          </div>
-          <Button
-            ref={actionButton}
-            type="button"
-            variant="outline"
-            className={cn("min-h-11 px-3 text-xs", PRESS_FEEDBACK)}
-            disabled={!enabled && !ready}
-            aria-label={enabled ? "Turn off autopilot" : "Enable autopilot"}
-            aria-haspopup={enabled ? undefined : "dialog"}
-            onClick={() => {
-              if (enabled) autopilot.disable();
-              else setOpen(true);
-            }}
-          >
-            {enabled ? "Turn off" : "Enable autopilot"}
-            {!enabled && (
-              <ArrowRight
-                className="h-3.5 w-3.5"
-                aria-hidden="true"
-              />
-            )}
-          </Button>
-          {enabled && (
-            <p className="col-span-2 text-xs leading-5 text-muted-foreground">
-              Approvals run automatically in this chat. Turning off won’t undo
-              already approved actions.
-            </p>
-          )}
-          {!enabled && !ready && (
-            <p className="col-span-2 text-xs text-muted-foreground">
-              {unavailableReason ?? "Start a conversation to enable autopilot."}
-            </p>
-          )}
-        </div>
+          <Icon
+            className="h-3.5 w-3.5 shrink-0"
+            aria-hidden="true"
+          />
+          <span>Autopilot</span>
+          <span className="font-normal opacity-80">
+            {enabled ? "On" : "Off"}
+          </span>
+        </Button>
+        <span
+          role="status"
+          className="sr-only"
+        >
+          {enabled
+            ? "Autopilot on. Actions are approved automatically."
+            : "Autopilot off. Manual approval."}
+        </span>
         {!open && autopilot.error && (
-          <p
+          <span
             role="alert"
-            className="mt-2 rounded-lg border border-destructive/25 px-3 py-2 text-xs leading-5 text-destructive"
+            className="sr-only"
           >
             {autopilot.error}
-          </p>
+          </span>
         )}
       </div>
 

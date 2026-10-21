@@ -20,7 +20,7 @@ The screen's job is to make provider routing and overrides easy to compare. The 
 - The existing frontend regression fixture also verifies autosave ordering and preservation of edits made during a request.
 - Axe WCAG 2 A/AA and 2.1 AA checks cover admin and user panels in light and dark themes. Reduced motion is exercised in the user panel.
 - Targeted ESLint, TypeScript checking, the connectivity source-policy regression, and the production build pass.
-- The existing admin density source test has an unrelated failure: it expects the source-image policy section title `Tier policies`, while that section currently uses `Source images and attachments`.
+- The admin density source test verifies the current source-image policy title, `Source images and attachments`.
 
 ## Screenshots
 
