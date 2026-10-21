@@ -1389,12 +1389,19 @@ export interface UrlSettingInfo {
 
 export type EmbeddingProvider = "native" | "copilot";
 
+export interface ConnectivityTokenInfo {
+  configured: boolean;
+  overridden: boolean;
+  updated_at: string | null;
+}
+
 export interface AdminConnectivityResponse {
   run_mode: RunMode;
   run_mode_source: "database" | "env";
   embedding_provider: EmbeddingProvider;
   embedding_provider_source: "database" | "env";
   urls: Record<string, UrlSettingInfo>;
+  tokens: Record<string, ConnectivityTokenInfo>;
   /** Whether chat attachments/images may be uploaded while in Proxy mode. */
   proxy_attachments_enabled: boolean;
   proxy_attachments_enabled_source: "database" | "env";
@@ -1415,6 +1422,15 @@ export interface AdminConnectivityUpdatePayload {
   xai_base_url?: string;
   xai_base_url_gateway?: string;
   xai_base_url_proxy?: string;
+  openai_api_key_remote?: string;
+  openai_api_key_gateway?: string;
+  claude_api_key_remote?: string;
+  claude_api_key_gateway?: string;
+  google_api_key_remote?: string;
+  google_api_key_gateway?: string;
+  xai_api_key_remote?: string;
+  xai_api_key_gateway?: string;
+  cf_aig_token?: string;
   proxy_attachments_enabled?: boolean;
 }
 
@@ -1435,9 +1451,17 @@ export async function apiSetAdminConnectivity(
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
+    const detail = (
+      data as { detail?: string | { loc?: (string | number)[]; msg: string }[] }
+    ).detail;
     throw new Error(
-      (data as { detail?: string }).detail ||
-        "Failed to update connectivity settings"
+      (typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+        ? detail
+            .map((error) => `${error.loc?.at(-1) ?? "Setting"}: ${error.msg}`)
+            .join("; ")
+        : "") || "Failed to update connectivity settings"
     );
   }
   const result: AdminConnectivityResponse = await res.json();

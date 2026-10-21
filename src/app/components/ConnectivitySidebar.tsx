@@ -1,14 +1,14 @@
 "use client";
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  type KeyboardEvent as ReactKeyboardEvent,
-} from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ConnectivityModeSelector } from "@/components/connectivity/ConnectivityModeSelector";
+import {
+  ConnectivityLoadError,
+  ConnectivityLoadingState,
+} from "@/components/connectivity/ConnectivityLoadState";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -37,30 +37,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
-
-const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
-
-function runModeBlurb(mode: RunMode): string {
-  switch (mode) {
-    case "remote":
-      return "Direct provider";
-    case "gateway":
-      return "Via gateway";
-    case "proxy":
-      return "Via proxy";
-  }
-}
-
-function runModeDescription(mode: RunMode): string {
-  switch (mode) {
-    case "remote":
-      return "Connect directly to Provider";
-    case "gateway":
-      return "Route through Gateway";
-    case "proxy":
-      return "Route through local Proxy";
-  }
-}
 
 function sourcePolicyDescription(
   policy: EffectiveSourceImagePolicy,
@@ -91,6 +67,7 @@ export function ConnectivitySidebar() {
   const [pendingMode, setPendingMode] = useState<RunMode>("gateway");
   const [proxyUrl, setProxyUrl] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [imageFetching, setImageFetching] = useState(false);
@@ -103,7 +80,6 @@ export function ConnectivitySidebar() {
     null
   );
   const imageFetchingRequestRef = useRef(0);
-  const radioRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutosavedModeRef = useRef<RunMode | null>(null);
@@ -143,7 +119,7 @@ export function ConnectivitySidebar() {
         setRunModeLocal(res.run_mode);
       })
       .catch(() => {
-        if (mounted) toast.error("Failed to load connectivity settings");
+        if (mounted) setData(null);
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -155,7 +131,7 @@ export function ConnectivitySidebar() {
       mounted = false;
       imageFetchingRequestRef.current += 1;
     };
-  }, [loadImageFetching, setRunModeLocal]);
+  }, [loadImageFetching, setRunModeLocal, loadAttempt]);
 
   useEffect(() => {
     return () => {
@@ -321,36 +297,6 @@ export function ConnectivitySidebar() {
     }
   };
 
-  const handleRadioKeyDown = (
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-    index: number
-  ) => {
-    const last = RUN_MODES.length - 1;
-    let nextIndex: number;
-    switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
-        nextIndex = index === last ? 0 : index + 1;
-        break;
-      case "ArrowLeft":
-      case "ArrowUp":
-        nextIndex = index === 0 ? last : index - 1;
-        break;
-      case "Home":
-        nextIndex = 0;
-        break;
-      case "End":
-        nextIndex = last;
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    const target = RUN_MODES[nextIndex]!;
-    selectMode(target);
-    radioRefs.current[nextIndex]?.focus();
-  };
-
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Title bar is supplied by the parent WorkspacePanel — this sidebar
@@ -359,9 +305,12 @@ export function ConnectivitySidebar() {
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-5 p-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
+            <ConnectivityLoadingState />
+          ) : !data ? (
+            <ConnectivityLoadError
+              message="Connectivity settings could not be loaded."
+              onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+            />
           ) : (
             <>
               <header className="space-y-1">
@@ -378,77 +327,18 @@ export function ConnectivitySidebar() {
               </header>
 
               <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
-                <div
-                  role="radiogroup"
-                  aria-label="Run mode"
-                  className="grid grid-cols-3 gap-1.5"
-                >
-                  {RUN_MODES.map((mode, index) => {
-                    const active = pendingMode === mode;
-                    return (
-                      <button
-                        key={mode}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        tabIndex={active ? 0 : -1}
-                        ref={(el) => {
-                          radioRefs.current[index] = el;
-                        }}
-                        onKeyDown={(event) => handleRadioKeyDown(event, index)}
-                        onClick={() => selectMode(mode)}
-                        className={cn(
-                          "group relative flex flex-col items-start gap-0.5 overflow-hidden rounded-md border px-3 py-2.5 text-left transition-colors duration-150",
-                          "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
-                          active
-                            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--text-button-primary)] shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--color-primary)_45%,transparent)]"
-                            : "hover:border-[var(--color-primary)]/40 border-border bg-card hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
-                        )}
-                      >
-                        {active && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--aptiv-orange)_25%,transparent)]"
-                          />
-                        )}
-                        <span
-                          className={cn(
-                            "text-xs font-semibold tracking-tight transition-colors",
-                            active
-                              ? "text-[var(--text-button-primary)]"
-                              : "text-foreground group-hover:text-[var(--color-primary)]"
-                          )}
-                        >
-                          {mode}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors",
-                            active
-                              ? "text-[var(--text-button-primary)]/75"
-                              : "text-muted-foreground"
-                          )}
-                        >
-                          {runModeBlurb(mode)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <ConnectivityModeSelector
+                  value={pendingMode}
+                  onValueChange={selectMode}
+                />
 
                 {data && (
-                  <p className="text-[10px] leading-relaxed text-muted-foreground">
-                    {runModeDescription(pendingMode)}
-                  </p>
-                )}
-
-                {data && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xxs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     <span className="font-semibold uppercase tracking-wider">
                       System default
                     </span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums">
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xxs font-semibold tabular-nums">
                       {data.default_run_mode}
                     </span>
                     {data.run_mode_source === "user" && (
@@ -463,25 +353,32 @@ export function ConnectivitySidebar() {
               {pendingMode === "proxy" && (
                 <div className="space-y-2 border-t border-border/40 pt-4">
                   <header className="space-y-1">
-                    <h3 className="text-sm font-semibold tracking-tight">
-                      Proxy URL
-                    </h3>
-                    <p className="text-[10px] text-muted-foreground">
+                    <Label
+                      htmlFor="user-proxy-url"
+                      className="text-xs font-semibold text-foreground"
+                    >
+                      Proxy base URL
+                    </Label>
+                    <p className="text-xxs text-muted-foreground">
                       Your personal proxy endpoint. Leave empty to use the
                       system default.
                     </p>
                   </header>
                   <Input
+                    id="user-proxy-url"
+                    type="url"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={proxyUrl}
                     onChange={(e) => setProxyUrl(e.target.value)}
                     placeholder="(not set — using system proxy)"
                     className={cn(
-                      "h-9 font-mono text-[11px]",
+                      "h-10 rounded-md font-mono text-lg sm:text-xs",
                       proxyUrl ? "border-[var(--color-primary)]/40" : ""
                     )}
                   />
                   {data?.proxy_url_source === "user" && data.proxy_url && (
-                    <span className="text-[9px] text-[var(--color-primary)]">
+                    <span className="text-xxs text-[var(--color-primary)]">
                       Using your custom proxy URL
                     </span>
                   )}
@@ -518,7 +415,7 @@ export function ConnectivitySidebar() {
                         </label>
                         <p
                           id="source-image-attachments-description"
-                          className="text-[11px] leading-relaxed text-muted-foreground"
+                          className="text-xxs leading-relaxed text-muted-foreground"
                         >
                           {imageFetchingError
                             ? "Status unavailable. Retry before changing this preference."
@@ -534,7 +431,7 @@ export function ConnectivitySidebar() {
                       <div className="flex shrink-0 items-center gap-2 pt-0.5">
                         {isSavingImageFetching && (
                           <Loader2
-                            className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                            className="h-3.5 w-3.5 animate-spin text-muted-foreground motion-reduce:animate-none"
                             aria-hidden="true"
                           />
                         )}
@@ -559,7 +456,7 @@ export function ConnectivitySidebar() {
                     </div>
                     {sourceImagePolicies && (
                       <div className="border-t border-border/60 bg-muted/20 px-3.5 py-2.5">
-                        <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        <p className="mb-2 text-xxs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                           Effective access
                         </p>
                         <div className="divide-y divide-border/50">
@@ -581,10 +478,10 @@ export function ConnectivitySidebar() {
                                   )}
                                   aria-hidden="true"
                                 />
-                                <span className="min-w-0 flex-1 text-[11px] font-semibold text-foreground">
+                                <span className="min-w-0 flex-1 text-xxs font-semibold text-foreground">
                                   {SOURCE_IMAGE_LABELS[source]}
                                 </span>
-                                <span className="max-w-[58%] text-right text-[10px] leading-relaxed text-muted-foreground">
+                                <span className="max-w-[58%] text-right text-xxs leading-relaxed text-muted-foreground">
                                   {sourcePolicyDescription(
                                     policy,
                                     imageFetching
@@ -606,7 +503,7 @@ export function ConnectivitySidebar() {
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] leading-relaxed text-destructive">
+                          <p className="text-xxs leading-relaxed text-destructive">
                             {imageFetchingError}
                           </p>
                           <Button
@@ -614,7 +511,7 @@ export function ConnectivitySidebar() {
                             variant="outline"
                             size="sm"
                             onClick={loadImageFetching}
-                            className="mt-2 h-7 px-2.5 text-[10px]"
+                            className="mt-2 h-10 px-3 text-xxs"
                             disabled={isLoadingImageFetching}
                           >
                             {isLoadingImageFetching ? "Retrying…" : "Retry"}
@@ -629,18 +526,18 @@ export function ConnectivitySidebar() {
           )}
         </div>
       </ScrollArea>
-      {!isLoading && (
+      {!isLoading && data && (
         <div className="flex-shrink-0 border-t border-border bg-card/70 p-4 backdrop-blur-sm">
           <div className="flex flex-col gap-2">
             <Button
               type="button"
               onClick={handleSave}
               disabled={isSaving || !dirty}
-              className="w-full"
+              className="h-10 w-full"
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
                   Saving
                 </>
               ) : saved && !dirty ? (
@@ -656,15 +553,16 @@ export function ConnectivitySidebar() {
               )}
             </Button>
 
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={handleReset}
               disabled={isSaving}
-              className="inline-flex w-full items-center justify-center gap-1.5 text-center text-[10px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+              className="h-10 w-full gap-1.5 text-xxs text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3" />
               Reset to system defaults
-            </button>
+            </Button>
           </div>
         </div>
       )}

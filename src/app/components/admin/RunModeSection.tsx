@@ -1,26 +1,23 @@
 "use client";
 
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle, Clock, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { formatTimestamp } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
+import { ConnectivityModeSelector } from "@/components/connectivity/ConnectivityModeSelector";
+import {
+  ConnectivityLoadingState,
+  ConnectivityLoadError,
+} from "@/components/connectivity/ConnectivityLoadState";
 import {
   apiGetRunMode,
   apiSetRunMode,
   type RunMode,
   type RunModeInfo,
 } from "@/lib/auth";
-import { cn } from "@/lib/utils";
-import { LoadingRow, SectionHeader } from "@/app/components/admin/primitives";
-
-const RUN_MODES: RunMode[] = ["remote", "gateway", "proxy"];
+import { SectionHeader } from "@/app/components/admin/primitives";
 
 /** Selects provider routing; advanced endpoints live beside it in Runtime. */
 export function RunModeSection() {
@@ -29,19 +26,28 @@ export function RunModeSection() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const radioRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    let current = true;
     setIsLoading(true);
     apiGetRunMode()
       .then((data) => {
+        if (!current) return;
         setPending(data.run_mode);
         setInfo(data);
       })
-      .catch(() => toast.error("Failed to load run mode"))
-      .finally(() => setIsLoading(false));
-  }, []);
+      .catch(() => {
+        if (current) setInfo(null);
+      })
+      .finally(() => {
+        if (current) setIsLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [loadAttempt]);
 
   useEffect(
     () => () => {
@@ -75,36 +81,6 @@ export function RunModeSection() {
     }
   };
 
-  const onRadioKeyDown = (
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-    index: number
-  ) => {
-    const last = RUN_MODES.length - 1;
-    let nextIndex: number;
-    switch (event.key) {
-      case "ArrowRight":
-      case "ArrowDown":
-        nextIndex = index === last ? 0 : index + 1;
-        break;
-      case "ArrowLeft":
-      case "ArrowUp":
-        nextIndex = index === 0 ? last : index - 1;
-        break;
-      case "Home":
-        nextIndex = 0;
-        break;
-      case "End":
-        nextIndex = last;
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
-    const target = RUN_MODES[nextIndex]!;
-    setPending(target);
-    radioRefs.current[nextIndex]?.focus();
-  };
-
   return (
     <div className="space-y-3">
       <SectionHeader
@@ -112,61 +88,25 @@ export function RunModeSection() {
         subtitle="How agent requests reach the LLM backend"
       />
       {isLoading ? (
-        <LoadingRow />
+        <ConnectivityLoadingState />
+      ) : !info ? (
+        <ConnectivityLoadError
+          message="Run mode could not be loaded."
+          onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+        />
       ) : (
-        <div className="aptiv-glass-soft space-y-3 rounded-lg p-3 shadow-sm">
-          <div
-            role="radiogroup"
-            aria-label="Modes"
-            className="grid grid-cols-3 gap-2"
-          >
-            {RUN_MODES.map((mode, index) => {
-              const active = pending === mode;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  tabIndex={active ? 0 : -1}
-                  ref={(element) => {
-                    radioRefs.current[index] = element;
-                  }}
-                  onKeyDown={(event) => onRadioKeyDown(event, index)}
-                  onClick={() => setPending(mode)}
-                  className={cn(
-                    "relative flex min-w-0 flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,color] duration-150 motion-reduce:transition-none",
-                    "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2",
-                    active
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--text-button-primary)] shadow-sm"
-                      : "hover:border-[var(--color-primary)]/40 border-border bg-card"
-                  )}
-                >
-                  {active ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)]"
-                    />
-                  ) : null}
-                  <span className="text-xs font-semibold tracking-tight">
-                    {mode}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-[9px] font-semibold uppercase tracking-[0.1em]",
-                      active
-                        ? "text-[var(--text-button-primary)]/80"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {runModeBlurb(mode)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="aptiv-glass-soft space-y-4 rounded-lg p-4 shadow-sm">
+          <ConnectivityModeSelector
+            value={pending}
+            label="Modes"
+            disabled={isSaving}
+            onValueChange={(mode) => {
+              setPending(mode);
+              setSaved(false);
+            }}
+          />
           {info && info.run_mode_updated_at !== "Unknown" ? (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xxs text-muted-foreground">
               <Clock
                 className="h-3 w-3"
                 aria-hidden="true"
@@ -187,7 +127,7 @@ export function RunModeSection() {
             type="button"
             onClick={() => void save()}
             disabled={isSaving || !dirty}
-            className="w-full"
+            className="h-10 w-full"
           >
             {isSaving ? (
               <Loader2
@@ -211,15 +151,4 @@ export function RunModeSection() {
       )}
     </div>
   );
-}
-
-function runModeBlurb(mode: RunMode): string {
-  switch (mode) {
-    case "remote":
-      return "Direct provider";
-    case "gateway":
-      return "Via gateway";
-    case "proxy":
-      return "Via proxy";
-  }
 }
