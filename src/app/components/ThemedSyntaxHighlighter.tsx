@@ -1,18 +1,18 @@
 "use client";
 
 import { lazy } from "react";
+import { cn } from "@/lib/utils";
 
-/** Load Prism and its theme together so the first code render is legible. */
+/** Keep Prism colors in CSS so every block follows the active page theme. */
 export const ThemedSyntaxHighlighter = lazy(() =>
-  Promise.all([
-    import("react-syntax-highlighter"),
-    import("react-syntax-highlighter/dist/esm/styles/prism"),
-  ]).then(([{ Prism }, { oneDark }]) => ({
+  import("react-syntax-highlighter").then(({ Prism }) => ({
     default: function ThemedPrism(props: React.ComponentProps<typeof Prism>) {
       return (
         <Prism
           {...props}
-          style={oneDark}
+          className={cn("code-block", props.className)}
+          style={{}}
+          useInlineStyles={false}
         />
       );
     },

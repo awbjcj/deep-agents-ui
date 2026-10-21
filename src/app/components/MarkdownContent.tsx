@@ -115,6 +115,7 @@ const CODE_BLOCK_STYLE: React.CSSProperties = {
   fontFamily: "var(--font-family-mono)",
   fontWeight: 500,
   fontFeatureSettings: '"ss01", "cv11"',
+  color: "var(--code-block-fg)",
   background: "var(--code-block-bg)",
   border: "1px solid var(--code-block-border)",
   textShadow: "none",
@@ -169,7 +170,7 @@ function PlainCodeBlock({
       role="region"
       aria-label={label}
       tabIndex={0}
-      className="my-0 max-w-full overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="code-block my-0 max-w-full overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       style={CODE_BLOCK_STYLE}
     >
       <code
@@ -379,9 +380,6 @@ const COMPONENTS: Components = {
                   background: "transparent",
                   border: 0,
                   borderRadius: 0,
-                  // oneDark sets an embossed text-shadow on its code/pre
-                  // selectors that reads as a "shaded"/double-vision glyph.
-                  // Strip it so code renders crisp on first and later paints.
                   textShadow: "none",
                   fontFamily: "inherit",
                   fontSize: "inherit",

@@ -113,12 +113,10 @@ async function fixture() {
             { filter: /[\\/]ThemedSyntaxHighlighter\.tsx$/ },
             async ({ path }) => ({
               loader: "tsx",
-              contents: (await readFile(path, "utf8"))
-                .replace(
-                  "Promise.all([",
-                  "Promise.resolve(window.highlightReady).then(() => Promise.all(["
-                )
-                .replace("]).then(", "])).then("),
+              contents: (await readFile(path, "utf8")).replace(
+                'import("react-syntax-highlighter")',
+                'Promise.resolve(window.highlightReady).then(() => import("react-syntax-highlighter"))'
+              ),
             })
           );
         },

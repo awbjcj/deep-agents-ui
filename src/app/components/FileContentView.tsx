@@ -54,7 +54,7 @@ export const FileContentView = React.memo(function FileContentView({
       }
       tabIndex={0}
       className={cn(
-        "max-w-full overflow-auto rounded-md bg-secondary p-4 font-mono text-sm leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "code-block max-w-full overflow-auto rounded-md p-4 font-mono text-sm leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isJson && "whitespace-pre-wrap [overflow-wrap:anywhere]"
       )}
     >
@@ -130,30 +130,20 @@ export const FileContentView = React.memo(function FileContentView({
             codeTagProps={{
               style: {
                 textShadow: "none",
-                ...(isJson && {
-                  fontSize: "inherit",
-                  overflowWrap: "anywhere",
-                }),
+                fontSize: "inherit",
+                overflowWrap: "anywhere",
               },
             }}
             // Prism's flex rows shrink individual tokens beside long strings.
-            // Block rows keep keys intact and reserve a gutter for wrapped text.
-            lineProps={
-              isJson
-                ? {
-                    style: {
-                      display: "block",
-                      position: "relative",
-                      paddingLeft: "3.5em",
-                    },
-                  }
-                : undefined
-            }
-            lineNumberStyle={
-              isJson
-                ? { position: "absolute", left: 0, width: "3em" }
-                : undefined
-            }
+            // Block rows keep source text intact with a separate number gutter.
+            lineProps={{
+              style: {
+                display: "block",
+                position: "relative",
+                paddingLeft: "3.5em",
+              },
+            }}
+            lineNumberStyle={{ position: "absolute", left: 0, width: "3em" }}
             showLineNumbers
             wrapLongLines
           >
