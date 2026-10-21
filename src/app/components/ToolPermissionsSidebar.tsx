@@ -221,7 +221,8 @@ export function ToolPermissionsSidebar() {
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
             Choose the tools available to your account in every conversation.
-            Actions that require approval will still ask before they run.
+            Actions that require approval will ask before they run, unless you
+            enable autopilot in that conversation.
           </p>
           <span
             className="aptiv-rule"
