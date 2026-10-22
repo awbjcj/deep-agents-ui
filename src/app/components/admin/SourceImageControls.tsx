@@ -308,7 +308,8 @@ export function SourceImageControls({ tier }: { tier: string }) {
           </summary>
           <p id={`source-attachment-images-${tier}`}>
             Images require the user's image opt-in.
-          </p>S
+          </p>
+          S
           <p id={`source-attachment-documents-${tier}`}>
             Documents are downloaded and converted, up to 10 MB per file.
             Supported: DOCX, HTML, PPTX, XLSX, PDF, and text.

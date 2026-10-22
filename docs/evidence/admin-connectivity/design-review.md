@@ -4,13 +4,13 @@ Reviewed against the existing admin section headers, disclosure panels, form pri
 
 The screen's job is to make provider routing and overrides easy to compare. The primary action is Save. Endpoint forms remain collapsed initially. Fields stack when their panel is narrow and form two aligned columns when there is enough space, regardless of viewport width.
 
-| Before | After | Why |
-| --- | --- | --- |
-| Separate mode selectors in user and admin settings | Shared mode cards, descriptions, focus rings, and keyboard controls | Keep the same interaction in both settings panels |
-| Inconsistent URL, token, and proxy rows | Matching field heights, labels, spacing, and authentication columns | Make all providers and connection modes easy to scan |
-| Tiny helper text and subtle override indicators | Theme typography, explicit credential and draft states, and selected icons | Explain status without relying on color |
-| Empty sections after a failed load | Shared loading skeletons and inline Retry controls | Provide a clear recovery path |
-| Fixed columns in narrow panels | Layout based on available container width | Avoid clipped controls and labels |
+| Before                                             | After                                                                      | Why                                                  |
+| -------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Separate mode selectors in user and admin settings | Shared mode cards, descriptions, focus rings, and keyboard controls        | Keep the same interaction in both settings panels    |
+| Inconsistent URL, token, and proxy rows            | Matching field heights, labels, spacing, and authentication columns        | Make all providers and connection modes easy to scan |
+| Tiny helper text and subtle override indicators    | Theme typography, explicit credential and draft states, and selected icons | Explain status without relying on color              |
+| Empty sections after a failed load                 | Shared loading skeletons and inline Retry controls                         | Provide a clear recovery path                        |
+| Fixed columns in narrow panels                     | Layout based on available container width                                  | Avoid clipped controls and labels                    |
 
 ## Verification
 

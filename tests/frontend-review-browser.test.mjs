@@ -154,32 +154,60 @@ test(
       await page.goto(`${url}?view=model&linked=1`);
       const linkedSlider = page.getByRole("slider", { name: "Output cap" });
       await linkedSlider.waitFor();
-      await page.evaluate(() => { window.modelSaveSucceeds = true; });
+      await page.evaluate(() => {
+        window.modelSaveSucceeds = true;
+      });
       await page.getByRole("button", { name: "xhigh", exact: true }).click();
-      const linkedThinking = page.getByRole("switch", { name: "Adaptive thinking" });
+      const linkedThinking = page.getByRole("switch", {
+        name: "Adaptive thinking",
+      });
       assert.equal(await linkedThinking.getAttribute("aria-checked"), "true");
-      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "40,960 tokens");
+      assert.equal(
+        await linkedSlider.getAttribute("aria-valuetext"),
+        "40,960 tokens"
+      );
       await page.waitForFunction(() => window.modelSaves.length === 1);
       assert.deepEqual(await page.evaluate(() => window.modelSaves[0]), {
-        provider: "test", model: "example", effort: "xhigh", thinking: true, max_tokens: 40960,
+        provider: "test",
+        model: "example",
+        effort: "xhigh",
+        thinking: true,
+        max_tokens: 40960,
       });
       await page.getByRole("button", { name: "low", exact: true }).click();
-      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "12,288 tokens");
+      assert.equal(
+        await linkedSlider.getAttribute("aria-valuetext"),
+        "12,288 tokens"
+      );
       await page.waitForFunction(() => window.modelSaves.length === 2);
       await linkedThinking.click();
       assert.equal(await linkedThinking.getAttribute("aria-checked"), "false");
-      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "8,192 tokens");
+      assert.equal(
+        await linkedSlider.getAttribute("aria-valuetext"),
+        "8,192 tokens"
+      );
       await page.waitForFunction(() => window.modelSaves.length === 3);
       assert.deepEqual(await page.evaluate(() => window.modelSaves[2]), {
-        provider: "test", model: "example", effort: "low", thinking: false, max_tokens: 8192,
+        provider: "test",
+        model: "example",
+        effort: "low",
+        thinking: false,
+        max_tokens: 8192,
       });
       await page.getByRole("combobox", { name: "Model" }).click();
       await page.getByRole("option", { name: /alternative/ }).click();
       assert.equal(await linkedThinking.getAttribute("aria-checked"), "true");
-      assert.equal(await linkedSlider.getAttribute("aria-valuetext"), "16,384 tokens");
+      assert.equal(
+        await linkedSlider.getAttribute("aria-valuetext"),
+        "16,384 tokens"
+      );
       await page.waitForFunction(() => window.modelSaves.length === 4);
       assert.deepEqual(await page.evaluate(() => window.modelSaves[3]), {
-        provider: "test", model: "alternative", effort: "medium", thinking: true, max_tokens: 16384,
+        provider: "test",
+        model: "alternative",
+        effort: "medium",
+        thinking: true,
+        max_tokens: 16384,
       });
       await page.goto(`${url}?view=model`);
       const slider = page.getByRole("slider", { name: "Output cap" });
