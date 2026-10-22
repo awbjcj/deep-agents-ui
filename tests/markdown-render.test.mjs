@@ -171,6 +171,77 @@ test("renders GFM math code fences as display math", () => {
   assert.deepEqual(mathAnnotations(html), [String.raw`\frac{a}{b}`]);
 });
 
+test("skill references on consecutive lines remain prose throughout streaming", () => {
+  const content = [
+    "Read /skills/general/skill-creator/SKILL.md (user invoked $skill-creator), preserve unrelated workflows/resources.",
+    "User goal: apply recently approved advanced Adaptive Card style to $jira-story-scrum-master Teams sprint-end reminder.",
+  ].join("\n");
+
+  for (const isStreaming of [false, true]) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, { content, isStreaming })
+    );
+    assert.deepEqual(mathAnnotations(html), []);
+    assert.match(html, /\$skill-creator/);
+    assert.match(html, /\$jira-story-scrum-master/);
+    assert.match(html, /preserve unrelated workflows\/resources\./);
+  }
+
+  const secondReference = content.indexOf("$jira");
+  for (let end = secondReference; end <= content.length; end++) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, {
+        content: content.slice(0, end),
+        isStreaming: true,
+      })
+    );
+    assert.deepEqual(mathAnnotations(html), [], `streamed prefix ${end}`);
+  }
+});
+
+test("currency on consecutive lines stays literal", () => {
+  const html = render("Budget is $100\nand $200 per unit.");
+  assert.deepEqual(mathAnnotations(html), []);
+  assert.match(html, /\$100\nand \$200/);
+});
+
+test("literal dollar references do not consume adjacent equation delimiters", () => {
+  for (const literal of ["$skill-creator", "$5", "$skill-creator costs $5"]) {
+    const html = render(
+      `Use ${literal}. Then $x + 1$ applies\nand $y = 2$ holds.`
+    );
+    assert.deepEqual(mathAnnotations(html), ["x + 1", "y = 2"]);
+    assert.ok(html.includes(literal));
+  }
+});
+
+test("intentional multiline inline math still renders", () => {
+  const html = render("Compute $x +\ny = 2$ here.");
+  assert.deepEqual(mathAnnotations(html), ["x +\ny = 2"]);
+});
+
+test("literal dollars cannot pair with explicit math or protected code", () => {
+  const html = render(
+    [
+      String.raw`Use $skill-creator with \(x\), $$y$$ and ` + "`$HOME`.",
+      String.raw`Then $jira-story-scrum-master and \[z = 2\].`,
+      "",
+      String.raw`\[`,
+      String.raw`\text{cost \$5}`,
+      String.raw`\]`,
+    ].join("\n")
+  );
+  assert.deepEqual(mathAnnotations(html), [
+    "x",
+    "y",
+    "z = 2",
+    String.raw`\text{cost \$5}`,
+  ]);
+  assert.match(html, /<code[^>]*>\$HOME<\/code>/);
+  assert.match(html, /\$skill-creator/);
+  assert.match(html, /\$jira-story-scrum-master/);
+});
+
 // ── Literal characters that must not become formatting ─────────────────────
 
 test("renders dunder identifiers literally instead of as bold", () => {

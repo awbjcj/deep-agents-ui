@@ -9,8 +9,9 @@
  * 1. Math delimiters — `\( \)`, `\[ \]` and bare `[ ... ]` display blocks are
  *    rewritten to the `$`/`$$` form that `remark-math` understands, and bare
  *    LaTeX environments (`\begin{align}`) are wrapped so KaTeX picks them up.
- * 2. Currency — `remark-math` treats `$5 and then $10` as inline math. Dollar
- *    pairs whose contents do not look like math are escaped instead.
+ * 2. Literal dollars — `remark-math` pairs dollar signs even across line
+ *    breaks. Currency and skill references are escaped unless they delimit
+ *    a math expression.
  * 3. Literal emphasis — `__init__` would render as bold "init". Non-spaced
  *    double-underscore runs are escaped so identifiers survive verbatim.
  *
@@ -357,8 +358,10 @@ function restoreInline(line: string, store: string[]): string {
   return result;
 }
 
-// ── Currency vs. inline math ───────────────────────────────────────────────
-const INLINE_DOLLAR_SPAN = /(^|[^\\$])\$([^$\n]+?)\$(?!\$)/g;
+// ── Literal dollars vs. inline math ────────────────────────────────────────
+// Consume escapes and whole delimiter runs so only unescaped single dollars
+// participate. Explicit math and code have already been protected.
+const DOLLAR_OR_ESCAPE = /\\[\s\S]|\$+/g;
 const SINGLE_MATH_SYMBOL = /^[A-Za-z](?:_\{?[A-Za-z0-9]+\}?)?$/;
 const PROSE_WORD = /[A-Za-z]{4,}/;
 
@@ -367,7 +370,7 @@ const PROSE_WORD = /[A-Za-z]{4,}/;
  *
  * `remark-math` treats every balanced dollar pair as inline math, so a
  * sentence like "costs $5 and then $10 more" renders as a KaTeX blob. Bodies
- * that carry no math signal — or that read as prose — are treated as currency.
+ * that carry no math signal — or that read as prose — stay literal.
  */
 function looksLikeInlineMath(expression: string): boolean {
   const body = expression.trim();
@@ -384,13 +387,43 @@ function looksLikeInlineMath(expression: string): boolean {
   return false;
 }
 
-function escapeCurrencyDollars(line: string): string {
-  if (!line.includes("$")) return line;
-  return line.replace(
-    INLINE_DOLLAR_SPAN,
-    (match, prefix: string, body: string) =>
-      looksLikeInlineMath(body) ? match : `${prefix}\\$${body}\\$`
-  );
+function escapeLiteralDollars(prose: string): string {
+  if (!prose.includes("$")) return prose;
+  const output: string[] = [];
+  let cursor = 0;
+  let opener: number | null = null;
+
+  for (const match of prose.matchAll(DOLLAR_OR_ESCAPE)) {
+    if (match[0] !== "$") continue;
+    const index = match.index;
+    if (opener !== null) {
+      const body = prose.slice(opener + 1, index);
+      if (
+        !body.includes("\u0000") &&
+        !/\n[ \t]*\n/.test(body) &&
+        looksLikeInlineMath(body)
+      ) {
+        output.push(prose.slice(cursor, index + 1));
+        cursor = index + 1;
+        opener = null;
+        continue;
+      }
+      // Reject only the opener: this dollar may open a real equation after a
+      // literal reference, e.g. "$skill-creator then $x + 1$".
+      output.push(prose.slice(cursor, opener), "\\$");
+      cursor = opener + 1;
+    }
+    opener = index;
+  }
+
+  // An unmatched dollar can otherwise pair with one inside a protected region
+  // after restoration (including a synthesized \(x\) expression).
+  if (opener !== null) {
+    output.push(prose.slice(cursor, opener), "\\$");
+    cursor = opener + 1;
+  }
+  output.push(prose.slice(cursor));
+  return output.join("");
 }
 
 // ── Literal emphasis characters ────────────────────────────────────────────
@@ -471,24 +504,22 @@ function normalizeOpenAiInlineMathDelimiters(
 const MAX_INLINE_LINE_LENGTH = 4096;
 
 /** Applies every inline transform to a single line of prose. */
-function normalizeProseLine(line: string): string {
-  if (line.length > MAX_INLINE_LINE_LENGTH) return line;
+function normalizeProseLine(line: string, store: string[]): string {
+  if (line.length > MAX_INLINE_LINE_LENGTH) return protect(line, store);
 
-  const store: string[] = [];
   let result = protectInline(line, store);
   // Math synthesized from explicit `\( … \)` / `\[ … \]` delimiters is stored
   // as a placeholder so the currency heuristic below cannot escape it back into
   // literal text — those delimiters are never currency.
   result = normalizeOpenAiInlineMathDelimiters(result, store);
   result = normalizeInlineMathBrackets(result, store);
-  result = escapeCurrencyDollars(result);
-  result = escapeLiteralEmphasis(result);
-  return restoreInline(result, store);
+  return escapeLiteralEmphasis(result);
 }
 
 // ── Block-level normalization ──────────────────────────────────────────────
 function normalizeProseBlock(lines: string[]): string[] {
   const output: string[] = [];
+  const store: string[] = [];
 
   // State for a multi-line `\[ … \]` display block.
   let displayMathIndent: string | null = null;
@@ -506,9 +537,14 @@ function normalizeProseBlock(lines: string[]): string[] {
         ).test(line)
       ) {
         output.push(
-          `${environment.indent}$$`,
-          ...environment.lines,
-          `${environment.indent}$$`
+          protect(
+            [
+              `${environment.indent}$$`,
+              ...environment.lines,
+              `${environment.indent}$$`,
+            ].join("\n"),
+            store
+          )
         );
         environment = null;
       }
@@ -518,7 +554,10 @@ function normalizeProseBlock(lines: string[]): string[] {
     if (displayMathIndent !== null) {
       if (OPENAI_DISPLAY_MATH_CLOSE_LINE.test(line)) {
         output.push(
-          renderDisplayMath(displayMathIndent, displayMathLines.join("\n"))
+          protect(
+            renderDisplayMath(displayMathIndent, displayMathLines.join("\n")),
+            store
+          )
         );
         displayMathIndent = null;
         displayMathLines = [];
@@ -547,7 +586,9 @@ function normalizeProseBlock(lines: string[]): string[] {
 
     const openAiMatch = OPENAI_DISPLAY_MATH_BRACKET_LINE.exec(line);
     if (openAiMatch) {
-      output.push(renderDisplayMath(openAiMatch[1], openAiMatch[2]));
+      output.push(
+        protect(renderDisplayMath(openAiMatch[1], openAiMatch[2]), store)
+      );
       continue;
     }
 
@@ -558,28 +599,36 @@ function normalizeProseBlock(lines: string[]): string[] {
       if (match) {
         output.push(
           isMathExpression(match[2])
-            ? renderDisplayMath(match[1], match[2])
-            : normalizeProseLine(line)
+            ? protect(renderDisplayMath(match[1], match[2]), store)
+            : normalizeProseLine(line, store)
         );
         continue;
       }
 
       const dangling = DANGLING_DISPLAY_MATH_BRACKET_LINE.exec(line);
       if (dangling && !line.includes("[") && isMathExpression(dangling[2])) {
-        output.push(renderDisplayMath(dangling[1], dangling[2]));
+        output.push(
+          protect(renderDisplayMath(dangling[1], dangling[2]), store)
+        );
         continue;
       }
     }
 
-    output.push(normalizeProseLine(line));
+    output.push(normalizeProseLine(line, store));
   }
 
   // Unterminated constructs are emitted verbatim so streaming stays stable.
-  if (environment) output.push(...environment.lines);
+  if (environment) output.push(protect(environment.lines.join("\n"), store));
   if (displayMathIndent !== null)
-    output.push(String.raw`\[`, ...displayMathLines);
+    output.push(
+      protect([String.raw`\[`, ...displayMathLines].join("\n"), store)
+    );
 
-  return output;
+  // remark-math allows inline math across soft line breaks. Classify dollars
+  // over the same prose span, while code and explicit math remain protected.
+  return restoreInline(escapeLiteralDollars(output.join("\n")), store).split(
+    "\n"
+  );
 }
 
 function escapeRegExp(value: string): string {
