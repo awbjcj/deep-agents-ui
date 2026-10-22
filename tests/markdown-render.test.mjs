@@ -17,6 +17,53 @@ function render(content, files) {
   );
 }
 
+test("streaming bold never flashes as italic at a partial closing marker", () => {
+  const source = "**Checking the evidence**";
+  for (let length = 1; length <= source.length; length++) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, {
+        content: source.slice(0, length),
+        isStreaming: true,
+      })
+    );
+    assert.doesNotMatch(
+      html,
+      /<em[ >]/,
+      `prefix ${length} must not become italic`
+    );
+    if (length === source.length)
+      assert.match(html, /<strong[^>]*>Checking the evidence<\/strong>/);
+  }
+});
+
+test("streaming keeps authored italics, nested emphasis, code and document syntax", () => {
+  for (const content of [
+    "*intentional italics*",
+    "***bold and italic***",
+    "**bold with *emphasis* inside**",
+  ]) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, { content, isStreaming: true })
+    );
+    assert.match(html, /<em[ >]/);
+  }
+  const code = renderToStaticMarkup(
+    React.createElement(MarkdownContent, {
+      content: "`**literal*`",
+      isStreaming: true,
+    })
+  );
+  assert.match(code, /<code[^>]*>\*\*literal\*<\/code>/);
+  const document = renderToStaticMarkup(
+    React.createElement(MarkdownContent, {
+      content: "**literal*",
+      mode: "document",
+      isStreaming: true,
+    })
+  );
+  assert.match(document, /<em[ >]/);
+});
+
 test("renders conversation diagrams from graph files without fetching virtual paths", () => {
   const path = "/_artifacts/alice/thread/diagrams/id/example.png";
   const html = render(`![Workflow](${path})`, {

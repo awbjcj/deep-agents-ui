@@ -102,6 +102,10 @@ test(
             .waitFor({ timeout: 8000 });
           assert.equal(new URL(page.url()).pathname, "/chat/login");
           assert.equal(
+            new URL(page.url()).searchParams.get("threadId"),
+            "expired-thread"
+          );
+          assert.equal(
             await page.evaluate(() => localStorage.getItem("deep-agent-auth")),
             null
           );

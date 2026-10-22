@@ -174,7 +174,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     }, [ui]);
 
     return (
-      <div className="relative flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Sticky banner stack lives outside the scroll container so urgent
           notifications (e.g. expired tokens) stay visible while the user
           scrolls long conversations. */}
@@ -192,7 +192,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
           }}
         >
           <div
-            className="mx-auto w-full max-w-[1120px] px-6 pb-6 pt-4"
+            className="mx-auto w-full max-w-[960px] px-4 pb-6 pt-4 sm:px-6"
             ref={contentRef}
           >
             {historyError && (
@@ -218,7 +218,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               </div>
             ) : (
               <>
-                {processedMessages.map((data) => {
+                {processedMessages.map((data, index) => {
                   const messageUi = data.message.id
                     ? uiByMessageId.get(data.message.id)
                     : undefined;
@@ -229,6 +229,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       message={data.message}
                       toolCalls={data.toolCalls}
                       isLoading={isLoading}
+                      isStreaming={
+                        isLoading && index === processedMessages.length - 1
+                      }
                       ui={messageUi}
                       stream={messageUi?.length ? stream : undefined}
                       onResumeInterrupt={resumeInterrupt}
@@ -282,14 +285,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // extends past the top edge of this box. Clipping here would hide it
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
-              "pointer-events-auto mx-4 mb-6 flex flex-shrink-0 flex-col rounded-2xl border border-border/60 bg-card/85 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.35),0_6px_18px_-12px_rgba(15,23,42,0.18)] backdrop-blur-md",
-              "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-[border-color,box-shadow] duration-150",
-              "hover:border-primary/30 hover:shadow-[0_22px_55px_-22px_rgba(15,23,42,0.4),0_8px_22px_-12px_rgba(15,23,42,0.22)]",
+              "pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mb-5",
+              "mx-auto w-[calc(100%-24px)] max-w-[960px] transition-[border-color,box-shadow] duration-150 sm:w-[calc(100%-32px)]",
               "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
             )}
           >
             {(hasTasks || hasFiles) && (
-              <div className="flex max-h-72 flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-sidebar empty:hidden">
+              <div className="flex max-h-[min(18rem,30dvh)] flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-sidebar empty:hidden">
                 {!metaOpen && (
                   <>
                     {(() => {

@@ -66,6 +66,30 @@
   font-display: swap;
 }
 
+/* Register the bundled italic faces: font-synthesis is disabled below, so
+   font-style alone cannot render Markdown emphasis with the upright faces. */
+@font-face {
+  font-family: "Formular";
+  src: url("/fonts/Formular-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Formular";
+  src: url("/fonts/Formular-MediumItalic.woff2") format("woff2");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Formular";
+  src: url("/fonts/Formular-BoldItalic.woff2") format("woff2");
+  font-weight: 600 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 @layer base {
   input:focus,
   textarea:focus,

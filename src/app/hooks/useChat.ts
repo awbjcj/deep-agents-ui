@@ -273,6 +273,16 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
 
+  const history = thread ?? recoverableThread;
+  // A resumed stream can start with only message deltas. Give the SDK its
+  // persisted base before exposing an existing thread to reconnectOnMount;
+  // otherwise those deltas mask the history that arrives later. A thread
+  // created by this stream already has its optimistic state and must stay live.
+  const streamThreadId =
+    threadId && threadId !== createdThreadId && history.data == null
+      ? null
+      : threadId;
+
   // The langgraph-sdk's `useStream` accepts an `onCustomEvent(event)`
   // callback at runtime but doesn't expose it in its public types. We attach
   // the listener via Object.assign so the rest of the options keep their
@@ -282,7 +292,7 @@ export function useChat({
       assistantId: activeAssistant?.assistant_id || "",
       client: client ?? undefined,
       reconnectOnMount: true,
-      threadId: threadId ?? null,
+      threadId: streamThreadId,
       onThreadId: handleThreadCreated,
       defaultHeaders: { "x-auth-scheme": "langsmith" },
       // Enable fetching state history when switching to existing threads
@@ -293,7 +303,7 @@ export function useChat({
       onCreated: handleRunCreated,
       onStop: handleStreamStopped,
       onUpdateEvent: handleUpdateEvent,
-      thread: thread ?? recoverableThread,
+      thread: history,
     },
     { onCustomEvent: handleCustomEvent }
   );
@@ -343,7 +353,6 @@ export function useChat({
     return () => clearTimeout(timer);
   }, [threadId, stream.isThreadLoading]);
 
-  const history = thread ?? recoverableThread;
   const historyError =
     Boolean(history.error) || (threadId !== null && slowThreadId === threadId);
   const retryHistory = useCallback(() => {
@@ -360,7 +369,12 @@ export function useChat({
       additionalKwargs?: Record<string, unknown>,
       delivery?: MessageDelivery
     ) => {
-      if (messageSubmission.current || messageRuns.stopping || !activeAssistant)
+      if (
+        messageSubmission.current ||
+        messageRuns.stopping ||
+        !activeAssistant ||
+        threadId !== streamThreadId
+      )
         return false;
       const newMessage: Message = {
         id: uuidv4(),
@@ -451,6 +465,8 @@ export function useChat({
       submitMessageRun,
       messageRunScope,
       messageRuns.stopping,
+      threadId,
+      streamThreadId,
     ]
   );
 
@@ -941,7 +957,7 @@ export function useChat({
     messageRuns.pendingCount > 0 ||
     messageRuns.stopping ||
     submissionPending;
-  const isThreadLoading = stream.isThreadLoading;
+  const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
   const queuedMessageCount = messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
   const getMessagesMetadata = stream.getMessagesMetadata;

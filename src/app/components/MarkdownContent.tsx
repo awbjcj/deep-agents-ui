@@ -9,6 +9,7 @@ import rehypeKatex from "rehype-katex";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
+import { remarkStreamingEmphasis } from "@/app/utils/streamingMarkdown";
 import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
 import { fileContentToText } from "@/lib/uploads";
 
@@ -48,6 +49,7 @@ const PROSE_CLASS =
   "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden";
 
 const REMARK_PLUGINS = [remarkGfm, remarkMath];
+const STREAMING_REMARK_PLUGINS = [...REMARK_PLUGINS, remarkStreamingEmphasis];
 // KaTeX renders malformed math inline in `errorColor` rather than throwing.
 // Pointing that at the theme token keeps malformed math legible on both themes
 // instead of KaTeX's hard-coded #cc0000.
@@ -586,6 +588,8 @@ interface MarkdownContentProps {
   files?: Record<string, unknown>;
   /** Files preserve authored Markdown; chat also repairs provider dialects. */
   mode?: "assistant" | "document";
+  /** Stabilize incomplete emphasis while this message is receiving tokens. */
+  isStreaming?: boolean;
 }
 
 // Warn on large chat messages. File previews are bounded before reaching here.
@@ -716,7 +720,13 @@ const ARTIFACT_COMPONENTS: Components = {
 };
 
 export const MarkdownContent = React.memo<MarkdownContentProps>(
-  ({ content, className = "", mode = "assistant", files }) => {
+  ({
+    content,
+    className = "",
+    mode = "assistant",
+    files,
+    isStreaming = false,
+  }) => {
     const normalizedContent = useMemo(
       () =>
         mode === "document" ? content : normalizeAssistantMarkdown(content),
@@ -734,7 +744,11 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         )}
         <MarkdownFilesContext.Provider value={files}>
           <ReactMarkdown
-            remarkPlugins={REMARK_PLUGINS}
+            remarkPlugins={
+              isStreaming && mode !== "document"
+                ? STREAMING_REMARK_PLUGINS
+                : REMARK_PLUGINS
+            }
             rehypePlugins={REHYPE_PLUGINS}
             components={ARTIFACT_COMPONENTS}
             urlTransform={urlTransform}

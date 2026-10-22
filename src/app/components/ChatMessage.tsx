@@ -4,6 +4,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { reasoningSummary } from "@/lib/reasoning-summary";
+import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
@@ -44,6 +45,7 @@ interface ChatMessageProps {
   message: Message;
   toolCalls: ToolCall[];
   isLoading?: boolean;
+  isStreaming?: boolean;
   actionRequestsMap?: Map<string, ActionRequest>;
   reviewConfigsMap?: Map<string, ReviewConfig>;
   ui?: any[];
@@ -60,6 +62,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     onUseEvidence,
     toolCalls,
     isLoading,
+    isStreaming,
     actionRequestsMap,
     reviewConfigsMap,
     ui,
@@ -370,24 +373,20 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {reasoning && (
-            <details className="my-3 rounded-md border border-border p-3">
-              <summary className="cursor-pointer text-sm text-muted-foreground">
-                Reasoning summary
-              </summary>
-              <div className="mt-2 max-h-64 overflow-y-auto text-sm">
-                <MarkdownContent content={reasoning} />
-              </div>
-            </details>
+            <ReasoningSummary
+              content={reasoning}
+              isStreaming={isStreaming}
+            />
           )}
           {summary && <ContextSummaryCard summary={summary} />}
           {hasContent && !summary && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
-                  "mt-4 overflow-hidden break-words text-base font-medium leading-[165%]",
+                  "mt-4 min-w-0 max-w-full break-words text-base leading-[165%]",
                   isUser
                     ? "rounded-2xl rounded-br-sm border border-border/60 px-4 py-3 text-foreground shadow-sm"
-                    : "text-primary"
+                    : "font-normal text-foreground"
                 )}
                 style={
                   isUser
@@ -406,6 +405,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   <MarkdownContent
                     content={messageContent}
                     files={files}
+                    isStreaming={isStreaming}
                   />
                 ) : null}
               </div>

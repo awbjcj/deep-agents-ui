@@ -8,7 +8,10 @@ import {
   extractBuildId,
   shouldReloadForBuild,
 } from "../src/app/buildFreshness.ts";
-import { freshAppUrlAfterAuth } from "../src/app/utils/navigationRecovery.ts";
+import {
+  freshAppUrlAfterAuth,
+  loginUrlForConversation,
+} from "../src/app/utils/navigationRecovery.ts";
 import {
   clearStreamReconnectState,
   streamRunStorageKey,
@@ -79,6 +82,21 @@ test("first login enters the app through a cache-busted full navigation", () => 
   assert.equal(
     freshAppUrlAfterAuth("http://localhost:3000/login?return=stale#form", 5678),
     "http://localhost:3000/?_cb=5678"
+  );
+});
+
+test("sign-in preserves only conversation identity through a fresh navigation", () => {
+  const login = loginUrlForConversation(
+    "https://agent.example/chat/?threadId=saved&assistantId=agent&sidebar=1&redirect=https://other.example"
+  );
+  assert.equal(login, "/login?threadId=saved&assistantId=agent");
+  assert.equal(
+    freshAppUrlAfterAuth(`https://agent.example/chat${login}`, 123),
+    "https://agent.example/chat/?threadId=saved&assistantId=agent&_cb=123"
+  );
+  assert.equal(
+    loginUrlForConversation("https://agent.example/chat/"),
+    "/login"
   );
 });
 
