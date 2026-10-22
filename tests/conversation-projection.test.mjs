@@ -3,6 +3,62 @@ import test from "node:test";
 
 import { reconcileConversation } from "../src/app/hooks/internal/conversationProjection.ts";
 
+test("explicit tool errors stay failed rather than appearing completed", () => {
+  const messages = [
+    {
+      type: "ai",
+      id: "a",
+      content: "",
+      tool_calls: [{ id: "tool", name: "read", args: {} }],
+    },
+    {
+      type: "tool",
+      id: "result",
+      tool_call_id: "tool",
+      status: "error",
+      content: "Read failed",
+    },
+  ];
+  const result = reconcileConversation(null, messages, false, false);
+  assert.equal(result[0].toolCalls[0].status, "error");
+  assert.equal(result[0].toolCalls[0].result, "Read failed");
+  assert.equal(
+    reconcileConversation(result, messages, false, true)[0],
+    result[0]
+  );
+});
+
+test("settled unresolved calls stop spinning and do not restart in a later turn", () => {
+  const messages = [
+    {
+      type: "ai",
+      id: "a",
+      content: "",
+      tool_calls: [{ id: "tool", name: "task", args: {} }],
+    },
+  ];
+  const running = reconcileConversation(null, messages, false, true);
+  assert.equal(running[0].toolCalls[0].status, "pending");
+  const stopped = reconcileConversation(running, messages, false, false);
+  assert.equal(stopped[0].toolCalls[0].status, "interrupted");
+  const nextTurn = reconcileConversation(
+    stopped,
+    [...messages, { type: "human", id: "h", content: "Continue" }],
+    false,
+    true
+  );
+  assert.equal(nextTurn[0], stopped[0]);
+  const resumed = reconcileConversation(stopped, messages, false, true);
+  assert.equal(resumed[0].toolCalls[0].status, "pending");
+  const completed = reconcileConversation(
+    stopped,
+    [...messages, { type: "tool", tool_call_id: "tool", content: "Done" }],
+    false,
+    false
+  );
+  assert.equal(completed[0].toolCalls[0].status, "completed");
+});
+
 // The SDK re-creates the messages array and shallow-spreads each message
 // envelope every token, but keeps nested `content`/`tool_calls` references
 // stable for finished messages. `frame()` simulates that: a fresh array of

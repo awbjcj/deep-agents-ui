@@ -66,6 +66,30 @@
   font-display: swap;
 }
 
+/* Register the bundled italic faces: font-synthesis is disabled below, so
+   font-style alone cannot render Markdown emphasis with the upright faces. */
+@font-face {
+  font-family: "Formular";
+  src: url("/fonts/Formular-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Formular";
+  src: url("/fonts/Formular-MediumItalic.woff2") format("woff2");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Formular";
+  src: url("/fonts/Formular-BoldItalic.woff2") format("woff2");
+  font-weight: 600 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 @layer base {
   input:focus,
   textarea:focus,
@@ -312,6 +336,7 @@
       0 10px 10px -5px rgba(10, 10, 10, 0.05);
 
     --transition-base: 200ms ease;
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 
     /* Layout */
     --sidebar-width: 320px;
@@ -348,9 +373,17 @@
     --chart-4: 168 20% 77%;
     --chart-5: 30 100% 54%;
 
-    /* Fenced code blocks (oneDark-based, dark on light page is intentional) */
-    --code-block-bg: #282c34;
-    --code-block-border: #21252b;
+    /* Code surfaces and syntax colors share the active page theme. */
+    --code-block-bg: #f6f7f8;
+    --code-block-fg: #24292f;
+    --code-block-border: #d8dee4;
+    --code-comment: #57606a;
+    --code-keyword: #6639ba;
+    --code-string: #116329;
+    --code-number: #953800;
+    --code-function: #0550ae;
+    --code-property: #a40e26;
+    --code-url: #0a6171;
   }
 
   /* ─── Aptiv brand tokens (dark mode) ──────────────────────────────── */
@@ -546,11 +579,16 @@
     --ring: 177 43% 44%;
     --sidebar: 0 0% 6%;
 
-    /* Fenced code blocks: darker than oneDark's default so blocks blend with
-       the near-black chat surface instead of reading as a bright panel.
-       Border matches the Aptiv dark border token (#2d2d2d). */
     --code-block-bg: #111111;
+    --code-block-fg: #e0e4eb;
     --code-block-border: #2d2d2d;
+    --code-comment: #a0a7b4;
+    --code-keyword: #d2a8ff;
+    --code-string: #9ecea1;
+    --code-number: #f2bd80;
+    --code-function: #79c0ff;
+    --code-property: #ffa198;
+    --code-url: #76d4dc;
   }
 }
 
@@ -663,15 +701,91 @@ code {
   border-radius: 0.25rem;
 }
 
-/* Prism's oneDark theme ships an embossed text-shadow on its code/pre
-   selectors (and inherits to token spans), producing a "shaded"/double-vision
-   glyph in syntax-highlighted blocks. Strip it everywhere as a safety net so
-   highlighted code stays crisp regardless of theme load timing. */
+/* Keep syntax-highlighted glyphs crisp, including nested token spans. */
 pre[class*="language-"],
 pre[class*="language-"] *,
 code[class*="language-"],
 code[class*="language-"] * {
   text-shadow: none !important;
+}
+
+.code-block {
+  color: var(--code-block-fg);
+  background: var(--code-block-bg);
+  border: 1px solid var(--code-block-border);
+  line-height: 1.5;
+  tab-size: 2;
+  text-shadow: none;
+}
+
+.code-block code {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.code-block :is(.token.comment, .token.prolog, .token.cdata, .linenumber) {
+  color: var(--code-comment);
+}
+
+.code-block .token.comment {
+  font-style: italic;
+}
+
+.code-block
+  :is(
+    .token.property,
+    .token.tag,
+    .token.symbol,
+    .token.deleted,
+    .token.selector,
+    .token.important
+  ) {
+  color: var(--code-property);
+}
+
+.code-block :is(.token.keyword, .token.atrule) {
+  color: var(--code-keyword);
+}
+
+.code-block
+  :is(
+    .token.string,
+    .token.char,
+    .token.attr-value,
+    .token.regex,
+    .token.inserted
+  ) {
+  color: var(--code-string);
+}
+
+.code-block
+  :is(
+    .token.number,
+    .token.boolean,
+    .token.constant,
+    .token.class-name,
+    .token.attr-name
+  ) {
+  color: var(--code-number);
+}
+
+.code-block
+  :is(.token.function, .token.operator, .token.variable, .token.builtin) {
+  color: var(--code-function);
+}
+
+.code-block .token.url {
+  color: var(--code-url);
+}
+
+.code-block :is(.token.bold, .token.important) {
+  font-weight: 700;
+}
+
+.code-block .token.italic {
+  font-style: italic;
 }
 
 pre {
@@ -801,6 +915,30 @@ button {
    so users who opt out of motion get instantaneous state changes instead
    of slide/scale/blur entries. */
 @media (prefers-reduced-motion: no-preference) {
+  .agent-activity {
+    transition: opacity 160ms var(--ease-out);
+  }
+
+  @starting-style {
+    .agent-activity {
+      opacity: 0;
+    }
+  }
+
+  .agent-activity-dot {
+    animation: activityPulse 1400ms ease-in-out infinite;
+  }
+
+  @keyframes activityPulse {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -1041,12 +1179,14 @@ button {
   transition: transform 160ms ease;
 }
 
-.aptiv-slider:hover::-webkit-slider-thumb {
-  transform: scale(1.08);
-}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .aptiv-slider:not(:disabled):hover::-webkit-slider-thumb {
+    transform: scale(1.08);
+  }
 
-.aptiv-slider:hover::-moz-range-thumb {
-  transform: scale(1.08);
+  .aptiv-slider:not(:disabled):hover::-moz-range-thumb {
+    transform: scale(1.08);
+  }
 }
 
 .aptiv-slider:disabled {

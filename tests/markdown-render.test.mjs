@@ -11,11 +11,129 @@ import { MarkdownContent } from "../src/app/components/MarkdownContent.tsx";
  * lazy Prism to its Suspense fallback, so highlighted code blocks appear as the
  * plain block variant here — the surrounding structure is identical either way.
  */
-function render(content) {
+function render(content, files) {
   return renderToStaticMarkup(
-    React.createElement(MarkdownContent, { content })
+    React.createElement(MarkdownContent, { content, files })
   );
 }
+
+test("streaming bold never flashes as italic at a partial closing marker", () => {
+  const source = "**Checking the evidence**";
+  for (let length = 1; length <= source.length; length++) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, {
+        content: source.slice(0, length),
+        isStreaming: true,
+      })
+    );
+    assert.doesNotMatch(
+      html,
+      /<em[ >]/,
+      `prefix ${length} must not become italic`
+    );
+    if (length === source.length)
+      assert.match(html, /<strong[^>]*>Checking the evidence<\/strong>/);
+  }
+});
+
+test("streaming keeps authored italics, nested emphasis, code and document syntax", () => {
+  for (const content of [
+    "*intentional italics*",
+    "***bold and italic***",
+    "**bold with *emphasis* inside**",
+  ]) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, { content, isStreaming: true })
+    );
+    assert.match(html, /<em[ >]/);
+  }
+  const code = renderToStaticMarkup(
+    React.createElement(MarkdownContent, {
+      content: "`**literal*`",
+      isStreaming: true,
+    })
+  );
+  assert.match(code, /<code[^>]*>\*\*literal\*<\/code>/);
+  const document = renderToStaticMarkup(
+    React.createElement(MarkdownContent, {
+      content: "**literal*",
+      mode: "document",
+      isStreaming: true,
+    })
+  );
+  assert.match(document, /<em[ >]/);
+});
+
+test("renders conversation diagrams from graph files without fetching virtual paths", () => {
+  const path = "/_artifacts/alice/thread/diagrams/id/example.png";
+  const html = render(`![Workflow](${path})`, {
+    [path]: {
+      content: "aW1hZ2U=",
+      encoding: "base64",
+      mime_type: "image/png",
+      filename: "example.png",
+    },
+  });
+  assert.match(html, /src="data:image\/png;base64,aW1hZ2U="/);
+  assert.match(html, /aria-label="Download example.png"/);
+  assert.doesNotMatch(html, /src="\/_artifacts\//);
+});
+
+test("offers generated skill packages as downloads from the current conversation", () => {
+  const path = "/_artifacts/alice/thread/generated/id/example.skill";
+  const html = render(`[Skill package](${path})`, {
+    [path]: {
+      content: "emlw",
+      encoding: "base64",
+      mime_type: "application/zip",
+      filename: "example.skill",
+    },
+  });
+  assert.match(html, /aria-label="Download example.skill"/);
+  assert.match(html, /Skill package<\/button>/);
+  assert.doesNotMatch(html, /href="\/_artifacts\//);
+});
+
+test("missing conversation artifacts are unavailable instead of fetching a server path", () => {
+  const html = render(
+    "![Missing](/_artifacts/another-user/thread/image.png)",
+    {}
+  );
+  assert.match(html, /disabled=""/);
+  assert.match(html, /file unavailable/);
+  assert.doesNotMatch(html, /<img/);
+});
+
+test("resolves encoded artifact filenames without changing the stored file key", () => {
+  const path = "/_artifacts/alice/thread/generated/id/review [final].md";
+  const html = render(
+    `[Review](${encodeURI(path)
+      .replaceAll("[", "%5B")
+      .replaceAll("]", "%5D")})`,
+    {
+      [path]: {
+        content: "Reviewed",
+        encoding: "utf-8",
+        filename: "review [final].md",
+      },
+    }
+  );
+  assert.match(html, /Download review \[final\].md/);
+  assert.doesNotMatch(html, /file unavailable|disabled=""/);
+});
+
+test("SVG and HTML artifacts remain downloads rather than executable inline content", () => {
+  const path = "/_artifacts/alice/thread/generated/id/image.svg";
+  const html = render(`![SVG](${path})`, {
+    [path]: {
+      content: "PHN2Zy8+",
+      encoding: "base64",
+      mime_type: "image/svg+xml",
+    },
+  });
+  assert.match(html, /Download image.svg/);
+  assert.doesNotMatch(html, /<img|<svg|<iframe|<object/);
+});
 
 /** Extracts the LaTeX source KaTeX round-trips into its MathML annotation. */
 function mathAnnotations(html) {
@@ -51,6 +169,77 @@ test("renders bare LaTeX environments as display math", () => {
 test("renders GFM math code fences as display math", () => {
   const html = render("```math\n\\frac{a}{b}\n```");
   assert.deepEqual(mathAnnotations(html), [String.raw`\frac{a}{b}`]);
+});
+
+test("skill references on consecutive lines remain prose throughout streaming", () => {
+  const content = [
+    "Read /skills/general/skill-creator/SKILL.md (user invoked $skill-creator), preserve unrelated workflows/resources.",
+    "User goal: apply recently approved advanced Adaptive Card style to $jira-story-scrum-master Teams sprint-end reminder.",
+  ].join("\n");
+
+  for (const isStreaming of [false, true]) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, { content, isStreaming })
+    );
+    assert.deepEqual(mathAnnotations(html), []);
+    assert.match(html, /\$skill-creator/);
+    assert.match(html, /\$jira-story-scrum-master/);
+    assert.match(html, /preserve unrelated workflows\/resources\./);
+  }
+
+  const secondReference = content.indexOf("$jira");
+  for (let end = secondReference; end <= content.length; end++) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, {
+        content: content.slice(0, end),
+        isStreaming: true,
+      })
+    );
+    assert.deepEqual(mathAnnotations(html), [], `streamed prefix ${end}`);
+  }
+});
+
+test("currency on consecutive lines stays literal", () => {
+  const html = render("Budget is $100\nand $200 per unit.");
+  assert.deepEqual(mathAnnotations(html), []);
+  assert.match(html, /\$100\nand \$200/);
+});
+
+test("literal dollar references do not consume adjacent equation delimiters", () => {
+  for (const literal of ["$skill-creator", "$5", "$skill-creator costs $5"]) {
+    const html = render(
+      `Use ${literal}. Then $x + 1$ applies\nand $y = 2$ holds.`
+    );
+    assert.deepEqual(mathAnnotations(html), ["x + 1", "y = 2"]);
+    assert.ok(html.includes(literal));
+  }
+});
+
+test("intentional multiline inline math still renders", () => {
+  const html = render("Compute $x +\ny = 2$ here.");
+  assert.deepEqual(mathAnnotations(html), ["x +\ny = 2"]);
+});
+
+test("literal dollars cannot pair with explicit math or protected code", () => {
+  const html = render(
+    [
+      String.raw`Use $skill-creator with \(x\), $$y$$ and ` + "`$HOME`.",
+      String.raw`Then $jira-story-scrum-master and \[z = 2\].`,
+      "",
+      String.raw`\[`,
+      String.raw`\text{cost \$5}`,
+      String.raw`\]`,
+    ].join("\n")
+  );
+  assert.deepEqual(mathAnnotations(html), [
+    "x",
+    "y",
+    "z = 2",
+    String.raw`\text{cost \$5}`,
+  ]);
+  assert.match(html, /<code[^>]*>\$HOME<\/code>/);
+  assert.match(html, /\$skill-creator/);
+  assert.match(html, /\$jira-story-scrum-master/);
 });
 
 // ── Literal characters that must not become formatting ─────────────────────
@@ -107,6 +296,15 @@ test("labels code blocks as focusable regions for keyboard scrolling", () => {
   assert.match(html, /role="region"/);
   assert.match(html, /aria-label="Code block \(js\)"/);
   assert.match(html, /tabindex="0"/i);
+});
+
+test("lazy highlighted code reserves wrapped lines while plain code can scroll", () => {
+  const text = "a".repeat(300);
+  assert.match(
+    render(`\`\`\`js\n${text}\n\`\`\``),
+    /white-space:pre-wrap;word-break:break-all/
+  );
+  assert.match(render(`\`\`\`\n${text}\n\`\`\``), /white-space:pre/);
 });
 
 test("never rewrites math-like or emphasis-like text inside code", () => {

@@ -21,7 +21,10 @@ import {
 import { AccountMenu } from "@/app/components/AccountMenu";
 import { LoadingScreen } from "@/app/components/LoadingScreen";
 import { useHasBeenTrue } from "@/app/hooks/useHasBeenTrue";
+import { useCompactLayout } from "@/app/hooks/useCompactLayout";
+import { loginUrlForConversation } from "@/app/utils/navigationRecovery";
 import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
@@ -49,6 +52,10 @@ import { ThreadList } from "@/app/components/ThreadList";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { ChatProvider } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
+import {
+  createSkillAuthoringRequest,
+  type SkillAuthoringRequest,
+} from "@/lib/skill-authoring-request";
 
 // Heavy, rarely-opened surfaces are code-split out of the initial chunk. The
 // admin console alone is the largest component in the app and is only reachable
@@ -106,14 +113,70 @@ function HomePageInner({
   const { theme } = useTheme();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
+  const compactLayout = useCompactLayout();
 
   const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [expandedPanel, setExpandedPanel] = useState<
+    "workspace" | "admin" | null
+  >(null);
+  const handleSkillEditingChange = useCallback((editing: boolean) => {
+    setExpandedPanel((current) =>
+      editing ? "workspace" : current === "workspace" ? null : current
+    );
+  }, []);
+  const workspaceDirty = useRef<{ accountId: string | null; value: boolean }>({
+    accountId: null,
+    value: false,
+  });
+  const [skillAuthoringRequest, setSkillAuthoringRequest] =
+    useState<SkillAuthoringRequest | null>(null);
+  const handleWorkspaceDirtyChange = useCallback(
+    (value: boolean) => {
+      workspaceDirty.current = { accountId: user?.user_id ?? null, value };
+    },
+    [user?.user_id]
+  );
+  const allowWorkspaceLeave = useCallback(
+    () =>
+      workspaceDirty.current.accountId !== user?.user_id ||
+      !workspaceDirty.current.value ||
+      window.confirm("Discard unsaved skill changes?"),
+    [user?.user_id]
+  );
+  const consumeSkillAuthoringRequest = useCallback(
+    (id: string) =>
+      setSkillAuthoringRequest((previous) =>
+        previous?.id === id ? null : previous
+      ),
+    []
+  );
+  const createWithAgent = useCallback(() => {
+    if (!user || !allowWorkspaceLeave()) return;
+    setSkillAuthoringRequest(
+      createSkillAuthoringRequest(user.user_id, threadId)
+    );
+    workspaceDirty.current = { accountId: user.user_id, value: false };
+    setWorkspaceOpen(false);
+    setExpandedPanel(null);
+    setWorkspaceTab(undefined);
+  }, [allowWorkspaceLeave, user, threadId]);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab | undefined>(
     undefined
   );
   const [adminOpen, setAdminOpen] = useState(false);
+  const overlayPanel =
+    expandedPanel ??
+    (compactLayout
+      ? workspaceOpen
+        ? "workspace"
+        : adminOpen
+        ? "admin"
+        : sidebar
+        ? "threads"
+        : null
+      : null);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const isAdmin = user?.role === "admin";
   const { pendingTokenFocus, requestTokenFocus } = useNotifications();
@@ -132,21 +195,65 @@ function HomePageInner({
   const handleThreadSelect = useCallback(
     (id: string | null) => {
       void setThreadId(id);
+      if (compactLayout) void setSidebar(null);
     },
-    [setThreadId]
+    [setThreadId, setSidebar, compactLayout]
   );
   const handleSidebarClose = useCallback(() => {
     void setSidebar(null);
   }, [setSidebar]);
   const handleWorkspaceClose = useCallback(() => {
+    if (!allowWorkspaceLeave()) return;
+    workspaceDirty.current = { accountId: user?.user_id ?? null, value: false };
     setWorkspaceOpen(false);
+    setExpandedPanel(null);
     setWorkspaceTab(undefined);
-  }, []);
+  }, [allowWorkspaceLeave, user?.user_id]);
   const handleTokenFocusConsumed = useCallback(
     () => requestTokenFocus(null),
     [requestTokenFocus]
   );
-  const handleAdminClose = useCallback(() => setAdminOpen(false), []);
+  const handleAdminClose = useCallback(() => {
+    setAdminOpen(false);
+    setExpandedPanel(null);
+  }, []);
+
+  // Overlay panels keep chat mounted (including an active stream), but move
+  // focus into the visible surface and return it to its trigger on close.
+  useEffect(() => {
+    if (!overlayPanel) return;
+    const previous = document.activeElement;
+    const panelId =
+      overlayPanel === "threads"
+        ? "thread-history"
+        : overlayPanel === "workspace"
+        ? "right-panel"
+        : "admin-panel";
+    document.getElementById(panelId)?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        document.querySelector('[role="dialog"]')
+      )
+        return;
+      event.preventDefault();
+      if (overlayPanel === "threads") handleSidebarClose();
+      else if (overlayPanel === "workspace") handleWorkspaceClose();
+      else handleAdminClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (previous instanceof HTMLElement && previous.isConnected)
+        previous.focus();
+    };
+  }, [
+    overlayPanel,
+    handleSidebarClose,
+    handleWorkspaceClose,
+    handleAdminClose,
+  ]);
 
   const configDialogEverOpened = useHasBeenTrue(configDialogOpen);
   const accountDialogEverOpened = useHasBeenTrue(accountDialogOpen);
@@ -155,6 +262,7 @@ function HomePageInner({
   // pass the service key through so the matching input scrolls into focus.
   useEffect(() => {
     if (pendingTokenFocus) {
+      setExpandedPanel(null);
       setWorkspaceOpen(true);
       setWorkspaceTab("tokens");
       setAdminOpen(false);
@@ -282,16 +390,16 @@ function HomePageInner({
       <Suspense fallback={null}>
         <TokenSetupWizard />
       </Suspense>
-      <div className="flex h-screen flex-col">
+      <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm">
+        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:gap-2 max-sm:px-3">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
             style={{ background: "var(--aptiv-orange)" }}
           />
 
-          <div className="flex min-w-0 items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4 max-sm:gap-2">
             <div className="flex items-center gap-3">
               <img
                 src={
@@ -305,10 +413,10 @@ function HomePageInner({
                 className="h-5 w-auto"
               />
               <span
-                className="h-5 w-px bg-border"
+                className="h-5 w-px bg-border max-lg:hidden"
                 aria-hidden="true"
               />
-              <div className="flex flex-col leading-none">
+              <div className="flex flex-col leading-none max-lg:hidden">
                 <span
                   className="text-[9px] font-bold uppercase tracking-[0.2em]"
                   style={{ color: "var(--aptiv-orange)" }}
@@ -324,11 +432,20 @@ function HomePageInner({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSidebar("1")}
-                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent"
+                aria-label="Threads"
+                onClick={() => {
+                  if (compactLayout) {
+                    if (workspaceOpen && !allowWorkspaceLeave()) return;
+                    setWorkspaceOpen(false);
+                    setAdminOpen(false);
+                    setExpandedPanel(null);
+                  }
+                  void setSidebar("1");
+                }}
+                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
               >
-                <MessagesSquare className="mr-2 h-4 w-4" />
-                Threads
+                <MessagesSquare className="h-4 w-4 sm:mr-2" />
+                <span className="max-sm:hidden">Threads</span>
                 {interruptCount > 0 && (
                   <span
                     className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
@@ -352,7 +469,7 @@ function HomePageInner({
                   type="button"
                   onClick={() => setConfigDialogOpen(true)}
                   aria-label="Switch agent"
-                  className="hidden items-center gap-1.5 rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground lg:inline-flex"
+                  className="hidden items-center gap-1.5 rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground xl:inline-flex"
                 >
                   <span className="font-semibold uppercase tracking-[0.1em]">
                     Agent
@@ -384,26 +501,29 @@ function HomePageInner({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setWorkspaceOpen((v) => {
-                      const next = !v;
-                      if (next) setAdminOpen(false);
-                      else setWorkspaceTab(undefined);
-                      return next;
-                    });
+                    if (workspaceOpen && !allowWorkspaceLeave()) return;
+                    setExpandedPanel(null);
+                    setWorkspaceOpen(!workspaceOpen);
+                    if (!workspaceOpen) {
+                      setAdminOpen(false);
+                      if (compactLayout) void setSidebar(null);
+                    } else setWorkspaceTab(undefined);
                   }}
                   aria-label="Workspace"
                   aria-pressed={workspaceOpen}
                   className={
                     workspaceOpen
-                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:hidden"
-                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:hidden"
+                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
+                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
                   }
                 >
-                  <LayoutPanelLeft className="mr-2 h-4 w-4" />
-                  Workspace
+                  <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
+                  <span className="max-sm:hidden">Workspace</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Models · Tokens · Connectivity</TooltipContent>
+              <TooltipContent>
+                Models · Tools · Skills · Tokens · Connections
+              </TooltipContent>
             </Tooltip>
             {isAdmin && (
               <Tooltip>
@@ -412,14 +532,15 @@ function HomePageInner({
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      setAdminOpen((v) => {
-                        const next = !v;
-                        if (next) {
-                          setWorkspaceOpen(false);
-                          setWorkspaceTab(undefined);
-                        }
-                        return next;
-                      });
+                      if (!adminOpen && workspaceOpen && !allowWorkspaceLeave())
+                        return;
+                      setExpandedPanel(null);
+                      setAdminOpen(!adminOpen);
+                      if (!adminOpen) {
+                        setWorkspaceOpen(false);
+                        setWorkspaceTab(undefined);
+                        if (compactLayout) void setSidebar(null);
+                      }
                     }}
                     aria-label="Admin console"
                     aria-pressed={adminOpen}
@@ -454,16 +575,20 @@ function HomePageInner({
               size="sm"
               onClick={() => setThreadId(null)}
               disabled={!threadId}
-              className="max-sm:hidden"
+              aria-label="New Thread"
+              className="max-lg:px-2"
             >
-              <SquarePen className="h-4 w-4" />
-              New Thread
+              <SquarePen
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
+              <span className="max-lg:hidden">New Thread</span>
             </Button>
             <AccountMenu />
           </div>
         </header>
 
-        <div className="relative flex-1 overflow-hidden">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           <ResizablePanelGroup
             direction="horizontal"
             autoSaveId="standalone-chat"
@@ -475,7 +600,11 @@ function HomePageInner({
                   order={1}
                   defaultSize={25}
                   minSize={20}
-                  className="relative min-w-[380px]"
+                  className="relative min-w-[300px] bg-background max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0"
+                  tabIndex={-1}
+                  role="region"
+                  aria-label="Thread history"
+                  inert={overlayPanel !== null && overlayPanel !== "threads"}
                 >
                   <ThreadList
                     onThreadSelect={handleThreadSelect}
@@ -485,16 +614,20 @@ function HomePageInner({
                     userId={user?.user_id}
                   />
                 </ResizablePanel>
-                <ResizableHandle />
+                <ResizableHandle
+                  className={cn("max-xl:hidden", expandedPanel && "invisible")}
+                />
               </>
             )}
 
             <ResizablePanel
               id="chat"
-              className="relative flex flex-col"
+              className="relative flex min-w-0 flex-col max-xl:!w-full"
               order={2}
+              inert={overlayPanel !== null}
             >
               <ChatProvider
+                key={user?.user_id ?? "signed-out"}
                 activeAssistant={assistant}
                 onHistoryRevalidate={handleHistoryRevalidate}
                 userId={user?.user_id}
@@ -502,21 +635,33 @@ function HomePageInner({
                 analysisEngine={config.analysisEngine}
               >
                 <ChatInterface
+                  key={user?.user_id ?? "signed-out"}
                   assistant={assistant}
                   userId={user?.user_id}
+                  skillAuthoringRequest={skillAuthoringRequest}
+                  onSkillAuthoringRequestConsumed={consumeSkillAuthoringRequest}
                 />
               </ChatProvider>
             </ResizablePanel>
 
             {workspaceOpen && (
               <>
-                <ResizableHandle />
+                <ResizableHandle
+                  className={cn("max-xl:hidden", expandedPanel && "invisible")}
+                />
                 <ResizablePanel
                   id="right-panel"
                   order={3}
                   defaultSize={28}
                   minSize={22}
-                  className="relative min-w-[360px]"
+                  className={cn(
+                    "relative min-w-[360px] max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0 max-xl:bg-background",
+                    expandedPanel === "workspace" &&
+                      "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
+                  )}
+                  tabIndex={-1}
+                  role="region"
+                  aria-label="Workspace"
                 >
                   <Suspense fallback={<PanelFallback label="Workspace" />}>
                     <WorkspacePanel
@@ -524,6 +669,15 @@ function HomePageInner({
                       initialTokenFocus={pendingTokenFocus}
                       onTokenFocusConsumed={handleTokenFocusConsumed}
                       onClose={handleWorkspaceClose}
+                      onCreateWithAgent={createWithAgent}
+                      onDirtyChange={handleWorkspaceDirtyChange}
+                      expanded={expandedPanel === "workspace"}
+                      onToggleExpanded={() =>
+                        setExpandedPanel((current) =>
+                          current === "workspace" ? null : "workspace"
+                        )
+                      }
+                      onEditingChange={handleSkillEditingChange}
                     />
                   </Suspense>
                 </ResizablePanel>
@@ -531,16 +685,33 @@ function HomePageInner({
             )}
             {adminOpen && isAdmin && (
               <>
-                <ResizableHandle className="max-sm:hidden" />
+                <ResizableHandle
+                  className={cn("max-xl:hidden", expandedPanel && "invisible")}
+                />
                 <ResizablePanel
                   id="admin-panel"
                   order={4}
                   defaultSize={34}
                   minSize={30}
-                  className="relative min-w-[500px] max-sm:absolute max-sm:inset-0 max-sm:z-50 max-sm:!w-full max-sm:min-w-0"
+                  className={cn(
+                    "relative min-w-[500px] max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0 max-xl:bg-background",
+                    expandedPanel === "admin" &&
+                      "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
+                  )}
+                  tabIndex={-1}
+                  role="region"
+                  aria-label="Admin console"
                 >
                   <Suspense fallback={<PanelFallback label="Admin console" />}>
-                    <AdminPanel onClose={handleAdminClose} />
+                    <AdminPanel
+                      onClose={handleAdminClose}
+                      expanded={expandedPanel === "admin"}
+                      onToggleExpanded={() =>
+                        setExpandedPanel((current) =>
+                          current === "admin" ? null : "admin"
+                        )
+                      }
+                    />
                   </Suspense>
                 </ResizablePanel>
               </>
@@ -561,7 +732,7 @@ function HomePageContent() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push("/login");
+      router.replace(loginUrlForConversation(window.location.href));
     }
   }, [authLoading, user, router]);
 
@@ -569,20 +740,18 @@ function HomePageContent() {
     const savedConfig = getConfig();
     if (savedConfig && savedConfig.assistantId) {
       setConfig(savedConfig);
-      if (!assistantId) {
-        setAssistantId(savedConfig.assistantId);
-      }
     } else if (getDeploymentUrl()) {
       setConfigDialogOpen(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (config && !assistantId) {
+    // nuqs URL writes can cancel an in-flight login redirect. Restore the
+    // saved assistant only after authentication permits staying on this page.
+    if (!authLoading && user && config && !assistantId) {
       setAssistantId(config.assistantId);
     }
-  }, [config, assistantId, setAssistantId]);
+  }, [authLoading, user, config, assistantId, setAssistantId]);
 
   const handleSaveConfig = useCallback((newConfig: StandaloneConfig) => {
     saveConfig(newConfig);

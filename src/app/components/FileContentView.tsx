@@ -3,6 +3,8 @@
 import React, { Suspense, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { fileLanguage, filePreview, isMarkdownFile } from "@/lib/file-preview";
+import { jsonFilePreview } from "@/lib/json-file-preview";
+import { cn } from "@/lib/utils";
 import {
   defaultMarkdownViewMode,
   markdownPreviewContent,
@@ -18,13 +20,23 @@ export const FileContentView = React.memo(function FileContentView({
   path: string;
   content: string;
 }) {
+  const language = fileLanguage(path);
+  const isJson = language === "json";
   // Conversation-history artifacts default to Preview (rebuilt into a
   // transcript); legacy plain-text tool records saved as `.md` without
   // Markdown structure default to Source so they aren't reflowed.
   const [showSource, setShowSource] = useState(
-    () => defaultMarkdownViewMode(path, content) === "source"
+    () => !isJson && defaultMarkdownViewMode(path, content) === "source"
   );
   const preview = useMemo(() => filePreview(content), [content]);
+  const jsonPreview = useMemo(
+    () => (isJson ? jsonFilePreview(content) : null),
+    [isJson, content]
+  );
+  const formattedJson = !showSource ? jsonPreview : null;
+  const displayedPreview = formattedJson?.text ?? preview;
+  const isTruncated =
+    formattedJson?.truncated ?? preview.length < content.length;
   const isMarkdown = isMarkdownFile(path);
   // Stored files are never rewritten; the transcript rebuild and gutter
   // stripping are display-only and operate on the (possibly bounded) preview.
@@ -32,21 +44,29 @@ export const FileContentView = React.memo(function FileContentView({
     () => (isMarkdown ? markdownPreviewContent(path, preview) : preview),
     [isMarkdown, path, preview]
   );
-  const language = fileLanguage(path);
   const plain = (
     <pre
       role="region"
-      aria-label="File source"
+      aria-label={
+        formattedJson && !formattedJson.invalid
+          ? "Formatted JSON"
+          : "File source"
+      }
       tabIndex={0}
-      className="max-w-full overflow-auto rounded-md bg-secondary p-4 font-mono text-sm leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "code-block max-w-full overflow-auto rounded-md p-4 font-mono text-sm leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isJson && "whitespace-pre-wrap [overflow-wrap:anywhere]"
+      )}
     >
-      <code>{preview}</code>
+      <code className={isJson ? "text-[length:inherit]" : undefined}>
+        {displayedPreview}
+      </code>
     </pre>
   );
 
   return (
     <>
-      {isMarkdown && (
+      {(isMarkdown || isJson) && (
         <div
           role="group"
           aria-label="File view"
@@ -58,7 +78,7 @@ export const FileContentView = React.memo(function FileContentView({
             aria-pressed={!showSource}
             onClick={() => setShowSource(false)}
           >
-            Preview
+            {isJson ? "Formatted" : "Preview"}
           </Button>
           <Button
             size="sm"
@@ -70,14 +90,24 @@ export const FileContentView = React.memo(function FileContentView({
           </Button>
         </div>
       )}
-      {preview.length < content.length && (
+      {formattedJson?.invalid && (
+        <p
+          role="status"
+          className="mb-4 text-sm text-muted-foreground"
+        >
+          This file contains incomplete or invalid JSON. Showing the original
+          source.
+        </p>
+      )}
+      {isTruncated && (
         <p
           role="status"
           className="mb-4 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground"
         >
-          Preview is shortened to {preview.length.toLocaleString()} of{" "}
-          {content.length.toLocaleString()} characters. Copy or download the
-          complete file.
+          {formattedJson
+            ? "Preview is shortened."
+            : `Preview is shortened to ${preview.length.toLocaleString()} of ${content.length.toLocaleString()} characters.`}{" "}
+          Copy or download the complete file.
         </p>
       )}
       {isMarkdown && !showSource ? (
@@ -85,7 +115,7 @@ export const FileContentView = React.memo(function FileContentView({
           content={markdownPreview}
           mode="document"
         />
-      ) : language === "text" || preview.length > 20_000 ? (
+      ) : language === "text" || displayedPreview.length > 20_000 ? (
         plain
       ) : (
         <Suspense fallback={plain}>
@@ -97,11 +127,27 @@ export const FileContentView = React.memo(function FileContentView({
               fontSize: "0.875rem",
               textShadow: "none",
             }}
-            codeTagProps={{ style: { textShadow: "none" } }}
+            codeTagProps={{
+              style: {
+                textShadow: "none",
+                fontSize: "inherit",
+                overflowWrap: "anywhere",
+              },
+            }}
+            // Prism's flex rows shrink individual tokens beside long strings.
+            // Block rows keep source text intact with a separate number gutter.
+            lineProps={{
+              style: {
+                display: "block",
+                position: "relative",
+                paddingLeft: "3.5em",
+              },
+            }}
+            lineNumberStyle={{ position: "absolute", left: 0, width: "3em" }}
             showLineNumbers
             wrapLongLines
           >
-            {preview}
+            {displayedPreview}
           </ThemedSyntaxHighlighter>
         </Suspense>
       )}

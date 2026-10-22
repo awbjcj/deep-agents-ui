@@ -6,8 +6,11 @@ import test from "node:test";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "out");
-const EVIDENCE = join(ROOT, "docs", "evidence", "source-images");
+const EVIDENCE =
+  process.env.SOURCE_IMAGE_EVIDENCE ??
+  join(ROOT, "docs", "evidence", "source-images");
 const RUN_BROWSER = process.env.SOURCE_IMAGE_BROWSER_TEST === "1";
+const RUN_GRAPH_ONLY = process.env.GRAPH_ATTACHMENT_BROWSER_TEST === "1";
 const SOURCE_IMAGE_BYTES =
   "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAYAAABOzvzpAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAE2SURBVGhD5ZI5DgIxEAT9EiICAt7Ca4j4OIJkkZEajZq9bffY3qASR101DuH+GDx5vt4unC7XL4EHqeFhpYH44QKwON4PEWBKPtJ1gDlx0G2AJXHQXYA1V7d0E2CrOOgiwF75SNMBUsRBswFSxUFzAXJc3dJMgNzioIkAJcRB1QFKXd1SZQCFOKgugFI+Uk0AtTioIoCHOHAN4HV1S+AHBSw+3M5uyAPUJB+RBWBxvPMgNZIAY+KAB6kpGmDq6hYepKZIgDXigAepyR5grTjgQWqyBdhydQsPUpMcYK844EFqkgKkykd4kJpdAXKIAx6kZnOAXOKAB6lZHSDn1S08SM1igFLigAepmQ1QWj7Cg9SMBlCIAx6k5i+AShzwIDW/AMqrW3iQmuAlDniQmu8P8BAHPEjNB49qD8G9VROZAAAAAElFTkSuQmCC";
 const SOURCE_ARTIFACT_PATH =
@@ -171,18 +174,20 @@ function json(route, body, status = 200) {
 }
 
 function sourcePolicy(tier, source) {
+  const customGraphPolicy = tier === "developer" && source === "graph";
   return {
     tier,
     source,
-    enabled: false,
+    enabled: customGraphPolicy,
+    documents_enabled: customGraphPolicy,
     default_scope: "embedded",
-    allow_all: false,
+    allow_all: customGraphPolicy,
   };
 }
 
 function effectivePolicies() {
   return Object.fromEntries(
-    ["jira", "polarion", "confluence"].map((source, index) => [
+    ["jira", "polarion", "confluence", "graph"].map((source, index) => [
       source,
       {
         enabled: index === 0,
@@ -233,8 +238,10 @@ async function staticServer() {
 }
 
 test(
-  "rendered source policy and attachment controls preserve their browser contracts",
-  { skip: !RUN_BROWSER },
+  RUN_GRAPH_ONLY
+    ? "Graph image and document grants save and roll back independently"
+    : "rendered source policy and attachment controls preserve their browser contracts",
+  { skip: !RUN_BROWSER && !RUN_GRAPH_ONLY },
   async () => {
     const playwrightModule =
       process.env.SOURCE_IMAGE_PLAYWRIGHT_MODULE ?? "playwright";
@@ -483,7 +490,7 @@ test(
         });
       }
       const policyMatch = path.match(
-        /^\/api\/admin\/tier-source-images\/([^/]+)\/(jira|polarion|confluence)$/
+        /^\/api\/admin\/tier-source-images\/([^/]+)\/(jira|polarion|confluence|graph)$/
       );
       if (policyMatch) {
         const [, tier, source] = policyMatch;
@@ -647,7 +654,11 @@ test(
               tab.textBounds.right <= tab.tabBounds.right + 1,
             `${viewport} tab label escaped its button: ${JSON.stringify(tab)}`
           );
-          if (tab.iconBounds && tab.iconBounds.width > 0) {
+          assert(
+            tab.iconBounds && tab.iconBounds.width > 0,
+            `${viewport} tab icon is hidden: ${JSON.stringify(tab)}`
+          );
+          if (tab.iconBounds) {
             const bounds = tab.iconBounds;
             assert(
               bounds.left >= tab.tabBounds.left - 1 &&
@@ -781,6 +792,8 @@ test(
       assert.deepEqual(connectivityPutBodies.at(-1), {
         embedding_provider: "copilot",
       });
+      // Pointer hover pauses toast dismissal; keep timing independent of its position.
+      await page.mouse.move(0, 0);
       await page
         .getByText("Embeddings now use copilot-api", { exact: true })
         .waitFor({ state: "hidden", timeout: 6_000 });
@@ -794,7 +807,9 @@ test(
       await sourcesTab.focus();
       await page.keyboard.press("Enter");
       await assert.doesNotReject(() =>
-        page.getByRole("heading", { name: "Source images" }).waitFor()
+        page
+          .getByRole("heading", { name: "Source images and attachments" })
+          .waitFor()
       );
       assert.equal(await sourcesTab.getAttribute("aria-selected"), "true");
 
@@ -832,19 +847,52 @@ test(
         'section[aria-labelledby="source-image-tier-user"]'
       );
       await userSection.getByText("Jira", { exact: true }).waitFor();
-      assert.equal(
-        await userSection.getByText(/^(Issue|Work item|Page) content$/).count(),
-        3
+      const graphDocuments = userSection.getByRole("switch", {
+        name: "Microsoft Graph documents for user tier",
+      });
+      const graphImages = userSection.getByRole("switch", {
+        name: "Microsoft Graph images for user tier",
+      });
+      await graphDocuments.click();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("#source-images-user-graph-documents_enabled")
+            ?.disabled
       );
+      assert.deepEqual(putBodies.at(-1), {
+        tier: "user",
+        source: "graph",
+        body: {
+          enabled: false,
+          documents_enabled: true,
+          default_scope: "embedded",
+          allow_all: false,
+        },
+      });
+      assert.equal(await graphImages.getAttribute("aria-checked"), "false");
+      failNextSource = "graph";
+      await graphDocuments.click();
+      await userSection
+        .getByRole("alert")
+        .filter({ hasText: "Simulated save failure" })
+        .waitFor();
+      assert.equal(await graphDocuments.getAttribute("aria-checked"), "true");
+      await graphImages.click();
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("#source-images-user-graph-enabled")?.disabled
+      );
+      assert.equal(await graphDocuments.getAttribute("aria-checked"), "true");
+      if (RUN_GRAPH_ONLY) return;
 
       const jiraEnabled = userSection.getByRole("switch", {
-        name: "Jira source images for user tier",
+        name: "Jira images for user tier",
       });
       const jiraDefault = userSection.getByRole("combobox", {
-        name: "Default Jira image fetch for user tier",
+        name: "Default Jira attachment fetch for user tier",
       });
       const jiraAllowAll = userSection.getByRole("switch", {
-        name: "Allow user users to fetch all Jira images",
+        name: "Allow all Jira attachments for user tier",
       });
       assert.equal(await jiraDefault.isDisabled(), true);
       assert.equal(await jiraAllowAll.isDisabled(), true);
@@ -882,6 +930,7 @@ test(
       );
       assert.deepEqual(allBody?.body, {
         enabled: true,
+        documents_enabled: false,
         default_scope: "all",
         allow_all: true,
       });
@@ -892,7 +941,7 @@ test(
         (element) => element?.getAttribute("aria-busy") === "false",
         await jiraCard.elementHandle()
       );
-      assert.equal(await jiraDefault.textContent(), "Embedded");
+      assert.equal(await jiraDefault.textContent(), "Embedded only");
       assert.equal(await jiraAllowAll.getAttribute("aria-checked"), "false");
 
       const adminPanel = page.locator("#admin-panel");
@@ -902,10 +951,10 @@ test(
       });
 
       const confluenceEnabled = userSection.getByRole("switch", {
-        name: "Confluence source images for user tier",
+        name: "Confluence images for user tier",
       });
       const polarionEnabled = userSection.getByRole("switch", {
-        name: "Polarion source images for user tier",
+        name: "Polarion images for user tier",
       });
       failNextSource = "confluence";
       await confluenceEnabled.focus();
@@ -958,8 +1007,8 @@ test(
       const allowAllBox = await jiraAllowAll.boundingBox();
       assert(enabledBox && defaultBox && allowAllBox);
       assert(
-        defaultBox.x > enabledBox.x + enabledBox.width &&
-          allowAllBox.y > enabledBox.y + enabledBox.height,
+        defaultBox.y > enabledBox.y + enabledBox.height &&
+          allowAllBox.x > defaultBox.x,
         "narrow layout should keep primary controls readable in two columns"
       );
       await page.screenshot({

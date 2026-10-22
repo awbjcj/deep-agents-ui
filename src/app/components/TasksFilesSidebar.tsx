@@ -9,6 +9,7 @@ import {
   imageMimeForPath,
 } from "@/lib/uploads";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
+import { fileMetadata } from "@/lib/file-downloads";
 import { cn } from "@/lib/utils";
 import {
   safeSourcePageUrl,
@@ -55,6 +56,7 @@ export function FilesPopover({
         ? {
             path: selectedPath,
             content: fileContentToText(selectedContent),
+            ...fileMetadata(selectedContent),
             sourceImage: selectedSource,
           }
         : null,

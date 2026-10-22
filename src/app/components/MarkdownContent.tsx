@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ImageOff } from "lucide-react";
+import { ImageOff, Maximize2 } from "lucide-react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -9,8 +9,17 @@ import rehypeKatex from "rehype-katex";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
+import { remarkStreamingEmphasis } from "@/app/utils/streamingMarkdown";
+import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
+import { fileContentToText } from "@/lib/uploads";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
+import { ImagePreviewDialog } from "./ImagePreviewDialog";
+
+const MarkdownLinkContext = React.createContext(false);
+const MarkdownFilesContext = React.createContext<
+  Record<string, unknown> | undefined
+>(undefined);
 
 const PROSE_CLASS =
   // Base prose typography with dark-mode-aware inversion. We override the
@@ -40,6 +49,7 @@ const PROSE_CLASS =
   "[&_.katex-display]:my-4 [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden";
 
 const REMARK_PLUGINS = [remarkGfm, remarkMath];
+const STREAMING_REMARK_PLUGINS = [...REMARK_PLUGINS, remarkStreamingEmphasis];
 // KaTeX renders malformed math inline in `errorColor` rather than throwing.
 // Pointing that at the theme token keeps malformed math legible on both themes
 // instead of KaTeX's hard-coded #cc0000.
@@ -97,6 +107,22 @@ const INLINE_CODE_CLASS =
   "rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono " +
   "text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]";
 
+const CODE_BLOCK_STYLE: React.CSSProperties = {
+  margin: 0,
+  maxWidth: "100%",
+  overflowX: "auto",
+  padding: "1em",
+  lineHeight: 1.5,
+  fontSize: "0.95em",
+  fontFamily: "var(--font-family-mono)",
+  fontWeight: 500,
+  fontFeatureSettings: '"ss01", "cv11"',
+  color: "var(--code-block-fg)",
+  background: "var(--code-block-bg)",
+  border: "1px solid var(--code-block-border)",
+  textShadow: "none",
+};
+
 /**
  * Collects the raw text of a markdown subtree.
  *
@@ -129,19 +155,40 @@ function codeLanguage(children: React.ReactNode): string | undefined {
 }
 
 /**
- * Unhighlighted block code. Horizontally scrollable, so it is also a focusable
- * labelled region — otherwise keyboard users cannot reach the overflow
- * (WCAG 2.1.1).
+ * Keep lazy code's wrapping and metrics stable until Prism arrives. Plain and
+ * oversized code stays horizontally scrollable in a focusable labelled region.
  */
-function PlainCodeBlock({ text, label }: { text: string; label: string }) {
+function PlainCodeBlock({
+  text,
+  label,
+  wrap = false,
+}: {
+  text: string;
+  label: string;
+  wrap?: boolean;
+}) {
   return (
     <pre
       role="region"
       aria-label={label}
       tabIndex={0}
-      className="my-0 max-w-full overflow-x-auto rounded-md border border-border bg-secondary p-3 text-[0.9em] leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="code-block my-0 max-w-full overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      style={CODE_BLOCK_STYLE}
     >
-      <code className="font-mono text-current">{text}</code>
+      <code
+        className="text-current"
+        style={{
+          fontFamily: "inherit",
+          fontSize: "inherit",
+          lineHeight: "inherit",
+          fontWeight: "inherit",
+          whiteSpace: wrap ? "pre-wrap" : "pre",
+          wordBreak: wrap ? "break-all" : undefined,
+          overflowWrap: wrap ? "break-word" : undefined,
+        }}
+      >
+        {text}
+      </code>
     </pre>
   );
 }
@@ -167,6 +214,7 @@ function MarkdownImage({
   ...props
 }: React.ImgHTMLAttributes<HTMLImageElement> & { src: string }) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const insideLink = React.useContext(MarkdownLinkContext);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading"
   );
@@ -202,7 +250,7 @@ function MarkdownImage({
   return (
     <span
       className={cn(
-        "not-prose my-4 block overflow-hidden rounded-md border",
+        "not-prose relative my-4 block overflow-hidden rounded-md border",
         isError
           ? "border-dashed border-border bg-muted/30"
           : "border-border bg-muted/30",
@@ -270,6 +318,26 @@ function MarkdownImage({
           status === "loaded" ? "opacity-100" : "opacity-0"
         )}
       />
+      {status === "loaded" && !insideLink && (
+        <ImagePreviewDialog
+          src={src}
+          alt={alt ?? ""}
+        >
+          <button
+            type="button"
+            aria-label={`Preview image: ${alt || "Image"}`}
+            className="absolute inset-0 cursor-zoom-in rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <span className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-md border border-border bg-background/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm">
+              <Maximize2
+                className="size-3.5"
+                aria-hidden="true"
+              />
+              Expand
+            </span>
+          </button>
+        </ImagePreviewDialog>
+      )}
     </span>
   );
 }
@@ -296,6 +364,7 @@ const COMPONENTS: Components = {
               <PlainCodeBlock
                 text={text}
                 label={label}
+                wrap
               />
             }
           >
@@ -313,10 +382,11 @@ const COMPONENTS: Components = {
                   background: "transparent",
                   border: 0,
                   borderRadius: 0,
-                  // oneDark sets an embossed text-shadow on its code/pre
-                  // selectors that reads as a "shaded"/double-vision glyph.
-                  // Strip it so code renders crisp on first and later paints.
                   textShadow: "none",
+                  fontFamily: "inherit",
+                  fontSize: "inherit",
+                  lineHeight: "inherit",
+                  fontWeight: "inherit",
                 },
               }}
               lineProps={{
@@ -326,18 +396,7 @@ const COMPONENTS: Components = {
                   overflowWrap: "break-word",
                 },
               }}
-              customStyle={{
-                margin: 0,
-                maxWidth: "100%",
-                overflowX: "auto",
-                fontSize: "0.95em",
-                fontFamily: "var(--font-family-mono)",
-                fontWeight: 500,
-                fontFeatureSettings: '"ss01", "cv11"',
-                background: "var(--code-block-bg)",
-                border: "1px solid var(--code-block-border)",
-                textShadow: "none",
-              }}
+              customStyle={CODE_BLOCK_STYLE}
             >
               {text}
             </SyntaxHighlighter>
@@ -368,7 +427,9 @@ const COMPONENTS: Components = {
         rel={isInDocument ? undefined : "noopener noreferrer"}
         className="text-primary no-underline hover:underline"
       >
-        {children}
+        <MarkdownLinkContext.Provider value={true}>
+          {children}
+        </MarkdownLinkContext.Provider>
       </a>
     );
   },
@@ -523,15 +584,149 @@ const COMPONENTS: Components = {
 interface MarkdownContentProps {
   content: string;
   className?: string;
+  /** Conversation files resolve virtual artifact links without server requests. */
+  files?: Record<string, unknown>;
   /** Files preserve authored Markdown; chat also repairs provider dialects. */
   mode?: "assistant" | "document";
+  /** Stabilize incomplete emphasis while this message is receiving tokens. */
+  isStreaming?: boolean;
 }
 
 // Warn on large chat messages. File previews are bounded before reaching here.
 const LARGE_CONTENT_THRESHOLD = 200_000;
 
+function artifactPath(url: unknown): string | null {
+  if (typeof url !== "string" || !url.startsWith("/_artifacts/")) return null;
+  try {
+    return decodeURIComponent(url);
+  } catch {
+    return url;
+  }
+}
+
+function ArtifactDownload({
+  path,
+  value,
+  children,
+}: {
+  path: string;
+  value: unknown;
+  children: React.ReactNode;
+}) {
+  const [error, setError] = useState(false);
+  const available = value !== undefined && value !== null;
+  const metadata = fileMetadata(value);
+  const filename = metadata.filename || path.split("/").pop() || "download";
+  return (
+    <span>
+      <button
+        type="button"
+        disabled={!available}
+        aria-label={`Download ${filename}`}
+        className="text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground"
+        onClick={() => {
+          try {
+            saveBlob(
+              fileBlob(
+                fileContentToText(value),
+                metadata.encoding,
+                metadata.mimeType
+              ),
+              filename
+            );
+            setError(false);
+          } catch {
+            setError(true);
+          }
+        }}
+      >
+        <MarkdownLinkContext.Provider value={true}>
+          {children}
+        </MarkdownLinkContext.Provider>
+      </button>
+      {!available && (
+        <span className="text-xs text-muted-foreground">
+          {" "}
+          (file unavailable)
+        </span>
+      )}
+      {error && (
+        <span
+          role="alert"
+          className="text-xs text-muted-foreground"
+        >
+          {" "}
+          Download failed.
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Keep renderer component identities stable when any conversation file changes.
+// Context updates their data without remounting images or closing open previews.
+const ARTIFACT_COMPONENTS: Components = {
+  ...COMPONENTS,
+  a: function MarkdownArtifactLink(props) {
+    const files = React.useContext(MarkdownFilesContext);
+    const path = artifactPath(props.href);
+    if (!path)
+      return React.createElement(
+        COMPONENTS.a as React.ComponentType<typeof props>,
+        props
+      );
+    const value = files && Object.hasOwn(files, path) ? files[path] : undefined;
+    return (
+      <ArtifactDownload
+        path={path}
+        value={value}
+      >
+        {props.children}
+      </ArtifactDownload>
+    );
+  },
+  img: function MarkdownArtifactImage(props) {
+    const files = React.useContext(MarkdownFilesContext);
+    const path = artifactPath(props.src);
+    if (!path)
+      return React.createElement(
+        COMPONENTS.img as React.ComponentType<typeof props>,
+        props
+      );
+    const value = files && Object.hasOwn(files, path) ? files[path] : undefined;
+    const metadata = fileMetadata(value);
+    const content = fileContentToText(value);
+    const canPreview =
+      metadata.encoding === "base64" &&
+      /^image\/(png|jpeg|gif|webp)$/.test(metadata.mimeType || "") &&
+      content;
+    return (
+      <span>
+        {canPreview && (
+          <MarkdownImage
+            src={`data:${metadata.mimeType};base64,${content}`}
+            alt={props.alt}
+          />
+        )}
+        <ArtifactDownload
+          path={path}
+          value={value}
+        >
+          {props.alt || metadata.filename || "Download image"}
+        </ArtifactDownload>
+      </span>
+    );
+  },
+};
+
 export const MarkdownContent = React.memo<MarkdownContentProps>(
-  ({ content, className = "", mode = "assistant" }) => {
+  ({
+    content,
+    className = "",
+    mode = "assistant",
+    files,
+    isStreaming = false,
+  }) => {
     const normalizedContent = useMemo(
       () =>
         mode === "document" ? content : normalizeAssistantMarkdown(content),
@@ -539,7 +734,6 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
     );
 
     const isLarge = normalizedContent.length > LARGE_CONTENT_THRESHOLD;
-
     return (
       <div className={cn(PROSE_CLASS, className)}>
         {isLarge && (
@@ -548,14 +742,20 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
             {normalizedContent.length.toLocaleString()} characters).
           </div>
         )}
-        <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          rehypePlugins={REHYPE_PLUGINS}
-          components={COMPONENTS}
-          urlTransform={urlTransform}
-        >
-          {normalizedContent}
-        </ReactMarkdown>
+        <MarkdownFilesContext.Provider value={files}>
+          <ReactMarkdown
+            remarkPlugins={
+              isStreaming && mode !== "document"
+                ? STREAMING_REMARK_PLUGINS
+                : REMARK_PLUGINS
+            }
+            rehypePlugins={REHYPE_PLUGINS}
+            components={ARTIFACT_COMPONENTS}
+            urlTransform={urlTransform}
+          >
+            {normalizedContent}
+          </ReactMarkdown>
+        </MarkdownFilesContext.Provider>
       </div>
     );
   }

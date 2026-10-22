@@ -109,8 +109,13 @@ export function TokenManagementSidebar({
     const targetId = `${initialFocus}Token`;
     const el = document.getElementById(targetId) as HTMLInputElement | null;
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.focus();
+      el.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "center",
+      });
+      el.focus({ preventScroll: true });
     }
     onFocusConsumed?.();
   }, [initialFocus, isLoading, onFocusConsumed]);

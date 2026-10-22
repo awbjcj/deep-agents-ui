@@ -36,7 +36,10 @@ export function useRecoverableThread<
     key,
     async () => {
       if (!threadId) return [];
-      return client.threads.getHistory<StateType>(threadId, { limit: 10 });
+      // This UI follows the current conversation, not historical branches.
+      // Each checkpoint contains the full state; older copies waste bandwidth
+      // and can lead the SDK's branch selection away from the newest head.
+      return client.threads.getHistory<StateType>(threadId, { limit: 1 });
     },
     {
       revalidateOnFocus: false,
@@ -61,7 +64,7 @@ export function useRecoverableThread<
           ["thread-history", client, targetThreadId],
           () =>
             client.threads.getHistory<StateType>(targetThreadId, {
-              limit: 10,
+              limit: 1,
             }),
           { revalidate: false }
         );

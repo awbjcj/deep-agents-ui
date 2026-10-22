@@ -1,13 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { applyPolicyEdit } from "../src/lib/source-images.ts";
+import {
+  applyPolicyEdit,
+  SOURCE_IMAGE_SOURCES,
+  SOURCE_IMAGE_LABELS,
+} from "../src/lib/source-images.ts";
 
 const embeddedPolicy = {
   enabled: true,
+  documents_enabled: false,
   default_scope: "embedded",
   allow_all: false,
 };
+
+test("Graph is available in the shared admin, connectivity, and file source catalog", () => {
+  assert(SOURCE_IMAGE_SOURCES.includes("graph"));
+  assert.equal(SOURCE_IMAGE_LABELS.graph, "Microsoft Graph");
+});
+
+test("image and document switches preserve each other's permissions and scope", () => {
+  const documents = applyPolicyEdit(embeddedPolicy, {
+    field: "documents_enabled",
+    value: true,
+  });
+  assert.deepEqual(documents, { ...embeddedPolicy, documents_enabled: true });
+  assert.deepEqual(
+    applyPolicyEdit(documents, { field: "enabled", value: false }),
+    {
+      ...documents,
+      enabled: false,
+    }
+  );
+  assert.deepEqual(
+    applyPolicyEdit(documents, { field: "documents_enabled", value: false }),
+    embeddedPolicy
+  );
+});
 
 test("selecting all attachments also grants permission to request all", () => {
   assert.deepEqual(
@@ -15,7 +44,12 @@ test("selecting all attachments also grants permission to request all", () => {
       field: "default_scope",
       value: "all",
     }),
-    { enabled: true, default_scope: "all", allow_all: true }
+    {
+      enabled: true,
+      documents_enabled: false,
+      default_scope: "all",
+      allow_all: true,
+    }
   );
 });
 
@@ -25,7 +59,12 @@ test("revoking all-attachment permission restores the embedded default", () => {
       { enabled: true, default_scope: "all", allow_all: true },
       { field: "allow_all", value: false }
     ),
-    { enabled: true, default_scope: "embedded", allow_all: false }
+    {
+      enabled: true,
+      documents_enabled: false,
+      default_scope: "embedded",
+      allow_all: false,
+    }
   );
 });
 
@@ -35,18 +74,28 @@ test("disabling a source preserves its configured scope and permission", () => {
       { enabled: true, default_scope: "all", allow_all: true },
       { field: "enabled", value: false }
     ),
-    { enabled: false, default_scope: "all", allow_all: true }
+    {
+      enabled: false,
+      documents_enabled: false,
+      default_scope: "all",
+      allow_all: true,
+    }
   );
 });
 
 test("enabling all-attachment permission does not change the embedded default", () => {
   assert.deepEqual(
     applyPolicyEdit(embeddedPolicy, { field: "allow_all", value: true }),
-    { enabled: true, default_scope: "embedded", allow_all: true }
+    {
+      enabled: true,
+      documents_enabled: false,
+      default_scope: "embedded",
+      allow_all: true,
+    }
   );
 });
 
-test("editing an API response returns only the three writable policy fields", () => {
+test("editing a legacy response returns only writable fields and defaults documents off", () => {
   assert.deepEqual(
     applyPolicyEdit(
       {
@@ -58,6 +107,11 @@ test("editing an API response returns only the three writable policy fields", ()
       },
       { field: "enabled", value: true }
     ),
-    { enabled: true, default_scope: "embedded", allow_all: false }
+    {
+      enabled: true,
+      documents_enabled: false,
+      default_scope: "embedded",
+      allow_all: false,
+    }
   );
 });

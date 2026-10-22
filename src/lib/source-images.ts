@@ -1,4 +1,9 @@
-export const SOURCE_IMAGE_SOURCES = ["jira", "polarion", "confluence"] as const;
+export const SOURCE_IMAGE_SOURCES = [
+  "jira",
+  "polarion",
+  "confluence",
+  "graph",
+] as const;
 
 export type SourceImageSource = (typeof SOURCE_IMAGE_SOURCES)[number];
 export type SourceImageFetchScope = "embedded" | "all";
@@ -7,10 +12,13 @@ export const SOURCE_IMAGE_LABELS: Record<SourceImageSource, string> = {
   jira: "Jira",
   polarion: "Polarion",
   confluence: "Confluence",
+  graph: "Microsoft Graph",
 };
 
 export interface SourceImagePolicy {
+  /** Image permission; retains its existing API name for older clients. */
   enabled: boolean;
+  documents_enabled?: boolean;
   default_scope: SourceImageFetchScope;
   allow_all: boolean;
 }
@@ -67,6 +75,7 @@ export type SourceImagePolicyMap = Record<
 
 export type SourceImagePolicyEdit =
   | { field: "enabled"; value: boolean }
+  | { field: "documents_enabled"; value: boolean }
   | { field: "allow_all"; value: boolean }
   | { field: "default_scope"; value: SourceImageFetchScope };
 
@@ -191,11 +200,12 @@ export function applyPolicyEdit(
 ): SourceImagePolicy {
   const current: SourceImagePolicy = {
     enabled: policy.enabled,
+    documents_enabled: policy.documents_enabled ?? false,
     default_scope: policy.default_scope,
     allow_all: policy.allow_all,
   };
-  if (edit.field === "enabled") {
-    return { ...current, enabled: edit.value };
+  if (edit.field === "enabled" || edit.field === "documents_enabled") {
+    return { ...current, [edit.field]: edit.value };
   }
   if (edit.field === "allow_all") {
     return {

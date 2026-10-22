@@ -53,7 +53,7 @@ test(
             }));
             build.onLoad({ filter: /[\\/]useAttachments\.ts$/ }, () => ({
               contents:
-                'export function useAttachments({ensureThreadId}) { window.ensureAttachmentThread = ensureThreadId; return { items: [], hasUploading: false, accept: "", addFiles() {}, addReferences() {}, remove() {}, takeAttachments() { return []; } }; }',
+                'export function useAttachments({ensureThreadId}) { window.ensureAttachmentThread = ensureThreadId; return { items: [], hasUploading: false, accept: "", addFiles() {}, addReferences() {}, remove() {}, prepareAttachments() { return { attachments: [], commit() {}, release() {} }; } }; }',
             }));
             build.onLoad({ filter: /[\\/]ConnectivityProvider\.tsx$/ }, () => ({
               contents:

@@ -64,6 +64,12 @@ export interface ResolvedAttachment {
   source_image_ref?: SourceImageRef;
 }
 
+interface PreparedAttachments {
+  attachments: ResolvedAttachment[];
+  commit: () => void;
+  release: () => void;
+}
+
 interface UseAttachmentsOpts {
   threadId: string | null;
   ensureThreadId: () => Promise<string | null>;
@@ -107,6 +113,7 @@ export function useAttachments({
   const aborters = useRef(new Map<string, AbortController>());
   const previousThreadId = useRef<string | null>(null);
   const itemsRef = useRef<AttachmentState[]>([]);
+  const reserved = useRef(new Set<string>());
 
   useEffect(() => {
     itemsRef.current = items;
@@ -142,7 +149,7 @@ export function useAttachments({
     ) {
       const readyItems = itemsRef.current.filter(
         (item): item is Extract<AttachmentState, { phase: "ready" }> =>
-          item.phase === "ready"
+          item.phase === "ready" && !reserved.current.has(item.localId)
       );
       readyItems.forEach((item) => {
         if (!item.meta.state_files_key) return;
@@ -309,6 +316,7 @@ export function useAttachments({
 
   const remove = useCallback(
     (localId: string) => {
+      if (reserved.current.has(localId)) return;
       const targetIndex = itemsRef.current.findIndex(
         (it) => it.localId === localId
       );
@@ -370,12 +378,11 @@ export function useAttachments({
     setItems([]);
   }, []);
 
-  const takeAttachments = useCallback((): ResolvedAttachment[] => {
+  const prepareAttachments = useCallback((): PreparedAttachments => {
     const current = itemsRef.current;
     const candidates = current.filter(
       (it) => it.phase === "ready" || it.phase === "reference"
     );
-    if (candidates.length === 0) return [];
 
     const staleSourceReferences = candidates.filter(
       (item) =>
@@ -387,8 +394,10 @@ export function useAttachments({
       (item) => !staleSourceReferences.includes(item)
     );
 
-    const consumedIds = new Set(candidates.map((it) => it.localId));
-    setItems((prev) => prev.filter((it) => !consumedIds.has(it.localId)));
+    const reservedIds = new Set(sendable.map((it) => it.localId));
+    reservedIds.forEach((id) => reserved.current.add(id));
+    const release = () =>
+      reservedIds.forEach((id) => reserved.current.delete(id));
 
     if (staleSourceReferences.length > 0) {
       toast.warning(
@@ -400,7 +409,7 @@ export function useAttachments({
       );
     }
 
-    return sendable.map((it): ResolvedAttachment => {
+    const attachments = sendable.map((it): ResolvedAttachment => {
       if (it.phase === "ready") {
         const meta = it.meta;
         const path =
@@ -431,6 +440,20 @@ export function useAttachments({
         source_image_ref: it.source_image_ref,
       });
     });
+    return {
+      attachments,
+      release,
+      commit: () => {
+        release();
+        setItems((previous) => {
+          const next = previous.filter(
+            (item) => !reservedIds.has(item.localId)
+          );
+          itemsRef.current = next;
+          return next;
+        });
+      },
+    };
   }, [files]);
 
   const hasUploading = items.some((it) => it.phase === "uploading");
@@ -441,7 +464,7 @@ export function useAttachments({
     addReferences,
     remove,
     clear,
-    takeAttachments,
+    prepareAttachments,
     hasUploading,
     accept: ACCEPT_ATTR,
   };

@@ -5,14 +5,17 @@ import { extname, join, resolve, sep } from "node:path";
 import test from "node:test";
 
 test(
-  "Responses citations and incomplete status render in the chat",
+  "Responses citations, background jobs and binary downloads work in chat",
   { skip: process.env.RESPONSES_BROWSER_TEST !== "1" },
   async () => {
     const { chromium } = await import(
       process.env.RESPONSES_PLAYWRIGHT_MODULE ?? "playwright"
     );
     const root = resolve(import.meta.dirname, "../out");
-    const evidence = resolve(import.meta.dirname, "../docs/evidence/responses");
+    const evidence = resolve(
+      process.env.RESPONSES_BROWSER_EVIDENCE ??
+        resolve(import.meta.dirname, "../docs/evidence/responses")
+    );
     const server = createServer(async (request, response) => {
       const path = new URL(request.url, "http://localhost").pathname
         .replace(/^\/chat\/?/, "")
@@ -40,11 +43,49 @@ test(
       }
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.RESPONSES_BROWSER_EXECUTABLE,
+    });
     const page = await browser.newPage({
       viewport: { width: 1360, height: 940 },
     });
     const origin = `http://127.0.0.1:${server.address().port}`;
+    const generatedPath =
+      "/_artifacts/responses-review/responses-test/generated/test__report.xlsx";
+    const generatedBytes = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff]);
+    let failJobLoad = true;
+    let failJobRefresh = true;
+    let failJobCancel = true;
+    let jobRefreshes = 0;
+    const jobRequests = [];
+    let jobs = [
+      { id: "job-active", model: "gpt-4.1", status: "queued" },
+      {
+        id: "job-done",
+        model: "gpt-4.1",
+        status: "completed",
+        result: {
+          output: [
+            {
+              type: "message",
+              content: [
+                {
+                  text: "Report complete",
+                  annotations: [
+                    {
+                      type: "container_file_citation",
+                      file_id: "cfile_1",
+                      filename: "recovered.xlsx",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ];
     const state = {
       values: {
         messages: [
@@ -66,6 +107,12 @@ test(
                     url: "https://docs.langchain.com/oss/python/integrations/chat/openai",
                     title: "LangChain Responses integration",
                   },
+                  ...Array.from({ length: 4 }, (_, index) => ({
+                    type: "url_citation",
+                    url: `https://example.com/source-${index}`,
+                    title:
+                      index === 3 ? "A".repeat(120) : `Reference ${index + 2}`,
+                  })),
                 ],
               },
               { type: "web_search_call", status: "completed" },
@@ -77,11 +124,26 @@ test(
             response_metadata: {
               status: "incomplete",
               incomplete_details: { reason: "max_output_tokens" },
+              generated_files: [
+                {
+                  path: generatedPath,
+                  filename: "report.xlsx",
+                  byte_size: generatedBytes.length,
+                },
+                { path: "/missing-file", filename: "unavailable.csv" },
+              ],
             },
           },
         ],
         todos: [],
-        files: {},
+        files: {
+          [generatedPath]: {
+            content: generatedBytes.toString("base64"),
+            encoding: "base64",
+            filename: "report.xlsx",
+            mime_type: "application/octet-stream",
+          },
+        },
       },
       next: [],
       tasks: [],
@@ -120,7 +182,47 @@ test(
       )
         return route.continue();
       let body = {};
-      if (path === "/api/user/profile")
+      if (path.includes("/response-jobs")) {
+        jobRequests.push(path);
+        if (
+          !/^\/api\/threads\/responses-test\/response-jobs(?:\/|$)/.test(path)
+        )
+          return route.fulfill({ status: 404, body: "Not Found" });
+        if (failJobLoad)
+          return route.fulfill({ status: 503, body: "Unavailable" });
+        const tail = path.split("/response-jobs")[1].split("/").filter(Boolean);
+        if (tail[1] === "cancel" && failJobCancel)
+          return route.fulfill({ status: 502, body: "Unavailable" });
+        if (tail.length === 1 && route.request().method() === "GET") {
+          jobRefreshes += 1;
+          if (failJobRefresh)
+            return route.fulfill({ status: 502, body: "Unavailable" });
+        }
+        if (tail.includes("files"))
+          return route.fulfill({
+            status: 200,
+            contentType: "application/octet-stream",
+            body: generatedBytes,
+          });
+        if (!tail.length) {
+          const before = url.searchParams.get("before");
+          const cursor = before
+            ? jobs.findIndex((job) => job.id === before)
+            : -1;
+          if (before && cursor === -1)
+            return route.fulfill({ status: 404, body: "Cursor unavailable" });
+          body = jobs.slice(cursor + 1, cursor + 51);
+        } else if (route.request().method() === "DELETE") {
+          jobs = jobs.filter((job) => job.id !== tail[0]);
+          return route.fulfill({ status: 204 });
+        } else {
+          if (tail[1] === "cancel")
+            jobs = jobs.map((job) =>
+              job.id === tail[0] ? { ...job, status: "cancelled" } : job
+            );
+          body = jobs.find((job) => job.id === tail[0]);
+        }
+      } else if (path === "/api/user/profile")
         body = {
           user_id: "fixture",
           username: "responses-review",
@@ -164,12 +266,50 @@ test(
       await page
         .getByRole("navigation", { name: "Response sources" })
         .waitFor();
+      const sources = page.getByRole("navigation", {
+        name: "Response sources",
+      });
+      const sourceDisclosure = sources.locator("summary");
+      const sourceLink = sources.getByRole("link", {
+        name: "LangChain Responses integration",
+      });
+      assert.equal(await sourceLink.isVisible(), false);
+      const collapsedHeight = (await sources.boundingBox()).height;
+      await sourceDisclosure.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await sourceLink.isVisible(), true);
+      assert.ok((await sources.boundingBox()).height > collapsedHeight);
+      assert.equal(await sources.getByRole("link").count(), 4);
+      const showSources = sources.getByRole("button", { name: "Show all 5" });
+      await showSources.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await sources.getByRole("link").count(), 5);
+      assert.equal(
+        await sources
+          .getByRole("button", { name: "Show fewer" })
+          .getAttribute("aria-expanded"),
+        "true"
+      );
+      await page.keyboard.press("Enter");
+      assert.equal(await sources.getByRole("link").count(), 4);
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Download unavailable.csv" })
+          .isDisabled(),
+        true
+      );
+      await page
+        .getByText("File unavailable in this conversation", { exact: true })
+        .waitFor();
       assert.equal(
         await page
           .getByRole("link", { name: "LangChain Responses integration" })
           .getAttribute("rel"),
         "noopener noreferrer"
       );
+      await sourceDisclosure.press("Space");
+      assert.equal(await sourceLink.isVisible(), false);
+      await sourceDisclosure.press("Enter");
       await page
         .getByText("The response reached its output limit.", { exact: false })
         .waitFor();
@@ -177,10 +317,154 @@ test(
         await page.locator("body").innerText(),
         /opaque-fixture-must-not-render/
       );
+      await page.getByText("Context compacted", { exact: true }).click();
+      await page
+        .getByText("Earlier context was compacted", { exact: false })
+        .waitFor();
+      await page.getByText("Context compacted", { exact: true }).click();
       assert.deepEqual(errors, []);
       await mkdir(evidence, { recursive: true });
+      const generatedDownload = page.waitForEvent("download");
+      await page
+        .getByRole("button", { name: "Download report.xlsx", exact: true })
+        .click();
+      assert.deepEqual(
+        await readFile(await (await generatedDownload).path()),
+        generatedBytes
+      );
+      await page
+        .getByRole("button", { name: "Background jobs", exact: true })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await dialog
+        .getByRole("alert")
+        .getByText("Background jobs could not be loaded.")
+        .waitFor();
+      assert.equal(
+        jobRequests[0],
+        "/api/threads/responses-test/response-jobs",
+        "Background jobs must use the backend route with a single /api prefix"
+      );
+      assert.equal(
+        await dialog
+          .getByText("No background jobs yet", { exact: true })
+          .count(),
+        0
+      );
+      failJobLoad = false;
+      await dialog
+        .getByRole("button", { name: "Refresh", exact: true })
+        .click();
+      await dialog
+        .getByText("Some job statuses could not be refreshed.", {
+          exact: false,
+        })
+        .waitFor();
+      assert.equal(
+        await dialog.getByText("Report complete", { exact: true }).isVisible(),
+        false
+      );
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .focus();
+      await page.keyboard.press("Enter");
+      await dialog.getByText("Report complete", { exact: true }).waitFor();
+      failJobRefresh = false;
+      await dialog
+        .getByRole("button", { name: "Cancel job", exact: true })
+        .click();
+      await dialog
+        .getByText("Could not cancel the job.", { exact: false })
+        .waitFor();
+      const previousRefreshes = jobRefreshes;
+      // A successful status poll must not erase an unrelated action failure.
+      await dialog
+        .getByRole("button", { name: "Refresh", exact: true })
+        .click();
+      await page.waitForFunction(
+        () =>
+          !document
+            .querySelector('[role="dialog"]')
+            ?.textContent?.includes("Some job statuses could not be refreshed.")
+      );
+      assert.ok(jobRefreshes > previousRefreshes);
+      assert.equal(
+        await dialog
+          .getByText("Could not cancel the job.", { exact: false })
+          .count(),
+        1
+      );
+      failJobCancel = false;
+      await dialog
+        .getByRole("button", { name: "Cancel job", exact: true })
+        .click();
+      await dialog.getByText("cancelled", { exact: false }).waitFor();
+      const recoveredDownload = page.waitForEvent("download");
+      await dialog
+        .getByRole("button", { name: "Download recovered.xlsx", exact: true })
+        .click();
+      assert.deepEqual(
+        await readFile(await (await recoveredDownload).path()),
+        generatedBytes
+      );
+      await dialog
+        .getByRole("button", { name: "Delete stored response", exact: true })
+        .first()
+        .click();
+      await page.waitForFunction(
+        () =>
+          !document
+            .querySelector('[role="dialog"]')
+            ?.textContent?.includes("cancelled")
+      );
+      assert.equal(jobs.length, 1);
+      await page.screenshot({
+        path: join(evidence, "background-jobs-desktop.png"),
+      });
+      await page.keyboard.press("Escape");
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Background jobs", exact: true })
+          .evaluate((element) => element === document.activeElement),
+        true
+      );
+      await page.getByRole("button", { name: /Files \(State\)/ }).click();
+      await page
+        .getByRole("button", { name: "report.xlsx", exact: true })
+        .click();
+      await dialog
+        .getByText("This file is ready to download.", { exact: false })
+        .waitFor();
+      assert.equal(
+        await dialog.getByRole("button", { name: "Edit", exact: true }).count(),
+        0
+      );
+      assert.equal(
+        await dialog.getByRole("button", { name: "Copy", exact: true }).count(),
+        0
+      );
+      const panelDownload = page.waitForEvent("download");
+      await dialog
+        .getByRole("button", { name: "Download", exact: true })
+        .click();
+      const panelFile = await panelDownload;
+      assert.equal(panelFile.suggestedFilename(), "report.xlsx");
+      assert.deepEqual(await readFile(await panelFile.path()), generatedBytes);
+      await page.keyboard.press("Escape");
+      await page
+        .getByRole("button", { name: "Close panel", exact: true })
+        .click();
       await page.screenshot({ path: join(evidence, "chat-desktop.png") });
-      await page.setViewportSize({ width: 390, height: 844 });
+      await page.setViewportSize({ width: 375, height: 812 });
+      await sources.getByRole("button", { name: "Show all 5" }).click();
+      assert.equal(
+        await sources.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth
+        ),
+        true
+      );
+      await sources.getByRole("button", { name: "Show fewer" }).click();
       await page
         .getByRole("navigation", { name: "Response sources" })
         .scrollIntoViewIfNeeded();
@@ -191,6 +475,147 @@ test(
         true
       );
       await page.screenshot({ path: join(evidence, "chat-mobile.png") });
+      await page
+        .getByRole("button", { name: "Background jobs", exact: true })
+        .click();
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .click();
+      await dialog.getByText("Report complete", { exact: true }).waitFor();
+      await dialog.evaluate(async (element) => {
+        await Promise.all(
+          element.getAnimations().map((animation) => animation.finished)
+        );
+      });
+      const mobileDialog = await dialog.boundingBox();
+      await page.screenshot({
+        path: join(evidence, "background-jobs-mobile.png"),
+      });
+      assert.ok(
+        mobileDialog.x >= 0 && mobileDialog.x + mobileDialog.width <= 375,
+        JSON.stringify(mobileDialog)
+      );
+      await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+      await page.evaluate(() => {
+        document.documentElement.classList.add("dark");
+        document.documentElement.setAttribute("data-joy-color-scheme", "dark");
+      });
+      await page.screenshot({
+        path: join(evidence, "background-jobs-mobile-dark.png"),
+      });
+      await page.setViewportSize({ width: 812, height: 375 });
+      await dialog
+        .getByRole("button", { name: "Delete stored response", exact: true })
+        .scrollIntoViewIfNeeded();
+      const closeBox = await dialog
+        .getByRole("button", { name: "Close", exact: true })
+        .boundingBox();
+      assert.ok(closeBox.y >= 0 && closeBox.y + closeBox.height <= 375);
+      const landscapeBox = await dialog.boundingBox();
+      assert.ok(
+        landscapeBox.y >= 0 && landscapeBox.y + landscapeBox.height <= 375
+      );
+      await page.setViewportSize({ width: 375, height: 812 });
+      await dialog
+        .getByRole("button", { name: "Delete stored response", exact: true })
+        .click();
+      await dialog
+        .getByText("No background jobs yet", { exact: true })
+        .waitFor();
+      jobs = [
+        ...Array.from({ length: 50 }, (_, index) => ({
+          id: `recent-${index}`,
+          model: "recent-model",
+          status: "completed",
+        })),
+        {
+          id: "historical",
+          model: "historical-model",
+          status: "completed",
+          result: {
+            output: [
+              {
+                type: "message",
+                content: [
+                  {
+                    text: "Historical result",
+                    annotations: [
+                      {
+                        type: "container_file_citation",
+                        file_id: "old-file",
+                        filename: "historical.xlsx",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ];
+      await dialog
+        .getByRole("button", { name: "Refresh", exact: true })
+        .click();
+      await dialog
+        .getByRole("button", { name: "Older jobs", exact: true })
+        .click();
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .click();
+      await dialog.getByText("Historical result", { exact: true }).waitFor();
+      await page.screenshot({
+        path: join(evidence, "background-jobs-history-mobile.png"),
+      });
+      assert.equal(
+        await dialog.getByText("recent-model", { exact: true }).count(),
+        0
+      );
+      const historicalDownload = page.waitForEvent("download");
+      await dialog
+        .getByRole("button", { name: "Download historical.xlsx", exact: true })
+        .click();
+      assert.deepEqual(
+        await readFile(await (await historicalDownload).path()),
+        generatedBytes
+      );
+      await dialog
+        .getByRole("button", { name: "Newer jobs", exact: true })
+        .click();
+      await dialog
+        .getByRole("button", { name: "Older jobs", exact: true })
+        .waitFor();
+      assert.equal(
+        await dialog.getByText("recent-model", { exact: true }).count(),
+        50
+      );
+      await dialog
+        .getByRole("button", { name: "Older jobs", exact: true })
+        .click();
+      await dialog
+        .locator("summary")
+        .filter({ hasText: "View result" })
+        .click();
+      await dialog.getByText("Historical result", { exact: true }).waitFor();
+      jobs = jobs.filter((job) => job.id !== "recent-49");
+      await dialog
+        .getByRole("button", { name: "Refresh", exact: true })
+        .click();
+      await dialog
+        .getByText("This page is no longer available.", { exact: false })
+        .waitFor();
+      await dialog
+        .getByRole("button", { name: "Newest jobs", exact: true })
+        .click();
+      await dialog
+        .getByRole("button", { name: "Older jobs", exact: true })
+        .waitFor();
+      assert.equal(
+        await dialog.getByText("recent-model", { exact: true }).count(),
+        49
+      );
+      assert.deepEqual(errors, []);
     } finally {
       await browser.close();
       server.closeAllConnections();

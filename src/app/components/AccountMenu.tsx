@@ -57,6 +57,7 @@ export function AccountMenu() {
           onClick={() => setOpen((value) => !value)}
           aria-haspopup="menu"
           aria-expanded={open}
+          aria-label={`Account menu for ${user.username}`}
           className={cn(
             "h-9 gap-2 pl-2 pr-3 transition-colors",
             open && "bg-accent text-accent-foreground ring-1 ring-border"
@@ -65,12 +66,12 @@ export function AccountMenu() {
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
             {initial}
           </span>
-          <span className="hidden max-w-28 truncate text-sm sm:inline">
+          <span className="hidden max-w-28 truncate text-sm lg:inline">
             {user.username}
           </span>
           <RoleBadge
             role={user.role}
-            className="hidden md:inline-flex"
+            className="hidden xl:inline-flex"
           />
           <ChevronDown
             className={cn(

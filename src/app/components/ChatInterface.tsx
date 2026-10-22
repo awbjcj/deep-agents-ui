@@ -1,7 +1,13 @@
 "use client";
-
 import React, { useState, useRef, useMemo, useCallback, Fragment } from "react";
-import { CheckCircle, Clock, Circle, FileIcon, X } from "lucide-react";
+import {
+  ArrowDown,
+  CheckCircle,
+  Clock,
+  Circle,
+  FileIcon,
+  X,
+} from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { PendingToolApproval } from "@/app/components/PendingToolApproval";
@@ -12,10 +18,17 @@ import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { ChatComposer } from "@/app/components/ChatComposer";
+import type { SkillAuthoringRequest } from "@/lib/skill-authoring-request";
+import { useReducedMotion } from "@/app/hooks/useReducedMotion";
+import { agentActivity } from "@/lib/agent-activity";
+import { AgentActivity } from "./AgentActivity";
+import { Button } from "@/components/ui/button";
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
   userId?: string;
+  skillAuthoringRequest?: SkillAuthoringRequest | null;
+  onSkillAuthoringRequestConsumed?: (id: string) => void;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -45,7 +58,12 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
 };
 
 export const ChatInterface = React.memo<ChatInterfaceProps>(
-  ({ assistant, userId }) => {
+  ({
+    assistant,
+    userId,
+    skillAuthoringRequest,
+    onSkillAuthoringRequestConsumed,
+  }) => {
     const { threadId } = useChatContext();
     const [evidenceRequest, setEvidenceRequest] = useState<{
       text: string;
@@ -59,7 +77,34 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
     const tasksContainerRef = useRef<HTMLDivElement | null>(null);
 
-    const { scrollRef, contentRef } = useStickToBottom();
+    const reducedMotion = useReducedMotion();
+    const {
+      scrollRef,
+      contentRef,
+      isAtBottom,
+      scrollToBottom,
+      stopScroll,
+      state,
+    } = useStickToBottom({
+      initial: "instant",
+      resize: reducedMotion ? "instant" : "smooth",
+    });
+
+    React.useEffect(() => {
+      if (
+        !reducedMotion ||
+        !state.animation ||
+        state.animation.behavior === "instant"
+      )
+        return;
+      const wasFollowing = state.isAtBottom;
+      stopScroll();
+      // Let the existing spring observe cancellation before resuming instantly.
+      const frame = requestAnimationFrame(() => {
+        if (wasFollowing) void scrollToBottom("instant");
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [reducedMotion, state, stopScroll, scrollToBottom]);
 
     const {
       stream,
@@ -81,7 +126,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       ensureThreadId,
       stopStream,
       resumeInterrupt,
+      autopilot,
+      createdThreadId,
+      queuedMessageCount,
+      isStopping,
     } = useChatContext();
+    const activity = agentActivity(
+      processedMessages,
+      isLoading && !isThreadLoading,
+      !!interrupt
+    );
 
     // Single-pass bucket instead of three .filter() calls per render.
     // ChatInterface re-renders on every stream token; the old form
@@ -120,7 +174,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     }, [ui]);
 
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Sticky banner stack lives outside the scroll container so urgent
           notifications (e.g. expired tokens) stay visible while the user
           scrolls long conversations. */}
@@ -129,10 +183,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         </div>
         <div
           className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+          aria-label="Conversation"
           ref={scrollRef}
+          onWheel={(event) => {
+            // Mixed x/y overflow prevents the hook's wheel ancestor lookup
+            // from recognizing this viewport while a resize is in flight.
+            if (event.deltaY < 0) stopScroll();
+          }}
         >
           <div
-            className="mx-auto w-full max-w-[1120px] px-6 pb-6 pt-4"
+            className="mx-auto w-full max-w-[960px] px-4 pb-6 pt-4 sm:px-6"
             ref={contentRef}
           >
             {historyError && (
@@ -158,7 +218,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               </div>
             ) : (
               <>
-                {processedMessages.map((data) => {
+                {processedMessages.map((data, index) => {
                   const messageUi = data.message.id
                     ? uiByMessageId.get(data.message.id)
                     : undefined;
@@ -169,6 +229,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       message={data.message}
                       toolCalls={data.toolCalls}
                       isLoading={isLoading}
+                      isStreaming={
+                        isLoading && index === processedMessages.length - 1
+                      }
                       ui={messageUi}
                       stream={messageUi?.length ? stream : undefined}
                       onResumeInterrupt={resumeInterrupt}
@@ -184,12 +247,37 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   onResume={resumeInterrupt}
                   isLoading={isLoading}
                 />
+                <AgentActivity label={activity} />
               </>
             )}
           </div>
         </div>
 
-        <div className="pointer-events-none flex-shrink-0">
+        <div className="pointer-events-none relative flex-shrink-0">
+          {!isAtBottom && processedMessages.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 flex justify-center pb-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="pointer-events-auto gap-1.5 rounded-full bg-background shadow-md"
+                onClick={(event) => {
+                  void scrollToBottom({
+                    animation:
+                      reducedMotion || event.detail === 0
+                        ? "instant"
+                        : "smooth",
+                  });
+                }}
+              >
+                <ArrowDown
+                  size={14}
+                  aria-hidden="true"
+                />
+                Jump to latest
+              </Button>
+            </div>
+          )}
           <div
             className={cn(
               // NOTE: intentionally NOT `overflow-hidden`. The attach menu opens
@@ -197,14 +285,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // extends past the top edge of this box. Clipping here would hide it
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
-              "pointer-events-auto mx-4 mb-6 flex flex-shrink-0 flex-col rounded-2xl border border-border/60 bg-card/85 shadow-[0_18px_45px_-22px_rgba(15,23,42,0.35),0_6px_18px_-12px_rgba(15,23,42,0.18)] backdrop-blur-md",
-              "mx-auto w-[calc(100%-32px)] max-w-[1120px] transition-all duration-200 ease-in-out",
-              "hover:border-primary/30 hover:shadow-[0_22px_55px_-22px_rgba(15,23,42,0.4),0_8px_22px_-12px_rgba(15,23,42,0.22)]",
+              "pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mb-5",
+              "mx-auto w-[calc(100%-24px)] max-w-[960px] transition-[border-color,box-shadow] duration-150 sm:w-[calc(100%-32px)]",
               "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
             )}
           >
             {(hasTasks || hasFiles) && (
-              <div className="flex max-h-72 flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-sidebar empty:hidden">
+              <div className="flex max-h-[min(18rem,30dvh)] flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-sidebar empty:hidden">
                 {!metaOpen && (
                   <>
                     {(() => {
@@ -213,9 +300,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       );
 
                       const totalTasks = todos.length;
-                      const remainingTasks =
-                        totalTasks - groupedTodos.pending.length;
-                      const isCompleted = totalTasks === remainingTasks;
+                      const isCompleted =
+                        totalTasks === groupedTodos.completed.length;
 
                       const tasksTrigger = (() => {
                         if (!hasTasks) return null;
@@ -425,9 +511,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               </div>
             )}
             <ChatComposer
+              accountId={userId}
+              createdThreadId={createdThreadId}
+              skillAuthoringRequest={skillAuthoringRequest}
+              onSkillAuthoringRequestConsumed={onSkillAuthoringRequestConsumed}
               evidenceRequest={evidenceRequest}
               onEvidenceConsumed={consumeEvidence}
               assistant={assistant}
+              autopilot={autopilot}
+              isThreadLoading={isThreadLoading}
+              queuedMessageCount={queuedMessageCount}
+              isStopping={isStopping}
               isLoading={isLoading}
               files={files}
               sourceImageAttachments={sourceImageAttachments}

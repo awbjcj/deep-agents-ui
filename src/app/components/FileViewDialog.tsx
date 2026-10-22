@@ -24,8 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FileContentView } from "@/app/components/FileContentView";
+import { ImagePreview } from "@/app/components/ImagePreview";
 import type { FileItem } from "@/app/types/types";
+import { cn } from "@/lib/utils";
 import { imageMimeForPath } from "@/lib/uploads";
+import { fileBlob, saveBlob } from "@/lib/file-downloads";
 import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
 
 interface FileViewDialogProps {
@@ -67,8 +70,10 @@ function FileViewDialogSession({
     [fileName]
   );
   const isImage = imageMime !== null;
+  const isBinary = file?.encoding === "base64";
   const sourceImage = file?.sourceImage;
-  const displayName = sourceImage?.filename || file?.path || "New File";
+  const displayName =
+    sourceImage?.filename || file?.filename || file?.path || "New File";
   const sourcePageUrl = sourceImage
     ? safeSourcePageUrl(sourceImage.source_page_url)
     : null;
@@ -83,32 +88,26 @@ function FileViewDialogSession({
   }, [displayedContent]);
 
   const handleDownload = useCallback(() => {
-    if (displayName) {
-      let blob: Blob;
-      if (isImage && imageMime) {
-        // Image content is base64; decode to real bytes so the download is a
-        // valid image rather than a text file full of base64.
-        const byteChars = atob(displayedContent);
-        const bytes = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-          bytes[i] = byteChars.charCodeAt(i);
-        }
-        blob = new Blob([bytes], { type: imageMime });
-      } else {
-        blob = new Blob([displayedContent], {
-          type: "text/plain;charset=utf-8",
-        });
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = displayName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    try {
+      saveBlob(
+        fileBlob(
+          displayedContent,
+          isBinary || isImage ? "base64" : "utf-8",
+          file?.mimeType || imageMime || undefined
+        ),
+        displayName
+      );
+    } catch {
+      toast.error("This file could not be decoded for download.");
     }
-  }, [displayName, displayedContent, isImage, imageMime]);
+  }, [
+    displayName,
+    displayedContent,
+    isImage,
+    isBinary,
+    imageMime,
+    file?.mimeType,
+  ]);
 
   const handleEdit = useCallback(() => {
     setFileContent(file?.content ?? "");
@@ -155,7 +154,13 @@ function FileViewDialogSession({
         if (!open && !isSaving) onClose();
       }}
     >
-      <DialogContent className="flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
+      <DialogContent
+        className={cn(
+          "flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6",
+          isImage &&
+            "h-[calc(100dvh-1.5rem)] max-w-none gap-3 transition-none sm:max-w-none"
+        )}
+      >
         <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <DialogDescription className="sr-only">
           {file
@@ -164,10 +169,10 @@ function FileViewDialogSession({
               : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
-        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 pr-10 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
+          <div className="flex min-w-0 items-center gap-2.5 pr-10 min-[520px]:pr-0">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
-              {sourceImage ? (
+              {isImage ? (
                 <ImageIcon
                   className="h-4 w-4"
                   aria-hidden="true"
@@ -229,7 +234,7 @@ function FileViewDialogSession({
           <div className="flex shrink-0 items-center gap-1 self-end min-[520px]:self-auto">
             {!isEditingMode && (
               <>
-                {!isImage && (
+                {!isImage && !isBinary && (
                   <Button
                     onClick={handleEdit}
                     variant="ghost"
@@ -244,7 +249,7 @@ function FileViewDialogSession({
                     Edit
                   </Button>
                 )}
-                {!isImage && (
+                {!isImage && !isBinary && (
                   <Button
                     onClick={handleCopy}
                     variant="ghost"
@@ -284,18 +289,20 @@ function FileViewDialogSession({
               readOnly={isSaving}
               className="h-full min-h-0 resize-none font-mono text-sm"
             />
+          ) : displayedContent && isImage && imageMime ? (
+            <ImagePreview
+              src={`data:${imageMime};base64,${displayedContent}`}
+              alt={displayName}
+            />
           ) : (
             <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20 [&_[data-slot=scroll-area-viewport]>div]:!block">
               <div className="p-4">
                 {displayedContent ? (
-                  isImage && imageMime ? (
-                    <div className="flex min-h-[min(52dvh,520px)] items-center justify-center p-4 sm:p-8">
-                      <img
-                        src={`data:${imageMime};base64,${displayedContent}`}
-                        alt={displayName}
-                        className="max-h-[52dvh] max-w-full rounded-lg border border-border/60 bg-background object-contain shadow-sm"
-                      />
-                    </div>
+                  isBinary ? (
+                    <p className="text-sm text-muted-foreground">
+                      This file is ready to download. A text preview is not
+                      available.
+                    </p>
                   ) : (
                     <FileContentView
                       content={displayedContent}

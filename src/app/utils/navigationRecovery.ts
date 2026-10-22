@@ -1,5 +1,18 @@
 import { BOOT_CACHE_BUST_PARAM } from "@/app/bootConstants";
 
+const CONVERSATION_PARAMS = ["threadId", "assistantId"];
+
+/** Carry conversation identity through sign-in without accepting redirect URLs. */
+export function loginUrlForConversation(appHref: string): string {
+  const source = new URL(appHref);
+  const params = new URLSearchParams();
+  for (const key of CONVERSATION_PARAMS) {
+    const value = source.searchParams.get(key);
+    if (value) params.set(key, value);
+  }
+  return `/login${params.size ? `?${params}` : ""}`;
+}
+
 /**
  * Build the app-root URL used after authentication.
  *
@@ -14,9 +27,14 @@ export function freshAppUrlAfterAuth(
   now = Date.now()
 ): string {
   const url = new URL(loginHref);
+  const conversation = new URLSearchParams(url.search);
   url.pathname = url.pathname.replace(/\/login\/?$/, "/");
   url.search = "";
   url.hash = "";
+  for (const key of CONVERSATION_PARAMS) {
+    const value = conversation.get(key);
+    if (value) url.searchParams.set(key, value);
+  }
   url.searchParams.set(BOOT_CACHE_BUST_PARAM, String(now));
   return url.toString();
 }

@@ -14,13 +14,16 @@ export interface SubAgent {
   subAgentName: string;
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
-  status: "pending" | "active" | "completed" | "error";
+  status: ToolCall["status"] | "active";
 }
 
 export interface FileItem {
   path: string;
   content: string;
   sourceImage?: SourceImageRecord;
+  encoding?: "utf-8" | "base64";
+  mimeType?: string;
+  filename?: string;
 }
 
 export interface TodoItem {

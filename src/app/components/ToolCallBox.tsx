@@ -6,16 +6,9 @@ import React, {
   useCallback,
   useEffect,
   useRef,
+  useId,
 } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Terminal,
-  AlertCircle,
-  Loader2,
-  CircleCheckBigIcon,
-  StopCircle,
-} from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
 import { cn } from "@/lib/utils";
@@ -27,6 +20,7 @@ import { parseToolEvidence } from "@/lib/tool-evidence";
 import { ToolEvidenceCards } from "./ToolEvidenceCards";
 import { parsePresentation } from "@/lib/ui-presentation";
 import { StructuredToolResult } from "./StructuredToolResult";
+import { RunStatus } from "./RunStatus";
 
 interface ToolCallBoxProps {
   onUseEvidence?: (text: string) => void;
@@ -77,6 +71,8 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     isLoading,
   }) => {
     const [isExpanded, setIsExpanded] = useState(() => !!actionRequest);
+    const [pointerMotion, setPointerMotion] = useState(false);
+    const contentId = useId();
     const [expandedArgs, setExpandedArgs] = useState<Record<string, boolean>>(
       {}
     );
@@ -100,7 +96,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
         name: toolCall.name || "Unknown Tool",
         args: toolCall.args || {},
         result: toolCall.result,
-        status: toolCall.status || "completed",
+        status: toolCall.status,
       };
     }, [toolCall]);
 
@@ -111,44 +107,13 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       [status, args, result]
     );
 
-    const statusIcon = useMemo(() => {
-      switch (status) {
-        case "completed":
-          return <CircleCheckBigIcon />;
-        case "error":
-          return (
-            <AlertCircle
-              size={14}
-              className="text-destructive"
-            />
-          );
-        case "pending":
-          return (
-            <Loader2
-              size={14}
-              className="animate-spin"
-            />
-          );
-        case "interrupted":
-          return (
-            <StopCircle
-              size={14}
-              className="text-amber-400"
-            />
-          );
-        default:
-          return (
-            <Terminal
-              size={14}
-              className="text-muted-foreground"
-            />
-          );
-      }
-    }, [status]);
-
-    const toggleExpanded = useCallback(() => {
-      setIsExpanded((prev) => !prev);
-    }, []);
+    const toggleExpanded = useCallback(
+      (event: React.MouseEvent<HTMLButtonElement>) => {
+        setPointerMotion(event.detail > 0);
+        setIsExpanded((prev) => !prev);
+      },
+      []
+    );
 
     const toggleArgExpanded = useCallback((argKey: string) => {
       setExpandedArgs((prev) => ({
@@ -183,45 +148,51 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           variant="ghost"
           size="sm"
           onClick={toggleExpanded}
+          data-motion={pointerMotion ? "animate" : "instant"}
           className={cn(
-            "flex w-full items-center justify-between gap-2 border-none px-2 py-2 text-left shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+            "group/tool flex h-auto w-full items-center justify-between gap-3 whitespace-normal border-none px-3 py-2 text-left shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100"
           )}
           aria-expanded={isExpanded}
+          aria-label={name}
+          aria-describedby={`${contentId}-status`}
+          aria-controls={isExpanded && hasContent ? contentId : undefined}
           disabled={!hasContent}
         >
-          <div className="flex w-full items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {statusIcon}
-              <span className="text-[15px] font-medium tracking-[-0.6px] text-foreground">
-                {name}
-              </span>
-            </div>
-            {hasContent &&
-              (isExpanded ? (
-                <ChevronUp
-                  size={14}
-                  className="shrink-0 text-muted-foreground"
-                />
-              ) : (
-                <ChevronDown
-                  size={14}
-                  className="shrink-0 text-muted-foreground"
-                />
-              ))}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="min-w-0 break-words text-[15px] font-medium text-foreground [overflow-wrap:anywhere]">
+              {name}
+            </span>
           </div>
+          <RunStatus
+            id={`${contentId}-status`}
+            status={status}
+          />
+          {hasContent && (
+            <ChevronDown
+              size={14}
+              aria-hidden="true"
+              className={cn(
+                "shrink-0 text-muted-foreground transition-transform duration-150 [transition-timing-function:var(--ease-out)] group-data-[motion=instant]/tool:transition-none motion-reduce:transition-none",
+                isExpanded && "rotate-180"
+              )}
+            />
+          )}
         </Button>
 
-        {presentation && (
-          <div className="px-2 py-3">
-            <StructuredToolResult
-              presentation={presentation}
-              onUseSuggestion={onUseEvidence}
-              disabled={isLoading}
-            />
-          </div>
-        )}
         {isExpanded && hasContent && (
-          <div className="px-4 pb-4">
+          <div
+            id={contentId}
+            className="px-4 pb-4"
+          >
+            {presentation && (
+              <div className="py-3">
+                <StructuredToolResult
+                  presentation={presentation}
+                  onUseSuggestion={onUseEvidence}
+                  disabled={isLoading}
+                />
+              </div>
+            )}
             {uiComponent && stream && graphId ? (
               <div className="mt-4">
                 <LoadExternalComponent

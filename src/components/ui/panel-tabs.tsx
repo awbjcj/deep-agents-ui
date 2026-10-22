@@ -126,8 +126,8 @@ export function PanelTabs<Id extends string>({
       className={cn(
         isUnderline
           ? isTwoRow
-            ? "grid items-stretch gap-1 overflow-visible px-2 pb-1"
-            : "flex items-end gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            ? "grid min-w-0 items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
+            : "flex min-w-0 items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
         className
       )}
@@ -161,8 +161,9 @@ export function PanelTabs<Id extends string>({
               "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
               isUnderline
                 ? cn(
-                    "min-h-10 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal min-[480px]:min-h-11 min-[480px]:text-sm",
-                    isTwoRow && "w-full min-w-0 gap-1.5 px-1.5 min-[480px]:px-2"
+                    "min-h-11 shrink-0 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal @[480px]/panel:text-sm",
+                    isTwoRow &&
+                      "w-full min-w-0 gap-1 px-1 text-[11px] @[440px]/panel:gap-1.5 @[440px]/panel:px-2 @[440px]/panel:text-xs"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive
@@ -178,7 +179,11 @@ export function PanelTabs<Id extends string>({
           >
             {Icon ? (
               <Icon
-                className={cn("h-4 w-4 shrink-0", isTwoRow && "h-3.5 w-3.5")}
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isTwoRow &&
+                    "h-3 w-3 @[440px]/panel:h-3.5 @[440px]/panel:w-3.5"
+                )}
                 aria-hidden="true"
               />
             ) : null}
@@ -186,7 +191,7 @@ export function PanelTabs<Id extends string>({
             {tab.count !== undefined ? (
               <span
                 className={cn(
-                  "min-w-[1.5ch] text-center font-mono text-[10px] tabular-nums",
+                  "min-w-[1.5ch] shrink-0 text-center font-mono text-[10px] tabular-nums",
                   isActive ? "text-foreground/70" : "text-muted-foreground"
                 )}
               >

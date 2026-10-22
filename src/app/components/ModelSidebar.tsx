@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -31,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
 import {
   formatUsageAmount,
@@ -40,7 +40,16 @@ import {
 } from "@/lib/usage";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { RunLimitSettings } from "@/app/components/RunLimitSettings";
-import { requiresThinking } from "@/lib/model-controls";
+import {
+  AdaptiveThinkingControl,
+  OutputTokenControl,
+  ReasoningEffortControl,
+} from "@/app/components/ModelInferenceControls";
+import {
+  linkedModelControls,
+  recommendedModelControls,
+  requiresThinking,
+} from "@/lib/model-controls";
 import {
   apiGetAllowedModels,
   apiGetUserModel,
@@ -103,10 +112,6 @@ const PRESET_LABELS: Record<ModelPreset, string> = {
 };
 
 const PRESET_VALUES: ModelPreset[] = ["economy", "balanced", "deep_work"];
-
-const MAX_TOKENS_MIN = 512;
-const MAX_TOKENS_MAX = 32768;
-const MAX_TOKENS_STEP = 256;
 
 interface DraftState {
   provider: string;
@@ -211,10 +216,10 @@ function UsageMeter({
       >
         <div
           className={[
-            "h-full origin-left rounded-full transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
+            "h-full w-full origin-left rounded-full transition-transform duration-200 [transition-timing-function:var(--ease-out)] motion-reduce:transition-none",
             usageBarClass(pct, isUnlimited),
           ].join(" ")}
-          style={{ width: isUnlimited ? "100%" : `${clampedPct.toFixed(1)}%` }}
+          style={{ transform: `scaleX(${isUnlimited ? 1 : clampedPct / 100})` }}
         />
       </div>
       {!isUnlimited && pct >= 80 && (
@@ -247,6 +252,7 @@ export function ModelSidebar() {
   const [saved, setSaved] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const failedDraftRef = useRef<DraftState | null>(null);
   const usage = useTokenUsage();
   const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
@@ -298,6 +304,45 @@ export function ModelSidebar() {
     draft !== null && baseline !== null && !draftsEqual(draft, baseline);
   const isCustom = serverCustom || dirty || customManuallySelected;
 
+  const handleSave = useCallback(
+    (silent = false) => {
+      if (!draft || !dirty || !draft.provider || !draft.model) return;
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      failedDraftRef.current = null;
+      setIsSaving(true);
+      apiSetUserModel({
+        provider: draft.provider,
+        model: draft.model,
+        effort: draft.effort,
+        thinking: draft.thinking,
+        max_tokens: draft.max_tokens,
+      })
+        .then((result) => {
+          setSelection(result);
+          setDraft(draftFromEffective(result.effective));
+          setActivePreset(null);
+          setServerCustom(true);
+          setCustomManuallySelected(false);
+          setSaved(true);
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+          savedTimerRef.current = setTimeout(() => {
+            setSaved(false);
+            savedTimerRef.current = null;
+          }, 2000);
+          if (!silent) toast.success("Saved custom configuration");
+        })
+        .catch((err) => {
+          failedDraftRef.current = draft;
+          toast.error(err instanceof Error ? err.message : "Failed to save");
+        })
+        .finally(() => setIsSaving(false));
+    },
+    [draft, dirty]
+  );
+
   // Auto-save the custom configuration a beat after the user stops tweaking
   // controls, mirroring the connectivity panel's debounced autosave. The
   // manual Save button (frozen at the bottom) still commits immediately.
@@ -305,6 +350,9 @@ export function ModelSidebar() {
     if (isLoading || isSaving || !dirty || !draft?.provider || !draft?.model) {
       return;
     }
+    // Retry a failed draft only after another edit or an explicit Save.
+    if (failedDraftRef.current && draftsEqual(draft, failedDraftRef.current))
+      return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
       autosaveTimerRef.current = null;
@@ -316,8 +364,7 @@ export function ModelSidebar() {
         autosaveTimerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, dirty, isLoading, isSaving]);
+  }, [draft, dirty, isLoading, isSaving, handleSave]);
 
   useEffect(() => {
     return () => {
@@ -356,50 +403,25 @@ export function ModelSidebar() {
       });
   }
 
-  function handleSave(silent = false) {
-    if (!draft || !dirty || !draft.provider || !draft.model) return;
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
-    setIsSaving(true);
-    apiSetUserModel({
-      provider: draft.provider,
-      model: draft.model,
-      effort: draft.effort,
-      thinking: draft.thinking,
-      max_tokens: draft.max_tokens,
-    })
-      .then((result) => {
-        setSelection(result);
-        setDraft(draftFromEffective(result.effective));
-        setActivePreset(null);
-        setServerCustom(true);
-        setCustomManuallySelected(false);
-        setSaved(true);
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => {
-          setSaved(false);
-          savedTimerRef.current = null;
-        }, 2000);
-        if (!silent) toast.success("Saved custom configuration");
-      })
-      .catch((err) => {
-        if (!silent) {
-          toast.error(err instanceof Error ? err.message : "Failed to save");
-        }
-      })
-      .finally(() => setIsSaving(false));
-  }
-
   function updateDraft(patch: Partial<DraftState>) {
+    failedDraftRef.current = null;
+    setSaved(false);
     setDraft((d) => {
       if (!d) return d;
       const next = { ...d, ...patch };
       const entry = allowed.find(
         (m) => m.provider === next.provider && m.model === next.model
       );
-      if (requiresThinking(entry, next.effort)) next.thinking = true;
+      const reasoningChanged =
+        next.provider !== d.provider ||
+        next.model !== d.model ||
+        next.effort !== d.effort ||
+        next.thinking !== d.thinking;
+      if (reasoningChanged) {
+        Object.assign(next, linkedModelControls(entry, next));
+      } else if (requiresThinking(entry, next.effort)) {
+        next.thinking = true;
+      }
       return next;
     });
   }
@@ -411,32 +433,12 @@ export function ModelSidebar() {
       (m) => m.provider === provider && m.model === model
     );
     if (!entry) return;
-    const defaultEffort = entry.supports_effort
-      ? entry.efforts[0] ?? null
-      : null;
     updateDraft({
       provider,
       model,
-      effort: defaultEffort,
-      thinking: entry.thinking_required
-        ? true
-        : entry.supports_thinking
-        ? false
-        : null,
+      ...recommendedModelControls(entry),
     });
   }
-
-  const sliderFillPct = draft
-    ? Math.min(
-        100,
-        Math.max(
-          0,
-          ((draft.max_tokens - MAX_TOKENS_MIN) /
-            (MAX_TOKENS_MAX - MAX_TOKENS_MIN)) *
-            100
-        )
-      )
-    : 0;
 
   const effortOptions = currentModelEntry?.efforts.length
     ? currentModelEntry.efforts
@@ -550,7 +552,7 @@ export function ModelSidebar() {
                 <div
                   role="radiogroup"
                   aria-label="Model preset"
-                  className="grid grid-cols-4 gap-2"
+                  className="grid grid-cols-2 gap-2"
                 >
                   {PRESET_OPTIONS.map((option) => {
                     const active =
@@ -576,12 +578,12 @@ export function ModelSidebar() {
                         onClick={handleClick}
                         disabled={isSaving}
                         className={[
-                          "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-all duration-200",
+                          "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-colors duration-150",
                           "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
                             ? "!border-[var(--aptiv-orange)]/55 !bg-[var(--aptiv-orange)]/10 shadow-[0_2px_10px_-4px_color-mix(in_srgb,var(--aptiv-orange)_30%,transparent)]"
-                            : "hover:-translate-y-px hover:!border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
+                            : "hover:!border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
                         ].join(" ")}
                       >
                         {active && (
@@ -659,7 +661,7 @@ export function ModelSidebar() {
                 >
                   <SelectTrigger
                     id="model-select"
-                    className="aptiv-glass-soft"
+                    className="aptiv-glass-soft h-11 rounded-lg"
                   >
                     <SelectValue placeholder="Choose a model" />
                   </SelectTrigger>
@@ -680,112 +682,36 @@ export function ModelSidebar() {
                 </Select>
               </section>
 
-              <section className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Reasoning effort
-                  </Label>
-                  {!currentModelEntry?.supports_effort && (
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Not supported
-                    </span>
-                  )}
-                </div>
-                <div
-                  className="effort-btn-group"
-                  role="group"
-                  aria-label="Reasoning effort"
-                >
-                  {effortOptions.map((effort) => {
-                    const supported = !!currentModelEntry?.supports_effort;
-                    const active = supported && draft.effort === effort;
-                    return (
-                      <button
-                        key={effort}
-                        type="button"
-                        className={[
-                          "effort-btn",
-                          active ? "effort-btn--active" : "",
-                        ].join(" ")}
-                        onClick={() => updateDraft({ effort })}
-                        disabled={!supported || isSaving}
-                      >
-                        {effort}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className="space-y-2">
-                <div className="aptiv-glass-soft flex items-center justify-between gap-3 rounded-md px-3 py-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-sm font-medium text-foreground">
-                      Adaptive thinking
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {thinkingRequired
-                        ? currentModelEntry?.thinking_required
-                          ? "Always on for this model; choose effort to adjust depth"
-                          : "Required at this effort; choose a lower effort to turn it off"
-                        : currentModelEntry?.supports_thinking
-                        ? "Let the model take longer on hard prompts"
-                        : "Not supported by this model"}
-                    </span>
-                  </div>
-                  <Switch
-                    checked={thinkingRequired || !!draft.thinking}
-                    onCheckedChange={(checked) =>
-                      updateDraft({ thinking: checked })
-                    }
-                    disabled={
-                      !currentModelEntry?.supports_thinking ||
-                      thinkingRequired ||
-                      isSaving
-                    }
-                  />
-                </div>
-              </section>
-
-              <section className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label
-                    htmlFor="max-tokens-slider"
-                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                  >
-                    Output cap
-                  </Label>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {draft.max_tokens.toLocaleString()}
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      tokens
-                    </span>
-                  </span>
-                </div>
-                <input
-                  id="max-tokens-slider"
-                  type="range"
-                  className="aptiv-slider"
-                  min={MAX_TOKENS_MIN}
-                  max={MAX_TOKENS_MAX}
-                  step={MAX_TOKENS_STEP}
-                  value={draft.max_tokens}
-                  disabled={isSaving}
-                  onChange={(e) =>
-                    updateDraft({ max_tokens: parseInt(e.target.value, 10) })
-                  }
-                  style={
-                    {
-                      ["--aptiv-slider-fill" as string]: `${sliderFillPct}%`,
-                    } as React.CSSProperties
-                  }
-                />
-                <div className="aptiv-slider-ticks">
-                  <span className="aptiv-slider-tick">0.5k</span>
-                  <span className="aptiv-slider-tick">16k</span>
-                  <span className="aptiv-slider-tick">32k</span>
-                </div>
-              </section>
+              <ReasoningEffortControl
+                options={effortOptions}
+                value={draft.effort}
+                supported={!!currentModelEntry?.supports_effort}
+                disabled={isSaving}
+                onChange={(effort) => updateDraft({ effort })}
+              />
+              <AdaptiveThinkingControl
+                checked={thinkingRequired || !!draft.thinking}
+                disabled={
+                  !currentModelEntry?.supports_thinking ||
+                  thinkingRequired ||
+                  isSaving
+                }
+                description={
+                  thinkingRequired
+                    ? currentModelEntry?.thinking_required
+                      ? "Always on for this model; choose effort to adjust depth"
+                      : "Required at this effort; choose a lower effort to turn it off"
+                    : currentModelEntry?.supports_thinking
+                    ? "Let the model take longer on hard prompts"
+                    : "Not supported by this model"
+                }
+                onChange={(thinking) => updateDraft({ thinking })}
+              />
+              <OutputTokenControl
+                value={draft.max_tokens}
+                disabled={isSaving}
+                onChange={(max_tokens) => updateDraft({ max_tokens })}
+              />
             </>
           )}
         </div>

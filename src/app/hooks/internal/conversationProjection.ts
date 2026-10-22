@@ -64,13 +64,15 @@ function toolArguments(value: unknown): Record<string, unknown> {
 /** Gather all supported tool encodings, then fold results into their calls. */
 function buildRawBuckets(
   messages: Message[],
-  isInterrupted: boolean
+  isInterrupted: boolean,
+  isRunning: boolean
 ): RawBucket[] {
   const messageMap = new Map<string, RawBucket>();
   const toolCallIndex = new Map<
     string,
     { messageKey: string; index: number }
   >();
+  const latestHumanIndex = messages.findLastIndex((m) => m.type === "human");
 
   messages.forEach((message: Message, idx: number) => {
     if (message.type === "ai") {
@@ -115,7 +117,10 @@ function buildRawBuckets(
           id,
           name,
           args: toolArguments(tc.args ?? tc.input ?? tc.function?.arguments),
-          status: isInterrupted ? "interrupted" : "pending",
+          status:
+            isInterrupted || !isRunning || idx < latestHumanIndex
+              ? "interrupted"
+              : "pending",
         });
       }
 
@@ -133,7 +138,7 @@ function buildRawBuckets(
       if (!bucket) return;
       bucket.toolCalls[location.index] = {
         ...bucket.toolCalls[location.index],
-        status: "completed" as const,
+        status: message.status === "error" ? "error" : "completed",
         result: extractToolResult(message),
       };
     } else if (message.type === "human") {
@@ -212,7 +217,7 @@ function reconcileToolCalls(
 }
 
 /**
- * Pure reconciler: `(prev, messages, isInterrupted) → ProcessedMessage[]`.
+ * Reconcile messages with the current run lifecycle into stable render rows.
  * Reuses prior buckets/tool calls by signature; allocates only for what
  * actually changed this frame. Robust to append, edit, reorder, and removal
  * because everything is keyed by stable message id.
@@ -220,9 +225,10 @@ function reconcileToolCalls(
 export function reconcileConversation(
   prev: ProcessedMessage[] | null,
   messages: Message[],
-  isInterrupted: boolean
+  isInterrupted: boolean,
+  isRunning = true
 ): ProcessedMessage[] {
-  const rawBuckets = buildRawBuckets(messages, isInterrupted);
+  const rawBuckets = buildRawBuckets(messages, isInterrupted, isRunning);
 
   const prevByKey = new Map<string, ProcessedMessage>();
   if (prev) for (const p of prev) prevByKey.set(p.stableKey, p);
@@ -262,22 +268,23 @@ export function reconcileConversation(
 }
 
 /**
- * Hook wrapper that holds the previous projection across renders so the
- * reconciler can reuse it. Recomputes on the same triggers as the old memo
- * (`messages`, `isInterrupted`) — it just returns stable references now.
+ * Retain prior rows across message, interrupt and run-state updates so the
+ * reconciler can preserve unchanged content and tool-call references.
  */
 export function useProcessedMessages(
   messages: Message[],
-  isInterrupted: boolean
+  isInterrupted: boolean,
+  isRunning = true
 ): ProcessedMessage[] {
   const prevRef = useRef<ProcessedMessage[] | null>(null);
   return useMemo(() => {
     const next = reconcileConversation(
       prevRef.current,
       messages,
-      isInterrupted
+      isInterrupted,
+      isRunning
     );
     prevRef.current = next;
     return next;
-  }, [messages, isInterrupted]);
+  }, [messages, isInterrupted, isRunning]);
 }

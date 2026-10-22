@@ -32,6 +32,29 @@ const catalog = [
   },
 ];
 
+test("connection-unavailable tools are disabled without pretending a save is pending", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(ToolPermissionList, {
+      catalog: [
+        { ...catalog[0], id: "background_response", label: "Background jobs" },
+      ],
+      selectedIds: ["background_response"],
+      allowedIds: ["background_response"],
+      effectiveIds: [],
+      unavailableTools: {
+        background_response:
+          "Unavailable in proxy mode. Use gateway or remote mode.",
+      },
+      idPrefix: "proxy",
+      saving: false,
+      onToggle() {},
+    })
+  );
+  assert.match(html, /disabled=""/);
+  assert.match(html, /Unavailable in proxy mode/);
+  assert.doesNotMatch(html, /Pending save|>Active</);
+});
+
 test("retained blocked selections can be cleared but cannot be added again", () => {
   const stored = ["send_email"];
   const allowed = [];

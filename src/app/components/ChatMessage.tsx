@@ -4,8 +4,13 @@ import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { reasoningSummary } from "@/lib/reasoning-summary";
+import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
+import { SkillReferenceText } from "./skills/SkillReferenceText";
+import { parseSkillReferences } from "@/lib/skill-references";
+import { contextSummary } from "@/lib/context-summary";
 import type {
   SubAgent,
   ToolCall,
@@ -40,6 +45,7 @@ interface ChatMessageProps {
   message: Message;
   toolCalls: ToolCall[];
   isLoading?: boolean;
+  isStreaming?: boolean;
   actionRequestsMap?: Map<string, ActionRequest>;
   reviewConfigsMap?: Map<string, ReviewConfig>;
   ui?: any[];
@@ -56,6 +62,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     onUseEvidence,
     toolCalls,
     isLoading,
+    isStreaming,
     actionRequestsMap,
     reviewConfigsMap,
     ui,
@@ -67,6 +74,20 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const isUser = message.type === "human";
     const messageContent = extractStringFromMessageContent(message);
+    const skillReferences = useMemo(
+      () =>
+        isUser
+          ? parseSkillReferences(
+              message.additional_kwargs?.skill_references,
+              messageContent
+            )
+          : [],
+      [isUser, message, messageContent]
+    );
+    const summary = useMemo(
+      () => contextSummary(message, messageContent),
+      [message, messageContent]
+    );
     const reasoning = useMemo(() => reasoningSummary(message), [message]);
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
@@ -143,7 +164,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             toolCall.args["subagent_type"] !== null
           );
         })
-        .map((toolCall: ToolCall) => {
+        .map((toolCall: ToolCall): SubAgent => {
           const subagentType = (toolCall.args as Record<string, unknown>)[
             "subagent_type"
           ] as string;
@@ -154,7 +175,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             input: toolCall.args,
             output: toolCall.result ? { result: toolCall.result } : undefined,
             status: toolCall.status,
-          } as SubAgent;
+          };
         });
     }, [toolCalls]);
 
@@ -183,13 +204,13 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       <div
         className={cn(
           "flex w-full max-w-full overflow-x-hidden",
-          isUser && "flex-row-reverse"
+          isUser && !summary && "flex-row-reverse"
         )}
       >
         <div
           className={cn(
             "min-w-0 max-w-full",
-            isUser ? "max-w-[76%]" : "w-full"
+            isUser && !summary ? "max-w-[76%]" : "w-full"
           )}
         >
           {hasAttachments && (
@@ -352,23 +373,20 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {reasoning && (
-            <details className="my-3 rounded-md border border-border p-3">
-              <summary className="cursor-pointer text-sm text-muted-foreground">
-                Reasoning summary
-              </summary>
-              <div className="mt-2 max-h-64 overflow-y-auto text-sm">
-                <MarkdownContent content={reasoning} />
-              </div>
-            </details>
+            <ReasoningSummary
+              content={reasoning}
+              isStreaming={isStreaming}
+            />
           )}
-          {hasContent && (
+          {summary && <ContextSummaryCard summary={summary} />}
+          {hasContent && !summary && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
-                  "mt-4 overflow-hidden break-words text-base font-medium leading-[165%]",
+                  "mt-4 min-w-0 max-w-full break-words text-base leading-[165%]",
                   isUser
                     ? "rounded-2xl rounded-br-sm border border-border/60 px-4 py-3 text-foreground shadow-sm"
-                    : "text-primary"
+                    : "font-normal text-foreground"
                 )}
                 style={
                   isUser
@@ -378,15 +396,27 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               >
                 {isUser ? (
                   <p className="m-0 whitespace-pre-wrap break-words text-base leading-relaxed">
-                    {messageContent}
+                    <SkillReferenceText
+                      text={messageContent}
+                      references={skillReferences}
+                    />
                   </p>
                 ) : hasContent ? (
-                  <MarkdownContent content={messageContent} />
+                  <MarkdownContent
+                    content={messageContent}
+                    files={files}
+                    isStreaming={isStreaming}
+                  />
                 ) : null}
               </div>
             </div>
           )}
-          {!isUser && <ResponseDetails message={message} />}
+          {!isUser && (
+            <ResponseDetails
+              message={message}
+              files={files}
+            />
+          )}
           {viewedAttachment && (
             <FileViewDialog
               file={viewedAttachment}
@@ -421,21 +451,17 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {!isUser && subAgents.length > 0 && (
-            <div className="flex w-fit max-w-full flex-col gap-4">
+            <div className="mt-2 flex w-full max-w-full flex-col gap-3">
               {subAgents.map((subAgent) => (
                 <div
                   key={subAgent.id}
                   className="flex w-full flex-col gap-2"
                 >
-                  <div className="flex items-end gap-2">
-                    <div className="w-[calc(100%-100px)]">
-                      <SubAgentIndicator
-                        subAgent={subAgent}
-                        onClick={() => toggleSubAgent(subAgent.id)}
-                        isExpanded={isSubAgentExpanded(subAgent.id)}
-                      />
-                    </div>
-                  </div>
+                  <SubAgentIndicator
+                    subAgent={subAgent}
+                    onClick={() => toggleSubAgent(subAgent.id)}
+                    isExpanded={isSubAgentExpanded(subAgent.id)}
+                  />
                   {isSubAgentExpanded(subAgent.id) && (
                     <div className="w-full max-w-full">
                       <div className="rounded-xl border border-border bg-muted/30 p-4">
@@ -454,6 +480,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                             </h4>
                             <MarkdownContent
                               content={extractSubAgentContent(subAgent.output)}
+                              files={files}
                             />
                           </>
                         )}
