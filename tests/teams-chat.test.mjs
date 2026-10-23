@@ -96,3 +96,15 @@ test("Teams conversation links select the matching thread and agent", () => {
   assert.equal(url.searchParams.get("threadId"), "thread/one &two");
   assert.equal(url.searchParams.get("assistantId"), "VSDA Deep Agent");
 });
+
+test("Teams status preserves explicit reconnect state and rejects invalid flags", async (t) => {
+  const responses = [
+    Response.json({ ...binding, enabled: false, needs_reconnect: true }),
+    Response.json({ ...binding, needs_reconnect: "true" }),
+    Response.json(binding),
+  ];
+  t.mock.method(globalThis, "fetch", async () => responses.shift());
+  assert.equal((await teamsChatAPI.status()).needs_reconnect, true);
+  await assert.rejects(teamsChatAPI.status(), (error) => error.status === 502);
+  assert.equal((await teamsChatAPI.status()).needs_reconnect, false);
+});

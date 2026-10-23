@@ -3,50 +3,41 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { teamsChatAPI, type TeamsChatPage } from "@/lib/teams-chat";
+import { teamsChatAPI } from "@/lib/teams-chat";
 
 export function TeamsChatSetup({
   busy,
   connecting,
+  reconnecting = false,
   onConnect,
 }: {
   busy: boolean;
   connecting: boolean;
+  reconnecting?: boolean;
   onConnect: (chatId: string) => void;
 }) {
   const [chatId, setChatId] = useState("");
-  const [chats, setChats] = useState<TeamsChatPage["chats"]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => request.current?.abort(), []);
 
-  async function discover(cursor?: string) {
+  async function discover() {
     if (request.current || busy) return;
     const controller = new AbortController();
     request.current = controller;
     setSearching(true);
     setError("");
+    setChatId("");
     try {
-      const page = await teamsChatAPI.chats(cursor, controller.signal);
+      const page = await teamsChatAPI.chats(undefined, controller.signal);
       if (controller.signal.aborted) return;
-      const candidates = page.chats.filter((chat) => chat.self_chat_candidate);
-      const combined = Array.from(
-        new Map(
-          [...(cursor ? chats : []), ...candidates].map((chat) => [
-            chat.id,
-            chat,
-          ])
-        ).values()
+      const notes = page.chats.find(
+        (chat) => chat.id === "48:notes" && chat.self_chat_candidate
       );
-      setChats(combined);
-      setNextCursor(page.next_cursor);
+      setChatId(notes?.id ?? "");
       setSearched(true);
-      if (combined.length === 1) setChatId(combined[0].id);
     } catch (cause) {
       if (!controller.signal.aborted)
         setError(
@@ -69,11 +60,21 @@ export function TeamsChatSetup({
       className="space-y-4"
     >
       <div>
-        <h3 className="text-sm font-semibold">Connect your self-chat</h3>
+        <h3 className="text-sm font-semibold">
+          {reconnecting ? "Reconnect your self-chat" : "Connect your self-chat"}
+        </h3>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
           Use your private chat with yourself in Teams. Your saved Microsoft
           Graph token is used to find and verify it.
         </p>
+        {reconnecting && (
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Your previous connection is no longer available. Reconnecting starts
+            a new conversation and handles only new commands. Previous requests
+            and replies will not be replayed. Any task already running can still
+            be managed in the previous web conversation.
+          </p>
+        )}
       </div>
       <Button
         type="button"
@@ -100,75 +101,23 @@ export function TeamsChatSetup({
           {error}
         </p>
       )}
-      {chats.length > 0 && (
-        <div className="space-y-2">
-          <Label htmlFor="teams-self-chat">Your self-chat</Label>
-          <select
-            id="teams-self-chat"
-            value={chats.some((chat) => chat.id === chatId) ? chatId : ""}
-            onChange={(event) => setChatId(event.target.value)}
-            disabled={busy || searching}
-            className="min-h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <option value="">Choose a chat</option>
-            {chats.map((chat) => (
-              <option
-                key={chat.id}
-                value={chat.id}
-              >
-                {chat.topic || "Chat with yourself"} · {chat.id.slice(-14)}
-              </option>
-            ))}
-          </select>
-        </div>
+      {chatId && (
+        <p
+          role="status"
+          className="text-sm"
+        >
+          Your personal self-chat is ready to connect.
+        </p>
       )}
-      {searched && chats.length === 0 && (
+      {searched && !searching && !chatId && !error && (
         <p
           role="status"
           className="text-sm text-muted-foreground"
         >
-          No self-chat found{" "}
-          {nextCursor
-            ? "on this page. Check the next page or enter its chat ID below."
-            : "yet. Open your self-chat in Teams, then try again or enter its chat ID below."}
+          No personal self-chat found. Open your chat with yourself in Teams,
+          then try again.
         </p>
       )}
-      {nextCursor && (
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 w-full"
-          disabled={busy || searching}
-          onClick={() => void discover(nextCursor)}
-        >
-          Check more chats
-        </Button>
-      )}
-      <details className="rounded-md border border-border px-3">
-        <summary className="cursor-pointer py-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
-          Enter a chat ID instead
-        </summary>
-        <div className="space-y-2 pb-3">
-          <Label htmlFor="teams-chat-id">Self-chat ID</Label>
-          <Input
-            id="teams-chat-id"
-            value={chatId}
-            maxLength={1024}
-            onChange={(event) => setChatId(event.target.value)}
-            disabled={busy || searching}
-            placeholder="Paste your Teams self-chat ID"
-            aria-describedby="teams-chat-id-hint"
-            className="min-h-11"
-          />
-          <p
-            id="teams-chat-id-hint"
-            className="text-xs leading-relaxed text-muted-foreground"
-          >
-            Only a private chat belonging to your Graph account can be
-            connected. Group chats are not supported.
-          </p>
-        </div>
-      </details>
       <p
         id="teams-connect-consent"
         className="text-sm leading-relaxed text-muted-foreground"
@@ -192,7 +141,11 @@ export function TeamsChatSetup({
             className="motion-safe:animate-spin"
           />
         )}
-        {connecting ? "Connecting…" : "Connect and enable"}
+        {connecting
+          ? "Connecting…"
+          : reconnecting
+          ? "Reconnect and enable"
+          : "Connect and enable"}
       </Button>
     </form>
   );

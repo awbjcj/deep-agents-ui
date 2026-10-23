@@ -7,6 +7,7 @@ const bindingSchema = z.object({
   thread_id: z.string().min(1),
   enabled: z.boolean(),
   worker_enabled: z.boolean(),
+  needs_reconnect: z.boolean().default(false),
   mode: z.enum(["interactive", "autopilot"]),
   last_error: z.string().nullable(),
   review: z.record(z.string(), z.unknown()).nullable(),

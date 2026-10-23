@@ -94,11 +94,12 @@ test(
         );
     }
     const initialBinding = {
-      chat_id: "19:self-chat@unq.gbl.spaces",
+      chat_id: "48:notes",
       graph_user_id: "graph-owner",
       thread_id: "11111111-1111-4111-8111-111111111111",
       enabled: true,
       worker_enabled: true,
+      needs_reconnect: false,
       mode: "interactive",
       last_error: null,
       review: null,
@@ -110,6 +111,7 @@ test(
     let readFailure = { detail: "Settings temporarily unavailable" };
     let readStatus = 503;
     let nextWrite = "ok";
+    let notesAvailable = false;
     let holdWrite = null;
     let releaseWrite;
     const server = createServer(async (req, res) => {
@@ -127,7 +129,7 @@ test(
         if (url.pathname.endsWith("/chats")) {
           data = {
             graph_user_id: "graph-owner",
-            chats: url.searchParams.has("cursor")
+            chats: notesAvailable
               ? [
                   {
                     id: initialBinding.chat_id,
@@ -137,14 +139,14 @@ test(
                   },
                 ]
               : [
-                  {
-                    id: "group",
-                    topic: "Team group",
-                    chat_type: "group",
-                    self_chat_candidate: false,
-                  },
+                  ...["orphaned-chat", "bot-chat"].map((id) => ({
+                    id,
+                    topic: null,
+                    chat_type: "oneOnOne",
+                    self_chat_candidate: true,
+                  })),
                 ],
-            next_cursor: url.searchParams.has("cursor") ? null : "next-page",
+            next_cursor: null,
           };
         } else if (req.method === "GET") {
           if (failRead) {
@@ -250,14 +252,13 @@ test(
         fullPage: true,
       });
       await page.getByRole("button", { name: "Find my self-chat" }).click();
-      await page.getByText(/No self-chat found on this page/).waitFor();
+      await page.getByText(/No personal self-chat found/).waitFor();
       assert.equal(await connect.isDisabled(), true);
-      await page.getByRole("button", { name: "Check more chats" }).click();
-      await page.getByLabel("Your self-chat", { exact: true }).waitFor();
-      assert.equal(
-        await page.getByLabel("Your self-chat", { exact: true }).inputValue(),
-        initialBinding.chat_id
-      );
+      notesAvailable = true;
+      await page.getByRole("button", { name: "Find my self-chat" }).click();
+      await page
+        .getByText("Your personal self-chat is ready to connect.")
+        .waitFor();
       await connect.click();
       const toggle = page.getByRole("switch", { name: "Enable Teams chat" });
       await toggle.waitFor();
@@ -394,6 +395,46 @@ test(
         { mode: "interactive" }
       );
       assert.equal(await toggle.isChecked(), false);
+
+      // A lost destination exposes setup, without enabling or reconnecting itself.
+      const connectsBeforeLoss = requests.filter(
+        (request) => request.method === "POST"
+      ).length;
+      bindings.set("owner", {
+        ...bindings.get("owner"),
+        needs_reconnect: true,
+        enabled: false,
+        last_error: "Your Teams self-chat is no longer available. Reconnect.",
+      });
+      await page.getByRole("button", { name: "Refresh Teams status" }).click();
+      await page
+        .getByRole("heading", { name: "Reconnect your self-chat" })
+        .waitFor();
+      assert.equal(await toggle.count(), 0);
+      assert.equal(
+        requests.filter((request) => request.method === "POST").length,
+        connectsBeforeLoss
+      );
+      const reconnect = page.getByRole("button", {
+        name: "Reconnect and enable",
+        exact: true,
+      });
+      assert.equal(await reconnect.isDisabled(), true);
+      await page.screenshot({
+        path: join(artifactDir, "reconnect-required.png"),
+        fullPage: true,
+      });
+      await page.getByRole("button", { name: "Find my self-chat" }).click();
+      await page
+        .getByText("Your personal self-chat is ready to connect.")
+        .waitFor();
+      await reconnect.click();
+      await toggle.waitFor();
+      assert.equal(await toggle.isChecked(), true);
+      assert.equal(
+        requests.filter((request) => request.method === "POST").length,
+        connectsBeforeLoss + 1
+      );
 
       await page.addScriptTag({
         path: join(ROOT, "node_modules/axe-core/axe.min.js"),

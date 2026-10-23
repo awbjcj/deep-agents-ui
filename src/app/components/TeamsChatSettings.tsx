@@ -185,7 +185,7 @@ export function TeamsChatSettings({
               : notice}
           </p>
 
-          {binding && (
+          {binding && !binding.needs_reconnect && (
             <section
               aria-labelledby="teams-enable-label"
               className="overflow-hidden rounded-xl border border-border bg-card"
@@ -265,7 +265,7 @@ export function TeamsChatSettings({
               </p>
             </div>
           )}
-          {binding?.mode === "autopilot" && (
+          {binding?.mode === "autopilot" && !binding.needs_reconnect && (
             <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-4 text-sm">
               <p className="font-semibold">Autopilot is selected</p>
               <p className="leading-relaxed text-muted-foreground">
@@ -324,20 +324,23 @@ export function TeamsChatSettings({
               </details>
             </div>
           )}
-          {binding === null && !loadError && !unverified && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <TeamsChatSetup
-                busy={busy}
-                connecting={pendingAction === "save"}
-                onConnect={(chatId) =>
-                  void action(
-                    () => teamsChatAPI.connect(chatId),
-                    "Connected. Teams chat is enabled."
-                  )
-                }
-              />
-            </div>
-          )}
+          {(binding === null || binding?.needs_reconnect) &&
+            !loadError &&
+            !unverified && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <TeamsChatSetup
+                  busy={busy}
+                  connecting={pendingAction === "save"}
+                  reconnecting={binding?.needs_reconnect}
+                  onConnect={(chatId) =>
+                    void action(
+                      () => teamsChatAPI.connect(chatId),
+                      "Connected. Teams chat is enabled."
+                    )
+                  }
+                />
+              </div>
+            )}
           <div className="space-y-2 border-t border-border pt-4">
             <Button
               variant="ghost"
