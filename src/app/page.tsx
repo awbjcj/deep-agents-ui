@@ -37,6 +37,7 @@ import {
   Shield,
   SquarePen,
   UserCog,
+  CalendarClock,
 } from "lucide-react";
 import {
   Tooltip,
@@ -108,6 +109,7 @@ function HomePageInner({
   setConfigDialogOpen,
   handleSaveConfig,
 }: HomePageInnerProps) {
+  const router = useRouter();
   const client = useClient();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -392,7 +394,7 @@ function HomePageInner({
       </Suspense>
       <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:gap-2 max-sm:px-3">
+        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:h-auto max-sm:min-h-16 max-sm:flex-wrap max-sm:gap-2 max-sm:px-3 max-sm:py-2">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
@@ -458,7 +460,20 @@ function HomePageInner({
             )}
           </div>
 
-          <div className="flex min-w-0 items-center gap-1.5 max-sm:gap-1">
+          <div className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Scheduled tasks"
+              onClick={() => {
+                if (!allowWorkspaceLeave()) return;
+                router.push("/tasks");
+              }}
+              className="rounded-full border border-border bg-card px-3 max-sm:px-2"
+            >
+              <CalendarClock className="h-4 w-4 sm:mr-2" />
+              <span className="max-sm:hidden">Tasks</span>
+            </Button>
             {/* Assistant name surfaced over its raw ID — full ID is in tooltip
                 for power users who need to copy it. Clicking opens the
                 config dialog so the agent can be switched directly from
@@ -738,12 +753,15 @@ function HomePageContent() {
 
   useEffect(() => {
     const savedConfig = getConfig();
-    if (savedConfig && savedConfig.assistantId) {
-      setConfig(savedConfig);
+    if (savedConfig && (assistantId || savedConfig.assistantId)) {
+      setConfig({
+        ...savedConfig,
+        assistantId: assistantId || savedConfig.assistantId,
+      });
     } else if (getDeploymentUrl()) {
       setConfigDialogOpen(true);
     }
-  }, []);
+  }, [assistantId]);
 
   useEffect(() => {
     // nuqs URL writes can cancel an in-flight login redirect. Restore the
@@ -753,10 +771,14 @@ function HomePageContent() {
     }
   }, [authLoading, user, config, assistantId, setAssistantId]);
 
-  const handleSaveConfig = useCallback((newConfig: StandaloneConfig) => {
-    saveConfig(newConfig);
-    setConfig(newConfig);
-  }, []);
+  const handleSaveConfig = useCallback(
+    (newConfig: StandaloneConfig) => {
+      saveConfig(newConfig);
+      setConfig(newConfig);
+      void setAssistantId(newConfig.assistantId);
+    },
+    [setAssistantId]
+  );
 
   // Both values come from build-time env vars, so read them once instead of on
   // every render — `deploymentUrl`/`apiKey` identity churn would otherwise
