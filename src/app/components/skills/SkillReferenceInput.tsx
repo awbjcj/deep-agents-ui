@@ -353,7 +353,7 @@ export function SkillReferenceInput({
         }
         className={cn(
           textLayout,
-          "relative block max-h-[60dvh] min-h-14 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+          "relative block max-h-[60dvh] min-h-14 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
         )}
         rows={1}
       />
@@ -364,14 +364,20 @@ export function SkillReferenceInput({
         Exact skill names are referenced automatically. Type $ to find a skill.
         Use arrow keys to navigate, Enter to select, and Escape to dismiss.
       </span>
-      {!open && (loading || error || references.length > 0) && (
+      {!open && loading && (
+        <span
+          role="status"
+          className="sr-only"
+        >
+          Checking skills…
+        </span>
+      )}
+      {!open && (error || references.length > 0) && (
         <div
           role="status"
           className="flex flex-wrap items-center gap-2 px-4 pb-2 text-xs text-muted-foreground"
         >
-          {loading ? (
-            "Checking skills…"
-          ) : error ? (
+          {error ? (
             <>
               <span>Skill matching unavailable.</span>
               <button

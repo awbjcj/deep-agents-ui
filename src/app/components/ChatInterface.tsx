@@ -286,8 +286,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
               "pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mb-5",
-              "mx-auto w-[calc(100%-24px)] max-w-[960px] transition-[border-color,box-shadow] duration-150 sm:w-[calc(100%-32px)]",
-              "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+              "mx-auto w-[calc(100%-24px)] max-w-[960px] sm:w-[calc(100%-32px)]"
             )}
           >
             {(hasTasks || hasFiles) && (
