@@ -3,6 +3,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
 import { ConnectivityProvider } from "@/providers/ConnectivityProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemedToaster } from "@/app/components/ThemedToaster";
 import { AppReadyBeacon } from "@/app/components/AppReadyBeacon";
 import { bootRecoveryScript } from "@/app/bootRecovery";
@@ -77,7 +78,9 @@ export default function RootLayout({
           <AuthProvider>
             <NotificationsProvider>
               <ConnectivityProvider>
-                <NuqsAdapter>{children}</NuqsAdapter>
+                <TooltipProvider>
+                  <NuqsAdapter>{children}</NuqsAdapter>
+                </TooltipProvider>
               </ConnectivityProvider>
               <ThemedToaster />
             </NotificationsProvider>

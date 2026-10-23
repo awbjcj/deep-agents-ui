@@ -220,18 +220,30 @@ function HomePageInner({
     setExpandedPanel(null);
   }, []);
 
-  // Overlay panels keep chat mounted (including an active stream), but move
-  // focus into the visible surface and return it to its trigger on close.
+  // Keep focus inside a visible panel across responsive/expanded layout changes;
+  // only return it to the trigger when the panel actually closes.
   useEffect(() => {
     if (!overlayPanel) return;
-    const previous = document.activeElement;
     const panelId =
       overlayPanel === "threads"
         ? "thread-history"
         : overlayPanel === "workspace"
         ? "right-panel"
         : "admin-panel";
-    document.getElementById(panelId)?.focus();
+    const panel = document.getElementById(panelId);
+    const active = document.activeElement;
+    const triggerLabel =
+      overlayPanel === "threads"
+        ? "Threads"
+        : overlayPanel === "workspace"
+        ? "Workspace"
+        : "Admin console";
+    const previous = panel?.contains(active)
+      ? document.querySelector<HTMLButtonElement>(
+          `button[aria-label="${triggerLabel}"]`
+        )
+      : active;
+    if (!panel?.contains(active)) panel?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.key !== "Escape" ||
@@ -247,7 +259,11 @@ function HomePageInner({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      if (previous instanceof HTMLElement && previous.isConnected)
+      if (
+        !panel?.isConnected &&
+        previous instanceof HTMLElement &&
+        previous.isConnected
+      )
         previous.focus();
     };
   }, [
