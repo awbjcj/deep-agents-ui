@@ -1,78 +1,88 @@
+import { z } from "zod";
 import { apiFetch, extractErrorMessage } from "@/lib/auth";
 
-export interface SkillFile {
-  path: string;
-  content: string;
-}
-export interface SkillDiagnostic {
-  code: string;
-  message: string;
-  path: string | null;
-}
-export interface SkillPackageInput {
-  files: SkillFile[];
-}
-export interface ValidatedSkillPackage extends SkillPackageInput {
-  name: string;
-  description: string;
-  total_bytes: number;
-}
-export interface PersonalSkill extends SkillPackageInput {
-  id: string;
-  name: string;
-  description: string;
-  revision: number;
-  created_at: string;
-  updated_at: string;
-}
-export interface SkillLimits {
-  skill_file_bytes: number;
-  supporting_file_bytes: number;
-  package_bytes: number;
-  files_per_package: number;
-  skills_per_account: number;
-  account_text_bytes: number;
-  upload_bytes: number;
-  path_characters: number;
-  path_segments: number;
-  name_characters: number;
-  description_characters: number;
-  worker_request_bytes: number;
-  broker_response_bytes: number;
-  snapshot_chunk_bytes: number;
-}
-export interface SkillCatalogEntry {
-  id: string;
-  name: string;
-  description: string;
-  origin: "system" | "personal";
-  availability: "available" | "name_conflict" | "unavailable";
-  revision: number | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-export interface SystemSkillResource {
-  path: string;
-  size_bytes: number | null;
-  copyable: boolean;
-  diagnostics: SkillDiagnostic[];
-}
-export interface SystemSkill extends SkillCatalogEntry {
-  origin: "system";
-  resources: SystemSkillResource[];
-  diagnostics: SkillDiagnostic[];
-}
-export interface SkillCatalog {
-  entries: SkillCatalogEntry[];
-  library_revision: number;
-  system_revision: string;
-  limits: SkillLimits;
-}
-export interface SkillImportPreview {
-  package: ValidatedSkillPackage;
-  diagnostics: SkillDiagnostic[];
-}
+const nonnegativeInteger = z.int().nonnegative();
+const skillFileSchema = z.object({ path: z.string(), content: z.string() });
+const skillDiagnosticSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  path: z.string().nullable().default(null),
+});
+const skillPackageSchema = z.object({ files: z.array(skillFileSchema) });
+const validatedPackageSchema = skillPackageSchema.extend({
+  name: z.string(),
+  description: z.string(),
+  total_bytes: nonnegativeInteger,
+});
+const personalSkillSchema = skillPackageSchema.extend({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  revision: nonnegativeInteger,
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+const skillLimitsSchema = z.object({
+  skill_file_bytes: z.int().positive(),
+  supporting_file_bytes: z.int().positive(),
+  package_bytes: z.int().positive(),
+  files_per_package: z.int().positive(),
+  skills_per_account: z.int().positive(),
+  account_text_bytes: z.int().positive(),
+  upload_bytes: z.int().positive(),
+  path_characters: z.int().positive(),
+  path_segments: z.int().positive(),
+  name_characters: z.int().positive(),
+  description_characters: z.int().positive(),
+  worker_request_bytes: z.int().positive(),
+  broker_response_bytes: z.int().positive(),
+  snapshot_chunk_bytes: z.int().positive(),
+});
+const catalogEntrySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  origin: z.enum(["system", "personal"]),
+  availability: z.enum(["available", "name_conflict", "unavailable"]),
+  revision: nonnegativeInteger.nullable().default(null),
+  created_at: z.string().nullable().default(null),
+  updated_at: z.string().nullable().default(null),
+});
+const systemResourceSchema = z.object({
+  path: z.string(),
+  size_bytes: nonnegativeInteger.nullable().default(null),
+  copyable: z.boolean(),
+  diagnostics: z.array(skillDiagnosticSchema).default([]),
+});
+const systemSkillSchema = catalogEntrySchema.extend({
+  origin: z.literal("system"),
+  resources: z.array(systemResourceSchema),
+  diagnostics: z.array(skillDiagnosticSchema).default([]),
+});
+const skillCatalogSchema = z.object({
+  entries: z.array(catalogEntrySchema),
+  library_revision: nonnegativeInteger,
+  system_revision: z.string(),
+  limits: skillLimitsSchema,
+});
+const importPreviewSchema = z.object({
+  package: validatedPackageSchema,
+  diagnostics: z.array(skillDiagnosticSchema).default([]),
+});
 
+// Keep runtime validation and public TypeScript contracts in one place.
+// Object schemas accept additive server fields without rejecting newer responses.
+export type SkillFile = z.infer<typeof skillFileSchema>;
+export type SkillDiagnostic = z.infer<typeof skillDiagnosticSchema>;
+export type SkillPackageInput = z.infer<typeof skillPackageSchema>;
+export type ValidatedSkillPackage = z.infer<typeof validatedPackageSchema>;
+export type PersonalSkill = z.infer<typeof personalSkillSchema>;
+export type SkillLimits = z.infer<typeof skillLimitsSchema>;
+export type SkillCatalogEntry = z.infer<typeof catalogEntrySchema>;
+export type SystemSkillResource = z.infer<typeof systemResourceSchema>;
+export type SystemSkill = z.infer<typeof systemSkillSchema>;
+export type SkillCatalog = z.infer<typeof skillCatalogSchema>;
+export type SkillImportPreview = z.infer<typeof importPreviewSchema>;
 /** A public API failure retaining revision conflicts and resource diagnostics. */
 export class SkillsApiError extends Error {
   constructor(
@@ -120,12 +130,32 @@ async function checked(response: Response): Promise<Response> {
   );
 }
 
-async function skillJson<T>(path: string, options?: RequestInit): Promise<T> {
-  return (await checked(await apiFetch(path, options))).json() as Promise<T>;
+async function skillJson<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  options?: RequestInit
+): Promise<T> {
+  const response = await checked(await apiFetch(path, options));
+  const invalidResponse = () =>
+    new SkillsApiError(
+      response.status,
+      "invalid_skill_response",
+      "The server returned an invalid skill response. Reload the library before continuing."
+    );
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    throw invalidResponse();
+  }
+  const result = schema.safeParse(body);
+  if (!result.success) throw invalidResponse();
+  return result.data;
 }
 
 export function apiGetSkills(signal?: AbortSignal): Promise<SkillCatalog> {
-  return skillJson("/skills", { signal });
+  return skillJson("/skills", skillCatalogSchema, { signal });
 }
 
 export const SKILL_CATALOG_CHANGED_EVENT = "vsda-skill-catalog-changed";
@@ -139,12 +169,16 @@ export function apiGetPersonalSkill(
   id: string,
   signal?: AbortSignal
 ): Promise<PersonalSkill> {
-  return skillJson(`/skills/personal/${encodeURIComponent(id)}`, { signal });
+  return skillJson(
+    `/skills/personal/${encodeURIComponent(id)}`,
+    personalSkillSchema,
+    { signal }
+  );
 }
 export function apiCreatePersonalSkill(
   input: SkillPackageInput
 ): Promise<PersonalSkill> {
-  return skillJson<PersonalSkill>("/skills/personal", {
+  return skillJson("/skills/personal", personalSkillSchema, {
     method: "POST",
     body: JSON.stringify({ files: input.files }),
   }).then(catalogChanged);
@@ -154,8 +188,9 @@ export function apiReplacePersonalSkill(
   input: SkillPackageInput,
   expectedRevision: number
 ): Promise<PersonalSkill> {
-  return skillJson<PersonalSkill>(
+  return skillJson(
     `/skills/personal/${encodeURIComponent(id)}`,
+    personalSkillSchema,
     {
       method: "PUT",
       body: JSON.stringify({
@@ -182,13 +217,20 @@ export async function apiDeletePersonalSkill(
 export function apiPreviewSkillImport(file: File): Promise<SkillImportPreview> {
   const body = new FormData();
   body.append("file", file);
-  return skillJson("/skills/import/preview", { method: "POST", body });
+  return skillJson("/skills/import/preview", importPreviewSchema, {
+    method: "POST",
+    body,
+  });
 }
 export function apiGetSystemSkill(
   id: string,
   signal?: AbortSignal
 ): Promise<SystemSkill> {
-  return skillJson(`/skills/system/${encodeURIComponent(id)}`, { signal });
+  return skillJson(
+    `/skills/system/${encodeURIComponent(id)}`,
+    systemSkillSchema,
+    { signal }
+  );
 }
 export function apiReadSystemSkillFile(
   id: string,
@@ -199,6 +241,7 @@ export function apiReadSystemSkillFile(
     `/skills/system/${encodeURIComponent(id)}/file?path=${encodeURIComponent(
       path
     )}`,
+    skillFileSchema,
     { signal }
   );
 }
