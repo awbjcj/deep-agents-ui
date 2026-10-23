@@ -553,7 +553,7 @@ function HomePageInner({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Models · Tools · Skills · Tokens · Connections
+                Models · Tools · Skills · Tokens · Teams · Connections
               </TooltipContent>
             </Tooltip>
             {isAdmin && (
