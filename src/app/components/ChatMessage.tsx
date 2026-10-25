@@ -8,6 +8,8 @@ import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
+import { TaskOutcomeStatus } from "@/app/components/TaskOutcomeStatus";
+import type { TaskOutcome } from "@/lib/taskOutcome";
 import { SkillReferenceText } from "./skills/SkillReferenceText";
 import { parseSkillReferences } from "@/lib/skill-references";
 import { contextSummary } from "@/lib/context-summary";
@@ -41,6 +43,7 @@ import {
 } from "@/lib/source-images";
 
 interface ChatMessageProps {
+  taskOutcome?: TaskOutcome | null;
   onUseEvidence?: (text: string) => void;
   message: Message;
   toolCalls: ToolCall[];
@@ -58,6 +61,7 @@ interface ChatMessageProps {
 
 export const ChatMessage = React.memo<ChatMessageProps>(
   ({
+    taskOutcome,
     message,
     onUseEvidence,
     toolCalls,
@@ -411,6 +415,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
             </div>
           )}
+          {!isUser && <TaskOutcomeStatus outcome={taskOutcome ?? null} />}
           {!isUser && (
             <ResponseDetails
               message={message}

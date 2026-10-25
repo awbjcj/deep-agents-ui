@@ -37,6 +37,13 @@ import {
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
 import {
+  isTaskGraderMessage,
+  parseTaskOutcome,
+  reduceTaskOutcome,
+  taskOutcomeEvent,
+  type TaskOutcome,
+} from "@/lib/taskOutcome";
+import {
   reconcileSourceImageRecords,
   restoreSourceImageRemoval,
   stageSourceImageRemoval,
@@ -59,6 +66,7 @@ export type StateType = {
   messages: Message[];
   todos: TodoItem[];
   files: Record<string, string>;
+  task_outcome?: TaskOutcome | null;
   source_image_attachments?: SourceImageRecordMap;
   email?: {
     id?: string;
@@ -136,13 +144,35 @@ export function useChat({
     threadIdRef.current = threadId;
   }, [threadId]);
 
-  // Route `custom` stream events from ToolErrorNotificationMiddleware:
+  // Root task-outcome notifications refine the active checkpoint status.
+  // Route other `custom` events from ToolErrorNotificationMiddleware:
   //   - scope "user" → durable banner (handled by NotificationsProvider)
   //   - scope "thread" → ephemeral sonner toast (kept here so the chat hook
   //     owns thread-scoped UX; banners are user-wide and live in their
   //     own provider).
   const handleCustomEvent = useCallback(
-    (event: unknown) => {
+    (
+      event: unknown,
+      options?: {
+        namespace?: string[];
+        mutate: (update: (previous: StateType) => Partial<StateType>) => void;
+      }
+    ) => {
+      const outcome = taskOutcomeEvent(event, options?.namespace);
+      if (outcome && options) {
+        options.mutate((previous) => {
+          const current = parseTaskOutcome(previous.task_outcome);
+          if (!current) return {};
+          return {
+            task_outcome: reduceTaskOutcome(
+              current,
+              outcome,
+              current.execution_id
+            ),
+          };
+        });
+        return;
+      }
       if (
         typeof event !== "object" ||
         event === null ||
@@ -283,10 +313,8 @@ export function useChat({
       ? null
       : threadId;
 
-  // The langgraph-sdk's `useStream` accepts an `onCustomEvent(event)`
-  // callback at runtime but doesn't expose it in its public types. We attach
-  // the listener via Object.assign so the rest of the options keep their
-  // strong typing.
+  // Custom events include their namespace and an updater for the current
+  // values. Persisted history still establishes the active execution first.
   const streamOptions = Object.assign(
     {
       assistantId: activeAssistant?.assistant_id || "",
@@ -941,8 +969,16 @@ export function useChat({
   // references so a streamed token re-renders only the live message instead of
   // every artifact in the thread.
   const isInterrupted = stream.interrupts.length > 0;
+  const visibleMessages = useMemo(
+    () =>
+      stream.messages.filter(
+        (message, index) =>
+          !isTaskGraderMessage(stream.getMessagesMetadata(message, index))
+      ),
+    [stream.messages, stream.getMessagesMetadata]
+  );
   const processedMessages = useProcessedMessages(
-    stream.messages,
+    visibleMessages,
     isInterrupted,
     stream.isLoading || stream.isThreadLoading
   );
@@ -951,7 +987,11 @@ export function useChat({
   const todos = stream.values.todos ?? EMPTY_TODOS;
   const email = stream.values.email;
   const ui = stream.values.ui;
-  const messages = stream.messages;
+  const taskOutcome = useMemo(
+    () => parseTaskOutcome(stream.values.task_outcome),
+    [stream.values.task_outcome]
+  );
+  const messages = visibleMessages;
   const isLoading =
     stream.isLoading ||
     messageRuns.pendingCount > 0 ||
@@ -976,6 +1016,7 @@ export function useChat({
       sourceImageAttachments,
       email,
       ui,
+      taskOutcome,
       setFiles,
       refreshFiles,
       removeSourceImage,
@@ -1008,6 +1049,7 @@ export function useChat({
       sourceImageAttachments,
       email,
       ui,
+      taskOutcome,
       setFiles,
       refreshFiles,
       removeSourceImage,

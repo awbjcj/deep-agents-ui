@@ -9,6 +9,8 @@ import {
   X,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
+import { TaskOutcomeStatus } from "@/app/components/TaskOutcomeStatus";
+import { isTerminalTaskOutcome } from "@/lib/taskOutcome";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { PendingToolApproval } from "@/app/components/PendingToolApproval";
 import type { TodoItem } from "@/app/types/types";
@@ -109,6 +111,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const {
       stream,
       processedMessages,
+      taskOutcome,
       todos,
       files,
       pendingFilePaths,
@@ -133,7 +136,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     } = useChatContext();
     const activity = agentActivity(
       processedMessages,
-      isLoading && !isThreadLoading,
+      isLoading &&
+        !isThreadLoading &&
+        !(
+          taskOutcome &&
+          (isTerminalTaskOutcome(taskOutcome) ||
+            taskOutcome.status === "candidate")
+        ),
       !!interrupt
     );
 
@@ -238,9 +247,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       graphId={assistant?.graph_id}
                       files={files}
                       sourceImageAttachments={sourceImageAttachments}
+                      taskOutcome={
+                        taskOutcome?.candidate_message_id === data.message.id
+                          ? taskOutcome
+                          : null
+                      }
                     />
                   );
                 })}
+                {!processedMessages.some(
+                  (data) =>
+                    data.message.id === taskOutcome?.candidate_message_id
+                ) && <TaskOutcomeStatus outcome={taskOutcome} />}
                 <PendingToolApproval
                   key={interrupt?.id}
                   interrupt={interrupt}
