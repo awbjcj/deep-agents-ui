@@ -969,13 +969,14 @@ export function useChat({
   // references so a streamed token re-renders only the live message instead of
   // every artifact in the thread.
   const isInterrupted = stream.interrupts.length > 0;
+  const { messages: streamedMessages, getMessagesMetadata } = stream;
   const visibleMessages = useMemo(
     () =>
-      stream.messages.filter(
+      streamedMessages.filter(
         (message, index) =>
-          !isTaskGraderMessage(stream.getMessagesMetadata(message, index))
+          !isTaskGraderMessage(getMessagesMetadata(message, index))
       ),
-    [stream.messages, stream.getMessagesMetadata]
+    [streamedMessages, getMessagesMetadata]
   );
   const processedMessages = useProcessedMessages(
     visibleMessages,
@@ -1000,7 +1001,6 @@ export function useChat({
   const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
   const queuedMessageCount = messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
-  const getMessagesMetadata = stream.getMessagesMetadata;
 
   // The returned object is the ChatProvider context value. Leaving it as a bare
   // object literal invalidated every chat consumer whenever an unrelated parent
