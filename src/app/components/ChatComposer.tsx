@@ -19,6 +19,8 @@ import {
   ListPlus,
 } from "lucide-react";
 import { AutopilotControl } from "./AutopilotControl";
+import { MessageQueue } from "./MessageQueue";
+import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import type { useAutopilot } from "@/app/hooks/useAutopilot";
 import type { MessageDelivery } from "@/lib/message-delivery";
 import {
@@ -60,6 +62,7 @@ interface ChatComposerProps {
   accountId?: string;
   createdThreadId?: string;
   queuedMessageCount?: number;
+  messageQueue?: ReturnType<typeof useQueuedMessages>;
   isStopping?: boolean;
   skillAuthoringRequest?: SkillAuthoringRequest | null;
   onSkillAuthoringRequestConsumed?: (id: string) => void;
@@ -96,6 +99,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     accountId,
     createdThreadId,
     queuedMessageCount = 0,
+    messageQueue,
     isStopping = false,
     assistant,
     evidenceRequest,
@@ -299,7 +303,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const hasDraft =
       !!input.trim() ||
       attachments.some((a) => a.phase === "ready" || a.phase === "reference");
-    const showDelivery = isLoading && hasDraft;
+    const hasQueue = (messageQueue?.items.length ?? 0) > 0;
+    const showDelivery = (isLoading || hasQueue) && hasDraft;
     const sendDisabled =
       submitDisabled ||
       skillsPending ||
@@ -370,13 +375,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             accepted = await sendMessage(
               text,
               additionalKwargs,
-              isLoading ? delivery : undefined
+              isLoading || hasQueue ? delivery : undefined
             );
           } else {
             accepted = await sendMessage(
               [{ type: "text", text: messageText || " " }, ...imageBlocks],
               additionalKwargs,
-              isLoading ? delivery : undefined
+              isLoading || hasQueue ? delivery : undefined
             );
           }
           if (accepted !== false) {
@@ -408,6 +413,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         skillsPending,
         prepareAttachments,
         isLoading,
+        hasQueue,
         delivery,
         draftKey,
         threadId,
@@ -428,6 +434,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
 
     return (
       <>
+        {messageQueue && <MessageQueue queue={messageQueue} />}
         <form
           onSubmit={handleSubmit}
           className={`relative flex flex-col ${
@@ -705,7 +712,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   showDelivery
                     ? delivery === "queue"
                       ? "Send after the current run finishes"
-                      : "Interrupt the current run and replace pending queued messages"
+                      : "Interrupt the current response and send this user prompt now"
                     : undefined
                 }
                 className={cn(

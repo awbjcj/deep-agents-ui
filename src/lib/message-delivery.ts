@@ -2,7 +2,7 @@ import type { Client, Config, Message, Run } from "@langchain/langgraph-sdk";
 
 export type MessageDelivery = "steer" | "queue";
 
-/** Submit to the durable server queue without waiting for the browser stream. */
+/** Inject one user prompt as a new run at the latest conversation checkpoint. */
 export function createMessageRun(
   client: Client,
   threadId: string,
@@ -24,7 +24,7 @@ export function createMessageRun(
         message_delivery: delivery,
       },
     },
-    metadata: { message_delivery: delivery },
+    metadata: { message_delivery: delivery, message_id: message.id },
     multitaskStrategy: delivery === "steer" ? "interrupt" : "enqueue",
     streamMode: ["values", "messages-tuple", "updates", "custom"],
     streamSubgraphs: true,

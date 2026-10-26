@@ -129,6 +129,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       autopilot,
       createdThreadId,
       queuedMessageCount,
+      messageQueue,
       isStopping,
     } = useChatContext();
     const activity = agentActivity(
@@ -520,6 +521,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               autopilot={autopilot}
               isThreadLoading={isThreadLoading}
               queuedMessageCount={queuedMessageCount}
+              messageQueue={messageQueue}
               isStopping={isStopping}
               isLoading={isLoading}
               files={files}

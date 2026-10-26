@@ -49,6 +49,11 @@ export function useMessageRuns(options: Options) {
     runs: EMPTY_RUNS,
     stopping: false,
   });
+  const [activity, setActivity] = useState({
+    session,
+    checked: false,
+    busy: false,
+  });
   const runs = state.session === session ? state.runs : EMPTY_RUNS;
   const stopping = state.session === session && state.stopping;
 
@@ -63,15 +68,18 @@ export function useMessageRuns(options: Options) {
       const revision = session.revision;
       let retry = false;
       try {
-        const found = pendingMessageRuns(
-          await listThreadRuns(client, threadId!)
-        );
+        const listed = await listThreadRuns(client, threadId!);
+        const found = pendingMessageRuns(listed);
         if (
           disposed ||
           current.current !== session ||
           revision !== session.revision
         )
           return;
+        const busy = listed.some(
+          (run) => run.status === "pending" || run.status === "running"
+        );
+        setActivity({ session, checked: true, busy });
         const connected = sessionStorage.getItem(
           streamRunStorageKey(threadId!)
         );
@@ -100,7 +108,7 @@ export function useMessageRuns(options: Options) {
             ),
           };
         });
-        retry = latest.current.loading || found.length > 0;
+        retry = latest.current.loading || busy;
       } catch {
         retry = true;
       } finally {
@@ -299,6 +307,10 @@ export function useMessageRuns(options: Options) {
     submit,
     stop,
     pendingCount: runs.length,
+    // Drafts must wait for server discovery too: the active response may have
+    // started in another tab or outlived its browser stream.
+    serverBusy:
+      activity.session !== session || !activity.checked || activity.busy,
     stopping,
     queuedCount: runs.filter(
       (run) =>

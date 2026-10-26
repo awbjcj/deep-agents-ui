@@ -21,7 +21,12 @@ import { useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAutopilot } from "@/app/hooks/useAutopilot";
 import { useMessageRuns } from "@/app/hooks/useMessageRuns";
-import { createMessageRun, type MessageDelivery } from "@/lib/message-delivery";
+import { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
+import {
+  createMessageRun,
+  listThreadRuns,
+  type MessageDelivery,
+} from "@/lib/message-delivery";
 import type { ResumeInterruptValue } from "@/app/types/types";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
@@ -363,6 +368,57 @@ export function useChat({
     });
   }, [history, threadId]);
 
+  const messageQueue = useQueuedMessages({
+    scope: messageRunScope,
+    ready:
+      !!threadId &&
+      !!activeAssistant &&
+      threadId === streamThreadId &&
+      !stream.isThreadLoading &&
+      !stream.error &&
+      !historyError &&
+      stream.interrupts.length === 0,
+    busy:
+      stream.isLoading ||
+      messageRuns.serverBusy ||
+      messageRuns.pendingCount > 0 ||
+      messageRuns.stopping ||
+      submissionPending,
+    submit: async (item) => {
+      const target = threadId;
+      if (!target || messageSubmission.current) return false;
+      messageSubmission.current = true;
+      setSubmissionPending(true);
+      try {
+        const accepted = await submitMessageRun(async () => {
+          // Reconcile an acceptance lost during refresh/network failure before
+          // sending the same human turn again.
+          const existing = (await listThreadRuns(client, target)).find(
+            (run) => run.metadata?.message_id === item.id
+          );
+          return (
+            existing ??
+            createMessageRun(
+              client,
+              target,
+              item.assistantId,
+              item.message,
+              "queue",
+              item.config
+            )
+          );
+        }, messageRunScope);
+        onHistoryRevalidate?.();
+        return accepted;
+      } finally {
+        messageSubmission.current = false;
+        setSubmissionPending(false);
+      }
+    },
+  });
+  const enqueueMessage = messageQueue.enqueue;
+  const clearMessageQueue = messageQueue.clear;
+
   const sendMessage = useCallback(
     async (
       content: string | Array<Record<string, unknown>>,
@@ -384,6 +440,17 @@ export function useChat({
           ? { additional_kwargs: additionalKwargs }
           : {}),
       };
+      if (delivery === "queue") {
+        if (!threadIdRef.current) return false;
+        enqueueMessage({
+          id: newMessage.id!,
+          message: newMessage,
+          assistantId: activeAssistant.assistant_id,
+          config: buildConfig(),
+          status: "waiting",
+        });
+        return true;
+      }
       if (delivery) {
         const target = threadIdRef.current;
         if (!target) return false;
@@ -465,6 +532,7 @@ export function useChat({
       submitMessageRun,
       messageRunScope,
       messageRuns.stopping,
+      enqueueMessage,
       threadId,
       streamThreadId,
     ]
@@ -917,6 +985,7 @@ export function useChat({
 
   const stopStream = useCallback(async () => {
     disableAutopilot();
+    clearMessageQueue();
     pendingSendRef.current?.(false);
     pendingSendRef.current = null;
     const target = threadIdRef.current;
@@ -932,7 +1001,7 @@ export function useChat({
       if (target) clearStreamReconnectState(target);
       streamRef.current.stop();
     }
-  }, [disableAutopilot, stopMessageRuns]);
+  }, [disableAutopilot, stopMessageRuns, clearMessageQueue]);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -958,7 +1027,8 @@ export function useChat({
     messageRuns.stopping ||
     submissionPending;
   const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
-  const queuedMessageCount = messageRuns.queuedCount;
+  const queuedMessageCount =
+    messageQueue.items.length + messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
   const getMessagesMetadata = stream.getMessagesMetadata;
 
@@ -984,6 +1054,7 @@ export function useChat({
       isLoading,
       isThreadLoading,
       queuedMessageCount,
+      messageQueue,
       isStopping,
       historyError,
       retryHistory,
@@ -1016,6 +1087,7 @@ export function useChat({
       isLoading,
       isThreadLoading,
       queuedMessageCount,
+      messageQueue,
       isStopping,
       historyError,
       retryHistory,
