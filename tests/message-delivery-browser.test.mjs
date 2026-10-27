@@ -267,7 +267,6 @@ test(
         name: "Enable autopilot",
         exact: true,
       });
-      await page.getByRole("button", { name: "Chat options" }).click();
       await autopilot.waitFor();
       assert.equal(
         await autopilot.evaluate((el) => !!el.closest("form")),
@@ -644,7 +643,6 @@ test(
       await input.fill("Run before a pending correction");
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
-      await page.getByRole("button", { name: "Chat options" }).click();
       await page
         .getByRole("button", { name: "Enable autopilot", exact: true })
         .click();

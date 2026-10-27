@@ -99,14 +99,14 @@ test(
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto("http://127.0.0.1:" + server.address().port);
       await page
-        .getByPlaceholder("Write your message...")
+        .getByRole("textbox", { name: "Message", exact: true })
         .fill("Existing question");
       const add = page.getByRole("button", { name: /Add selected/ });
       assert.equal(await add.isDisabled(), true);
       await page.getByRole("checkbox", { name: "Design notes" }).check();
       await add.click();
       const draft = await page
-        .getByPlaceholder("Write your message...")
+        .getByRole("textbox", { name: "Message", exact: true })
         .inputValue();
       assert.match(draft, /^Existing question/);
       assert.match(draft, /A source excerpt/);
@@ -131,7 +131,9 @@ test(
         document.querySelector("textarea").value.includes("Existing question")
       );
       assert.equal(
-        await page.getByPlaceholder("Write your message...").inputValue(),
+        await page
+          .getByRole("textbox", { name: "Message", exact: true })
+          .inputValue(),
         draft
       );
       await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -186,7 +188,7 @@ test(
       });
       await page.evaluate(() => window.switchThread(null));
       await page
-        .getByPlaceholder("Write your message...")
+        .getByRole("textbox", { name: "Message", exact: true })
         .fill("New conversation with attachments");
       await page.evaluate(async () => {
         const ensure = window.ensureAttachmentThread;
@@ -194,7 +196,9 @@ test(
       });
       await page.waitForFunction(() => window.fixtureThread === "created");
       assert.equal(
-        await page.getByPlaceholder("Write your message...").inputValue(),
+        await page
+          .getByRole("textbox", { name: "Message", exact: true })
+          .inputValue(),
         "New conversation with attachments"
       );
       assert.deepEqual(errors, []);

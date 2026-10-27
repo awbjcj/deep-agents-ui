@@ -109,15 +109,6 @@ test(
         "developer"
       );
       await page.emulateMedia({ reducedMotion: "reduce" });
-      const options = page.getByRole("button", { name: "Chat options" });
-      assert.equal(await options.getAttribute("aria-expanded"), "false");
-      assert.equal(
-        await page
-          .getByRole("button", { name: "Enable autopilot", exact: true })
-          .isVisible(),
-        false
-      );
-      await options.click();
       await page
         .getByRole("button", { name: "Enable autopilot", exact: true })
         .click();
@@ -125,8 +116,6 @@ test(
         .getByRole("button", { name: "I understand, enable autopilot" })
         .click();
       await page.getByRole("button", { name: "Turn off autopilot" }).waitFor();
-      await options.click();
-      assert.equal(await options.getAttribute("aria-expanded"), "false");
       assert.equal(
         await page
           .getByRole("button", { name: "Turn off autopilot" })
@@ -152,7 +141,9 @@ test(
       });
       await page.getByRole("button", { name: "Turn off autopilot" }).click();
       assert.equal(
-        await options.evaluate((element) => element === document.activeElement),
+        await page
+          .getByRole("button", { name: "Enable autopilot", exact: true })
+          .evaluate((element) => element === document.activeElement),
         true
       );
       releaseResume();

@@ -38,6 +38,7 @@ export function SkillReferenceInput({
   onRefreshCatalog,
   inputRef,
   isLoading,
+  submitAction = "send",
   onChange,
   onSelect,
   onKeyDown,
@@ -51,6 +52,7 @@ export function SkillReferenceInput({
   onRefreshCatalog: () => void;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   isLoading: boolean;
+  submitAction?: "send" | "queue" | "steer";
   onChange: (value: string) => void;
   onSelect: (text: string, references: SkillReference[]) => void;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -346,19 +348,28 @@ export function SkillReferenceInput({
         aria-controls={open ? id : undefined}
         aria-activedescendant={activeId}
         aria-describedby={`${id}-hint`}
-        placeholder={isLoading ? "Add a follow-up…" : "Write your message..."}
+        placeholder={isLoading ? "Add a follow-up…" : "Enter your message…"}
         className={cn(
           textLayout,
-          "relative block max-h-[32dvh] min-h-12 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
+          "relative block max-h-[32dvh] min-h-16 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
         )}
         rows={1}
       />
+      {!value && (
+        <p
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-9 m-0 px-3 text-[11px] leading-4 text-muted-foreground"
+        >
+          $ skills · Enter {submitAction} · Shift+Enter newline
+        </p>
+      )}
       <span
         id={`${id}-hint`}
         className="sr-only"
       >
-        Exact skill names are referenced automatically. Type $ to find a skill.
-        Use arrow keys to navigate, Enter to select, and Escape to dismiss.
+        Enter to {submitAction}. Shift+Enter for a new line. Exact skill names
+        are referenced automatically. Type $ to find a skill. Use arrow keys to
+        navigate, Enter to select, and Escape to dismiss.
       </span>
       {!open && loading && (
         <span

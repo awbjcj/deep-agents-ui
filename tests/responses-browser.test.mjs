@@ -54,7 +54,7 @@ test(
     const generatedPath =
       "/_artifacts/responses-review/responses-test/generated/test__report.xlsx";
     const generatedBytes = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0xff]);
-    let failJobLoad = true;
+    let failJobLoad = false;
     let failJobRefresh = true;
     let failJobCancel = true;
     let jobRefreshes = 0;
@@ -332,9 +332,10 @@ test(
         await readFile(await (await generatedDownload).path()),
         generatedBytes
       );
-      const options = page.getByRole("button", { name: "Chat options" });
-      if ((await options.getAttribute("aria-expanded")) === "false")
-        await options.click();
+      await page
+        .getByRole("button", { name: "Background jobs", exact: true })
+        .waitFor();
+      failJobLoad = true;
       await page
         .getByRole("button", { name: "Background jobs", exact: true })
         .click();

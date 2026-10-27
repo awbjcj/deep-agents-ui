@@ -6,7 +6,6 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
-  useId,
   FormEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,9 +17,9 @@ import {
   Link2,
   CornerDownLeft,
   ListPlus,
-  SlidersHorizontal,
 } from "lucide-react";
-import { ChatComposerOptions } from "./ChatComposerOptions";
+import { AutopilotControl } from "./AutopilotControl";
+import { ResponseJobs } from "./ResponseJobs";
 import { MessageQueue } from "./MessageQueue";
 import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import type { useAutopilot } from "@/app/hooks/useAutopilot";
@@ -119,8 +118,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     onThreadFilesChanged,
   }) => {
     const [threadId] = useQueryState("threadId");
-    const optionsId = useId();
-    const [optionsOpen, setOptionsOpen] = useState(false);
     const [delivery, setDelivery] = useState<MessageDelivery>("queue");
     const [submitting, setSubmitting] = useState(false);
     const submissionRef = useRef(false);
@@ -534,6 +531,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             catalogError={skillCatalog.error}
             onRefreshCatalog={skillCatalog.refresh}
             isLoading={isLoading}
+            submitAction={isLoading || hasQueue ? delivery : "send"}
             onChange={setInput}
             onSelect={(text, references) =>
               setDrafts((previous) => ({
@@ -544,7 +542,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             onKeyDown={handleKeyDown}
           />
           <div className="flex flex-wrap items-center justify-between gap-1 px-2 pb-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -639,26 +637,26 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </div>
                 )}
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Chat options"
-                id={`${optionsId}-trigger`}
-                aria-expanded={optionsOpen}
-                aria-controls={optionsId}
-                title="Chat options and shortcuts"
-                onClick={() => setOptionsOpen((open) => !open)}
-                className={cn(
-                  "transition-none active:scale-[0.97] motion-reduce:transform-none",
-                  optionsOpen && "bg-muted"
-                )}
-              >
-                <SlidersHorizontal
-                  size={18}
-                  aria-hidden="true"
+              {autopilot && (
+                <AutopilotControl
+                  key={`${accountId}:${threadId}:${assistant?.assistant_id}`}
+                  autopilot={autopilot}
+                  ready={!!threadId && !!assistant && !isThreadLoading}
+                  unavailableReason={
+                    !assistant
+                      ? "Select an agent to enable autopilot."
+                      : !threadId
+                      ? "Start a conversation to enable autopilot."
+                      : "Loading conversation…"
+                  }
                 />
-              </Button>
+              )}
+              <ResponseJobs
+                key={`${accountId}:${threadId}`}
+                threadId={threadId}
+                isRunning={isLoading}
+                onEmptyClose={focusComposer}
+              />
               {queuedMessageCount > 0 && !messageQueue?.items.length ? (
                 <span
                   role="status"
@@ -786,23 +784,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               </Button>
             </div>
           </div>
-          <ChatComposerOptions
-            id={optionsId}
-            open={optionsOpen}
-            autopilot={autopilot}
-            scope={`${accountId}:${threadId}:${assistant?.assistant_id}`}
-            ready={!!threadId && !!assistant && !isThreadLoading}
-            unavailableReason={
-              !assistant
-                ? "Select an agent to enable autopilot."
-                : !threadId
-                ? "Start a conversation to enable autopilot."
-                : "Loading conversation…"
-            }
-            threadId={threadId}
-            delivery={delivery}
-            isRunning={isLoading || hasQueue}
-          />
         </form>
         <ReferenceFileDialog
           open={referenceDialogOpen}
