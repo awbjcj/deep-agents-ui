@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { SkillReferenceText } from "./SkillReferenceText";
 
 const textLayout =
-  "w-full whitespace-pre-wrap break-words px-3 py-2 text-base leading-6";
+  "w-full whitespace-pre-wrap break-words px-4 py-4 text-base leading-6";
 
 /** Keep native editing and focus while offering an accessible suggestion list. */
 export function SkillReferenceInput({
@@ -351,7 +351,7 @@ export function SkillReferenceInput({
         placeholder={isLoading ? "Add a follow-up…" : "Enter your message…"}
         className={cn(
           textLayout,
-          "relative block max-h-[32dvh] min-h-12 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
+          "relative block max-h-[32dvh] min-h-20 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
         )}
         rows={1}
       />

@@ -456,14 +456,28 @@ export function ThreadList({
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Header */}
-      <div className="grid flex-shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border p-4">
+      <div className="grid min-w-0 flex-shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border p-4">
         <h2 className="text-xl font-semibold tracking-tight">Threads</h2>
-        <div className="flex items-center gap-2">
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8"
+            aria-label="Close threads sidebar"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+        <div className="col-span-2 flex min-w-0 items-center gap-2">
           <Select
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as StatusFilter)}
           >
-            <SelectTrigger className="w-fit">
+            <SelectTrigger
+              aria-label="Filter threads by status"
+              className="min-w-0 flex-1"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
@@ -513,17 +527,6 @@ export function ThreadList({
             <ListChecks className="size-4" />
             {isManaging ? "Done" : "Manage"}
           </Button>
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-              aria-label="Close threads sidebar"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
 
@@ -531,7 +534,7 @@ export function ThreadList({
         <div
           role="toolbar"
           aria-label="Batch thread actions"
-          className="flex flex-shrink-0 items-center gap-2 border-b border-border bg-muted/35 px-3 py-2"
+          className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/35 px-3 py-2"
         >
           <SelectionControl
             checked={allLoadedSelected}

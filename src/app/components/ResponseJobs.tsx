@@ -187,13 +187,13 @@ export function ResponseJobs({
             size="sm"
             aria-label="Background jobs"
             title="Background jobs"
-            className="h-8 shrink-0 gap-1.5 rounded-full px-2 text-xs text-muted-foreground transition-none active:scale-[0.97] motion-reduce:transform-none"
+            className="h-9 min-w-9 shrink-0 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-none hover:text-foreground active:scale-[0.97] motion-reduce:transform-none"
           >
             <Clock3
               className="h-3.5 w-3.5"
               aria-hidden="true"
             />
-            <span className="sr-only sm:not-sr-only">Jobs</span>
+            <span className="sr-only @[26rem]/composer:not-sr-only">Jobs</span>
           </Button>
         </DialogTrigger>
       )}

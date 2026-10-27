@@ -454,9 +454,11 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         )}
         <form
           onSubmit={handleSubmit}
-          className={`relative flex flex-col ${
-            isDragging ? "ring-2 ring-primary/40" : ""
-          }`}
+          aria-label="Message composer"
+          className={cn(
+            "relative flex min-w-0 flex-col rounded-2xl",
+            isDragging && "bg-primary/5 ring-2 ring-primary/40"
+          )}
           onDragOver={(e) => {
             if (attachmentsDisabled) return;
             if (e.dataTransfer.types.includes("Files")) {
@@ -542,8 +544,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             }
             onKeyDown={handleKeyDown}
           />
-          <div className="flex flex-wrap items-center justify-between gap-1 px-2 pb-2">
-            <div className="flex shrink-0 items-center gap-1">
+          <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-1">
+            <div className="flex shrink-0 items-center gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -568,6 +570,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   aria-label="Attach files"
                   aria-haspopup="menu"
                   aria-expanded={attachMenuOpen}
+                  className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
                   onClick={() => setAttachMenuOpen((v) => !v)}
                   disabled={attachmentsDisabled}
                   title={
@@ -576,7 +579,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                       : undefined
                   }
                 >
-                  <Paperclip size={18} />
+                  <Paperclip
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </Button>
                 {attachMenuOpen && (
                   <div
@@ -670,7 +676,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             <ComposerShortcuts
               action={isLoading || hasQueue ? delivery : "send"}
             />
-            <div className="ml-auto flex items-center gap-1.5">
+            <div className="ml-auto flex items-center gap-2">
               {showDelivery && (
                 <>
                   {isLoading && (
@@ -682,7 +688,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                       title="Stop the response and pause queued messages"
                       onClick={stopStream}
                       disabled={isStopping}
-                      className="h-9 w-9 text-muted-foreground transition-none"
+                      className="h-9 w-9 rounded-lg text-muted-foreground transition-none"
                     >
                       <Square
                         size={14}
@@ -698,7 +704,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   >
                     <SelectTrigger
                       aria-label="Message delivery"
-                      className="h-9 w-auto min-w-24 gap-2 rounded-full border-0 px-3 text-xs [&>svg]:h-3.5 [&>svg]:w-3.5"
+                      className="h-9 w-auto min-w-24 gap-2 rounded-lg border border-border bg-card px-3 text-xs shadow-none [&>svg]:h-3.5 [&>svg]:w-3.5"
                       title="Choose when to send"
                     >
                       <SelectValue>
@@ -740,7 +746,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                     : undefined
                 }
                 className={cn(
-                  "shrink-0 rounded-full font-medium transition-none active:scale-[0.97] motion-reduce:transform-none",
+                  "h-9 w-9 shrink-0 rounded-lg font-medium transition-none active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none",
                   !isLoading &&
                     "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                 )}
@@ -771,7 +777,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </>
                 ) : isLoading ? (
                   <>
-                    <Square size={14} />
+                    <Square
+                      size={14}
+                      aria-hidden="true"
+                    />
                     <span className="sr-only">
                       {isStopping ? "Stopping…" : "Stop"}
                     </span>
@@ -782,6 +791,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                     <ArrowUp
                       size={16}
                       strokeWidth={2.5}
+                      aria-hidden="true"
                     />
                   </>
                 )}

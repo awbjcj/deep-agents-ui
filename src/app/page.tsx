@@ -22,6 +22,7 @@ import { AccountMenu } from "@/app/components/AccountMenu";
 import { LoadingScreen } from "@/app/components/LoadingScreen";
 import { useHasBeenTrue } from "@/app/hooks/useHasBeenTrue";
 import { useCompactLayout } from "@/app/hooks/useCompactLayout";
+import { usePanelLayout } from "@/app/hooks/usePanelLayout";
 import { loginUrlForConversation } from "@/app/utils/navigationRecovery";
 import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
 import { cn } from "@/lib/utils";
@@ -168,6 +169,11 @@ function HomePageInner({
     undefined
   );
   const [adminOpen, setAdminOpen] = useState(false);
+  const sidePanel = usePanelLayout({
+    openPanel: workspaceOpen ? "workspace" : adminOpen ? "admin" : null,
+    compact: compactLayout,
+    threadsOpen: !!sidebar,
+  });
   const overlayPanel =
     expandedPanel ??
     (compactLayout
@@ -476,7 +482,10 @@ function HomePageInner({
             )}
           </div>
 
-          <div className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1">
+          <div
+            ref={sidePanel.headerActionsRef}
+            className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1"
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -521,7 +530,11 @@ function HomePageInner({
                 </div>
               </TooltipContent>
             </Tooltip>
-            <span className="mx-1 hidden h-6 w-px bg-border md:block" />
+            <span
+              ref={sidePanel.boundaryRef}
+              aria-hidden="true"
+              className="mx-1 hidden h-6 w-px bg-border md:block"
+            />
             <span className="max-sm:hidden">
               <ThemeToggle />
             </span>
@@ -619,7 +632,10 @@ function HomePageInner({
           </div>
         </header>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          ref={sidePanel.containerRef}
+          className="relative min-h-0 flex-1 overflow-hidden"
+        >
           <ResizablePanelGroup
             direction="horizontal"
             autoSaveId="standalone-chat"
@@ -628,10 +644,10 @@ function HomePageInner({
               <>
                 <ResizablePanel
                   id="thread-history"
+                  ref={sidePanel.threadsRef}
                   order={1}
-                  defaultSize={25}
-                  minSize={20}
-                  className="relative min-w-[300px] bg-background max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0"
+                  {...sidePanel.threads}
+                  className="relative min-w-0 bg-background max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full"
                   tabIndex={-1}
                   role="region"
                   aria-label="Thread history"
@@ -646,6 +662,7 @@ function HomePageInner({
                   />
                 </ResizablePanel>
                 <ResizableHandle
+                  aria-label="Resize thread history"
                   className={cn("max-xl:hidden", expandedPanel && "invisible")}
                 />
               </>
@@ -653,6 +670,7 @@ function HomePageInner({
 
             <ResizablePanel
               id="chat"
+              {...sidePanel.chat}
               className="relative flex min-w-0 flex-col max-xl:!w-full"
               order={2}
               inert={overlayPanel !== null}
@@ -678,15 +696,16 @@ function HomePageInner({
             {workspaceOpen && (
               <>
                 <ResizableHandle
+                  aria-label="Resize workspace panel"
                   className={cn("max-xl:hidden", expandedPanel && "invisible")}
                 />
                 <ResizablePanel
                   id="right-panel"
+                  ref={sidePanel.settingsRef}
                   order={3}
-                  defaultSize={28}
-                  minSize={22}
+                  {...sidePanel.settings}
                   className={cn(
-                    "relative min-w-[360px] max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0 max-xl:bg-background",
+                    "relative min-w-0 max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:bg-background",
                     expandedPanel === "workspace" &&
                       "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
                   )}
@@ -717,15 +736,16 @@ function HomePageInner({
             {adminOpen && isAdmin && (
               <>
                 <ResizableHandle
+                  aria-label="Resize admin panel"
                   className={cn("max-xl:hidden", expandedPanel && "invisible")}
                 />
                 <ResizablePanel
                   id="admin-panel"
+                  ref={sidePanel.settingsRef}
                   order={4}
-                  defaultSize={34}
-                  minSize={30}
+                  {...sidePanel.settings}
                   className={cn(
-                    "relative min-w-[500px] max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0 max-xl:bg-background",
+                    "relative min-w-0 max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:bg-background",
                     expandedPanel === "admin" &&
                       "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
                   )}

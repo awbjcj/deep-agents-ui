@@ -286,12 +286,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // extends past the top edge of this box. Clipping here would hide it
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
-              "pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mb-5",
+              "focus-within:border-primary/50 pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-md shadow-black/[0.04] @container/composer sm:mb-5",
               "mx-auto w-[calc(100%-24px)] max-w-[960px] sm:w-[calc(100%-32px)]"
             )}
           >
             {(hasTasks || hasFiles) && (
-              <div className="flex max-h-[min(18rem,30dvh)] flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-sidebar empty:hidden">
+              <div className="flex max-h-[min(18rem,30dvh)] flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-muted/30 empty:hidden">
                 {!metaOpen && (
                   <>
                     {(() => {
@@ -313,7 +313,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                 prev === "tasks" ? null : "tasks"
                               )
                             }
-                            className="grid w-full cursor-pointer grid-cols-[auto_auto_1fr] items-center gap-3 px-[18px] py-3 text-left"
+                            className="grid min-w-0 flex-1 cursor-pointer grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 rounded-tl-2xl px-4 py-3 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             aria-expanded={metaOpen === "tasks"}
                           >
                             {(() => {
@@ -385,7 +385,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                 prev === "files" ? null : "files"
                               )
                             }
-                            className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm"
+                            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-tr-2xl px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             aria-expanded={metaOpen === "files"}
                           >
                             <FileIcon size={16} />
@@ -398,7 +398,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       })();
 
                       return (
-                        <div className="grid grid-cols-[1fr_auto_auto] items-center">
+                        <div className="flex min-w-0 items-center justify-between">
                           {tasksTrigger}
                           {filesTrigger}
                         </div>
@@ -413,7 +413,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       {hasTasks && (
                         <button
                           type="button"
-                          className="py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                          className="px-4 py-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-expanded:bg-muted/50 aria-expanded:font-semibold aria-expanded:text-foreground"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "tasks" ? null : "tasks"
@@ -427,7 +427,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       {hasFiles && (
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                          className="inline-flex items-center gap-2 px-4 py-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-expanded:bg-muted/50 aria-expanded:font-semibold aria-expanded:text-foreground"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "files" ? null : "files"
@@ -457,7 +457,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     </div>
                     <div
                       ref={tasksContainerRef}
-                      className="px-[18px]"
+                      className="px-4 pt-3"
                     >
                       {metaOpen === "tasks" &&
                         Object.entries(groupedTodos)

@@ -57,13 +57,13 @@ export function AutopilotControl({
           variant="ghost"
           size="sm"
           className={cn(
-            "h-8 gap-1.5 rounded-full border px-2.5 text-xs",
+            "h-9 gap-1.5 rounded-lg border px-2 text-xs",
             PRESS_FEEDBACK,
             enabled
               ? "border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10"
               : autopilot.error
               ? "border-destructive/30 text-destructive"
-              : "border-border/60 text-muted-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           )}
           disabled={!enabled && !ready}
           aria-label={enabled ? "Turn off autopilot" : "Enable autopilot"}
@@ -87,7 +87,7 @@ export function AutopilotControl({
             className="h-3.5 w-3.5 shrink-0"
             aria-hidden="true"
           />
-          <span>Autopilot</span>
+          <span className="hidden @[26rem]/composer:inline">Autopilot</span>
           <span className="font-normal opacity-80">
             {enabled ? "On" : "Off"}
           </span>
