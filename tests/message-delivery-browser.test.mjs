@@ -332,6 +332,45 @@ test(
       );
       await input.fill("Second queued follow-up");
       await page.getByRole("button", { name: "Queue message" }).click();
+      await queue
+        .getByRole("button", { name: "Move queued message 2 up" })
+        .click();
+      assert.match(
+        await queue.locator("li").first().textContent(),
+        /Second queued follow-up/
+      );
+      await queue
+        .getByRole("button", { name: "Move queued message 1 down" })
+        .click();
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.evaluate(() => document.documentElement.classList.add("dark"));
+      for (const [width, height] of [
+        [375, 812],
+        [812, 375],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: `docs/evidence/message-queue/queue-dark-${width}.png`,
+        });
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth
+          ),
+          true
+        );
+        const stopBox = await page
+          .getByRole("button", { name: "Stop", exact: true })
+          .boundingBox();
+        assert.ok(
+          stopBox.y >= 0 && stopBox.y + stopBox.height <= height,
+          "Stop stays in view in a short viewport"
+        );
+      }
+      await page.evaluate(() =>
+        document.documentElement.classList.remove("dark")
+      );
+      await page.emulateMedia({ reducedMotion: "no-preference" });
       const editFirst = queue.getByRole("button", {
         name: "Edit queued message 1",
       });
@@ -353,6 +392,12 @@ test(
         true
       );
       await queuedInput.fill("Discard this edit");
+      await editFirst.click();
+      assert.equal(
+        await queuedInput.inputValue(),
+        "Discard this edit",
+        "reopening the active editor must not discard unsaved changes"
+      );
       await queuedInput.press("Escape");
       assert.equal(
         await editFirst.evaluate(
@@ -428,6 +473,9 @@ test(
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
       await input.fill("Keep this rejected draft");
+      await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+      await input.dispatchEvent("keydown", { key: "Enter", repeat: true });
+      assert.equal(await input.inputValue(), "Keep this rejected draft");
       rejectNext = true;
       await page.getByRole("combobox", { name: "Message delivery" }).click();
       await page.getByRole("option", { name: "Steer · send now" }).click();
@@ -455,7 +503,11 @@ test(
         ),
         true
       );
-      await page.getByRole("button", { name: "Steer now" }).click();
+      await page.getByRole("combobox", { name: "Message delivery" }).click();
+      await page
+        .getByRole("option", { name: "Queue · after this run" })
+        .click();
+      await input.press("Control+Enter");
       await page
         .getByText("Reply to Change focus now", { exact: true })
         .waitFor();
@@ -526,6 +578,11 @@ test(
           .count(),
         0
       );
+      await queue.getByText("Queued to cancel", { exact: true }).waitFor();
+      await queue.getByRole("button", { name: "Resume queue" }).waitFor();
+      await queue
+        .getByRole("button", { name: "Delete queued message 1" })
+        .click();
       await input.fill("Hold this response");
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
@@ -548,6 +605,15 @@ test(
         "Stop also cancels a submission accepted after its cancellation snapshot"
       );
       assert.equal(await input.inputValue(), "");
+
+      // A late accepted-and-cancelled submission is uncertain until its receipt
+      // is checked; checking must not start a replacement run.
+      const acceptedCount = submissions.length;
+      await queue
+        .getByRole("button", { name: "Check delivery of message 1" })
+        .click();
+      await queue.waitFor({ state: "hidden" });
+      assert.equal(submissions.length, acceptedCount);
 
       rejectNormal = true;
       await input.fill("Preserve the busy-thread draft");
@@ -592,6 +658,20 @@ test(
       });
       await page.getByRole("button", { name: "Steer now" }).click();
       await correctionStarted;
+      await queue
+        .getByText("Correct this before approval", { exact: true })
+        .waitFor();
+      assert.equal(
+        await page.evaluate(() =>
+          Object.keys(sessionStorage).some(
+            (key) =>
+              key.startsWith("vsda:message-queue:") &&
+              sessionStorage.getItem(key).includes('"status":"sending"')
+          )
+        ),
+        true,
+        "steering is persisted before acceptance, including refresh during send"
+      );
       pending = [
         {
           id: "old-action",

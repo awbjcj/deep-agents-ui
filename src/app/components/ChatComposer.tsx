@@ -28,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import type { Assistant } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
@@ -171,6 +172,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const [attachMenuOpen, setAttachMenuOpen] = useState(false);
     const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const focusComposer = useCallback(() => textareaRef.current?.focus(), []);
     const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
     const handledSkillRequests = useRef(new Set<string>());
     const [pendingSkillRequest, setPendingSkillRequest] =
@@ -295,9 +297,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const submitDisabled =
       isThreadLoading || !assistant || submitting || isStopping;
     const skillsPending = skillCatalog.loading && !!input.trim();
-    // Adding attachments is blocked while a run is in flight, before an
-    // assistant is selected, or when an admin has turned uploads off for the
-    // user's current run mode.
+    // Upload maintenance requires an idle thread; existing drafts retain files.
     const attachmentsDisabled =
       submitDisabled || isLoading || !attachmentsEnabled;
     const hasDraft =
@@ -315,7 +315,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         ));
 
     const handleSubmit = useCallback(
-      async (e?: FormEvent) => {
+      async (e?: FormEvent, override?: MessageDelivery) => {
         if (e) e.preventDefault();
         if (
           submissionRef.current ||
@@ -375,13 +375,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             accepted = await sendMessage(
               text,
               additionalKwargs,
-              isLoading || hasQueue ? delivery : undefined
+              isLoading || hasQueue ? override ?? delivery : undefined
             );
           } else {
             accepted = await sendMessage(
               [{ type: "text", text: messageText || " " }, ...imageBlocks],
               additionalKwargs,
-              isLoading || hasQueue ? delivery : undefined
+              isLoading || hasQueue ? override ?? delivery : undefined
             );
           }
           if (accepted !== false) {
@@ -423,18 +423,34 @@ export const ChatComposer = React.memo<ChatComposerProps>(
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (submitDisabled) return;
-        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        if (submitDisabled || e.nativeEvent.isComposing || e.repeat) return;
+        if (e.key === "Escape" && isLoading) {
           e.preventDefault();
-          handleSubmit();
+          stopStream();
+        }
+        if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
+          e.preventDefault();
+          void handleSubmit(
+            undefined,
+            e.ctrlKey || e.metaKey
+              ? delivery === "queue"
+                ? "steer"
+                : "queue"
+              : undefined
+          );
         }
       },
-      [handleSubmit, submitDisabled]
+      [handleSubmit, submitDisabled, isLoading, stopStream, delivery]
     );
 
     return (
       <>
-        {messageQueue && <MessageQueue queue={messageQueue} />}
+        {messageQueue && (
+          <MessageQueue
+            queue={messageQueue}
+            onFocusComposer={focusComposer}
+          />
+        )}
         <form
           onSubmit={handleSubmit}
           className={`relative flex flex-col ${
@@ -638,7 +654,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 key={threadId}
                 threadId={threadId}
               />
-              {queuedMessageCount > 0 ? (
+              {queuedMessageCount > 0 && !messageQueue?.items.length ? (
                 <span
                   role="status"
                   className="whitespace-nowrap text-xs text-muted-foreground"
@@ -654,22 +670,25 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               )}
             </div>
             <div className="ml-auto flex items-center gap-1.5">
-              {showDelivery && (
+              {(isLoading || hasQueue) && (
                 <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Stop"
-                    title="Stop this run and queued messages"
-                    onClick={stopStream}
-                    className="h-8 w-8 text-muted-foreground"
-                  >
-                    <Square
-                      size={14}
-                      aria-hidden="true"
-                    />
-                  </Button>
+                  {isLoading && showDelivery && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Stop"
+                      title="Stop the response and pause queued messages"
+                      onClick={stopStream}
+                      disabled={isStopping}
+                      className="h-9 w-9 text-muted-foreground transition-none"
+                    >
+                      <Square
+                        size={14}
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  )}
                   <Select
                     value={delivery}
                     onValueChange={(value) =>
@@ -678,9 +697,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   >
                     <SelectTrigger
                       aria-label="Message delivery"
-                      className="h-8 w-8 justify-center rounded-full border-0 p-0 [&>svg]:h-3.5 [&>svg]:w-3.5"
+                      className="h-9 w-auto min-w-24 gap-2 rounded-full border-0 px-3 text-xs [&>svg]:h-3.5 [&>svg]:w-3.5"
                       title="Choose when to send"
-                    />
+                    >
+                      <SelectValue>
+                        {delivery === "queue" ? "Queue" : "Steer"}
+                      </SelectValue>
+                    </SelectTrigger>
                     <SelectContent
                       side="top"
                       align="end"
@@ -716,11 +739,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                     : undefined
                 }
                 className={cn(
-                  "rounded-full px-4 font-medium transition-[color,background-color,box-shadow,transform] duration-150",
+                  "rounded-full px-4 font-medium transition-none active:scale-[0.97] motion-reduce:transform-none",
                   !isLoading &&
-                    "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+                    "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                 )}
-                disabled={(!isLoading || showDelivery) && sendDisabled}
+                disabled={
+                  isStopping || ((!isLoading || showDelivery) && sendDisabled)
+                }
               >
                 {showDelivery ? (
                   <>
@@ -746,7 +771,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 ) : isLoading ? (
                   <>
                     <Square size={14} />
-                    <span>Stop</span>
+                    <span>{isStopping ? "Stopping…" : "Stop"}</span>
                   </>
                 ) : (
                   <>
@@ -760,6 +785,15 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               </Button>
             </div>
           </div>
+          <p className="px-3 pb-2 text-xs text-muted-foreground">
+            {isLoading || hasQueue
+              ? `Enter to ${
+                  delivery === "queue" ? "queue" : "steer"
+                } · Ctrl/⌘ Enter to ${
+                  delivery === "queue" ? "steer" : "queue"
+                } · Shift Enter for a new line`
+              : "Enter to send · Shift Enter for a new line"}
+          </p>
         </form>
         <ReferenceFileDialog
           open={referenceDialogOpen}

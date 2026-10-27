@@ -1,10 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Client, Run } from "@langchain/langgraph-sdk";
 import { toast } from "sonner";
-import { listThreadRuns, pendingMessageRuns } from "@/lib/message-delivery";
-import { streamRunStorageKey } from "@/app/utils/threadRecovery";
+import {
+  listActiveThreadRuns,
+  pendingMessageRuns,
+} from "@/lib/message-delivery";
+import {
+  readStreamRunId,
+  rememberStreamRunId,
+} from "@/app/utils/threadRecovery";
 
 interface Options {
   client: Client;
@@ -40,9 +53,11 @@ export function useMessageRuns(options: Options) {
     [client, scope, threadId]
   );
   const current = useRef(session);
-  current.current = session;
   const latest = useRef(options);
-  latest.current = options;
+  useLayoutEffect(() => {
+    current.current = session;
+    latest.current = options;
+  }, [session, options]);
   const cancellations = useRef(new Map<string, number>());
   const [state, setState] = useState({
     session,
@@ -64,11 +79,13 @@ export function useMessageRuns(options: Options) {
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     async function refresh() {
-      if (session.stopping) return;
+      if (session.stopping) {
+        timer = setTimeout(refresh, 2000);
+        return;
+      }
       const revision = session.revision;
-      let retry = false;
       try {
-        const listed = await listThreadRuns(client, threadId!);
+        const listed = await listActiveThreadRuns(client, threadId!);
         const found = pendingMessageRuns(listed);
         if (
           disposed ||
@@ -79,10 +96,14 @@ export function useMessageRuns(options: Options) {
         const busy = listed.some(
           (run) => run.status === "pending" || run.status === "running"
         );
-        setActivity({ session, checked: true, busy });
-        const connected = sessionStorage.getItem(
-          streamRunStorageKey(threadId!)
+        setActivity((previous) =>
+          previous.session === session &&
+          previous.checked &&
+          previous.busy === busy
+            ? previous
+            : { session, checked: true, busy }
         );
+        const connected = readStreamRunId(threadId!);
         setState((previous) => {
           const merged = new Map(
             (previous.session === session ? previous.runs : EMPTY_RUNS).map(
@@ -98,21 +119,41 @@ export function useMessageRuns(options: Options) {
               session.joining !== run.run_id
             )
               continue;
-            if (!session.observed.has(run.run_id)) merged.set(run.run_id, run);
+            if (!session.observed.has(run.run_id)) {
+              const old = merged.get(run.run_id);
+              // Only these fields affect observation, ordering and queue counts.
+              // Keep identity stable when polling returns the same run again.
+              if (
+                !old ||
+                old.status !== run.status ||
+                old.created_at !== run.created_at ||
+                old.metadata?.message_delivery !==
+                  run.metadata?.message_delivery
+              )
+                merged.set(run.run_id, run);
+            }
           }
+          const nextRuns = [...merged.values()].sort((a, b) =>
+            a.created_at.localeCompare(b.created_at)
+          );
+          if (
+            previous.session === session &&
+            previous.stopping === session.stopping &&
+            previous.runs.length === nextRuns.length &&
+            previous.runs.every((run, index) => run === nextRuns[index])
+          )
+            return previous;
           return {
             session,
             stopping: session.stopping,
-            runs: [...merged.values()].sort((a, b) =>
-              a.created_at.localeCompare(b.created_at)
-            ),
+            runs: nextRuns,
           };
         });
-        retry = latest.current.loading || busy;
       } catch {
-        retry = true;
+        // Retain known activity until discovery succeeds again.
       } finally {
-        if (!disposed && current.current === session && retry)
+        // Other tabs can start work after an idle snapshot too.
+        if (!disposed && current.current === session)
           timer = setTimeout(refresh, 2000);
       }
     }
@@ -136,7 +177,7 @@ export function useMessageRuns(options: Options) {
     const run = runs[0];
     session.joining = run.run_id;
     const joinGeneration = ++session.joinGeneration;
-    sessionStorage.setItem(streamRunStorageKey(threadId), run.run_id);
+    rememberStreamRunId(threadId, run.run_id);
     void (async () => {
       try {
         // useStream resolves even when its network request fails. Check the
@@ -260,21 +301,26 @@ export function useMessageRuns(options: Options) {
         runs: previous.session === target ? previous.runs : EMPTY_RUNS,
       }));
       try {
-        const listed = await listThreadRuns(target.client, target.threadId);
-        const active = pendingMessageRuns(listed);
+        const listed = await listActiveThreadRuns(
+          target.client,
+          target.threadId
+        );
+        const active = listed.filter(
+          (run) => run.status === "pending" || run.status === "running"
+        );
         // Remove successors before releasing the currently connected run.
         await Promise.all(
           active
-            .filter((run) => run.run_id !== currentRunId)
+            .filter(
+              (run) => run.status === "pending" && run.run_id !== currentRunId
+            )
             .map((run) =>
               target.client.runs.cancel(target.threadId!, run.run_id, true)
             )
         );
-        const connected = listed.find((run) => run.run_id === currentRunId);
-        if (
-          connected &&
-          (connected.status === "pending" || connected.status === "running")
-        ) {
+        for (const connected of active.filter(
+          (run) => run.status === "running" || run.run_id === currentRunId
+        )) {
           await target.client.runs.cancel(
             target.threadId,
             connected.run_id,
@@ -283,6 +329,7 @@ export function useMessageRuns(options: Options) {
         }
         if (current.current !== target) return false;
         target.joining = null;
+        setActivity({ session: target, checked: true, busy: false });
         setState({ session: target, runs: EMPTY_RUNS, stopping: false });
         return true;
       } catch {
@@ -311,6 +358,8 @@ export function useMessageRuns(options: Options) {
     // started in another tab or outlived its browser stream.
     serverBusy:
       activity.session !== session || !activity.checked || activity.busy,
+    serverActive:
+      activity.session === session && activity.checked && activity.busy,
     stopping,
     queuedCount: runs.filter(
       (run) =>

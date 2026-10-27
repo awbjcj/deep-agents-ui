@@ -6,6 +6,7 @@ import { createStreamModeCompatibilityClient } from "@/app/utils/langgraphStream
 
 interface ClientContextValue {
   client: Client;
+  deploymentUrl: string;
 }
 
 const ClientContext = createContext<ClientContextValue | null>(null);
@@ -27,6 +28,9 @@ export function ClientProvider({
     return createStreamModeCompatibilityClient(
       new Client({
         apiUrl: deploymentUrl,
+        // Run creation has no idempotency key. A lost response must be
+        // reconciled by message ID, never transparently replayed by the SDK.
+        callerOptions: { maxRetries: 0 },
         defaultHeaders: {
           "Content-Type": "application/json",
           "X-Api-Key": apiKey,
@@ -36,11 +40,23 @@ export function ClientProvider({
     );
   }, [deploymentUrl, apiKey, accessToken]);
 
-  const value = useMemo(() => ({ client }), [client]);
+  const value = useMemo(
+    () => ({ client, deploymentUrl }),
+    [client, deploymentUrl]
+  );
 
   return (
     <ClientContext.Provider value={value}>{children}</ClientContext.Provider>
   );
+}
+
+/** Keep persisted conversation drafts isolated between API deployments. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useDeploymentUrl(): string {
+  const context = useContext(ClientContext);
+  if (!context)
+    throw new Error("useDeploymentUrl must be used within a ClientProvider");
+  return context.deploymentUrl.replace(/\/$/, "");
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

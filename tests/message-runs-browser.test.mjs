@@ -25,6 +25,8 @@ test(
         import { createRoot } from 'react-dom/client';
         import { useMessageRuns } from './src/app/hooks/useMessageRuns';
         window.events = [];
+        window.renders = 0;
+        window.listCalls = 0;
         window.serverRuns = {};
         window.joins = [];
         window.failCancel = false;
@@ -37,8 +39,9 @@ test(
         });
         const client = { runs: {
           list: async (thread, options = {}) => {
+            window.listCalls++;
             const all = window.serverRuns[thread] || [];
-            if (window.holdList) await new Promise(resolve => window.releaseList = resolve);
+            if (window.holdList) await new Promise(resolve => (window.releaseLists ??= []).push(resolve));
             return all.slice(options.offset || 0, (options.offset || 0) + (options.limit || 100));
           },
           get: async (thread, id) => ({ ...window.serverRuns[thread].find(r => r.run_id === id) }),
@@ -50,6 +53,7 @@ test(
           },
         }};
         function Fixture() {
+          React.useLayoutEffect(() => { window.renders++; });
           const [options, setOptions] = React.useState({ scope: 'A', threadId: 'A', loading: false, threadLoading: false });
           window.update = change => setOptions(previous => ({ ...previous, ...change }));
           const followups = useMessageRuns({ ...options, client,
@@ -101,6 +105,27 @@ test(
       await page.waitForFunction(() => !!window.followups);
     };
     try {
+      await t.test(
+        "idle server polls do not commit updates to the chat tree",
+        async () => {
+          await reset();
+          await page.waitForFunction(() => !window.followups.serverBusy);
+          await page.waitForTimeout(50);
+          const before = await page.evaluate(() => ({
+            renders: window.renders,
+            lists: window.listCalls,
+          }));
+          await page.waitForFunction(
+            (count) => window.listCalls >= count + 2,
+            before.lists
+          );
+          await page.waitForTimeout(50);
+          assert.equal(
+            await page.evaluate(() => window.renders),
+            before.renders
+          );
+        }
+      );
       await t.test(
         "a failed stream keeps the run controllable and retries until completion",
         async () => {
@@ -225,7 +250,7 @@ test(
             window.holdList = true;
             window.stopPromise = window.followups.stop("original");
           });
-          await page.waitForFunction(() => !!window.releaseList);
+          await page.waitForFunction(() => window.releaseLists?.length > 0);
           const submitted = await page.evaluate(async () => {
             window.created = false;
             return window.followups.submit(async () => {
@@ -237,9 +262,26 @@ test(
           assert.equal(await page.evaluate(() => window.created), false);
           await page.evaluate(async () => {
             window.holdList = false;
-            window.releaseList();
+            window.releaseLists.forEach((resolve) => resolve());
             await window.stopPromise;
           });
+        }
+      );
+      await t.test(
+        "Stop finds an ordinary running turn when the saved stream ID is missing",
+        async () => {
+          await reset();
+          await page.evaluate(() => {
+            window.serverRuns.A = [{ ...window.run("ordinary"), metadata: {} }];
+          });
+          assert.equal(
+            await page.evaluate(() => window.followups.stop(null)),
+            true
+          );
+          assert.equal(
+            await page.evaluate(() => window.serverRuns.A[0].status),
+            "interrupted"
+          );
         }
       );
       assert.deepEqual(errors, []);

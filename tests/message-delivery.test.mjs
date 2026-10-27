@@ -4,6 +4,8 @@ import {
   createMessageRun,
   pendingMessageRuns,
   listThreadRuns,
+  deliverMessageRun,
+  MessageDeliveryError,
 } from "../src/lib/message-delivery.ts";
 
 test("queue is accepted by the server immediately with replayable output and no stale checkpoint", async () => {
@@ -30,6 +32,7 @@ test("queue is accepted by the server immediately with replayable output and no 
         autopilot: true,
         checkpoint_id: "old",
         checkpoint_ns: "tools",
+        checkpoint_map: { tools: "old" },
       },
       recursion_limit: 1000,
     }
@@ -42,10 +45,100 @@ test("queue is accepted by the server immediately with replayable output and no 
   assert.equal(payload.checkpoint, undefined);
   assert.equal(payload.config.configurable.checkpoint_id, undefined);
   assert.equal(payload.config.configurable.checkpoint_ns, undefined);
+  assert.equal(payload.config.configurable.checkpoint_map, undefined);
   assert.equal(payload.config.configurable.autopilot, false);
   assert.equal(payload.config.configurable.message_delivery, "queue");
   assert.equal(payload.config.recursion_limit, 1000);
   assert.deepEqual(payload.input.messages, [message]);
+});
+
+test("a lost acknowledgement reconciles the accepted run without a second creation", async () => {
+  let creates = 0;
+  const accepted = {
+    run_id: "accepted",
+    metadata: { message_id: "stable", message_delivery: "steer" },
+  };
+  const client = {
+    runs: {
+      create: async () => {
+        creates++;
+        throw new TypeError("Network lost");
+      },
+      list: async () => [accepted],
+    },
+  };
+  assert.equal(
+    await deliverMessageRun(
+      client,
+      "thread",
+      "assistant",
+      { id: "stable", type: "human", content: "Focus" },
+      "steer",
+      {}
+    ),
+    accepted
+  );
+  assert.equal(creates, 1);
+});
+
+test("uncertain delivery checks never replay an absent or delayed receipt", async () => {
+  let creates = 0;
+  const client = {
+    runs: {
+      create: async () => {
+        creates++;
+      },
+      list: async () => [],
+    },
+  };
+  await assert.rejects(
+    deliverMessageRun(
+      client,
+      "thread",
+      "assistant",
+      { id: "stable", type: "human", content: "Focus" },
+      "queue",
+      {},
+      true
+    ),
+    (error) =>
+      error instanceof MessageDeliveryError && error.outcome === "unknown"
+  );
+  assert.equal(creates, 0);
+});
+
+test("only definite request rejections enable retry; transport and server failures remain uncertain", async () => {
+  for (const [status, outcome] of [
+    [400, "rejected"],
+    [403, "rejected"],
+    [409, "rejected"],
+    [408, "unknown"],
+    [500, "unknown"],
+    [undefined, "unknown"],
+  ]) {
+    let creates = 0;
+    const client = {
+      runs: {
+        create: async () => {
+          creates++;
+          throw Object.assign(new Error("failed"), { status });
+        },
+        list: async () => [],
+      },
+    };
+    await assert.rejects(
+      deliverMessageRun(
+        client,
+        "thread",
+        "assistant",
+        { id: "stable", type: "human", content: "Focus" },
+        "queue",
+        {}
+      ),
+      (error) => error.outcome === outcome
+    );
+    assert.equal(creates, 1);
+  }
 });
 
 test("recovery and Stop include pending runs beyond the first history page", async () => {

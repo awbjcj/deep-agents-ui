@@ -17,14 +17,14 @@ import {
   createInterruptResumeHandler,
   selectPendingInterrupt,
 } from "@/app/utils/interruptResume";
-import { useClient } from "@/providers/ClientProvider";
+import { useClient, useDeploymentUrl } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAutopilot } from "@/app/hooks/useAutopilot";
 import { useMessageRuns } from "@/app/hooks/useMessageRuns";
 import { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import {
-  createMessageRun,
-  listThreadRuns,
+  deliverMessageRun,
+  MessageDeliveryError,
   type MessageDelivery,
 } from "@/lib/message-delivery";
 import type { ResumeInterruptValue } from "@/app/types/types";
@@ -37,7 +37,7 @@ import {
 import { useQueryState } from "nuqs";
 import {
   clearStreamReconnectState,
-  streamRunStorageKey,
+  readStreamRunId,
 } from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
@@ -106,6 +106,7 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const deploymentUrl = useDeploymentUrl();
   const { user } = useAuth();
   const { ingestStreamEvent } = useNotifications();
   const threadIdRef = useRef(threadId);
@@ -321,7 +322,7 @@ export function useChat({
   streamRef.current = rawStream;
   // Follow-up runs belong to the conversation even while the selected agent
   // hydrates or changes. Autopilot consent remains scoped to the agent below.
-  const messageRunScope = JSON.stringify([userId, threadId]);
+  const messageRunScope = JSON.stringify([deploymentUrl, userId, threadId]);
   const messageRuns = useMessageRuns({
     client,
     scope: messageRunScope,
@@ -370,6 +371,7 @@ export function useChat({
 
   const messageQueue = useQueuedMessages({
     scope: messageRunScope,
+    legacyScope: JSON.stringify([userId, threadId]),
     ready:
       !!threadId &&
       !!activeAssistant &&
@@ -384,32 +386,41 @@ export function useChat({
       messageRuns.pendingCount > 0 ||
       messageRuns.stopping ||
       submissionPending,
+    canSteer:
+      !!threadId &&
+      !!activeAssistant &&
+      threadId === streamThreadId &&
+      !stream.isThreadLoading &&
+      !historyError &&
+      !messageRuns.stopping &&
+      !submissionPending &&
+      stream.interrupts.length === 0,
     submit: async (item) => {
       const target = threadId;
-      if (!target || messageSubmission.current) return false;
+      if (!target || messageSubmission.current)
+        return item.status === "unknown" ? "unknown" : "rejected";
       messageSubmission.current = true;
       setSubmissionPending(true);
       try {
         const accepted = await submitMessageRun(async () => {
           // Reconcile an acceptance lost during refresh/network failure before
           // sending the same human turn again.
-          const existing = (await listThreadRuns(client, target)).find(
-            (run) => run.metadata?.message_id === item.id
-          );
-          return (
-            existing ??
-            createMessageRun(
-              client,
-              target,
-              item.assistantId,
-              item.message,
-              "queue",
-              item.config
-            )
+          return deliverMessageRun(
+            client,
+            target,
+            item.assistantId,
+            item.message,
+            item.delivery ?? "queue",
+            item.config,
+            item.status === "unknown"
           );
         }, messageRunScope);
         onHistoryRevalidate?.();
-        return accepted;
+        return accepted ? "accepted" : "unknown";
+      } catch (error) {
+        return error instanceof MessageDeliveryError
+          ? error.outcome
+          : "unknown";
       } finally {
         messageSubmission.current = false;
         setSubmissionPending(false);
@@ -417,7 +428,8 @@ export function useChat({
     },
   });
   const enqueueMessage = messageQueue.enqueue;
-  const clearMessageQueue = messageQueue.clear;
+  const settleMessage = messageQueue.settle;
+  const pauseMessageQueue = messageQueue.pause;
 
   const sendMessage = useCallback(
     async (
@@ -453,13 +465,23 @@ export function useChat({
       }
       if (delivery) {
         const target = threadIdRef.current;
-        if (!target) return false;
+        if (!target || streamRef.current.interrupts.length) return false;
+        // Persist before crossing the network: refresh can otherwise lose a
+        // steering prompt whose acceptance has not reached this browser yet.
+        enqueueMessage({
+          id: newMessage.id!,
+          message: newMessage,
+          assistantId: activeAssistant.assistant_id,
+          config: buildConfig(),
+          status: "sending",
+          delivery,
+        });
         messageSubmission.current = true;
         setSubmissionPending(true);
         try {
           const accepted = await submitMessageRun(
             () =>
-              createMessageRun(
+              deliverMessageRun(
                 client,
                 target,
                 activeAssistant.assistant_id,
@@ -469,10 +491,24 @@ export function useChat({
               ),
             messageRunScope
           );
-          if (!accepted) return false;
+          if (!accepted)
+            throw new MessageDeliveryError(
+              "unknown",
+              "Stopped while acceptance was pending"
+            );
+          settleMessage(newMessage.id!, "accepted");
           onHistoryRevalidate?.();
           return true;
         } catch (error) {
+          if (
+            !(error instanceof MessageDeliveryError) ||
+            error.outcome === "unknown"
+          ) {
+            settleMessage(newMessage.id!, "unknown");
+            return true;
+          }
+          // A definite rejection leaves the original composer draft intact.
+          settleMessage(newMessage.id!, "accepted");
           toast.error("Message was not sent", {
             description: error instanceof Error ? error.message : "Try again.",
             position: "top-center",
@@ -533,6 +569,7 @@ export function useChat({
       messageRunScope,
       messageRuns.stopping,
       enqueueMessage,
+      settleMessage,
       threadId,
       streamThreadId,
     ]
@@ -947,7 +984,10 @@ export function useChat({
       messageRuns.pendingCount > 0 ||
       messageRuns.stopping ||
       submissionPending,
-    failed: Boolean(stream.error) || historyError,
+    failed:
+      Boolean(stream.error) ||
+      historyError ||
+      messageQueue.items.some((item) => item.status === "unknown"),
     pending: stream.interrupts,
     submit: submitAutopilot,
   });
@@ -985,7 +1025,7 @@ export function useChat({
 
   const stopStream = useCallback(async () => {
     disableAutopilot();
-    clearMessageQueue();
+    pauseMessageQueue();
     pendingSendRef.current?.(false);
     pendingSendRef.current = null;
     const target = threadIdRef.current;
@@ -994,14 +1034,14 @@ export function useChat({
       return;
     }
     // Cancel queued successors before releasing the active run.
-    const currentRunId = sessionStorage.getItem(streamRunStorageKey(target));
+    const currentRunId = readStreamRunId(target);
     const stopped = await stopMessageRuns(currentRunId);
     if (stopped && threadIdRef.current === target) {
       // The server has already cancelled the connected run.
       if (target) clearStreamReconnectState(target);
       streamRef.current.stop();
     }
-  }, [disableAutopilot, stopMessageRuns, clearMessageQueue]);
+  }, [disableAutopilot, stopMessageRuns, pauseMessageQueue]);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -1023,6 +1063,7 @@ export function useChat({
   const messages = stream.messages;
   const isLoading =
     stream.isLoading ||
+    messageRuns.serverActive ||
     messageRuns.pendingCount > 0 ||
     messageRuns.stopping ||
     submissionPending;
