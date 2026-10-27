@@ -351,18 +351,10 @@ export function SkillReferenceInput({
         placeholder={isLoading ? "Add a follow-up…" : "Enter your message…"}
         className={cn(
           textLayout,
-          "relative block max-h-[32dvh] min-h-16 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
+          "relative block max-h-[32dvh] min-h-12 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
         )}
         rows={1}
       />
-      {!value && (
-        <p
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-9 m-0 px-3 text-[11px] leading-4 text-muted-foreground"
-        >
-          $ skills · Enter {submitAction} · Shift+Enter newline
-        </p>
-      )}
       <span
         id={`${id}-hint`}
         className="sr-only"

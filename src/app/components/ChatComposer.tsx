@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { AutopilotControl } from "./AutopilotControl";
 import { ResponseJobs } from "./ResponseJobs";
+import { ComposerShortcuts } from "./ComposerShortcuts";
 import { MessageQueue } from "./MessageQueue";
 import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import type { useAutopilot } from "@/app/hooks/useAutopilot";
@@ -666,6 +667,9 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 </span>
               ) : null}
             </div>
+            <ComposerShortcuts
+              action={isLoading || hasQueue ? delivery : "send"}
+            />
             <div className="ml-auto flex items-center gap-1.5">
               {showDelivery && (
                 <>

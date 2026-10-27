@@ -124,7 +124,7 @@ test(
       );
       await hint.waitFor();
       await input.fill("Keep this draft");
-      assert.equal(await hint.count(), 0);
+      assert.equal(await hint.isVisible(), true);
       await input.press("Shift+Enter");
       await input.press("a");
       assert.equal(await input.inputValue(), "Keep this draft\na");
@@ -151,11 +151,32 @@ test(
           ),
           true
         );
-        const hintBox = await hint.boundingBox();
+        const shortcuts = page.getByRole("button", {
+          name: "Message shortcuts",
+        });
+        const visibleHint = (await shortcuts.isVisible()) ? shortcuts : hint;
+        const hintBox = await visibleHint.boundingBox();
         assert.ok(
-          hintBox.y + hintBox.height <= boxes[0].y,
-          "Hint does not overlap controls"
+          Math.abs(hintBox.y + hintBox.height / 2 - centers[0]) < 2,
+          "Instructions share the controls row"
         );
+        const sendBox = await page
+          .getByRole("button", { name: "Send message", exact: true })
+          .boundingBox();
+        assert.ok(
+          Math.abs(sendBox.y + sendBox.height / 2 - centers[0]) < 2,
+          "Send stays on the controls row"
+        );
+        if (await shortcuts.isVisible()) {
+          await shortcuts.click();
+          await page.getByRole("tooltip").waitFor();
+          assert.match(
+            await page.getByRole("tooltip").innerText(),
+            /Shift\+Enter newline/
+          );
+          await page.keyboard.press("Escape");
+          await page.getByRole("tooltip").waitFor({ state: "hidden" });
+        }
         if (process.env.COMPOSER_LAYOUT_EVIDENCE) {
           await mkdir(process.env.COMPOSER_LAYOUT_EVIDENCE, {
             recursive: true,

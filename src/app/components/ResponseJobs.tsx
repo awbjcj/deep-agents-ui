@@ -193,7 +193,7 @@ export function ResponseJobs({
               className="h-3.5 w-3.5"
               aria-hidden="true"
             />
-            <span>Jobs</span>
+            <span className="sr-only sm:not-sr-only">Jobs</span>
           </Button>
         </DialogTrigger>
       )}
