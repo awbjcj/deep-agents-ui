@@ -18,6 +18,7 @@ interface AutopilotControlProps {
   autopilot: ReturnType<typeof useAutopilot>;
   ready: boolean;
   unavailableReason?: string;
+  onDisable?: () => void;
 }
 
 const INSTANT = "!animate-none";
@@ -29,6 +30,7 @@ export function AutopilotControl({
   autopilot,
   ready,
   unavailableReason,
+  onDisable,
 }: AutopilotControlProps) {
   const [open, setOpen] = useState(false);
   const actionButton = useRef<HTMLButtonElement>(null);
@@ -78,8 +80,10 @@ export function AutopilotControl({
               : "Autopilot off · you approve each action. Click to enable.")
           }
           onClick={() => {
-            if (enabled) autopilot.disable();
-            else setOpen(true);
+            if (enabled) {
+              autopilot.disable();
+              onDisable?.();
+            } else setOpen(true);
           }}
         >
           <Icon

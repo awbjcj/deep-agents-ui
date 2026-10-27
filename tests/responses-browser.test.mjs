@@ -332,6 +332,9 @@ test(
         await readFile(await (await generatedDownload).path()),
         generatedBytes
       );
+      const options = page.getByRole("button", { name: "Chat options" });
+      if ((await options.getAttribute("aria-expanded")) === "false")
+        await options.click();
       await page
         .getByRole("button", { name: "Background jobs", exact: true })
         .click();

@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { SkillReferenceText } from "./SkillReferenceText";
 
 const textLayout =
-  "w-full whitespace-pre-wrap break-words px-4 py-3 text-base leading-7";
+  "w-full whitespace-pre-wrap break-words px-3 py-2 text-base leading-6";
 
 /** Keep native editing and focus while offering an accessible suggestion list. */
 export function SkillReferenceInput({
@@ -346,14 +346,10 @@ export function SkillReferenceInput({
         aria-controls={open ? id : undefined}
         aria-activedescendant={activeId}
         aria-describedby={`${id}-hint`}
-        placeholder={
-          isLoading
-            ? "Add a message to steer or queue…"
-            : "Write your message..."
-        }
+        placeholder={isLoading ? "Add a follow-up…" : "Write your message..."}
         className={cn(
           textLayout,
-          "relative block max-h-[60dvh] min-h-14 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
+          "relative block max-h-[32dvh] min-h-12 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
         )}
         rows={1}
       />

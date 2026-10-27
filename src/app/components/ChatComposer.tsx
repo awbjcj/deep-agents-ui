@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useId,
   FormEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +18,9 @@ import {
   Link2,
   CornerDownLeft,
   ListPlus,
+  SlidersHorizontal,
 } from "lucide-react";
-import { AutopilotControl } from "./AutopilotControl";
+import { ChatComposerOptions } from "./ChatComposerOptions";
 import { MessageQueue } from "./MessageQueue";
 import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import type { useAutopilot } from "@/app/hooks/useAutopilot";
@@ -34,7 +36,6 @@ import type { Assistant } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
 import { ReferenceFileDialog } from "@/app/components/ReferenceFileDialog";
-import { ResponseJobs } from "@/app/components/ResponseJobs";
 import { useAttachments } from "@/app/hooks/useAttachments";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
 import { useQueryState } from "nuqs";
@@ -118,6 +119,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     onThreadFilesChanged,
   }) => {
     const [threadId] = useQueryState("threadId");
+    const optionsId = useId();
+    const [optionsOpen, setOptionsOpen] = useState(false);
     const [delivery, setDelivery] = useState<MessageDelivery>("queue");
     const [submitting, setSubmitting] = useState(false);
     const submissionRef = useRef(false);
@@ -540,7 +543,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             }
             onKeyDown={handleKeyDown}
           />
-          <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-1 px-2 pb-2">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <input
                 ref={fileInputRef}
@@ -636,24 +639,26 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </div>
                 )}
               </div>
-              {autopilot && (
-                <AutopilotControl
-                  key={`${accountId}:${threadId}:${assistant?.assistant_id}`}
-                  autopilot={autopilot}
-                  ready={!!threadId && !!assistant && !isThreadLoading}
-                  unavailableReason={
-                    !assistant
-                      ? "Select an agent to enable autopilot."
-                      : !threadId
-                      ? "Start a conversation to enable autopilot."
-                      : "Loading conversation…"
-                  }
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Chat options"
+                id={`${optionsId}-trigger`}
+                aria-expanded={optionsOpen}
+                aria-controls={optionsId}
+                title="Chat options and shortcuts"
+                onClick={() => setOptionsOpen((open) => !open)}
+                className={cn(
+                  "transition-none active:scale-[0.97] motion-reduce:transform-none",
+                  optionsOpen && "bg-muted"
+                )}
+              >
+                <SlidersHorizontal
+                  size={18}
+                  aria-hidden="true"
                 />
-              )}
-              <ResponseJobs
-                key={threadId}
-                threadId={threadId}
-              />
+              </Button>
               {queuedMessageCount > 0 && !messageQueue?.items.length ? (
                 <span
                   role="status"
@@ -661,18 +666,12 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 >
                   {queuedMessageCount} queued
                 </span>
-              ) : (
-                <span className="hidden text-xs text-muted-foreground lg:inline">
-                  Type{" "}
-                  <kbd className="rounded border border-border px-1">$</kbd> for
-                  skills
-                </span>
-              )}
+              ) : null}
             </div>
             <div className="ml-auto flex items-center gap-1.5">
-              {(isLoading || hasQueue) && (
+              {showDelivery && (
                 <>
-                  {isLoading && showDelivery && (
+                  {isLoading && (
                     <Button
                       type="button"
                       variant="ghost"
@@ -720,7 +719,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               <Button
                 type={isLoading && !showDelivery ? "button" : "submit"}
                 variant={isLoading && !showDelivery ? "destructive" : "default"}
-                size="default"
+                size="icon"
                 onClick={isLoading && !showDelivery ? stopStream : undefined}
                 aria-label={
                   showDelivery
@@ -739,7 +738,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                     : undefined
                 }
                 className={cn(
-                  "rounded-full px-4 font-medium transition-none active:scale-[0.97] motion-reduce:transform-none",
+                  "shrink-0 rounded-full font-medium transition-none active:scale-[0.97] motion-reduce:transform-none",
                   !isLoading &&
                     "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                 )}
@@ -749,7 +748,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               >
                 {showDelivery ? (
                   <>
-                    <span>
+                    <span className="sr-only">
                       {submitting
                         ? "Sending…"
                         : delivery === "queue"
@@ -771,11 +770,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 ) : isLoading ? (
                   <>
                     <Square size={14} />
-                    <span>{isStopping ? "Stopping…" : "Stop"}</span>
+                    <span className="sr-only">
+                      {isStopping ? "Stopping…" : "Stop"}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <span>Send</span>
+                    <span className="sr-only">Send</span>
                     <ArrowUp
                       size={16}
                       strokeWidth={2.5}
@@ -785,15 +786,23 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               </Button>
             </div>
           </div>
-          <p className="px-3 pb-2 text-xs text-muted-foreground">
-            {isLoading || hasQueue
-              ? `Enter to ${
-                  delivery === "queue" ? "queue" : "steer"
-                } · Ctrl/⌘ Enter to ${
-                  delivery === "queue" ? "steer" : "queue"
-                } · Shift Enter for a new line`
-              : "Enter to send · Shift Enter for a new line"}
-          </p>
+          <ChatComposerOptions
+            id={optionsId}
+            open={optionsOpen}
+            autopilot={autopilot}
+            scope={`${accountId}:${threadId}:${assistant?.assistant_id}`}
+            ready={!!threadId && !!assistant && !isThreadLoading}
+            unavailableReason={
+              !assistant
+                ? "Select an agent to enable autopilot."
+                : !threadId
+                ? "Start a conversation to enable autopilot."
+                : "Loading conversation…"
+            }
+            threadId={threadId}
+            delivery={delivery}
+            isRunning={isLoading || hasQueue}
+          />
         </form>
         <ReferenceFileDialog
           open={referenceDialogOpen}

@@ -109,6 +109,15 @@ test(
         "developer"
       );
       await page.emulateMedia({ reducedMotion: "reduce" });
+      const options = page.getByRole("button", { name: "Chat options" });
+      assert.equal(await options.getAttribute("aria-expanded"), "false");
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Enable autopilot", exact: true })
+          .isVisible(),
+        false
+      );
+      await options.click();
       await page
         .getByRole("button", { name: "Enable autopilot", exact: true })
         .click();
@@ -116,6 +125,14 @@ test(
         .getByRole("button", { name: "I understand, enable autopilot" })
         .click();
       await page.getByRole("button", { name: "Turn off autopilot" }).waitFor();
+      await options.click();
+      assert.equal(await options.getAttribute("aria-expanded"), "false");
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Turn off autopilot" })
+          .isVisible(),
+        true
+      );
       await firstSubmission;
       assert.deepEqual(submissions[0].command.resume, {
         first: { decisions: [{ type: "approve" }, { type: "approve" }] },
@@ -134,6 +151,10 @@ test(
         path: "docs/evidence/autopilot/chat-mobile.png",
       });
       await page.getByRole("button", { name: "Turn off autopilot" }).click();
+      assert.equal(
+        await options.evaluate((element) => element === document.activeElement),
+        true
+      );
       releaseResume();
       await page
         .getByRole("button", { name: "Approve", exact: true })

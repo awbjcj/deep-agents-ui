@@ -173,7 +173,7 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
             className="h-3.5 w-3.5"
             aria-hidden="true"
           />
-          <span className="sr-only sm:not-sr-only">Background jobs</span>
+          <span>Background jobs</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl">
