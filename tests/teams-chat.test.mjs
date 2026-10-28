@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  teamsChatAPI,
-  TeamsChatError,
-  teamsConversationHref,
-} from "../src/lib/teams-chat.ts";
+import { teamsChatAPI, TeamsChatError } from "../src/lib/teams-chat.ts";
 
 const binding = {
   chat_id: "self-chat",
@@ -61,13 +57,12 @@ test("Only the explicit unconnected-account response opens setup", async (t) => 
   await assert.rejects(teamsChatAPI.status(), (error) => error.status === 502);
 });
 
-test("Teams discovery encodes opaque cursors and passes cancellation", async (t) => {
+test("Teams discovery requests the notes chat and passes cancellation", async (t) => {
   const controller = new AbortController();
   t.mock.method(globalThis, "fetch", async (url, options) => {
     const parsed = new URL(url, "http://test");
     assert.equal(parsed.pathname, "/api/teams-chat/chats");
-    assert.equal(parsed.searchParams.get("cursor"), "cursor&limit=500#?");
-    assert.equal(parsed.searchParams.get("limit"), "50");
+    assert.equal(parsed.search, "");
     assert.equal(options.signal, controller.signal);
     return Response.json({
       graph_user_id: "owner",
@@ -75,7 +70,7 @@ test("Teams discovery encodes opaque cursors and passes cancellation", async (t)
       next_cursor: null,
     });
   });
-  await teamsChatAPI.chats("cursor&limit=500#?", controller.signal);
+  await teamsChatAPI.chats(controller.signal);
 });
 
 test("Teams write errors stay actionable and never retry automatically", async (t) => {
@@ -89,12 +84,6 @@ test("Teams write errors stay actionable and never retry automatically", async (
   });
   await assert.rejects(teamsChatAPI.setEnabled(false), /Wait a few seconds/);
   assert.equal(calls, 1);
-});
-
-test("Teams conversation links select the matching thread and agent", () => {
-  const url = new URL(teamsConversationHref("thread/one &two"), "http://test");
-  assert.equal(url.searchParams.get("threadId"), "thread/one &two");
-  assert.equal(url.searchParams.get("assistantId"), "VSDA Deep Agent");
 });
 
 test("Teams status preserves explicit reconnect state and rejects invalid flags", async (t) => {

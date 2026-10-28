@@ -1,5 +1,6 @@
 "use client";
 
+import { chatHref } from "@/lib/chat-links";
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
@@ -14,11 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import {
-  teamsChatAPI,
-  teamsConversationHref,
-  type TeamsBinding,
-} from "@/lib/teams-chat";
+import { teamsChatAPI, type TeamsBinding } from "@/lib/teams-chat";
 import { TeamsChatSetup } from "./teams-chat/TeamsChatSetup";
 
 /** Mount with an account key so pending actions cannot update another user's UI. */
@@ -59,7 +56,8 @@ export function TeamsChatSettings({
     success: string,
     write = true
   ) {
-    if (busyRef.current || busy) return;
+    // Refresh stays focusable during reads; the ref prevents overlapping actions.
+    if (busyRef.current || (write && busy)) return;
     busyRef.current = true;
     setPendingAction(write ? "save" : "refresh");
     setError("");
@@ -124,7 +122,7 @@ export function TeamsChatSettings({
               size="icon"
               className="size-11 shrink-0"
               aria-label="Refresh Teams status"
-              disabled={busy}
+              aria-busy={pendingAction === "refresh"}
               onClick={refresh}
             >
               <RefreshCw
@@ -166,7 +164,7 @@ export function TeamsChatSettings({
               <Button
                 variant="outline"
                 className="min-h-11"
-                disabled={busy}
+                aria-busy={pendingAction === "refresh"}
                 onClick={refresh}
               >
                 Refresh status
@@ -294,7 +292,7 @@ export function TeamsChatSettings({
                 variant="outline"
                 className="min-h-11 w-full"
               >
-                <Link href={teamsConversationHref(binding.thread_id)}>
+                <Link href={chatHref(binding.thread_id)}>
                   Open conversation
                   <ArrowUpRight aria-hidden="true" />
                 </Link>

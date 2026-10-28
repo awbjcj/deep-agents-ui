@@ -31,7 +31,7 @@ export function TeamsChatSetup({
     setError("");
     setChatId("");
     try {
-      const page = await teamsChatAPI.chats(undefined, controller.signal);
+      const page = await teamsChatAPI.chats(controller.signal);
       if (controller.signal.aborted) return;
       const notes = page.chats.find(
         (chat) => chat.id === "48:notes" && chat.self_chat_candidate

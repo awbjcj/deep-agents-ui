@@ -28,7 +28,6 @@ const chatPageSchema = z.object({
 });
 
 export type TeamsBinding = z.infer<typeof bindingSchema>;
-export type TeamsChatPage = z.infer<typeof chatPageSchema>;
 
 export class TeamsChatError extends Error {
   constructor(message: string, readonly status: number) {
@@ -95,17 +94,8 @@ export const teamsChatAPI = {
       throw error;
     }
   },
-  chats: (cursor?: string, signal?: AbortSignal) =>
-    request(
-      chatPageSchema,
-      `/chats?${new URLSearchParams({
-        limit: "50",
-        ...(cursor ? { cursor } : {}),
-      })}`,
-      "GET",
-      undefined,
-      signal
-    ),
+  chats: (signal?: AbortSignal) =>
+    request(chatPageSchema, "/chats", "GET", undefined, signal),
   connect: (chatId: string) =>
     request(bindingSchema, "/binding", "POST", {
       chat_id: chatId.trim(),
@@ -116,10 +106,3 @@ export const teamsChatAPI = {
   useInteractive: () =>
     request(bindingSchema, "/binding", "PATCH", { mode: "interactive" }),
 };
-
-export function teamsConversationHref(threadId: string): string {
-  return `/?${new URLSearchParams({
-    threadId,
-    assistantId: "VSDA Deep Agent",
-  })}`;
-}
