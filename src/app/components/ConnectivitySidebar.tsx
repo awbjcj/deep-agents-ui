@@ -537,12 +537,18 @@ export function ConnectivitySidebar() {
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />
-                  Saving
+                  <Loader2
+                    className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  Saving…
                 </>
               ) : saved && !dirty ? (
                 <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  <CheckCircle
+                    className="mr-2 h-4 w-4"
+                    aria-hidden="true"
+                  />
                   Saved
                 </>
               ) : (

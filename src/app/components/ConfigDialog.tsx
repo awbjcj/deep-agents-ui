@@ -1,5 +1,6 @@
 "use client";
 
+import { DEFAULT_ASSISTANT_ID } from "@/lib/chat-links";
 import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
@@ -40,8 +41,6 @@ interface AssistantOption {
   name: string;
   graphId: string;
 }
-
-const DEFAULT_ASSISTANT = "VSDA Deep Agent";
 
 interface AgentInfo {
   /** One-line summary of what the agent is for. */
@@ -155,7 +154,7 @@ export function ConfigDialog({
   initialConfig,
 }: ConfigDialogProps) {
   const [assistantId, setAssistantId] = useState(
-    initialConfig?.assistantId || DEFAULT_ASSISTANT
+    initialConfig?.assistantId || DEFAULT_ASSISTANT_ID
   );
   const [assistants, setAssistants] =
     useState<AssistantOption[]>(BUILT_IN_ASSISTANTS);
@@ -220,7 +219,7 @@ export function ConfigDialog({
     if (open) {
       fetchAssistants();
       if (initialConfig) {
-        setAssistantId(initialConfig.assistantId || DEFAULT_ASSISTANT);
+        setAssistantId(initialConfig.assistantId || DEFAULT_ASSISTANT_ID);
         setAnalysisEngine(initialConfig.analysisEngine ?? "__default__");
       }
     }

@@ -145,7 +145,7 @@ export function RunModeSection() {
                 aria-hidden="true"
               />
             )}
-            {isSaving ? "Saving" : saved ? "Saved" : "Save run mode"}
+            {isSaving ? "Saving…" : saved ? "Saved" : "Save run mode"}
           </Button>
         </div>
       )}

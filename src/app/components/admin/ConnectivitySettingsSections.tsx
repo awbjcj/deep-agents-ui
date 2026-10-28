@@ -464,7 +464,7 @@ export function UrlOverridesSection() {
                   aria-hidden="true"
                 />
               )}
-              {saving ? "Saving" : "Save connectivity overrides"}
+              {saving ? "Saving…" : "Save connectivity overrides"}
             </Button>
           </div>
         </>
