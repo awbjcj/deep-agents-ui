@@ -17,7 +17,6 @@ export type {
   TaskInput,
   TaskRun,
   ScheduledTask,
-  TaskList,
   TaskAction,
 } from "./scheduled-task-contracts";
 
@@ -35,14 +34,6 @@ export const taskStatus: Record<string, string> = {
   cancelled: "Cancelled",
   skipped: "Skipped",
 };
-
-/** Scheduled prompts and their manual resumes use the supervisor graph. */
-export function scheduledChatHref(threadId: string): string {
-  return `/?${new URLSearchParams({
-    threadId,
-    assistantId: "VSDA Deep Agent",
-  })}`;
-}
 
 export function isActiveRun(run: TaskRun): boolean {
   return !["success", "error", "cancelled", "skipped"].includes(run.status);
@@ -82,8 +73,9 @@ export class TaskAPIError extends Error {
   }
 }
 
+/** Send one request; a `null` schema expects an empty success response. */
 async function taskRequest<T>(
-  schema: z.ZodType<T>,
+  schema: z.ZodType<T> | null,
   path: string,
   method = "GET",
   body?: unknown,
@@ -100,6 +92,7 @@ async function taskRequest<T>(
       extractErrorMessage(data?.detail, "Could not update scheduled tasks"),
       response.status
     );
+  if (schema === null) return undefined as T;
   const parsed = schema.safeParse(data);
   if (!parsed.success)
     throw new TaskAPIError(
@@ -149,17 +142,6 @@ export const scheduledTasksAPI = {
       )}/cancel`,
       "POST"
     ),
-  delete: async (id: string): Promise<void> => {
-    const response = await apiFetch(
-      `/scheduled-tasks/${encodeURIComponent(id)}`,
-      { method: "DELETE" }
-    );
-    if (!response.ok) {
-      const data = await response.json().catch(() => null);
-      throw new TaskAPIError(
-        extractErrorMessage(data?.detail, "Could not delete task"),
-        response.status
-      );
-    }
-  },
+  delete: (id: string) =>
+    taskRequest<void>(null, `/${encodeURIComponent(id)}`, "DELETE"),
 };

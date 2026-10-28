@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   isActiveRun,
-  scheduledChatHref,
   taskDate,
   taskInput,
   scheduledTasksAPI,
   TaskAPIError,
 } from "../src/lib/scheduled-tasks.ts";
+import { chatHref } from "../src/lib/chat-links.ts";
 
 test("task edits exclude server-owned state and clear an old chat selection", () => {
   const draft = {
@@ -57,8 +57,14 @@ test("schedule rendering tolerates incomplete timezone edits and respects the se
   assert.match(taskDate("2030-01-01T14:00:00Z", "America/New_York"), /9:00/);
 });
 
-test("chat links preserve thread identity and select the scheduled supervisor", () => {
-  const url = new URL(scheduledChatHref("chat/with spaces"), "http://test");
+test("chat links preserve thread identity and select the supervisor", () => {
+  const url = new URL(chatHref("thread/one &two"), "http://test");
+  assert.equal(url.searchParams.get("threadId"), "thread/one &two");
+  assert.equal(url.searchParams.get("assistantId"), "VSDA Deep Agent");
+});
+
+test("chat links preserve thread identity with spaces", () => {
+  const url = new URL(chatHref("chat/with spaces"), "http://test");
   assert.equal(url.searchParams.get("threadId"), "chat/with spaces");
   assert.equal(url.searchParams.get("assistantId"), "VSDA Deep Agent");
 });

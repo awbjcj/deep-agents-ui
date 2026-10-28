@@ -1,8 +1,8 @@
 "use client";
+import { chatHref } from "@/lib/chat-links";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  scheduledChatHref,
   taskDate,
   taskStatus,
   type ScheduledTask,
@@ -47,7 +47,7 @@ export function TaskRow({
               ) : (
                 <Link
                   className="underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
-                  href={scheduledChatHref(task.thread_id!)}
+                  href={chatHref(task.thread_id!)}
                 >
                   Existing chat
                 </Link>
@@ -96,7 +96,7 @@ export function TaskRow({
               : taskStatus[active.status]}
           </span>
           <Link
-            href={scheduledChatHref(active.thread_id)}
+            href={chatHref(active.thread_id)}
             className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
           >
             Open chat

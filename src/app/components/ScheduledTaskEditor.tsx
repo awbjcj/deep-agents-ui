@@ -125,6 +125,8 @@ export function ScheduledTaskEditor({
                 <Input
                   className="h-11"
                   aria-labelledby="task-name-label"
+                  name="task-name"
+                  autoComplete="off"
                   required
                   maxLength={120}
                   value={form.name}
@@ -136,6 +138,8 @@ export function ScheduledTaskEditor({
                 <span id="task-prompt-label">Prompt</span>
                 <Textarea
                   aria-labelledby="task-prompt-label"
+                  name="task-prompt"
+                  autoComplete="off"
                   required
                   maxLength={32000}
                   rows={4}

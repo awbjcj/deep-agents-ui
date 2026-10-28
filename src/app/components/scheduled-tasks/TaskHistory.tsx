@@ -1,4 +1,5 @@
 "use client";
+import { chatHref } from "@/lib/chat-links";
 import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -12,12 +13,16 @@ import {
 } from "@/components/ui/dialog";
 import {
   isActiveRun,
-  scheduledChatHref,
   scheduledTasksAPI,
   taskDate,
   taskStatus,
   type ScheduledTask,
 } from "@/lib/scheduled-tasks";
+
+const approvalLabel = (count: number) =>
+  `Automatically approved ${count} ${
+    count === 1 ? "intervention" : "interventions"
+  }`;
 
 export function TaskHistory({
   task,
@@ -30,7 +35,7 @@ export function TaskHistory({
   accountId: string;
   onClose: () => void;
   returnFocus: () => void;
-  onChanged: () => void;
+  onChanged: (message: string) => void;
 }) {
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -44,9 +49,13 @@ export function TaskHistory({
     setBusy(true);
     setActionError("");
     try {
-      await scheduledTasksAPI.cancel(task.id, id);
+      const { cancel_requested } = await scheduledTasksAPI.cancel(task.id, id);
       await mutate();
-      onChanged();
+      onChanged(
+        cancel_requested
+          ? "Cancellation requested. Future scheduled runs are unchanged."
+          : "This run already finished."
+      );
     } catch (cause) {
       setActionError(
         cause instanceof Error ? cause.message : "Could not cancel execution"
@@ -91,7 +100,10 @@ export function TaskHistory({
               <Button
                 variant="outline"
                 className="mt-2 min-h-11"
-                onClick={() => void mutate()}
+                onClick={() => {
+                  setActionError("");
+                  void mutate();
+                }}
               >
                 Retry history
               </Button>
@@ -122,7 +134,7 @@ export function TaskHistory({
                   </span>
                   <Link
                     className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4"
-                    href={scheduledChatHref(run.thread_id)}
+                    href={chatHref(run.thread_id)}
                   >
                     Open chat
                   </Link>
@@ -163,9 +175,9 @@ export function TaskHistory({
                         className="mt-2 break-all text-xs text-muted-foreground"
                       >
                         {dispatch.automatic_approvals
-                          ? "Automatically approved " +
-                            Object.keys(dispatch.automatic_approvals).length +
-                            " intervention(s)"
+                          ? approvalLabel(
+                              Object.keys(dispatch.automatic_approvals).length
+                            )
                           : "Prompt dispatched"}{" "}
                         · {dispatch.run_id ?? "Awaiting acknowledgment"}
                       </p>

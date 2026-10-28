@@ -9,7 +9,7 @@ import {
 } from "@/lib/scheduled-tasks";
 
 export const taskSelectClass =
-  "h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 export function TaskScheduleFields({
   form,
@@ -90,6 +90,9 @@ export function TaskScheduleFields({
           className="h-11"
           aria-labelledby="task-timezone-label"
           aria-describedby="task-preview"
+          name="timezone"
+          autoComplete="off"
+          spellCheck={false}
           required
           list="task-timezones"
           value={timezone}

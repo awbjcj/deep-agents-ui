@@ -28,8 +28,9 @@ export function ScheduledTasks({
     data,
     loadError,
     isLoading,
-    isValidating,
     mutate,
+    refresh,
+    refreshing,
     busy,
     error,
     notice,
@@ -94,11 +95,13 @@ export function ScheduledTasks({
             variant="outline"
             className="size-11 shrink-0"
             aria-label="Refresh tasks"
-            disabled={isValidating}
-            onClick={() => void mutate()}
+            aria-busy={refreshing}
+            onClick={() => void refresh()}
           >
             <RefreshCw
-              className="h-4 w-4"
+              className={
+                refreshing ? "h-4 w-4 motion-safe:animate-spin" : "h-4 w-4"
+              }
               aria-hidden="true"
             />
           </Button>
@@ -203,7 +206,7 @@ export function ScheduledTasks({
             <Button
               className="min-h-11"
               variant="outline"
-              disabled={offset === 0 || isLoading}
+              disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - 20))}
             >
               Previous tasks
@@ -214,7 +217,7 @@ export function ScheduledTasks({
             <Button
               className="min-h-11"
               variant="outline"
-              disabled={data?.next_offset == null || isLoading}
+              disabled={data?.next_offset == null}
               onClick={() => {
                 if (data?.next_offset != null) setOffset(data.next_offset);
               }}
@@ -243,8 +246,8 @@ export function ScheduledTasks({
           accountId={accountId}
           onClose={() => setPanel(null)}
           returnFocus={returnFocus}
-          onChanged={() => {
-            setNotice("Execution updated.");
+          onChanged={(message) => {
+            setNotice(message);
             void mutate();
           }}
         />
