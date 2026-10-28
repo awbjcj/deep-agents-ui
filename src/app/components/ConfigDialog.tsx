@@ -43,96 +43,129 @@ interface AssistantOption {
 }
 
 interface AgentInfo {
-  /** One-line summary of what the agent is for. */
+  /** Short plain-language introduction to the agent. */
   description: string;
-  /** Concrete tasks the agent handles well — written as user goals, not tool names. */
+  /** Concrete tasks the agent handles well, written as user goals, not tool names. */
   useCases: string[];
-  /** True for the orchestrating supervisor that routes across every source. */
+  /** Availability or scope caveat shown under the use cases. */
+  note?: string;
+  /** True for the orchestrating supervisors that work across every source. */
   isSupervisor?: boolean;
 }
 
 const AGENT_INFO: Record<string, AgentInfo> = {
   "VSDA Deep Agent": {
     description:
-      "The supervisor. Plans multi-step work and coordinates the specialized sub-agents below, combining results from several sources into a single answer.",
+      "The general-purpose assistant and the right default. It plans the work, hands each part to the specialist that owns that system, and combines what comes back into one answer. Anything that writes to another system waits for your approval first.",
     isSupervisor: true,
     useCases: [
-      "Cross-reference a Jira ticket with its related Confluence documentation and summarize both together.",
-      "Investigate an issue that spans Polarion requirements, Teams discussions, and email threads.",
-      "Research a topic in the knowledge base, then draft and send a summary email about it.",
-      "Any request that needs more than one source, or several steps coordinated in order.",
+      "Read a Jira ticket next to its Confluence design page and tell me where they disagree.",
+      "Trace a problem through Polarion requirements, a Teams thread and the related email chain.",
+      "Search the document library for a topic, then draft an email summarizing what turned up.",
+      "Write a report or diagram from several sources and attach it to the conversation.",
     ],
+  },
+  "VSDA Task Agent": {
+    description:
+      "A stricter take on the Deep Agent for jobs with a clear finish line. Before it starts, it writes your request down as a checklist of requirements. It attaches evidence to each item as it goes, and a grader checks the answer before the task counts as done. If something is missing, it tells you what is missing instead of papering over it.",
+    isSupervisor: true,
+    useCases: [
+      "Build release notes from a list of tickets, link every one, and flag any without a fix version.",
+      "Check a set of Polarion requirements against Jira and list the gaps, with the source for each.",
+      "Start a Jenkins build, follow it to the end, and report the result you actually saw.",
+      'Any multi-part request where you would rather hear "blocked" or "needs input" than get a confident guess.',
+    ],
+    note: "Only for accounts an administrator has enrolled; anyone else gets an access error. It runs within a fixed budget of model calls, tool calls and time, and finishes with a status: completed, needs input, blocked, budget exhausted or unverified. A conversation that starts here stays here.",
   },
   "VSDA Jira Agent": {
-    description: "Reads, searches, summarizes, and edits Jira tickets.",
+    description:
+      "Works with live Jira data: exact ticket keys, current status and comments, and JQL searches. When it writes a query for you, you see it before it runs.",
     useCases: [
-      "Summarize the status, blockers, and recent activity of a specific ticket (e.g. CADM-1234).",
-      "Find all open tickets matching a query — by assignee, sprint, priority, or label.",
-      "Build a JQL query from a plain-language description of what you're looking for.",
-      "Grade a VSDA ticket for completeness, or apply edits to a ticket's fields.",
+      "Summarize where CADM-1234 stands, what is blocking it and what changed this week.",
+      'Turn "my open P1 bugs in the current sprint" into JQL and run it.',
+      "Grade a VSDA triage ticket for completeness.",
+      "Draft a ticket from a Polarion requirement. Creating, editing, linking and transitioning tickets is limited to administrators and needs a review.",
     ],
+    note: 'For "find tickets like this one", use the Database Agent instead.',
   },
   "VSDA Teams Agent": {
-    description: "Reads, summarizes, and sends Microsoft Teams chat messages.",
+    description:
+      "Reads and summarizes your Microsoft Teams chats, and sends messages once you approve them. It can also draft Adaptive Cards.",
     useCases: [
-      "Catch up on the latest messages in a specific chat or channel.",
-      "Find what was decided or discussed in a recent group conversation.",
-      "Send a message or status update to a teammate or group chat.",
+      "Catch me up on the last day of a group chat.",
+      "Find out what the team decided about the release date.",
+      "Send a status update to a teammate, or start a new chat with them.",
+      "Draft an Adaptive Card for a bot or workflow notification.",
     ],
   },
   "VSDA Email Agent": {
     description:
-      "Reads, summarizes, drafts, and sends email from your mailbox.",
+      "Reads your Outlook mailbox and writes email for you. Drafts go to your Drafts folder after you review them, and nothing is sent until you approve it.",
     useCases: [
-      "Summarize unread or recent emails in a folder.",
+      "Summarize what came into a folder since yesterday.",
       "Draft a reply to a specific message, or a follow-up to a stakeholder.",
-      "Send a new email or a saved draft on your behalf.",
+      "Send a saved draft, or a new message you have checked.",
     ],
+  },
+  "VSDA SharePoint Agent": {
+    description:
+      "Searches the SharePoint and OneDrive files you already have access to. It can pull a file into the conversation so its contents can be read and quoted.",
+    useCases: [
+      "Find the latest version of a spec or slide deck by name or topic.",
+      "Check who changed a file last, and when.",
+      "Download a document or image into the chat so the answer can quote it.",
+    ],
+    note: "Read-only. Search snippets come from an index, so ask it to download the file when the exact wording matters.",
   },
   "VSDA Database Agent": {
     description:
-      "Searches the Elasticsearch vector knowledge base of internal documents.",
+      "Semantic search over the OpenSearch document library (the vsda_* shelves). It finds things by meaning, not by exact ID.",
     useCases: [
-      "Find internal documentation or reference material on a topic.",
-      "Retrieve the most relevant documents for a question, with optional metadata filters (date, source, type).",
-      "Answer a question grounded strictly in indexed knowledge-base content.",
+      "Find past tickets or work items that look like a new problem.",
+      "Pull together internal documents on a concept, filtered by source, type or date.",
+      "Spot recurring patterns across many documents.",
     ],
+    note: "The library is a snapshot. For exact IDs or current status, ask the Jira, Polarion or Confluence agent.",
   },
   "VSDA Polarion Agent": {
     description:
-      "Reads and summarizes Polarion ALM work items and project information.",
+      "Works with live Polarion data: work items, LiveDocs, links and comments, plus test runs, verdicts and step results. You review its Lucene queries before they run.",
     useCases: [
-      "Retrieve and summarize a specific Polarion work item.",
-      "List requirements, test cases, or other work items for a project.",
-      "Look up project metadata or build a query against a Polarion project.",
+      "Summarize a work item with its links, comments and attachments.",
+      "List the requirements or test cases in a project that match a condition.",
+      "Check a test run's verdicts and step results.",
+      "Draft requirements or verification cases from source evidence. Changes in Polarion are limited to administrators and need a review.",
     ],
   },
   "VSDA Confluence Agent": {
     description:
-      "Reads and summarizes Confluence spaces, pages, and attachments.",
+      "Finds, reads and summarizes Confluence pages, including their comments and attachments. It also drafts and formats pages, and keeps feature or component pages up to date from source evidence.",
     useCases: [
-      "Find and summarize a wiki page by title or topic within a space.",
-      "List the pages or child pages under a given space or parent page.",
-      "Pull comments or attachments tied to a specific Confluence page.",
+      "Find the runbook for a service and summarize the steps.",
+      "List the child pages under a space or parent page.",
+      "Turn meeting notes or a set of tickets into a formatted wiki page.",
+      "Create or update a page, or attach a file, once an administrator approves it.",
     ],
   },
   "VSDA Jenkins Agent": {
-    description: "Monitors, queries, and triggers Jenkins CI/CD build jobs.",
+    description:
+      "Looks up Jenkins jobs and builds, and starts builds after you approve the job and parameters.",
     useCases: [
-      "Check the current status or recent build history of a Jenkins job.",
-      "List available jobs or look up the parameters a job accepts.",
-      "Retrieve the console output of a build to diagnose a failure.",
-      "Trigger a Jenkins build job with specific parameters.",
+      "Show the status and recent history of a job.",
+      "Explain which parameters a job takes and what they do.",
+      "Read the console output of a failed build and point to the error.",
+      "Trigger a build with specific parameters and follow it through the queue.",
     ],
   },
   "VSDA Code Analyzer Agent": {
     description:
-      "Read-only analysis of configured Gerrit code, with immutable revision evidence and persistent reports. Plastic analysis is not yet supported.",
+      "Answers questions about code in the configured Gerrit repositories. It pins each answer to an exact revision and cites files and lines. Analysis runs in an isolated worker that never builds the code or runs its scripts or tests.",
     useCases: [
-      "Resolve a repository revision and explain a code path with file-and-line evidence.",
-      "Compare two explicit revisions without running repository scripts, builds, or tests.",
-      "Track a managed code-analysis job and download its durable Markdown report.",
+      "Explain how a code path works at a given revision, with file-and-line evidence.",
+      "Compare two revisions and describe what changed in behavior.",
+      "Run a longer analysis as a background job and download the Markdown report.",
     ],
+    note: "Plastic SCM is not supported yet. The Copilot engine and MATLAB/Simulink inspection appear only where an administrator has enabled them.",
   },
 };
 
@@ -357,15 +390,20 @@ export function ConfigDialog({
                         ))}
                       </ul>
                     </div>
+                    {info.note && (
+                      <p className="text-xs text-muted-foreground">
+                        {info.note}
+                      </p>
+                    )}
                     {info.isSupervisor && (
                       <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">
                           Tip:
                         </span>{" "}
-                        If your task is simple and only needs one source, select
-                        that sub-agent directly instead of the supervisor — it's
-                        faster and more focused. Use VSDA Deep Agent when the
-                        work spans multiple sources or several steps.
+                        If the job only touches one system, pick that agent
+                        directly. It will be faster and stay on topic. Keep a
+                        supervisor for work that crosses systems or takes
+                        several steps.
                       </p>
                     )}
                   </div>
