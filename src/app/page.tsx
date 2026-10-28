@@ -466,7 +466,7 @@ function HomePageInner({
                   }
                   void setSidebar("1");
                 }}
-                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
+                className="rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
               >
                 <MessagesSquare className="h-4 w-4 sm:mr-2" />
                 <span className="max-sm:hidden">Threads</span>
@@ -557,8 +557,8 @@ function HomePageInner({
                   aria-pressed={workspaceOpen}
                   className={
                     workspaceOpen
-                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
-                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
+                      ? "rounded-full border border-[hsl(var(--primary)/0.4)] bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
+                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
                   }
                 >
                   <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
@@ -607,7 +607,7 @@ function HomePageInner({
                   size="icon"
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="hover:border-primary/40 rounded-full border border-border bg-card text-foreground hover:text-primary max-sm:hidden"
+                  className="rounded-full border border-border bg-card text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:text-primary max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
                 </Button>

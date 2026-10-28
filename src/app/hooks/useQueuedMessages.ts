@@ -245,7 +245,14 @@ export function useQueuedMessages({
           ...previous,
           editingId: null,
           items: previous.items.map((entry) =>
-            entry.id === id ? { ...entry, message } : entry
+            entry.id === id
+              ? {
+                  ...entry,
+                  message,
+                  // An edited rejection is a new attempt in its queue position.
+                  status: entry.status === "failed" ? "waiting" : entry.status,
+                }
+              : entry
           ),
         };
       }),
@@ -328,7 +335,6 @@ export function useQueuedMessages({
       ),
     [update]
   );
-  const clear = useCallback(() => update(() => EMPTY), [update]);
 
   return useMemo(
     () => ({
@@ -341,7 +347,6 @@ export function useQueuedMessages({
       save,
       remove,
       retry,
-      clear,
       sendNow,
       move,
       pause,
@@ -358,7 +363,6 @@ export function useQueuedMessages({
       save,
       remove,
       retry,
-      clear,
       sendNow,
       move,
       pause,

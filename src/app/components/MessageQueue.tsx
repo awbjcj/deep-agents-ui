@@ -87,9 +87,14 @@ export function MessageQueue({
           {queue.paused ? "Resume queue" : "Pause queue"}
         </Button>
       </div>
-      <p className="px-2 text-xs text-muted-foreground">
+      <p
+        className="px-2 text-xs text-muted-foreground"
+        aria-live="polite"
+      >
         {queue.items.some((item) => item.status === "unknown")
           ? "Delivery needs checking. Automatic queue delivery is paused."
+          : queue.items[0]?.status === "failed"
+          ? "Message 1 wasn’t sent. Retry, edit, or delete it to continue."
           : queue.paused
           ? "Queue paused. Your messages are saved in this tab."
           : queue.editingId

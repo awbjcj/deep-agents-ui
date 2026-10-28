@@ -128,7 +128,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       resumeInterrupt,
       autopilot,
       createdThreadId,
-      queuedMessageCount,
+      serverQueuedCount,
       messageQueue,
       isStopping,
     } = useChatContext();
@@ -286,7 +286,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // extends past the top edge of this box. Clipping here would hide it
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
-              "focus-within:border-primary/50 pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-md shadow-black/[0.04] @container/composer sm:mb-5",
+              "pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-md shadow-black/[0.04] @container/composer focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20 sm:mb-5",
               "mx-auto w-[calc(100%-24px)] max-w-[960px] sm:w-[calc(100%-32px)]"
             )}
           >
@@ -520,7 +520,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               assistant={assistant}
               autopilot={autopilot}
               isThreadLoading={isThreadLoading}
-              queuedMessageCount={queuedMessageCount}
+              serverQueuedCount={serverQueuedCount}
               messageQueue={messageQueue}
               isStopping={isStopping}
               isLoading={isLoading}

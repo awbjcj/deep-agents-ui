@@ -77,12 +77,27 @@ export function useMessageRuns(options: Options) {
   useEffect(() => {
     if (!threadId) return;
     let disposed = false;
+    let inflight = false;
+    let idle = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // Poll quickly while work is active, slowly when idle (other tabs can still
+    // start runs), and not at all while the tab is hidden.
+    const schedule = () => {
+      clearTimeout(timer);
+      if (disposed || current.current !== session || document.hidden) return;
+      timer = setTimeout(
+        refresh,
+        idle && !latest.current.loading ? 10_000 : 2000
+      );
+    };
     async function refresh() {
+      if (inflight) return;
       if (session.stopping) {
-        timer = setTimeout(refresh, 2000);
+        idle = false;
+        schedule();
         return;
       }
+      inflight = true;
       const revision = session.revision;
       try {
         const listed = await listActiveThreadRuns(client, threadId!);
@@ -96,6 +111,7 @@ export function useMessageRuns(options: Options) {
         const busy = listed.some(
           (run) => run.status === "pending" || run.status === "running"
         );
+        idle = !busy && !found.length;
         setActivity((previous) =>
           previous.session === session &&
           previous.checked &&
@@ -152,15 +168,19 @@ export function useMessageRuns(options: Options) {
       } catch {
         // Retain known activity until discovery succeeds again.
       } finally {
-        // Other tabs can start work after an idle snapshot too.
-        if (!disposed && current.current === session)
-          timer = setTimeout(refresh, 2000);
+        inflight = false;
+        schedule();
       }
     }
+    const onVisibilityChange = () => {
+      if (!document.hidden) void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     void refresh();
     return () => {
       disposed = true;
       clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [client, threadId, session, loading]);
 

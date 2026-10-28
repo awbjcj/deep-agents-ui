@@ -1068,8 +1068,7 @@ export function useChat({
     messageRuns.stopping ||
     submissionPending;
   const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
-  const queuedMessageCount =
-    messageQueue.items.length + messageRuns.queuedCount;
+  const serverQueuedCount = messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
   const getMessagesMetadata = stream.getMessagesMetadata;
 
@@ -1094,7 +1093,7 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
-      queuedMessageCount,
+      serverQueuedCount,
       messageQueue,
       isStopping,
       historyError,
@@ -1127,7 +1126,7 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
-      queuedMessageCount,
+      serverQueuedCount,
       messageQueue,
       isStopping,
       historyError,

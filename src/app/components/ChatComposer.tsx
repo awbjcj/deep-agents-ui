@@ -63,7 +63,7 @@ const EMPTY_DRAFT: MessageDraft = { text: "", references: [] };
 interface ChatComposerProps {
   accountId?: string;
   createdThreadId?: string;
-  queuedMessageCount?: number;
+  serverQueuedCount?: number;
   messageQueue?: ReturnType<typeof useQueuedMessages>;
   isStopping?: boolean;
   skillAuthoringRequest?: SkillAuthoringRequest | null;
@@ -100,7 +100,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
   ({
     accountId,
     createdThreadId,
-    queuedMessageCount = 0,
+    serverQueuedCount = 0,
     messageQueue,
     isStopping = false,
     assistant,
@@ -425,10 +425,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (submitDisabled || e.nativeEvent.isComposing || e.repeat) return;
-        if (e.key === "Escape" && isLoading) {
-          e.preventDefault();
-          stopStream();
-        }
         if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
           e.preventDefault();
           void handleSubmit(
@@ -441,7 +437,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           );
         }
       },
-      [handleSubmit, submitDisabled, isLoading, stopStream, delivery]
+      [handleSubmit, submitDisabled, delivery]
     );
 
     return (
@@ -664,12 +660,12 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 isRunning={isLoading}
                 onEmptyClose={focusComposer}
               />
-              {queuedMessageCount > 0 && !messageQueue?.items.length ? (
+              {serverQueuedCount > 0 && !messageQueue?.items.length ? (
                 <span
                   role="status"
                   className="whitespace-nowrap text-xs text-muted-foreground"
                 >
-                  {queuedMessageCount} queued
+                  {serverQueuedCount} queued
                 </span>
               ) : null}
             </div>

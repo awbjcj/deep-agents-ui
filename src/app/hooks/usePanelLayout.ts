@@ -64,8 +64,16 @@ export function usePanelLayout({
     return () => observer.disconnect();
   }, [compact, threadsOpen, openPanel]);
 
+  // Panel arrangement whose default width was applied. Container resizes keep
+  // the user's dragged width; the panel library re-clamps it to new limits.
+  const appliedArrangement = useRef<string | null>(null);
   useLayoutEffect(() => {
-    if (!openPanel || compact) return;
+    if (!openPanel || compact) {
+      appliedArrangement.current = null;
+      return;
+    }
+    const arrangement = `${openPanel}|${threadsOpen}`;
+    if (appliedArrangement.current === arrangement) return;
     // Preserve the current history width when opening a settings panel, while
     // reserving enough room for the conversation and its composer.
     const threadSize = threadsOpen ? threadsRef.current?.getSize() ?? 0 : 0;
@@ -77,7 +85,10 @@ export function usePanelLayout({
         Math.min(layout.settings.defaultSize, available)
       )
     );
-  }, [openPanel, compact, threadsOpen, layout]);
+    // Re-apply once measurement reflects this arrangement's column budgets.
+    if (geometry.settingsOpen && geometry.threadsOpen === threadsOpen)
+      appliedArrangement.current = arrangement;
+  }, [openPanel, compact, threadsOpen, layout, geometry]);
 
   return {
     boundaryRef,
