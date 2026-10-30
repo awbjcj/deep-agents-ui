@@ -13,7 +13,7 @@
 # testing
 /coverage
 /test-results/scheduled-tasks/
-/test-results/teams-chat/
+/test-results/chat-channels/
 
 # next.js
 /.next/

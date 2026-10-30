@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { apiFetch, extractErrorMessage } from "@/lib/auth";
 
-const bindingSchema = z.object({
+export const bindingSchema = z.object({
   chat_id: z.string().min(1),
+  transport: z.enum(["graph", "bot", "slack", "telegram"]).default("graph"),
   graph_user_id: z.string().min(1),
   thread_id: z.string().min(1),
   enabled: z.boolean(),
