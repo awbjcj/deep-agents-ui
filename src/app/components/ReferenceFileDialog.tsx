@@ -12,11 +12,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  attachmentDisplayName,
-  attachmentKindForPath,
-  fileContentToText,
-  imageMimeForPath,
-} from "@/lib/uploads";
+  fileAttachmentReference,
+  fileReferenceEntries,
+} from "@/lib/file-references";
 import type { AttachmentReference } from "@/app/hooks/useAttachments";
 import {
   SOURCE_IMAGE_LABELS,
@@ -35,28 +33,14 @@ export const ReferenceFileDialog = React.memo<Props>(
   ({ open, onOpenChange, files, sourceImageAttachments, onConfirm }) => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
 
-    const entries = useMemo(() => {
-      const sourceByPath = new Map(
-        Object.values(sourceImageAttachments).map((record) => [
-          record.artifact_path,
-          record,
-        ])
-      );
-      return Object.keys(files).map((path) => {
-        const mime = imageMimeForPath(path);
-        const sourceRecord = sourceByPath.get(path);
-        const thumb = mime
-          ? `data:${mime};base64,${fileContentToText(files[path])}`
-          : undefined;
-        return {
-          path,
-          label: attachmentDisplayName(path),
-          kind: attachmentKindForPath(path),
-          thumb,
-          sourceRecord,
-        };
-      });
-    }, [files, sourceImageAttachments]);
+    const entries = useMemo(
+      () =>
+        fileReferenceEntries(files, sourceImageAttachments).map((entry) => {
+          const reference = fileAttachmentReference(entry, files);
+          return { ...entry, reference, thumb: reference.thumb };
+        }),
+      [files, sourceImageAttachments]
+    );
 
     const toggle = useCallback((path: string) => {
       setSelected((prev) => {
@@ -78,21 +62,7 @@ export const ReferenceFileDialog = React.memo<Props>(
     const confirm = useCallback(() => {
       const refs: AttachmentReference[] = entries
         .filter((e) => selected.has(e.path))
-        .map((e) => ({
-          path: e.path,
-          filename: e.label,
-          kind: e.kind,
-          thumb: e.thumb,
-          ...(e.sourceRecord
-            ? {
-                source_image_ref: {
-                  attachment_id: e.sourceRecord.attachment_id,
-                  artifact_path: e.sourceRecord.artifact_path,
-                },
-                source: e.sourceRecord.source,
-              }
-            : {}),
-        }));
+        .map((e) => e.reference);
       if (refs.length > 0) onConfirm(refs);
       setSelected(new Set());
       onOpenChange(false);
@@ -162,14 +132,14 @@ export const ReferenceFileDialog = React.memo<Props>(
                           <span
                             className={cn(
                               "mt-0.5 truncate text-xs text-muted-foreground",
-                              entry.sourceRecord
+                              entry.source
                                 ? "bg-primary/8 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]"
                                 : "block"
                             )}
                           >
-                            {entry.sourceRecord
+                            {entry.source
                               ? `${
-                                  SOURCE_IMAGE_LABELS[entry.sourceRecord.source]
+                                  SOURCE_IMAGE_LABELS[entry.source.source]
                                 } source image`
                               : entry.kind}
                           </span>

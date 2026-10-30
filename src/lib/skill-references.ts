@@ -1,3 +1,4 @@
+import { shiftSpans, spansOverlap, type TextSpan } from "./reference-spans";
 import type { SkillCatalogEntry } from "./skills";
 
 /** Offsets refer to the visible name, including a dollar prefix when present. */
@@ -49,11 +50,15 @@ function intact(text: string, reference: SkillReference): boolean {
   );
 }
 
-/** Resolve exact catalog names without changing text or guessing ambiguous IDs. */
+/**
+ * Resolve exact catalog names without changing text or guessing ambiguous IDs.
+ * `excluded` spans (such as `@file` mentions) are never matched as skills.
+ */
 export function matchSkillReferences(
   text: string,
   entries: SkillCatalogEntry[],
-  selected: SkillReference[] = []
+  selected: SkillReference[] = [],
+  excluded: TextSpan[] = []
 ): SkillReference[] {
   const references = selected
     .filter((ref) => intact(text, ref))
@@ -82,10 +87,12 @@ export function matchSkillReferences(
     ...text.matchAll(
       /(`+)[\s\S]*?(?:\1|$)|(~{3,})[\s\S]*?(?:\2|$)|(?:https?:\/\/|www\.)\S+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+/gu
     ),
-  ].map((match) => ({
-    start: match.index,
-    end: match.index + match[0].length,
-  }));
+  ]
+    .map((match) => ({
+      start: match.index,
+      end: match.index + match[0].length,
+    }))
+    .concat(excluded);
   for (const match of text.matchAll(new RegExp(`\\$?(?:${pattern})`, "giu"))) {
     if (references.length >= MAX_SKILL_REFERENCES) break;
     const token = match[0];
@@ -102,8 +109,8 @@ export function matchSkillReferences(
     };
     if (
       intact(text, reference) &&
-      ![...references, ...literals].some(
-        (span) => reference.start < span.end && reference.end > span.start
+      ![...references, ...literals].some((span) =>
+        spansOverlap(reference, span)
       )
     )
       references.push(reference);
@@ -111,17 +118,28 @@ export function matchSkillReferences(
   return references.sort((a, b) => a.start - b.start);
 }
 
+/**
+ * Find the `$` query ending at the caret. `blocked` spans (such as `@file`
+ * mentions) may neither contain the caret nor fall inside the query.
+ */
 export function activeSkillQuery(
   text: string,
   caret: number,
-  references: SkillReference[]
+  references: TextSpan[],
+  blocked: TextSpan[] = []
 ): SkillQuery | null {
-  if (references.some((ref) => caret > ref.start && caret <= ref.end))
+  if (
+    [...references, ...blocked].some(
+      (ref) => caret > ref.start && caret <= ref.end
+    )
+  )
     return null;
   const match = /(?:^|[\s([{])\$([^\r\n$]*)$/u.exec(text.slice(0, caret));
   if (!match) return null;
   const start = caret - match[1].length - 1;
   if (references.some((ref) => ref.start === start)) return null;
+  if (blocked.some((span) => spansOverlap(span, { start, end: caret })))
+    return null;
   return {
     start,
     end: caret,
@@ -152,33 +170,7 @@ export function reconcileSkillReferences(
   after: string,
   references: SkillReference[]
 ): SkillReference[] {
-  let start = 0;
-  while (
-    start < before.length &&
-    start < after.length &&
-    before[start] === after[start]
-  )
-    start++;
-  let oldEnd = before.length;
-  let newEnd = after.length;
-  while (
-    oldEnd > start &&
-    newEnd > start &&
-    before[oldEnd - 1] === after[newEnd - 1]
-  ) {
-    oldEnd--;
-    newEnd--;
-  }
-  const delta = newEnd - oldEnd;
-  return references.flatMap((ref) => {
-    const next =
-      ref.end <= start
-        ? ref
-        : ref.start >= oldEnd
-        ? { ...ref, start: ref.start + delta, end: ref.end + delta }
-        : null;
-    return next && intact(after, next) ? [next] : [];
-  });
+  return shiftSpans(before, after, references, intact);
 }
 
 export function insertSkillReference(

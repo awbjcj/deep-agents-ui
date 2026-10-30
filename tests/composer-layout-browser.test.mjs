@@ -109,7 +109,7 @@ test(
         exact: true,
       });
       const hint = page.getByText(
-        "$ skills · Enter send · Shift+Enter newline",
+        "$ skills · @ files · Enter send · Shift+Enter newline",
         { exact: true }
       );
       await input.waitFor();

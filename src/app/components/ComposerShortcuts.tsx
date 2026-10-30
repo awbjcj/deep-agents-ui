@@ -16,7 +16,7 @@ export function ComposerShortcuts({
   action: "send" | "queue" | "steer";
 }) {
   const [open, setOpen] = useState(false);
-  const hint = `$ skills · Enter ${action} · Shift+Enter newline`;
+  const hint = `$ skills · @ files · Enter ${action} · Shift+Enter newline`;
 
   return (
     <div className="flex min-w-9 flex-1 items-center @container">

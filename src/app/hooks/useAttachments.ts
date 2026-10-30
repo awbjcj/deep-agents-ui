@@ -271,31 +271,39 @@ export function useAttachments({
     [beginUpload, items.length]
   );
 
+  /**
+   * Attach existing thread files. Returns the requested paths that are now
+   * attached (newly added or already present) and the subset newly added.
+   */
   const addReferences = useCallback(
-    (refs: AttachmentReference[]) => {
-      const remaining = UPLOAD_MAX_PER_SEND - items.length;
-      if (remaining <= 0) {
-        toast.warning(`Max ${UPLOAD_MAX_PER_SEND} attachments per message.`);
-        return;
-      }
-
+    (refs: AttachmentReference[]): { attached: string[]; added: string[] } => {
       const existingPaths = new Set(
-        itemsRef.current
-          .filter(
-            (it): it is Extract<AttachmentState, { phase: "reference" }> =>
-              it.phase === "reference"
-          )
-          .map((it) => it.path)
+        itemsRef.current.flatMap((it) =>
+          it.phase === "reference"
+            ? [it.path]
+            : it.phase === "ready"
+            ? [it.meta.artifact_path, it.meta.state_files_key].filter(
+                (path): path is string => !!path
+              )
+            : []
+        )
       );
+      const attached = refs
+        .map((ref) => ref.path)
+        .filter((path) => existingPaths.has(path));
+      const added: string[] = [];
+      const remaining = UPLOAD_MAX_PER_SEND - itemsRef.current.length;
 
       const accepted: AttachmentState[] = [];
       for (const ref of refs) {
+        if (existingPaths.has(ref.path)) continue;
         if (accepted.length >= remaining) {
           toast.warning(`Max ${UPLOAD_MAX_PER_SEND} attachments per message.`);
           break;
         }
-        if (existingPaths.has(ref.path)) continue;
         existingPaths.add(ref.path);
+        attached.push(ref.path);
+        added.push(ref.path);
         accepted.push({
           phase: "reference",
           localId: uuidv4(),
@@ -308,14 +316,19 @@ export function useAttachments({
         });
       }
 
-      if (accepted.length === 0) return;
-      setItems((prev) => [...prev, ...accepted]);
+      if (accepted.length > 0)
+        setItems((prev) => {
+          const next = [...prev, ...accepted];
+          itemsRef.current = next;
+          return next;
+        });
+      return { attached, added };
     },
-    [items.length]
+    []
   );
 
   const remove = useCallback(
-    (localId: string) => {
+    (localId: string, options?: { quiet?: boolean }) => {
       if (reserved.current.has(localId)) return;
       const targetIndex = itemsRef.current.findIndex(
         (it) => it.localId === localId
@@ -364,7 +377,7 @@ export function useAttachments({
         })();
       } else if (target.phase === "uploading") {
         toast.info(`Canceled upload "${name}"`);
-      } else {
+      } else if (!options?.quiet) {
         // A reference chip or a failed upload — nothing is stored on the thread.
         toast.success(`Removed "${name}"`);
       }

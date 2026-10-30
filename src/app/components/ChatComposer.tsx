@@ -33,19 +33,36 @@ import {
   type SkillAuthoringRequest,
 } from "@/lib/skill-authoring-request";
 import {
+  insertSkillReference,
   matchSkillReferences,
   reconcileSkillReferences,
   submittedSkillReferences,
+  type SkillQuery,
   type SkillReference,
 } from "@/lib/skill-references";
+import {
+  fileAttachmentReference,
+  fileReferenceEntries,
+  insertFileReference,
+  reconcileFileReferences,
+  type FileQuery,
+  type FileReference,
+  type FileReferenceEntry,
+} from "@/lib/file-references";
+import type { SkillCatalogEntry } from "@/lib/skills";
 import { useSkillReferenceCatalog } from "@/app/hooks/useSkillReferenceCatalog";
-import { SkillReferenceInput } from "./skills/SkillReferenceInput";
+import { ReferenceInput } from "./composer/ReferenceInput";
 
 interface MessageDraft {
   text: string;
   references: SkillReference[];
+  fileReferences: FileReference[];
 }
-const EMPTY_DRAFT: MessageDraft = { text: "", references: [] };
+const EMPTY_DRAFT: MessageDraft = {
+  text: "",
+  references: [],
+  fileReferences: [],
+};
 
 interface ChatComposerProps {
   accountId?: string;
@@ -129,12 +146,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     }, [accountId, createdThreadId]);
     const draftKey = `${accountId ?? ""}:${threadId ?? "new-thread"}`;
     const draft = drafts[draftKey] ?? EMPTY_DRAFT;
+    const draftRef = useRef(draft);
+    draftRef.current = draft;
     const input = draft.text;
     const skillCatalog = useSkillReferenceCatalog(accountId);
-    const skillReferences = useMemo(
-      () => matchSkillReferences(input, skillCatalog.entries, draft.references),
-      [input, skillCatalog.entries, draft.references]
-    );
     const setInput = useCallback(
       (value: React.SetStateAction<string>) => {
         setDrafts((previous) => {
@@ -149,6 +164,11 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 oldDraft.text,
                 text,
                 oldDraft.references
+              ),
+              fileReferences: reconcileFileReferences(
+                oldDraft.text,
+                text,
+                oldDraft.fileReferences
               ),
             },
           };
@@ -261,6 +281,150 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     // Upload maintenance requires an idle thread; existing drafts retain files.
     const attachmentsDisabled =
       submitDisabled || isLoading || !attachmentsEnabled;
+    const fileUnavailableReason = !attachmentsEnabled
+      ? "Attachments have been disabled by an administrator."
+      : isLoading
+      ? "Files can be referenced after the current response finishes."
+      : submitDisabled
+      ? "Files can be referenced once the conversation is ready."
+      : null;
+
+    // `@file` mentions stay highlighted only while their file is attached.
+    const attachedPaths = useMemo(
+      () =>
+        new Set(
+          attachments.flatMap((item) =>
+            item.phase === "reference"
+              ? [item.path]
+              : item.phase === "ready"
+              ? [item.meta.artifact_path, item.meta.state_files_key].filter(
+                  (path): path is string => !!path
+                )
+              : []
+          )
+        ),
+      [attachments]
+    );
+    const fileReferences = useMemo(
+      () => draft.fileReferences.filter((ref) => attachedPaths.has(ref.path)),
+      [draft.fileReferences, attachedPaths]
+    );
+    const fileCatalog = useMemo(
+      () => fileReferenceEntries(files, sourceImageAttachments),
+      [files, sourceImageAttachments]
+    );
+    const skillReferences = useMemo(
+      () =>
+        matchSkillReferences(
+          input,
+          skillCatalog.entries,
+          draft.references,
+          fileReferences
+        ),
+      [input, skillCatalog.entries, draft.references, fileReferences]
+    );
+    // Chips attached by an `@` mention follow that mention's lifetime.
+    const mentionOwnedPaths = useRef(new Set<string>());
+    useEffect(() => {
+      for (const path of mentionOwnedPaths.current)
+        if (!attachedPaths.has(path)) mentionOwnedPaths.current.delete(path);
+    }, [attachedPaths]);
+    const releaseMentions = useCallback(
+      (paths: Iterable<string>) => {
+        for (const path of paths) {
+          if (!mentionOwnedPaths.current.delete(path)) continue;
+          const chip = attachments.find(
+            (item) => item.phase === "reference" && item.path === path
+          );
+          if (chip) removeAttachment(chip.localId, { quiet: true });
+        }
+      },
+      [attachments, removeAttachment]
+    );
+    const handleTextChange = useCallback(
+      (text: string) => {
+        const current = draftRef.current;
+        const kept = new Set(
+          reconcileFileReferences(
+            current.text,
+            text,
+            current.fileReferences
+          ).map((ref) => ref.path)
+        );
+        setInput(text);
+        releaseMentions(
+          current.fileReferences
+            .map((ref) => ref.path)
+            .filter((path) => !kept.has(path))
+        );
+      },
+      [setInput, releaseMentions]
+    );
+    const handleRemoveAttachment = useCallback(
+      (localId: string) => {
+        const chip = attachments.find((item) => item.localId === localId);
+        if (chip?.phase === "reference")
+          mentionOwnedPaths.current.delete(chip.path);
+        removeAttachment(localId);
+      },
+      [attachments, removeAttachment]
+    );
+    const selectSkill = useCallback(
+      (entry: SkillCatalogEntry, query: SkillQuery) => {
+        const current = draftRef.current;
+        const next = insertSkillReference(
+          current.text,
+          query,
+          entry,
+          skillReferences
+        );
+        setDrafts((previous) => ({
+          ...previous,
+          [draftKey]: {
+            text: next.text,
+            references: next.references,
+            fileReferences: reconcileFileReferences(
+              current.text,
+              next.text,
+              current.fileReferences
+            ),
+          },
+        }));
+        return next;
+      },
+      [draftKey, skillReferences]
+    );
+    const selectFile = useCallback(
+      (entry: FileReferenceEntry, query: FileQuery) => {
+        if (fileUnavailableReason) return null;
+        const { attached, added } = addReferences([
+          fileAttachmentReference(entry, files),
+        ]);
+        if (!attached.includes(entry.path)) return null;
+        added.forEach((path) => mentionOwnedPaths.current.add(path));
+        const current = draftRef.current;
+        const next = insertFileReference(
+          current.text,
+          query,
+          entry,
+          current.fileReferences
+        );
+        setDrafts((previous) => ({
+          ...previous,
+          [draftKey]: {
+            text: next.text,
+            references: reconcileSkillReferences(
+              current.text,
+              next.text,
+              current.references
+            ),
+            fileReferences: next.references,
+          },
+        }));
+        return next;
+      },
+      [fileUnavailableReason, addReferences, files, draftKey]
+    );
     const hasDraft =
       !!input.trim() ||
       attachments.some((a) => a.phase === "ready" || a.phase === "reference");
@@ -476,28 +640,27 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           )}
           <AttachmentsRow
             items={attachments}
-            onRemove={removeAttachment}
+            onRemove={handleRemoveAttachment}
             disabled={submitting}
           />
-          <SkillReferenceInput
+          <ReferenceInput
             key={accountId}
             accountId={accountId}
             inputRef={textareaRef}
             value={input}
-            references={skillReferences}
-            catalog={skillCatalog.entries}
-            catalogLoading={skillCatalog.loading}
-            catalogError={skillCatalog.error}
-            onRefreshCatalog={skillCatalog.refresh}
             isLoading={isLoading}
             submitAction={isLoading || hasQueue ? delivery : "send"}
-            onChange={setInput}
-            onSelect={(text, references) =>
-              setDrafts((previous) => ({
-                ...previous,
-                [draftKey]: { text, references },
-              }))
-            }
+            skillReferences={skillReferences}
+            skillCatalog={skillCatalog.entries}
+            skillCatalogLoading={skillCatalog.loading}
+            skillCatalogError={skillCatalog.error}
+            onRefreshSkills={skillCatalog.refresh}
+            fileReferences={fileReferences}
+            fileCatalog={fileCatalog}
+            fileUnavailableReason={fileUnavailableReason}
+            onChange={handleTextChange}
+            onSelectSkill={selectSkill}
+            onSelectFile={selectFile}
             onKeyDown={handleKeyDown}
           />
           <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 p-1">

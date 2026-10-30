@@ -34,7 +34,7 @@ const entry = (
   created_at: null,
   updated_at: null,
 });
-function fixture(extraEntries = []) {
+function fixture(extraEntries = [], files = {}) {
   const base = makePolicyFixture();
   const requests = [];
   let fail = false,
@@ -95,13 +95,33 @@ function fixture(extraEntries = []) {
           system_revision: "s1",
         });
       }
-      if (path.endsWith("/history") || path.endsWith("/threads/search"))
-        return json(route, []);
+      if (path.endsWith("/history"))
+        return json(
+          route,
+          Object.keys(files).length
+            ? [
+                {
+                  values: { messages, todos: [], files },
+                  tasks: [],
+                  next: [],
+                  metadata: {},
+                  checkpoint: {
+                    thread_id: "skill-thread",
+                    checkpoint_id: "head",
+                    checkpoint_ns: "",
+                  },
+                  parent_checkpoint: null,
+                  created_at: "2026-10-30T12:00:00Z",
+                },
+              ]
+            : []
+        );
+      if (path.endsWith("/threads/search")) return json(route, []);
       if (path.endsWith("/threads"))
         return json(route, { thread_id: "skill-thread" });
       if (path.endsWith("/state"))
         return json(route, {
-          values: { messages, todos: [], files: {} },
+          values: { messages, todos: [], files },
           tasks: [],
           next: [],
         });
@@ -121,7 +141,7 @@ function fixture(extraEntries = []) {
           body: `event: metadata\ndata: {"run_id":"run-${
             requests.length
           }","thread_id":"skill-thread"}\n\nevent: values\ndata: ${JSON.stringify(
-            { messages, todos: [], files: {} }
+            { messages, todos: [], files }
           )}\n\nevent: end\ndata: null\n\n`,
         });
       }
@@ -694,6 +714,122 @@ test("skill references in the built chat UI", { skip: !RUN }, async (t) => {
           );
           await message.press("Enter");
           assert.equal(await message.inputValue(), `$${name} `);
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
+      "Tab completes skills and @ references workspace files like Enter",
+      async () => {
+        const policy = fixture([], {
+          "/uploads/abc__Release Plan.pdf": "Plan text",
+          "/reports/summary.md": "# Summary",
+        });
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await page.evaluate(() => {
+            const url = new URL(location.href);
+            url.searchParams.set("threadId", "skill-thread");
+            history.pushState({}, "", url);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+          });
+          const message = page.getByRole("textbox", {
+            name: "Message",
+            exact: true,
+          });
+          const chips = page.getByRole("list", { name: "Attachments" });
+          await message.fill("$shipped");
+          await page.getByRole("option", { name: /release-notes/ }).waitFor();
+          await message.press("Tab");
+          assert.equal(await message.inputValue(), "$release-notes ");
+          assert.equal(
+            await message.evaluate((el) => document.activeElement === el),
+            true,
+            "Tab completion keeps focus in the composer"
+          );
+          await page
+            .locator('mark[data-skill-reference="release-notes"]')
+            .waitFor();
+
+          await message.pressSequentially("with @rel");
+          const files = page.getByRole("region", { name: "File suggestions" });
+          await files
+            .getByRole("option", { name: /Release Plan\.pdf/ })
+            .waitFor();
+          await page.screenshot({
+            path: join(EVIDENCE, "file-suggestions.png"),
+            animations: "disabled",
+          });
+          await message.press("Tab");
+          assert.equal(
+            await message.inputValue(),
+            "$release-notes with @Release Plan.pdf "
+          );
+          await page
+            .locator(
+              'mark[data-file-reference="/uploads/abc__Release Plan.pdf"]'
+            )
+            .waitFor();
+          await chips.getByText("Release Plan.pdf").waitFor();
+
+          await message.pressSequentially("and @sum");
+          await files.getByRole("option", { name: /summary\.md/ }).waitFor();
+          await message.press("Enter");
+          assert.equal(
+            await message.inputValue(),
+            "$release-notes with @Release Plan.pdf and @summary.md "
+          );
+          await chips.getByText("summary.md").waitFor();
+          assert.equal(await chips.getByRole("listitem").count(), 2);
+
+          // Deleting a mention releases the chip that mention attached.
+          for (let i = 0; i < 2; i++) await message.press("Backspace");
+          await page.waitForFunction(
+            () =>
+              !document
+                .querySelector('[aria-label="Attachments"]')
+                ?.textContent?.includes("summary.md")
+          );
+          assert.equal(
+            await page
+              .locator('mark[data-file-reference="/reports/summary.md"]')
+              .count(),
+            0
+          );
+          await message.fill("$release-notes with @Release Plan.pdf ");
+          // Without a selectable option Tab keeps its native focus behavior.
+          await message.press("End");
+          await message.pressSequentially("@zzz");
+          await files.getByText("No matching files").waitFor();
+          await message.press("Tab");
+          assert.equal(
+            await message.evaluate((el) => document.activeElement === el),
+            false
+          );
+          await message.fill("$release-notes with @Release Plan.pdf ");
+          await page
+            .locator(
+              'mark[data-file-reference="/uploads/abc__Release Plan.pdf"]'
+            )
+            .waitFor();
+          const sent = page.waitForRequest(
+            (request) =>
+              request.url().includes("/runs") && request.method() === "POST"
+          );
+          await message.press("Enter");
+          const human = (await sent).postDataJSON().input.messages[0];
+          assert.equal(human.content, "$release-notes with @Release Plan.pdf");
+          assert.deepEqual(
+            human.additional_kwargs.attachments.map((item) => item.path),
+            ["/uploads/abc__Release Plan.pdf"]
+          );
           assert.deepEqual(pageErrors, []);
         } finally {
           await context.close();
