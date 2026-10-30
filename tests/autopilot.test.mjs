@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAutopilotResume, canUseAutopilot } from "../src/lib/autopilot.ts";
+import {
+  buildAutopilotResume,
+  buildReadOnlyResume,
+  canUseAutopilot,
+} from "../src/lib/autopilot.ts";
 
 const action = (name) => ({
   name,
@@ -95,5 +99,50 @@ test("repeated same-named tools retain their batch approvals", () => {
     {
       batch: { decisions: [{ type: "approve" }, { type: "approve" }] },
     }
+  );
+});
+
+const READS = new Set(["search_jira_tickets", "get_jira_ticket"]);
+
+test("allow reads approves only interrupts made entirely of read tools", () => {
+  const readConfig = {
+    action_name: "search_jira_tickets",
+    allowed_decisions: ["approve", "edit", "reject"],
+  };
+  const pending = [
+    interrupt("reads", [
+      action("search_jira_tickets"),
+      action("get_jira_ticket"),
+    ]),
+    interrupt("write", [action("send_email")]),
+    interrupt("mixed", [action("get_jira_ticket"), action("send_email")]),
+    interrupt("configured", [action("search_jira_tickets")], [readConfig]),
+  ];
+  assert.deepEqual(buildReadOnlyResume(pending, READS), {
+    reads: { decisions: [{ type: "approve" }, { type: "approve" }] },
+    configured: { decisions: [{ type: "approve" }] },
+  });
+});
+
+test("allow reads leaves malformed, duplicate, and non-approvable reads for the user", () => {
+  const search = action("search_jira_tickets");
+  for (const pending of [
+    [{ id: "question", value: "Which project?" }],
+    [interrupt(undefined, [search])],
+    [interrupt("empty", [])],
+    [interrupt("dup", [search]), interrupt("dup", [search])],
+    [
+      interrupt(
+        "reject-only",
+        [search],
+        [{ action_name: "search_jira_tickets", allowed_decisions: ["reject"] }]
+      ),
+    ],
+    [interrupt("unmatched", [search], [{ action_name: "other" }])],
+  ])
+    assert.deepEqual(buildReadOnlyResume(pending, READS), {});
+  assert.deepEqual(
+    buildReadOnlyResume([interrupt("one", [search])], new Set()),
+    {}
   );
 });

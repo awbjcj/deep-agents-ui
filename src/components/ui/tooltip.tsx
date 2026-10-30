@@ -5,30 +5,36 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "@/lib/utils";
 
+const TooltipScope = React.createContext(false);
+
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 400,
+  skipDelayDuration = 300,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
-    <TooltipPrimitive.Provider
-      data-slot="tooltip-provider"
-      delayDuration={delayDuration}
-      {...props}
-    />
+    <TooltipScope.Provider value={true}>
+      <TooltipPrimitive.Provider
+        delayDuration={delayDuration}
+        skipDelayDuration={skipDelayDuration}
+        {...props}
+      />
+    </TooltipScope.Provider>
   );
 }
 
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return (
-    <TooltipProvider>
-      <TooltipPrimitive.Root
-        data-slot="tooltip"
-        {...props}
-      />
-    </TooltipProvider>
+  const hasProvider = React.useContext(TooltipScope);
+  const tooltip = (
+    <TooltipPrimitive.Root
+      data-slot="tooltip"
+      {...props}
+    />
   );
+  // Standalone consumers still work; app toolbars share the nearest timing scope.
+  return hasProvider ? tooltip : <TooltipProvider>{tooltip}</TooltipProvider>;
 }
 
 function TooltipTrigger({
@@ -44,7 +50,8 @@ function TooltipTrigger({
 
 function TooltipContent({
   className,
-  sideOffset = 0,
+  sideOffset = 4,
+  collisionPadding = 8,
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
@@ -53,8 +60,9 @@ function TooltipContent({
       <TooltipPrimitive.Content
         data-slot="tooltip-content"
         sideOffset={sideOffset}
+        collisionPadding={collisionPadding}
         className={cn(
-          "z-50 w-fit origin-[var(--radix-tooltip-content-transform-origin)] text-balance rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground",
+          "z-50 w-fit max-w-[min(20rem,var(--radix-tooltip-content-available-width))] origin-[var(--radix-tooltip-content-transform-origin)] whitespace-normal text-balance break-words rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground",
           className
         )}
         {...props}

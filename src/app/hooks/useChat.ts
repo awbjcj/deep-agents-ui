@@ -17,11 +17,17 @@ import {
   createInterruptResumeHandler,
   selectPendingInterrupt,
 } from "@/app/utils/interruptResume";
-import { useClient } from "@/providers/ClientProvider";
+import { useClient, useDeploymentUrl } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { useAutopilot } from "@/app/hooks/useAutopilot";
+import { useApprovalMode } from "@/app/hooks/useApprovalMode";
+import type { ApprovalMode, AutomaticApprovalMode } from "@/lib/approval-modes";
 import { useMessageRuns } from "@/app/hooks/useMessageRuns";
-import { createMessageRun, type MessageDelivery } from "@/lib/message-delivery";
+import { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
+import {
+  deliverMessageRun,
+  MessageDeliveryError,
+  type MessageDelivery,
+} from "@/lib/message-delivery";
 import type { ResumeInterruptValue } from "@/app/types/types";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
 import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
@@ -32,7 +38,7 @@ import {
 import { useQueryState } from "nuqs";
 import {
   clearStreamReconnectState,
-  streamRunStorageKey,
+  readStreamRunId,
 } from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
@@ -101,6 +107,7 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const deploymentUrl = useDeploymentUrl();
   const { user } = useAuth();
   const { ingestStreamEvent } = useNotifications();
   const threadIdRef = useRef(threadId);
@@ -214,15 +221,25 @@ export function useChat({
 
   // Read the execution budget on submission, including checkpoint retries/resumes.
   // Do not enable __event_streaming_v2 until the deferred SDK migration lands.
+  // Every run carries the conversation's approval mode for server-side role
+  // checks and audit; only automatic Autopilot resumes set `autopilot`.
+  const approvalModeRef = useRef<ApprovalMode>("interactive");
   const buildConfig = useCallback(
-    (autopilot = false) => {
+    (automatic?: AutomaticApprovalMode) => {
       const config = buildRunConfig(
         activeAssistant?.config ?? {},
         browserRunLimit(username),
         username,
         analysisEngine
       );
-      return { ...config, configurable: { ...config.configurable, autopilot } };
+      return {
+        ...config,
+        configurable: {
+          ...config.configurable,
+          autopilot: automatic === "autopilot",
+          approval_mode: automatic ?? approvalModeRef.current,
+        },
+      };
     },
     [activeAssistant?.config, username, analysisEngine]
   );
@@ -315,8 +332,8 @@ export function useChat({
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
   // Follow-up runs belong to the conversation even while the selected agent
-  // hydrates or changes. Autopilot consent remains scoped to the agent below.
-  const messageRunScope = JSON.stringify([userId, threadId]);
+  // hydrates or changes. The approval mode remains scoped to the agent below.
+  const messageRunScope = JSON.stringify([deploymentUrl, userId, threadId]);
   const messageRuns = useMessageRuns({
     client,
     scope: messageRunScope,
@@ -363,6 +380,68 @@ export function useChat({
     });
   }, [history, threadId]);
 
+  const messageQueue = useQueuedMessages({
+    scope: messageRunScope,
+    legacyScope: JSON.stringify([userId, threadId]),
+    ready:
+      !!threadId &&
+      !!activeAssistant &&
+      threadId === streamThreadId &&
+      !stream.isThreadLoading &&
+      !stream.error &&
+      !historyError &&
+      stream.interrupts.length === 0,
+    busy:
+      stream.isLoading ||
+      messageRuns.serverBusy ||
+      messageRuns.pendingCount > 0 ||
+      messageRuns.stopping ||
+      submissionPending,
+    canSteer:
+      !!threadId &&
+      !!activeAssistant &&
+      threadId === streamThreadId &&
+      !stream.isThreadLoading &&
+      !historyError &&
+      !messageRuns.stopping &&
+      !submissionPending &&
+      stream.interrupts.length === 0,
+    submit: async (item) => {
+      const target = threadId;
+      if (!target || messageSubmission.current)
+        return item.status === "unknown" ? "unknown" : "rejected";
+      messageSubmission.current = true;
+      setSubmissionPending(true);
+      try {
+        const accepted = await submitMessageRun(async () => {
+          // Reconcile an acceptance lost during refresh/network failure before
+          // sending the same human turn again.
+          return deliverMessageRun(
+            client,
+            target,
+            item.assistantId,
+            item.message,
+            item.delivery ?? "queue",
+            item.config,
+            item.status === "unknown"
+          );
+        }, messageRunScope);
+        onHistoryRevalidate?.();
+        return accepted ? "accepted" : "unknown";
+      } catch (error) {
+        return error instanceof MessageDeliveryError
+          ? error.outcome
+          : "unknown";
+      } finally {
+        messageSubmission.current = false;
+        setSubmissionPending(false);
+      }
+    },
+  });
+  const enqueueMessage = messageQueue.enqueue;
+  const settleMessage = messageQueue.settle;
+  const pauseMessageQueue = messageQueue.pause;
+
   const sendMessage = useCallback(
     async (
       content: string | Array<Record<string, unknown>>,
@@ -384,15 +463,36 @@ export function useChat({
           ? { additional_kwargs: additionalKwargs }
           : {}),
       };
+      if (delivery === "queue") {
+        if (!threadIdRef.current) return false;
+        enqueueMessage({
+          id: newMessage.id!,
+          message: newMessage,
+          assistantId: activeAssistant.assistant_id,
+          config: buildConfig(),
+          status: "waiting",
+        });
+        return true;
+      }
       if (delivery) {
         const target = threadIdRef.current;
-        if (!target) return false;
+        if (!target || streamRef.current.interrupts.length) return false;
+        // Persist before crossing the network: refresh can otherwise lose a
+        // steering prompt whose acceptance has not reached this browser yet.
+        enqueueMessage({
+          id: newMessage.id!,
+          message: newMessage,
+          assistantId: activeAssistant.assistant_id,
+          config: buildConfig(),
+          status: "sending",
+          delivery,
+        });
         messageSubmission.current = true;
         setSubmissionPending(true);
         try {
           const accepted = await submitMessageRun(
             () =>
-              createMessageRun(
+              deliverMessageRun(
                 client,
                 target,
                 activeAssistant.assistant_id,
@@ -402,10 +502,24 @@ export function useChat({
               ),
             messageRunScope
           );
-          if (!accepted) return false;
+          if (!accepted)
+            throw new MessageDeliveryError(
+              "unknown",
+              "Stopped while acceptance was pending"
+            );
+          settleMessage(newMessage.id!, "accepted");
           onHistoryRevalidate?.();
           return true;
         } catch (error) {
+          if (
+            !(error instanceof MessageDeliveryError) ||
+            error.outcome === "unknown"
+          ) {
+            settleMessage(newMessage.id!, "unknown");
+            return true;
+          }
+          // A definite rejection leaves the original composer draft intact.
+          settleMessage(newMessage.id!, "accepted");
           toast.error("Message was not sent", {
             description: error instanceof Error ? error.message : "Try again.",
             position: "top-center",
@@ -465,6 +579,8 @@ export function useChat({
       submitMessageRun,
       messageRunScope,
       messageRuns.stopping,
+      enqueueMessage,
+      settleMessage,
       threadId,
       streamThreadId,
     ]
@@ -848,13 +964,16 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
 
-  const submitAutopilot = useCallback(
-    async (resume: Record<string, ResumeInterruptValue>) => {
+  const submitAutomaticApproval = useCallback(
+    async (
+      resume: Record<string, ResumeInterruptValue>,
+      mode: AutomaticApprovalMode
+    ) => {
       await streamRef.current.submit(
         null,
         fromLatestCheckpoint({
           command: { resume },
-          config: buildConfig(true),
+          config: buildConfig(mode),
           streamSubgraphs: true,
           streamMode: STREAM_MODES,
           multitaskStrategy: "reject" as const,
@@ -864,7 +983,7 @@ export function useChat({
     },
     [buildConfig, onHistoryRevalidate]
   );
-  const autopilot = useAutopilot({
+  const approvals = useApprovalMode({
     connection: client,
     scope: JSON.stringify([
       user?.user_id,
@@ -879,11 +998,15 @@ export function useChat({
       messageRuns.pendingCount > 0 ||
       messageRuns.stopping ||
       submissionPending,
-    failed: Boolean(stream.error) || historyError,
+    failed:
+      Boolean(stream.error) ||
+      historyError ||
+      messageQueue.items.some((item) => item.status === "unknown"),
     pending: stream.interrupts,
-    submit: submitAutopilot,
+    submit: submitAutomaticApproval,
   });
-  const disableAutopilot = autopilot.disable;
+  approvalModeRef.current = approvals.mode;
+  const { onManualResume, reset: resetApprovalMode } = approvals;
 
   const interrupt = selectPendingInterrupt(stream.interrupts);
   const selectedInterruptId = interrupt?.id;
@@ -893,7 +1016,7 @@ export function useChat({
         getPending: () => streamRef.current.interrupts,
         selectedId: selectedInterruptId,
         submit: (resume) => {
-          disableAutopilot();
+          approvalModeRef.current = onManualResume();
           streamRef.current.submit(
             null,
             fromLatestCheckpoint({
@@ -912,11 +1035,12 @@ export function useChat({
           );
         },
       }),
-    [selectedInterruptId, buildConfig, onHistoryRevalidate, disableAutopilot]
+    [selectedInterruptId, buildConfig, onHistoryRevalidate, onManualResume]
   );
 
   const stopStream = useCallback(async () => {
-    disableAutopilot();
+    resetApprovalMode();
+    pauseMessageQueue();
     pendingSendRef.current?.(false);
     pendingSendRef.current = null;
     const target = threadIdRef.current;
@@ -925,14 +1049,14 @@ export function useChat({
       return;
     }
     // Cancel queued successors before releasing the active run.
-    const currentRunId = sessionStorage.getItem(streamRunStorageKey(target));
+    const currentRunId = readStreamRunId(target);
     const stopped = await stopMessageRuns(currentRunId);
     if (stopped && threadIdRef.current === target) {
       // The server has already cancelled the connected run.
       if (target) clearStreamReconnectState(target);
       streamRef.current.stop();
     }
-  }, [disableAutopilot, stopMessageRuns]);
+  }, [resetApprovalMode, stopMessageRuns, pauseMessageQueue]);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -954,11 +1078,12 @@ export function useChat({
   const messages = stream.messages;
   const isLoading =
     stream.isLoading ||
+    messageRuns.serverActive ||
     messageRuns.pendingCount > 0 ||
     messageRuns.stopping ||
     submissionPending;
   const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
-  const queuedMessageCount = messageRuns.queuedCount;
+  const serverQueuedCount = messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
   const getMessagesMetadata = stream.getMessagesMetadata;
 
@@ -983,7 +1108,8 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
-      queuedMessageCount,
+      serverQueuedCount,
+      messageQueue,
       isStopping,
       historyError,
       retryHistory,
@@ -996,7 +1122,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
-      autopilot,
+      approvals,
     }),
     [
       threadId,
@@ -1015,7 +1141,8 @@ export function useChat({
       processedMessages,
       isLoading,
       isThreadLoading,
-      queuedMessageCount,
+      serverQueuedCount,
+      messageQueue,
       isStopping,
       historyError,
       retryHistory,
@@ -1028,7 +1155,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
-      autopilot,
+      approvals,
     ]
   );
 }

@@ -7,6 +7,7 @@ import {
   KeyRound,
   Maximize2,
   Minimize2,
+  MessagesSquare,
   PlugZap,
   Wrench,
   X,
@@ -19,11 +20,13 @@ import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar"
 import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";
 import { ToolPermissionsSidebar } from "@/app/components/ToolPermissionsSidebar";
 import { SkillsSidebar } from "@/app/components/SkillsSidebar";
+import { ChatChannelSettings } from "@/app/components/chat-channels/ChatChannelSettings";
 import { useAuth } from "@/providers/AuthProvider";
 
 export type WorkspaceTab =
   | "models"
   | "tokens"
+  | "bots"
   | "connectivity"
   | "tools"
   | "skills";
@@ -53,10 +56,13 @@ const TABS: TabDef[] = [
   { id: "tools", label: "Tools", icon: Wrench },
   { id: "skills", label: "Skills", icon: BookOpen },
   { id: "tokens", label: "Tokens", icon: KeyRound },
+  { id: "bots", label: "Bots", icon: MessagesSquare },
   { id: "connectivity", label: "Connections", icon: PlugZap },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
+// The Bots tab replaced the Teams tab; keep a remembered "teams" selection.
+const LEGACY_TABS: Record<string, WorkspaceTab> = { teams: "bots" };
 
 export function WorkspacePanel({
   initialTab,
@@ -70,6 +76,7 @@ export function WorkspacePanel({
   onEditingChange,
 }: WorkspacePanelProps) {
   const { user } = useAuth();
+  const [teamsTokenFocus, setTeamsTokenFocus] = useState<string | null>(null);
   const dirty = useRef<{ accountId: string | null; value: boolean }>({
     accountId: null,
     value: false,
@@ -86,9 +93,8 @@ export function WorkspacePanel({
   const [active, setActive] = useState<WorkspaceTab>(() => {
     if (initialTab) return initialTab;
     if (typeof window === "undefined") return "models";
-    const stored = window.localStorage.getItem(
-      STORAGE_KEY
-    ) as WorkspaceTab | null;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const stored = (raw && LEGACY_TABS[raw]) ?? (raw as WorkspaceTab | null);
     if (stored && TABS.some((t) => t.id === stored)) return stored;
     return "models";
   });
@@ -127,7 +133,12 @@ export function WorkspacePanel({
       <div className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
         <div className="flex items-center justify-between px-4 pt-4">
           <div className="flex flex-col leading-none">
-            <span className="aptiv-eyebrow">Workspace</span>
+            <span
+              className="aptiv-eyebrow"
+              style={{ color: "var(--color-text-secondary)" }}
+            >
+              Workspace
+            </span>
             <h2 className="mt-1.5 text-lg font-semibold tracking-tight">
               {TABS.find((t) => t.id === active)?.label ?? "Workspace"}
             </h2>
@@ -214,8 +225,11 @@ export function WorkspacePanel({
             className="absolute inset-0 focus-visible:outline-none"
           >
             <TokenManagementSidebar
-              initialFocus={initialTokenFocus}
-              onFocusConsumed={onTokenFocusConsumed}
+              initialFocus={teamsTokenFocus ?? initialTokenFocus}
+              onFocusConsumed={() => {
+                setTeamsTokenFocus(null);
+                onTokenFocusConsumed?.();
+              }}
             />
           </div>
         )}
@@ -225,6 +239,21 @@ export function WorkspacePanel({
             className="absolute inset-0 focus-visible:outline-none"
           >
             <ConnectivitySidebar />
+          </div>
+        )}
+        {active === "bots" && user && (
+          <div
+            {...panelTabPanelProps("workspace", "bots")}
+            className="absolute inset-0 focus-visible:outline-none"
+          >
+            <ChatChannelSettings
+              key={user.user_id}
+              accountId={user.user_id}
+              onManageToken={() => {
+                setTeamsTokenFocus("graph");
+                changeTab("tokens");
+              }}
+            />
           </div>
         )}
         {active === "tools" && (

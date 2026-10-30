@@ -46,6 +46,29 @@ const saved = {
   created_at: "2026-10-17T00:00:00Z",
   updated_at: "2026-10-17T00:00:00Z",
 };
+const catalogEntry = {
+  id: "s1",
+  name: "system-skill",
+  description: "System instructions",
+  origin: "system",
+  availability: "available",
+  revision: null,
+  created_at: null,
+  updated_at: null,
+};
+const catalog = {
+  entries: [catalogEntry],
+  library_revision: 0,
+  system_revision: "deployed",
+  limits,
+};
+const systemSkill = {
+  ...catalogEntry,
+  resources: [
+    { path: "SKILL.md", size_bytes: 100, copyable: true, diagnostics: [] },
+  ],
+  diagnostics: [],
+};
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -161,9 +184,11 @@ test("client creates only files, encodes IDs and paths, propagates abort, and co
   const requests = [];
   t.mock.method(globalThis, "fetch", async (url, init) => {
     requests.push([url, init]);
-    return init.method === "DELETE"
-      ? new Response(null, { status: 204 })
-      : json(saved);
+    if (init.method === "DELETE") return new Response(null, { status: 204 });
+    if (url === "/api/skills") return json(catalog);
+    if (url.includes("/file?")) return json(root);
+    if (url.includes("/system/")) return json(systemSkill);
+    return json(saved);
   });
   await api.apiCreatePersonalSkill({ files, account_id: "never-send" });
   assert.deepEqual(JSON.parse(requests[0][1].body), { files });
@@ -188,6 +213,80 @@ test("client creates only files, encodes IDs and paths, propagates abort, and co
     "/api/skills/personal/p1?expected_revision=3"
   );
   assert.equal(requests.at(-1)[1].body, undefined);
+});
+
+test("skill responses reject malformed success bodies with a safe actionable error", async (t) => {
+  let response;
+  t.mock.method(globalThis, "fetch", async () => response);
+  const cases = [
+    [() => api.apiGetSkills(), null],
+    [
+      () => api.apiGetSkills(),
+      { ...catalog, entries: [{ ...catalogEntry, name: 42 }] },
+    ],
+    [
+      () => api.apiGetSkills(),
+      { ...catalog, limits: { ...limits, files_per_package: -1 } },
+    ],
+    [() => api.apiGetPersonalSkill("p1"), { ...saved, revision: "3" }],
+    [
+      () => api.apiGetPersonalSkill("p1"),
+      { ...saved, files: [{ path: "SKILL.md", content: {} }] },
+    ],
+    [() => api.apiGetSystemSkill("s1"), { ...systemSkill, resources: null }],
+    [() => api.apiReadSystemSkillFile("s1", "SKILL.md"), { path: "SKILL.md" }],
+    [
+      () => api.apiCreatePersonalSkill({ files }),
+      { id: "saved-but-incomplete" },
+    ],
+    [
+      () => api.apiPreviewSkillImport(new File(["text"], "SKILL.md")),
+      { package: null },
+    ],
+  ];
+  const expected = (error) =>
+    error instanceof api.SkillsApiError &&
+    error.status === 200 &&
+    error.code === "invalid_skill_response" &&
+    error.message.includes("Reload the library") &&
+    error.diagnostics.length === 0;
+  for (const [request, body] of cases) {
+    response = json(body);
+    await assert.rejects(request(), expected);
+  }
+  response = new Response("<html>PRIVATE UPSTREAM DETAILS</html>");
+  await assert.rejects(api.apiGetSkills(), expected);
+});
+
+test("skill contracts accept additive fields and preserve optional metadata defaults", async (t) => {
+  t.mock.method(globalThis, "fetch", async () =>
+    json({
+      ...catalog,
+      future_feature: true,
+      entries: [
+        {
+          ...catalogEntry,
+          revision: undefined,
+          created_at: undefined,
+          future_field: 1,
+        },
+      ],
+    })
+  );
+  const result = await api.apiGetSkills();
+  assert.deepEqual(result.entries, [catalogEntry]);
+});
+
+test("aborting a skill response body remains cancellation", async (t) => {
+  const abort = new DOMException("Aborted", "AbortError");
+  t.mock.method(globalThis, "fetch", async () => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      throw abort;
+    },
+  }));
+  await assert.rejects(api.apiGetSkills(), (error) => error === abort);
 });
 
 test("multipart imports let the browser set a boundary and send exactly one file", async (t) => {

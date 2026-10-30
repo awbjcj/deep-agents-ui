@@ -9,7 +9,7 @@ import {
 } from "./tool-permissions-browser.test.mjs";
 
 test(
-  "composer queues on the server, steers active runs, preserves rejected drafts, and keeps autopilot compact",
+  "composer holds editable user prompts, injects them in order, steers active runs, and preserves rejected drafts",
   {
     skip: process.env.MESSAGE_DELIVERY_BROWSER_TEST !== "1",
     timeout: 90000,
@@ -111,6 +111,9 @@ test(
           });
         if (path.endsWith("/threads/delivery/history")) return json([state()]);
         if (path.endsWith("/threads/delivery/state")) return json(state());
+        if (path.endsWith("/threads/delivery/runs/original/stream")) {
+          return route.continue({ url: liveUrl });
+        }
         if (path.endsWith("/threads/search")) return json([]);
         if (path.endsWith("/threads") && request.method() === "POST") {
           if (delayThreadCreation) {
@@ -227,12 +230,13 @@ test(
       },
     };
     try {
-      const { page, context, pageErrors } = await authenticatedPage(
-        browser,
-        { ...server, baseUrl: `${server.baseUrl}?threadId=delivery` },
-        policy,
-        "developer"
-      );
+      const { page, context, pageErrors, consoleErrors } =
+        await authenticatedPage(
+          browser,
+          { ...server, baseUrl: `${server.baseUrl}?threadId=delivery` },
+          policy,
+          "developer"
+        );
       debugPage = page;
       // Use a real local SSE response so run acceptance arrives before tokens
       // finish. Playwright's route.fulfill buffers the whole response.
@@ -243,7 +247,10 @@ test(
             input instanceof Request ? input.url : String(input),
             location.href
           );
-          if (url.pathname.endsWith("/threads/delivery/runs/stream")) {
+          if (
+            url.pathname.endsWith("/threads/delivery/runs/stream") ||
+            url.pathname.endsWith("/threads/delivery/runs/original/stream")
+          ) {
             const local = new URL(url.pathname, origin).href;
             return fetch(
               input instanceof Request ? new Request(local, input) : local,
@@ -256,22 +263,50 @@ test(
       await page.addInitScript(installStreamTransport, { origin: liveUrl });
       await page.evaluate(installStreamTransport, { origin: liveUrl });
       const input = page.getByRole("textbox", { name: "Message", exact: true });
-      const autopilot = page.getByRole("button", {
-        name: "Enable autopilot",
-        exact: true,
+      const enableAutopilot = async () => {
+        await page.getByRole("combobox", { name: /^Approval mode:/ }).click();
+        await page.getByRole("option", { name: /^Autopilot/ }).click();
+        await page
+          .getByRole("button", { name: "I understand, enable autopilot" })
+          .click();
+        await page
+          .getByRole("combobox", { name: "Approval mode: Autopilot" })
+          .waitFor();
+      };
+      const approvalMode = page.getByRole("combobox", {
+        name: /^Approval mode:/,
       });
-      await autopilot.waitFor();
+      await approvalMode.waitFor();
       assert.equal(
-        await autopilot.evaluate((el) => !!el.closest("form")),
+        await approvalMode.evaluate((el) => !!el.closest("form")),
         true
       );
-      assert.ok((await autopilot.boundingBox()).height <= 36);
-      assert.ok((await autopilot.boundingBox()).width < 150);
-      await autopilot.click();
-      await page
-        .getByRole("button", { name: "I understand, enable autopilot" })
-        .click();
-      await page.getByRole("button", { name: "Turn off autopilot" }).waitFor();
+      assert.ok((await approvalMode.boundingBox()).height <= 36);
+      assert.ok((await approvalMode.boundingBox()).width < 150);
+      const attach = page.getByRole("button", { name: "Attach files" });
+      await attach.click();
+      const upload = page.getByRole("menuitem", { name: /^Upload file/ });
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("role") === "menuitem" &&
+          document.activeElement.textContent.startsWith("Upload file")
+      );
+      await page.keyboard.press("End");
+      assert.equal(
+        await upload.evaluate((el) => el === document.activeElement),
+        true,
+        "disabled menu items are skipped"
+      );
+      await page.keyboard.press("Escape");
+      await page.getByRole("menu", { name: "Attach files" }).waitFor({
+        state: "detached",
+      });
+      assert.equal(
+        await attach.evaluate((el) => el === document.activeElement),
+        true,
+        "Escape returns focus to the attach button"
+      );
+      await enableAutopilot();
       await input.fill("Start a long response");
       await page
         .getByRole("button", { name: "Send message", exact: true })
@@ -283,7 +318,144 @@ test(
         () =>
           document.querySelector('textarea[aria-label="Message"]').value === ""
       );
-      assert.equal(submissions.length, 1);
+      assert.equal(
+        submissions.length,
+        0,
+        "queued drafts must remain editable before they reach the server"
+      );
+      const queue = page.getByRole("region", { name: "Message queue" });
+      await queue.getByText("Queued follow-up", { exact: true }).waitFor();
+      await input.fill("Delete this follow-up");
+      await page.getByRole("button", { name: "Queue message" }).click();
+      await queue
+        .getByRole("button", { name: "Delete queued message 2" })
+        .click();
+      await mkdir("docs/evidence/message-queue", { recursive: true });
+      for (const width of [320, 768, 1024, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.screenshot({
+          path: `docs/evidence/message-queue/queue-${width}.png`,
+        });
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth
+          ),
+          true,
+          `queue should fit at ${width}px`
+        );
+      }
+      await page.goto(server.baseUrl);
+      await input.waitFor();
+      assert.equal(
+        await queue.count(),
+        0,
+        "another conversation has its own queue"
+      );
+      await page.goto(`${server.baseUrl}?threadId=delivery`);
+      await queue.getByText("Queued follow-up", { exact: true }).waitFor();
+      assert.equal(
+        submissions.length,
+        0,
+        "reopening preserves the unsent queue"
+      );
+      await input.fill("Second queued follow-up");
+      await page.getByRole("button", { name: "Queue message" }).click();
+      await queue
+        .getByRole("button", { name: "Move queued message 2 up" })
+        .click();
+      assert.match(
+        await queue.locator("li").first().textContent(),
+        /Second queued follow-up/
+      );
+      await queue
+        .getByRole("button", { name: "Move queued message 1 down" })
+        .click();
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.evaluate(() => document.documentElement.classList.add("dark"));
+      for (const [width, height] of [
+        [375, 812],
+        [812, 375],
+        [1440, 900],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.screenshot({
+          path: `docs/evidence/message-queue/queue-dark-${width}.png`,
+        });
+        assert.equal(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth
+          ),
+          true
+        );
+        const stopBox = await page
+          .getByRole("button", { name: "Stop", exact: true })
+          .boundingBox();
+        assert.ok(
+          stopBox.y >= 0 && stopBox.y + stopBox.height <= height,
+          "Stop stays in view in a short viewport"
+        );
+      }
+      await page.evaluate(() =>
+        document.documentElement.classList.remove("dark")
+      );
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      const editFirst = queue.getByRole("button", {
+        name: "Edit queued message 1",
+      });
+      await editFirst.focus();
+      await page.keyboard.press("Enter");
+      const queuedInput = queue.getByRole("textbox", {
+        name: "Edit queued message",
+        exact: true,
+      });
+      assert.equal(
+        await queuedInput.evaluate(
+          (element) => element === document.activeElement
+        ),
+        true
+      );
+      await queuedInput.fill("");
+      assert.equal(
+        await queue.getByRole("button", { name: "Save changes" }).isDisabled(),
+        true
+      );
+      await queuedInput.fill("Discard this edit");
+      await editFirst.click();
+      assert.equal(
+        await queuedInput.inputValue(),
+        "Discard this edit",
+        "reopening the active editor must not discard unsaved changes"
+      );
+      await queuedInput.press("Escape");
+      assert.equal(
+        await editFirst.evaluate(
+          (element) => element === document.activeElement
+        ),
+        true
+      );
+      await queue.getByText("Queued follow-up", { exact: true }).waitFor();
+      await page.keyboard.press("Enter");
+      await queuedInput.fill("Edited follow-up");
+      await page.screenshot({
+        path: "docs/evidence/message-queue/queue-edit.png",
+      });
+      // Navigating away clears the conversation's autopilot consent.
+      release();
+      await page.waitForTimeout(2200);
+      assert.equal(submissions.length, 0, "editing pauses automatic injection");
+      await queuedInput.press("Control+Enter");
+      await page
+        .getByText("Reply to Edited follow-up", { exact: true })
+        .waitFor();
+      await page
+        .getByText("Reply to Second queued follow-up", { exact: true })
+        .waitFor();
+      assert.equal(submissions.length, 2);
+      assert.equal(submissions[0].input.messages[0].type, "human");
+      assert.equal(
+        submissions[0].input.messages[0].content,
+        "Edited follow-up"
+      );
       assert.equal(submissions[0].multitask_strategy, "enqueue");
       assert.equal(submissions[0].checkpoint, undefined);
       assert.equal(submissions[0].config.configurable.autopilot, false);
@@ -293,17 +465,33 @@ test(
       );
       assert.equal(submissions[0].stream_resumable, true);
       assert.equal(
-        held,
-        true,
-        "server accepted the queue before the first run ended"
+        submissions[1].input.messages[0].content,
+        "Second queued follow-up"
       );
-      await page.getByRole("button", { name: "Turn off autopilot" }).click();
-      release();
-      await page
-        .getByText("Reply to Queued follow-up", { exact: true })
-        .waitFor();
+      assert.equal(submissions[1].input.messages[0].type, "human");
       await page
         .getByText("Original response completed", { exact: true })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .waitFor();
+
+      await input.fill("Run before a failed queued submission");
+      await input.press("Enter");
+      await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
+      await input.fill("Retry this queued prompt");
+      await page.getByRole("button", { name: "Queue message" }).click();
+      rejectNext = true;
+      release();
+      await queue.getByRole("alert").waitFor();
+      await queue
+        .getByText("Retry this queued prompt", { exact: true })
+        .waitFor();
+      await queue
+        .getByRole("button", { name: "Retry queued message 1" })
+        .click();
+      await page
+        .getByText("Reply to Retry this queued prompt", { exact: true })
         .waitFor();
       await page
         .getByRole("button", { name: "Send message", exact: true })
@@ -313,13 +501,18 @@ test(
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
       await input.fill("Keep this rejected draft");
+      await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+      await input.dispatchEvent("keydown", { key: "Enter", repeat: true });
+      assert.equal(await input.inputValue(), "Keep this rejected draft");
       rejectNext = true;
-      await page.getByRole("button", { name: "Queue message" }).click();
+      await page.getByRole("combobox", { name: "Message delivery" }).click();
+      await page.getByRole("option", { name: /^Steer/ }).click();
+      await page.getByRole("button", { name: "Steer now" }).click();
       await page.getByText("Message was not sent", { exact: true }).waitFor();
       assert.equal(await input.inputValue(), "Keep this rejected draft");
       await input.fill("Change focus now");
       await page.getByRole("combobox", { name: "Message delivery" }).click();
-      await page.getByRole("option", { name: "Steer · send now" }).click();
+      await page.getByRole("option", { name: /^Steer/ }).click();
       await page
         .getByText("Message was not sent", { exact: true })
         .waitFor({ state: "hidden" });
@@ -338,11 +531,14 @@ test(
         ),
         true
       );
-      await page.getByRole("button", { name: "Steer now" }).click();
+      await page.getByRole("combobox", { name: "Message delivery" }).click();
+      await page.getByRole("option", { name: /^Queue/ }).click();
+      await input.press("Control+Enter");
       await page
         .getByText("Reply to Change focus now", { exact: true })
         .waitFor();
       assert.equal(submissions.at(-1).multitask_strategy, "interrupt");
+      assert.equal(submissions.at(-1).input.messages[0].type, "human");
       assert.equal(
         submissions.at(-1).config.configurable.message_delivery,
         "steer"
@@ -396,13 +592,23 @@ test(
       await page
         .getByRole("button", { name: "Send message", exact: true })
         .waitFor();
-      assert.equal(runs.at(-1).status, "interrupted");
+      assert.equal(
+        submissions.some(
+          (body) => body.input.messages[0].content === "Queued to cancel"
+        ),
+        false
+      );
       assert.equal(
         await page
           .getByText("Reply to Queued to cancel", { exact: true })
           .count(),
         0
       );
+      await queue.getByText("Queued to cancel", { exact: true }).waitFor();
+      await queue.getByRole("button", { name: "Resume queue" }).waitFor();
+      await queue
+        .getByRole("button", { name: "Delete queued message 1" })
+        .click();
       await input.fill("Hold this response");
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
@@ -412,27 +618,28 @@ test(
         acceptanceStarted = resolve;
       });
       await page.getByRole("button", { name: "Queue message" }).click();
+      release();
       await started;
-      await Promise.all([
-        page.waitForResponse((response) =>
-          new URL(response.url()).pathname.endsWith("/runs/original/cancel")
-        ),
-        page.getByRole("button", { name: "Stop", exact: true }).click(),
-      ]);
+      await page.getByRole("button", { name: "Stop", exact: true }).click();
       releaseAcceptance();
       await page
         .getByRole("button", { name: "Send message", exact: true })
         .waitFor();
-      await page.waitForFunction(
-        () =>
-          !document.querySelector('button[aria-label="Send message"]').disabled
-      );
       assert.equal(
         runs.at(-1).status,
         "interrupted",
         "Stop also cancels a submission accepted after its cancellation snapshot"
       );
-      assert.equal(await input.inputValue(), "Late accepted message");
+      assert.equal(await input.inputValue(), "");
+
+      // A late accepted-and-cancelled submission is uncertain until its receipt
+      // is checked; checking must not start a replacement run.
+      const acceptedCount = submissions.length;
+      await queue
+        .getByRole("button", { name: "Check delivery of message 1" })
+        .click();
+      await queue.waitFor({ state: "hidden" });
+      assert.equal(submissions.length, acceptedCount);
 
       rejectNormal = true;
       await input.fill("Preserve the busy-thread draft");
@@ -462,21 +669,30 @@ test(
       await input.fill("Run before a pending correction");
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
-      await page
-        .getByRole("button", { name: "Enable autopilot", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "I understand, enable autopilot" })
-        .click();
+      await enableAutopilot();
       await input.fill("Correct this before approval");
       await page.getByRole("combobox", { name: "Message delivery" }).click();
-      await page.getByRole("option", { name: "Steer · send now" }).click();
+      await page.getByRole("option", { name: /^Steer/ }).click();
       delayAcceptance = true;
       const correctionStarted = new Promise((resolve) => {
         acceptanceStarted = resolve;
       });
       await page.getByRole("button", { name: "Steer now" }).click();
       await correctionStarted;
+      await queue
+        .getByText("Correct this before approval", { exact: true })
+        .waitFor();
+      assert.equal(
+        await page.evaluate(() =>
+          Object.keys(sessionStorage).some(
+            (key) =>
+              key.startsWith("vsda:message-queue:") &&
+              sessionStorage.getItem(key).includes('"status":"sending"')
+          )
+        ),
+        true,
+        "steering is persisted before acceptance, including refresh during send"
+      );
       pending = [
         {
           id: "old-action",
@@ -530,6 +746,18 @@ test(
         "Cancel before thread creation finishes"
       );
       assert.deepEqual(pageErrors, []);
+      assert.deepEqual(
+        consoleErrors.filter(
+          (error) =>
+            !error.includes("Failed to load resource") &&
+            !error.includes(
+              'HTTP 400: {"detail":"The stream connection was lost after completion"}'
+            ) &&
+            !error.includes('HTTP 409: {"detail":"Thread is already running"}')
+        ),
+        [],
+        "no unexpected application console errors"
+      );
       await context.close();
     } catch (error) {
       throw new Error(

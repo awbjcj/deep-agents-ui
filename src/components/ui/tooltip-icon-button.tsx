@@ -1,11 +1,6 @@
 import React from "react";
 import { Button } from "./button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 interface TooltipIconButtonProps {
   icon: React.ReactNode;
@@ -21,23 +16,21 @@ export function TooltipIconButton({
   disabled,
 }: TooltipIconButtonProps) {
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClick}
-            disabled={disabled}
-            aria-label={tooltip}
-          >
-            {icon}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClick}
+          disabled={disabled}
+          aria-label={tooltip}
+        >
+          {icon}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

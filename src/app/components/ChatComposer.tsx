@@ -9,29 +9,20 @@ import React, {
   FormEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Square,
-  ArrowUp,
-  Paperclip,
-  Upload,
-  Link2,
-  CornerDownLeft,
-  ListPlus,
-} from "lucide-react";
-import { AutopilotControl } from "./AutopilotControl";
-import type { useAutopilot } from "@/app/hooks/useAutopilot";
+import { Square, ArrowUp, CornerDownLeft, ListPlus } from "lucide-react";
+import { ApprovalModeControl } from "./ApprovalModeControl";
+import { AttachMenu } from "./AttachMenu";
+import { DeliveryModeControl } from "./DeliveryModeControl";
+import { ResponseJobs } from "./ResponseJobs";
+import { ComposerShortcuts } from "./ComposerShortcuts";
+import { MessageQueue } from "./MessageQueue";
+import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
+import type { ApprovalModeState } from "@/app/hooks/useApprovalMode";
 import type { MessageDelivery } from "@/lib/message-delivery";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
 import type { Assistant } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
 import { ReferenceFileDialog } from "@/app/components/ReferenceFileDialog";
-import { ResponseJobs } from "@/app/components/ResponseJobs";
 import { useAttachments } from "@/app/hooks/useAttachments";
 import { useConnectivity } from "@/providers/ConnectivityProvider";
 import { useQueryState } from "nuqs";
@@ -42,24 +33,42 @@ import {
   type SkillAuthoringRequest,
 } from "@/lib/skill-authoring-request";
 import {
+  insertSkillReference,
   matchSkillReferences,
   reconcileSkillReferences,
   submittedSkillReferences,
+  type SkillQuery,
   type SkillReference,
 } from "@/lib/skill-references";
+import {
+  fileAttachmentReference,
+  fileReferenceEntries,
+  insertFileReference,
+  reconcileFileReferences,
+  type FileQuery,
+  type FileReference,
+  type FileReferenceEntry,
+} from "@/lib/file-references";
+import type { SkillCatalogEntry } from "@/lib/skills";
 import { useSkillReferenceCatalog } from "@/app/hooks/useSkillReferenceCatalog";
-import { SkillReferenceInput } from "./skills/SkillReferenceInput";
+import { ReferenceInput } from "./composer/ReferenceInput";
 
 interface MessageDraft {
   text: string;
   references: SkillReference[];
+  fileReferences: FileReference[];
 }
-const EMPTY_DRAFT: MessageDraft = { text: "", references: [] };
+const EMPTY_DRAFT: MessageDraft = {
+  text: "",
+  references: [],
+  fileReferences: [],
+};
 
 interface ChatComposerProps {
   accountId?: string;
   createdThreadId?: string;
-  queuedMessageCount?: number;
+  serverQueuedCount?: number;
+  messageQueue?: ReturnType<typeof useQueuedMessages>;
   isStopping?: boolean;
   skillAuthoringRequest?: SkillAuthoringRequest | null;
   onSkillAuthoringRequestConsumed?: (id: string) => void;
@@ -68,7 +77,7 @@ interface ChatComposerProps {
   assistant: Assistant | null;
   isLoading: boolean;
   isThreadLoading?: boolean;
-  autopilot?: ReturnType<typeof useAutopilot>;
+  approvals?: ApprovalModeState;
   files: Record<string, string>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
   sendMessage: (
@@ -95,7 +104,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
   ({
     accountId,
     createdThreadId,
-    queuedMessageCount = 0,
+    serverQueuedCount = 0,
+    messageQueue,
     isStopping = false,
     assistant,
     evidenceRequest,
@@ -104,7 +114,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     onSkillAuthoringRequestConsumed,
     isLoading,
     isThreadLoading = false,
-    autopilot,
+    approvals,
     files,
     sourceImageAttachments,
     sendMessage,
@@ -136,12 +146,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     }, [accountId, createdThreadId]);
     const draftKey = `${accountId ?? ""}:${threadId ?? "new-thread"}`;
     const draft = drafts[draftKey] ?? EMPTY_DRAFT;
+    const draftRef = useRef(draft);
+    draftRef.current = draft;
     const input = draft.text;
     const skillCatalog = useSkillReferenceCatalog(accountId);
-    const skillReferences = useMemo(
-      () => matchSkillReferences(input, skillCatalog.entries, draft.references),
-      [input, skillCatalog.entries, draft.references]
-    );
     const setInput = useCallback(
       (value: React.SetStateAction<string>) => {
         setDrafts((previous) => {
@@ -157,6 +165,11 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 text,
                 oldDraft.references
               ),
+              fileReferences: reconcileFileReferences(
+                oldDraft.text,
+                text,
+                oldDraft.fileReferences
+              ),
             },
           };
         });
@@ -164,9 +177,9 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       [draftKey]
     );
     const [isDragging, setIsDragging] = useState(false);
-    const [attachMenuOpen, setAttachMenuOpen] = useState(false);
     const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const focusComposer = useCallback(() => textareaRef.current?.focus(), []);
     const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
     const handledSkillRequests = useRef(new Set<string>());
     const [pendingSkillRequest, setPendingSkillRequest] =
@@ -223,7 +236,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       onEvidenceConsumed?.();
     }, [evidenceRequest, onEvidenceConsumed, threadId, setInput]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const attachMenuRef = useRef<HTMLDivElement | null>(null);
 
     const ensureAttachmentThreadId = useCallback(async () => {
       const id = await ensureThreadId();
@@ -263,43 +275,161 @@ export const ChatComposer = React.memo<ChatComposerProps>(
 
     const fileKeysCount = Object.keys(files).length;
 
-    // Close the attach menu on outside click / Escape (mirrors AccountMenu).
-    useEffect(() => {
-      if (!attachMenuOpen) return;
-      const handlePointerDown = (event: PointerEvent) => {
-        if (!attachMenuRef.current?.contains(event.target as Node)) {
-          setAttachMenuOpen(false);
-        }
-      };
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") setAttachMenuOpen(false);
-      };
-      document.addEventListener("pointerdown", handlePointerDown);
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("pointerdown", handlePointerDown);
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }, [attachMenuOpen]);
-
-    // Disabling attachments with the attach menu open would leave a dangling
-    // popover whose actions are all disabled — close it proactively.
-    useEffect(() => {
-      if (!attachmentsEnabled) setAttachMenuOpen(false);
-    }, [attachmentsEnabled]);
-
     const submitDisabled =
       isThreadLoading || !assistant || submitting || isStopping;
     const skillsPending = skillCatalog.loading && !!input.trim();
-    // Adding attachments is blocked while a run is in flight, before an
-    // assistant is selected, or when an admin has turned uploads off for the
-    // user's current run mode.
+    // Upload maintenance requires an idle thread; existing drafts retain files.
     const attachmentsDisabled =
       submitDisabled || isLoading || !attachmentsEnabled;
+    const fileUnavailableReason = !attachmentsEnabled
+      ? "Attachments have been disabled by an administrator."
+      : isLoading
+      ? "Files can be referenced after the current response finishes."
+      : submitDisabled
+      ? "Files can be referenced once the conversation is ready."
+      : null;
+
+    // `@file` mentions stay highlighted only while their file is attached.
+    const attachedPaths = useMemo(
+      () =>
+        new Set(
+          attachments.flatMap((item) =>
+            item.phase === "reference"
+              ? [item.path]
+              : item.phase === "ready"
+              ? [item.meta.artifact_path, item.meta.state_files_key].filter(
+                  (path): path is string => !!path
+                )
+              : []
+          )
+        ),
+      [attachments]
+    );
+    const fileReferences = useMemo(
+      () => draft.fileReferences.filter((ref) => attachedPaths.has(ref.path)),
+      [draft.fileReferences, attachedPaths]
+    );
+    const fileCatalog = useMemo(
+      () => fileReferenceEntries(files, sourceImageAttachments),
+      [files, sourceImageAttachments]
+    );
+    const skillReferences = useMemo(
+      () =>
+        matchSkillReferences(
+          input,
+          skillCatalog.entries,
+          draft.references,
+          fileReferences
+        ),
+      [input, skillCatalog.entries, draft.references, fileReferences]
+    );
+    // Chips attached by an `@` mention follow that mention's lifetime.
+    const mentionOwnedPaths = useRef(new Set<string>());
+    useEffect(() => {
+      for (const path of mentionOwnedPaths.current)
+        if (!attachedPaths.has(path)) mentionOwnedPaths.current.delete(path);
+    }, [attachedPaths]);
+    const releaseMentions = useCallback(
+      (paths: Iterable<string>) => {
+        for (const path of paths) {
+          if (!mentionOwnedPaths.current.delete(path)) continue;
+          const chip = attachments.find(
+            (item) => item.phase === "reference" && item.path === path
+          );
+          if (chip) removeAttachment(chip.localId, { quiet: true });
+        }
+      },
+      [attachments, removeAttachment]
+    );
+    const handleTextChange = useCallback(
+      (text: string) => {
+        const current = draftRef.current;
+        const kept = new Set(
+          reconcileFileReferences(
+            current.text,
+            text,
+            current.fileReferences
+          ).map((ref) => ref.path)
+        );
+        setInput(text);
+        releaseMentions(
+          current.fileReferences
+            .map((ref) => ref.path)
+            .filter((path) => !kept.has(path))
+        );
+      },
+      [setInput, releaseMentions]
+    );
+    const handleRemoveAttachment = useCallback(
+      (localId: string) => {
+        const chip = attachments.find((item) => item.localId === localId);
+        if (chip?.phase === "reference")
+          mentionOwnedPaths.current.delete(chip.path);
+        removeAttachment(localId);
+      },
+      [attachments, removeAttachment]
+    );
+    const selectSkill = useCallback(
+      (entry: SkillCatalogEntry, query: SkillQuery) => {
+        const current = draftRef.current;
+        const next = insertSkillReference(
+          current.text,
+          query,
+          entry,
+          skillReferences
+        );
+        setDrafts((previous) => ({
+          ...previous,
+          [draftKey]: {
+            text: next.text,
+            references: next.references,
+            fileReferences: reconcileFileReferences(
+              current.text,
+              next.text,
+              current.fileReferences
+            ),
+          },
+        }));
+        return next;
+      },
+      [draftKey, skillReferences]
+    );
+    const selectFile = useCallback(
+      (entry: FileReferenceEntry, query: FileQuery) => {
+        if (fileUnavailableReason) return null;
+        const { attached, added } = addReferences([
+          fileAttachmentReference(entry, files),
+        ]);
+        if (!attached.includes(entry.path)) return null;
+        added.forEach((path) => mentionOwnedPaths.current.add(path));
+        const current = draftRef.current;
+        const next = insertFileReference(
+          current.text,
+          query,
+          entry,
+          current.fileReferences
+        );
+        setDrafts((previous) => ({
+          ...previous,
+          [draftKey]: {
+            text: next.text,
+            references: reconcileSkillReferences(
+              current.text,
+              next.text,
+              current.references
+            ),
+            fileReferences: next.references,
+          },
+        }));
+        return next;
+      },
+      [fileUnavailableReason, addReferences, files, draftKey]
+    );
     const hasDraft =
       !!input.trim() ||
       attachments.some((a) => a.phase === "ready" || a.phase === "reference");
-    const showDelivery = isLoading && hasDraft;
+    const hasQueue = (messageQueue?.items.length ?? 0) > 0;
+    const showDelivery = (isLoading || hasQueue) && hasDraft;
     const sendDisabled =
       submitDisabled ||
       skillsPending ||
@@ -310,7 +440,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         ));
 
     const handleSubmit = useCallback(
-      async (e?: FormEvent) => {
+      async (e?: FormEvent, override?: MessageDelivery) => {
         if (e) e.preventDefault();
         if (
           submissionRef.current ||
@@ -370,13 +500,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             accepted = await sendMessage(
               text,
               additionalKwargs,
-              isLoading ? delivery : undefined
+              isLoading || hasQueue ? override ?? delivery : undefined
             );
           } else {
             accepted = await sendMessage(
               [{ type: "text", text: messageText || " " }, ...imageBlocks],
               additionalKwargs,
-              isLoading ? delivery : undefined
+              isLoading || hasQueue ? override ?? delivery : undefined
             );
           }
           if (accepted !== false) {
@@ -408,6 +538,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         skillsPending,
         prepareAttachments,
         isLoading,
+        hasQueue,
         delivery,
         draftKey,
         threadId,
@@ -417,22 +548,37 @@ export const ChatComposer = React.memo<ChatComposerProps>(
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (submitDisabled) return;
-        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        if (submitDisabled || e.nativeEvent.isComposing || e.repeat) return;
+        if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
           e.preventDefault();
-          handleSubmit();
+          void handleSubmit(
+            undefined,
+            e.ctrlKey || e.metaKey
+              ? delivery === "queue"
+                ? "steer"
+                : "queue"
+              : undefined
+          );
         }
       },
-      [handleSubmit, submitDisabled]
+      [handleSubmit, submitDisabled, delivery]
     );
 
     return (
       <>
+        {messageQueue && (
+          <MessageQueue
+            queue={messageQueue}
+            onFocusComposer={focusComposer}
+          />
+        )}
         <form
           onSubmit={handleSubmit}
-          className={`relative flex flex-col ${
-            isDragging ? "ring-2 ring-primary/40" : ""
-          }`}
+          aria-label="Message composer"
+          className={cn(
+            "relative flex min-w-0 flex-col rounded-2xl",
+            isDragging && "bg-primary/5 ring-2 ring-primary/40"
+          )}
           onDragOver={(e) => {
             if (attachmentsDisabled) return;
             if (e.dataTransfer.types.includes("Files")) {
@@ -452,7 +598,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           {matchingPendingSkill && (
             <div
               role="status"
-              className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm"
             >
               <p className="min-w-0 flex-1">
                 Keep your message and append the skill authoring request?
@@ -494,31 +640,31 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           )}
           <AttachmentsRow
             items={attachments}
-            onRemove={removeAttachment}
+            onRemove={handleRemoveAttachment}
             disabled={submitting}
           />
-          <SkillReferenceInput
+          <ReferenceInput
             key={accountId}
             accountId={accountId}
             inputRef={textareaRef}
             value={input}
-            references={skillReferences}
-            catalog={skillCatalog.entries}
-            catalogLoading={skillCatalog.loading}
-            catalogError={skillCatalog.error}
-            onRefreshCatalog={skillCatalog.refresh}
             isLoading={isLoading}
-            onChange={setInput}
-            onSelect={(text, references) =>
-              setDrafts((previous) => ({
-                ...previous,
-                [draftKey]: { text, references },
-              }))
-            }
+            submitAction={isLoading || hasQueue ? delivery : "send"}
+            skillReferences={skillReferences}
+            skillCatalog={skillCatalog.entries}
+            skillCatalogLoading={skillCatalog.loading}
+            skillCatalogError={skillCatalog.error}
+            onRefreshSkills={skillCatalog.refresh}
+            fileReferences={fileReferences}
+            fileCatalog={fileCatalog}
+            fileUnavailableReason={fileUnavailableReason}
+            onChange={handleTextChange}
+            onSelectSkill={selectSkill}
+            onSelectFile={selectFile}
             onKeyDown={handleKeyDown}
           />
-          <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 p-1">
+            <div className="flex shrink-0 items-center gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -532,165 +678,79 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   e.target.value = "";
                 }}
               />
-              <div
-                ref={attachMenuRef}
-                className="relative"
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Attach files"
-                  aria-haspopup="menu"
-                  aria-expanded={attachMenuOpen}
-                  onClick={() => setAttachMenuOpen((v) => !v)}
-                  disabled={attachmentsDisabled}
-                  title={
-                    !attachmentsEnabled
-                      ? "Attachments have been disabled by an administrator"
-                      : undefined
-                  }
-                >
-                  <Paperclip size={18} />
-                </Button>
-                {attachMenuOpen && (
-                  <div
-                    role="menu"
-                    className="absolute bottom-full left-0 z-[80] mb-2 w-64 origin-bottom-left overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[0_16px_40px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md motion-safe:duration-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-1"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setAttachMenuOpen(false);
-                        fileInputRef.current?.click();
-                      }}
-                      className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-primary/5 focus-visible:bg-primary/5"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)] transition-colors group-hover:bg-primary/15">
-                        <Upload className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium text-foreground">
-                          Upload file
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          From your computer
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={fileKeysCount === 0}
-                      onClick={() => {
-                        setAttachMenuOpen(false);
-                        setReferenceDialogOpen(true);
-                      }}
-                      className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-                      title={
-                        fileKeysCount === 0
-                          ? "No files in this conversation yet"
-                          : undefined
-                      }
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)] transition-colors group-hover:bg-primary/15">
-                        <Link2 className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium text-foreground">
-                          Reference existing file
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {fileKeysCount === 0
-                            ? "No files in this chat yet"
-                            : `Reuse one of ${fileKeysCount} file${
-                                fileKeysCount > 1 ? "s" : ""
-                              } in this chat`}
-                        </span>
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
-              {autopilot && (
-                <AutopilotControl
+              <AttachMenu
+                disabled={attachmentsDisabled}
+                disabledReason={
+                  !attachmentsEnabled
+                    ? "Attachments have been disabled by an administrator"
+                    : undefined
+                }
+                fileCount={fileKeysCount}
+                onUpload={() => fileInputRef.current?.click()}
+                onReference={() => setReferenceDialogOpen(true)}
+              />
+              {approvals && (
+                <ApprovalModeControl
                   key={`${accountId}:${threadId}:${assistant?.assistant_id}`}
-                  autopilot={autopilot}
+                  approvals={approvals}
                   ready={!!threadId && !!assistant && !isThreadLoading}
                   unavailableReason={
                     !assistant
-                      ? "Select an agent to enable autopilot."
+                      ? "Select an agent to choose an approval mode."
                       : !threadId
-                      ? "Start a conversation to enable autopilot."
+                      ? "Start a conversation to choose an approval mode."
                       : "Loading conversation…"
                   }
                 />
               )}
               <ResponseJobs
-                key={threadId}
+                key={`${accountId}:${threadId}`}
                 threadId={threadId}
+                isRunning={isLoading}
+                onEmptyClose={focusComposer}
               />
-              {queuedMessageCount > 0 ? (
+              {serverQueuedCount > 0 && !messageQueue?.items.length ? (
                 <span
                   role="status"
                   className="whitespace-nowrap text-xs text-muted-foreground"
                 >
-                  {queuedMessageCount} queued
+                  {serverQueuedCount} queued
                 </span>
-              ) : (
-                <span className="hidden text-xs text-muted-foreground lg:inline">
-                  Type{" "}
-                  <kbd className="rounded border border-border px-1">$</kbd> for
-                  skills
-                </span>
-              )}
+              ) : null}
             </div>
-            <div className="ml-auto flex items-center gap-1.5">
+            <ComposerShortcuts
+              action={isLoading || hasQueue ? delivery : "send"}
+            />
+            <div className="ml-auto flex items-center gap-2">
               {showDelivery && (
                 <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Stop"
-                    title="Stop this run and queued messages"
-                    onClick={stopStream}
-                    className="h-8 w-8 text-muted-foreground"
-                  >
-                    <Square
-                      size={14}
-                      aria-hidden="true"
-                    />
-                  </Button>
-                  <Select
-                    value={delivery}
-                    onValueChange={(value) =>
-                      setDelivery(value as MessageDelivery)
-                    }
-                  >
-                    <SelectTrigger
-                      aria-label="Message delivery"
-                      className="h-8 w-8 justify-center rounded-full border-0 p-0 [&>svg]:h-3.5 [&>svg]:w-3.5"
-                      title="Choose when to send"
-                    />
-                    <SelectContent
-                      side="top"
-                      align="end"
-                      className="!animate-none"
+                  {isLoading && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Stop"
+                      title="Stop the response and pause queued messages"
+                      onClick={stopStream}
+                      disabled={isStopping}
+                      className="h-9 w-9 rounded-lg text-muted-foreground transition-none"
                     >
-                      <SelectItem value="queue">
-                        Queue · after this run
-                      </SelectItem>
-                      <SelectItem value="steer">Steer · send now</SelectItem>
-                    </SelectContent>
-                  </Select>
+                      <Square
+                        size={14}
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  )}
+                  <DeliveryModeControl
+                    value={delivery}
+                    onChange={setDelivery}
+                  />
                 </>
               )}
               <Button
                 type={isLoading && !showDelivery ? "button" : "submit"}
                 variant={isLoading && !showDelivery ? "destructive" : "default"}
-                size="default"
+                size="icon"
                 onClick={isLoading && !showDelivery ? stopStream : undefined}
                 aria-label={
                   showDelivery
@@ -705,19 +765,21 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   showDelivery
                     ? delivery === "queue"
                       ? "Send after the current run finishes"
-                      : "Interrupt the current run and replace pending queued messages"
+                      : "Interrupt the current response and send this user prompt now"
                     : undefined
                 }
                 className={cn(
-                  "rounded-full px-4 font-medium transition-[color,background-color,box-shadow,transform] duration-150",
+                  "h-9 w-9 shrink-0 rounded-lg font-medium transition-none active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none",
                   !isLoading &&
-                    "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] hover:shadow-md active:translate-y-px disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+                    "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
                 )}
-                disabled={(!isLoading || showDelivery) && sendDisabled}
+                disabled={
+                  isStopping || ((!isLoading || showDelivery) && sendDisabled)
+                }
               >
                 {showDelivery ? (
                   <>
-                    <span>
+                    <span className="sr-only">
                       {submitting
                         ? "Sending…"
                         : delivery === "queue"
@@ -738,15 +800,21 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </>
                 ) : isLoading ? (
                   <>
-                    <Square size={14} />
-                    <span>Stop</span>
+                    <Square
+                      size={14}
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">
+                      {isStopping ? "Stopping…" : "Stop"}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <span>Send</span>
+                    <span className="sr-only">Send</span>
                     <ArrowUp
                       size={16}
                       strokeWidth={2.5}
+                      aria-hidden="true"
                     />
                   </>
                 )}

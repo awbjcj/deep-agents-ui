@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/test-results/scheduled-tasks/
+/test-results/chat-channels/
 
 # next.js
 /.next/

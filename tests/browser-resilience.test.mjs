@@ -14,6 +14,7 @@ import {
 } from "../src/app/utils/navigationRecovery.ts";
 import {
   clearStreamReconnectState,
+  readStreamRunId,
   streamRunStorageKey,
 } from "../src/app/utils/threadRecovery.ts";
 import { clearAuthUser, getAuthUser, saveAuthUser } from "../src/lib/auth.ts";
@@ -166,5 +167,22 @@ test("thread recovery removes stale reconnect metadata even when storage fails",
       },
     }),
     false
+  );
+});
+
+test("Stop can fall back to server discovery when reconnect storage is blocked", () => {
+  assert.equal(
+    readStreamRunId("thread", {
+      getItem: () => {
+        throw new Error("storage blocked");
+      },
+    }),
+    null
+  );
+  assert.equal(
+    readStreamRunId("thread", {
+      getItem: (key) => (key === "lg:stream:thread" ? "active-run" : null),
+    }),
+    "active-run"
   );
 });

@@ -6,6 +6,8 @@ import test from "node:test";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PATH = "/_artifacts/user/thread/confluence/report.md";
+const NAMED =
+  "/_artifacts/user/thread/jira/0123456789ab__jira-ticket-vsda-1234-brake-warning-lamp-stays-on-after-ignition-cycle.json";
 
 test(
   "generated file previews stay live, preserve drafts, and save artifact paths",
@@ -28,7 +30,9 @@ test(
         const path = ${JSON.stringify(PATH)};
         const initial = "# Middleware report\\n\\n__API__\\n\\n7. First step\\n8. Second step\\n\\n| Item | Status |\\n| --- | --- |\\n| Parser | Ready |\\n\\nA claim[^1].\\n\\n[^1]: A source note.";
         function Fixture() {
-          const [files, setFiles] = React.useState({ [path]: { content: initial.split("\\n") } });
+          const [files, setFiles] = React.useState({ [path]: { content: initial.split("\\n") }, ${JSON.stringify(
+            NAMED
+          )}: '{"key": "VSDA-1234"}' });
           const [busy, setBusy] = React.useState(false);
           window.fixture = { setFiles, setBusy };
           return <><FilesPopover files={files} setFiles={async (next) => {
@@ -80,6 +84,21 @@ test(
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(`http://127.0.0.1:${server.address().port}`);
+      // Long convention-named files show their whole readable name and path.
+      await page.getByTitle(NAMED).click();
+      const title = page.getByTestId("file-view-title");
+      assert.equal(
+        await title.innerText(),
+        "jira-ticket-vsda-1234-brake-warning-lamp-stays-on-after-ignition-cycle.json"
+      );
+      assert.equal(
+        await title.evaluate((node) => node.scrollWidth <= node.clientWidth),
+        true
+      );
+      assert.equal(await page.getByTestId("file-view-path").innerText(), NAMED);
+      await page.keyboard.press("Escape");
+      await page.getByRole("dialog").waitFor({ state: "detached" });
+
       await page.getByTitle(PATH).click();
       const dialog = page.getByRole("dialog");
       await dialog
@@ -262,9 +281,14 @@ test(
       await page.getByTitle("/_artifacts/result.json").click();
       await page.waitForFunction(() => {
         const pre = document.querySelector('[role="dialog"] pre');
-        return (
-          pre && getComputedStyle(pre).backgroundColor === "rgb(40, 44, 52)"
-        );
+        if (!pre) return false;
+        // Code blocks use the active theme's shared code surface token.
+        const probe = document.createElement("div");
+        probe.style.backgroundColor = "var(--code-block-bg)";
+        document.body.append(probe);
+        const surface = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return getComputedStyle(pre).backgroundColor === surface;
       });
       assert.equal(
         await dialog

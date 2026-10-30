@@ -91,12 +91,6 @@
 }
 
 @layer base {
-  input:focus,
-  textarea:focus,
-  select:focus {
-    box-shadow: none !important;
-  }
-
   * {
     outline-color: hsl(var(--primary));
   }

@@ -101,7 +101,8 @@ function skillsFixture() {
     delayed = null,
     failImport = false,
     serverFailure = false,
-    catalogFailure = false;
+    catalogFailure = false,
+    malformedCatalog = false;
   let importedFiles = [{ path: "SKILL.md", content: source("imported-skill") }];
   let delayedImport = null;
   const packageName = (files) =>
@@ -150,6 +151,9 @@ function skillsFixture() {
     },
     failCatalog() {
       catalogFailure = true;
+    },
+    corruptCatalog(value = true) {
+      malformedCatalog = value;
     },
     delayRead() {
       delayed = deferred();
@@ -204,6 +208,8 @@ function skillsFixture() {
       if (path.endsWith("/threads"))
         return json(route, { thread_id: "sent-thread" });
       if (path.includes("/runs")) {
+        // Recovery lists active runs without submitting a message.
+        if (request.method() === "GET") return json(route, []);
         chatRequests.push({ path, body: request.postData() });
         return route.fulfill({
           status: 200,
@@ -218,6 +224,8 @@ function skillsFixture() {
         path,
         body: request.postData(),
       });
+      if (path === "/api/skills" && malformedCatalog)
+        return json(route, { entries: null });
       if (path === "/api/skills" && catalogFailure) {
         catalogFailure = false;
         return json(route, { detail: "Catalog unavailable" }, 503);
@@ -440,6 +448,39 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
   await mkdir(EVIDENCE, { recursive: true });
   try {
     await t.test(
+      "malformed catalog responses show a recoverable error without crashing",
+      async () => {
+        const policy = skillsFixture();
+        policy.corruptCatalog();
+        const { page, context, pageErrors } = await authenticatedPage(
+          browser,
+          server,
+          policy,
+          "admin"
+        );
+        try {
+          await openSkills(page);
+          const panel = page.locator("#right-panel");
+          await panel
+            .getByRole("alert")
+            .filter({ hasText: "invalid skill response" })
+            .waitFor();
+          assert.equal(
+            await panel.getByText("No skills yet.", { exact: false }).count(),
+            0
+          );
+          policy.corruptCatalog(false);
+          await panel.getByRole("button", { name: "Retry catalog" }).click();
+          await panel
+            .getByRole("button", { name: /my-skill Personal/ })
+            .waitFor();
+          assert.deepEqual(pageErrors, []);
+        } finally {
+          await context.close();
+        }
+      }
+    );
+    await t.test(
       "focused workspace retains search, restores focus, and fits a narrow desktop panel",
       async () => {
         const policy = skillsFixture();
@@ -531,10 +572,17 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
               );
               const textarea = await content(page).boundingBox();
               const editorBounds = await editor(page).boundingBox();
-              assert(
-                textarea.width >= editorBounds.width - 4,
-                "narrow workspace gives the editor full width even on desktop"
-              );
+              if (editorBounds.width < 576) {
+                assert(
+                  textarea.width >= editorBounds.width - 4,
+                  "narrow workspace gives the editor full width even on desktop"
+                );
+              } else {
+                assert(
+                  textarea.width >= 380,
+                  "wide workspace keeps a readable editor beside the file list"
+                );
+              }
               await content(page).focus();
               const save = editor(page).getByRole("button", {
                 name: "Save",
@@ -681,6 +729,12 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           assert.equal((await preview.boundingBox()).height, before.height);
           page.once("dialog", (dialog) => dialog.accept());
           await browseSkills(page);
+          await page
+            .getByRole("button", {
+              name: "Expand workspace panel",
+              exact: true,
+            })
+            .waitFor();
           assert((await panel.boundingBox()).width < 1000);
           assert.equal(await page.locator("#chat").getAttribute("inert"), null);
           policy.packages.get("p1").files[0].content = longContent;
@@ -1987,7 +2041,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
       }
     );
     await t.test(
-      "five tabs scroll with manual keyboard activation at 320px",
+      "six tabs scroll with manual keyboard activation at 320px",
       async () => {
         const policy = skillsFixture();
         const { page, context, pageErrors } = await authenticatedPage(
@@ -2021,6 +2075,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             "Tools",
             "Skills",
             "Tokens",
+            "Bots",
             "Connections",
           ]);
           const skillsTab = rail.getByRole("tab", {
@@ -2053,6 +2108,14 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             .getByRole("tab", { name: "Tools", exact: true })
             .press("Enter");
           await page.getByRole("heading", { name: "My agent tools" }).waitFor();
+          await page.setViewportSize({ width: 320, height: 800 });
+          await page
+            .getByRole("button", { name: "Close workspace panel" })
+            .click();
+          await page.waitForFunction(
+            () =>
+              document.activeElement?.getAttribute("aria-label") === "Workspace"
+          );
           assert.deepEqual(pageErrors, []);
         } finally {
           await context.close();

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("admin navigation uses an exact two-row tab layout", async () => {
-  const [panel, tabs, page] = await Promise.all([
+  const [panel, tabs] = await Promise.all([
     readFile(
       new URL("../src/app/components/AdminPanel.tsx", import.meta.url),
       "utf8"
@@ -12,7 +12,6 @@ test("admin navigation uses an exact two-row tab layout", async () => {
       new URL("../src/components/ui/panel-tabs.tsx", import.meta.url),
       "utf8"
     ),
-    readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(panel, /layout="two-row"/);
@@ -35,10 +34,6 @@ test("admin navigation uses an exact two-row tab layout", async () => {
     assert(position > previous, `${label} should appear in row-major order`);
     previous = position;
   }
-  assert.match(
-    page,
-    /id="admin-panel"[\s\S]*defaultSize=\{34\}[\s\S]*minSize=\{30\}[\s\S]*min-w-\[500px\]/
-  );
 });
 
 test("relocated detailed settings are independently mounted and collapsed", async () => {

@@ -837,15 +837,20 @@ test(
         proxy_attachments_enabled: false,
       });
 
-      const sourceDisclosure = page
-        .locator("details")
-        .filter({ hasText: /Tier policies/ })
-        .locator("summary");
-      await sourceDisclosure.focus();
+      const tierTabs = page.getByRole("tablist", {
+        name: "Attachment permission tier",
+      });
+      const userTierTab = tierTabs.getByRole("tab", {
+        name: "user",
+        exact: true,
+      });
+      await userTierTab.focus();
       await page.keyboard.press("Enter");
-      const userSection = page.locator(
-        'section[aria-labelledby="source-image-tier-user"]'
-      );
+      assert.equal(await userTierTab.getAttribute("aria-selected"), "true");
+      const userSection = page.getByRole("tabpanel", {
+        name: "user",
+        exact: true,
+      });
       await userSection.getByText("Jira", { exact: true }).waitFor();
       const graphDocuments = userSection.getByRole("switch", {
         name: "Microsoft Graph documents for user tier",

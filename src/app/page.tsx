@@ -22,6 +22,7 @@ import { AccountMenu } from "@/app/components/AccountMenu";
 import { LoadingScreen } from "@/app/components/LoadingScreen";
 import { useHasBeenTrue } from "@/app/hooks/useHasBeenTrue";
 import { useCompactLayout } from "@/app/hooks/useCompactLayout";
+import { usePanelLayout } from "@/app/hooks/usePanelLayout";
 import { loginUrlForConversation } from "@/app/utils/navigationRecovery";
 import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ import {
   Shield,
   SquarePen,
   UserCog,
+  CalendarClock,
 } from "lucide-react";
 import {
   Tooltip,
@@ -108,6 +110,7 @@ function HomePageInner({
   setConfigDialogOpen,
   handleSaveConfig,
 }: HomePageInnerProps) {
+  const router = useRouter();
   const client = useClient();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -166,6 +169,11 @@ function HomePageInner({
     undefined
   );
   const [adminOpen, setAdminOpen] = useState(false);
+  const sidePanel = usePanelLayout({
+    openPanel: workspaceOpen ? "workspace" : adminOpen ? "admin" : null,
+    compact: compactLayout,
+    threadsOpen: !!sidebar,
+  });
   const overlayPanel =
     expandedPanel ??
     (compactLayout
@@ -218,18 +226,30 @@ function HomePageInner({
     setExpandedPanel(null);
   }, []);
 
-  // Overlay panels keep chat mounted (including an active stream), but move
-  // focus into the visible surface and return it to its trigger on close.
+  // Keep focus inside a visible panel across responsive/expanded layout changes;
+  // only return it to the trigger when the panel actually closes.
   useEffect(() => {
     if (!overlayPanel) return;
-    const previous = document.activeElement;
     const panelId =
       overlayPanel === "threads"
         ? "thread-history"
         : overlayPanel === "workspace"
         ? "right-panel"
         : "admin-panel";
-    document.getElementById(panelId)?.focus();
+    const panel = document.getElementById(panelId);
+    const active = document.activeElement;
+    const triggerLabel =
+      overlayPanel === "threads"
+        ? "Threads"
+        : overlayPanel === "workspace"
+        ? "Workspace"
+        : "Admin console";
+    const previous = panel?.contains(active)
+      ? document.querySelector<HTMLButtonElement>(
+          `button[aria-label="${triggerLabel}"]`
+        )
+      : active;
+    if (!panel?.contains(active)) panel?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         event.key !== "Escape" ||
@@ -245,7 +265,11 @@ function HomePageInner({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      if (previous instanceof HTMLElement && previous.isConnected)
+      if (
+        !panel?.isConnected &&
+        previous instanceof HTMLElement &&
+        previous.isConnected
+      )
         previous.focus();
     };
   }, [
@@ -392,7 +416,7 @@ function HomePageInner({
       </Suspense>
       <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:gap-2 max-sm:px-3">
+        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:h-auto max-sm:min-h-16 max-sm:flex-wrap max-sm:gap-2 max-sm:px-3 max-sm:py-2">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
@@ -442,7 +466,7 @@ function HomePageInner({
                   }
                   void setSidebar("1");
                 }}
-                className="hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
+                className="rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
               >
                 <MessagesSquare className="h-4 w-4 sm:mr-2" />
                 <span className="max-sm:hidden">Threads</span>
@@ -458,7 +482,23 @@ function HomePageInner({
             )}
           </div>
 
-          <div className="flex min-w-0 items-center gap-1.5 max-sm:gap-1">
+          <div
+            ref={sidePanel.headerActionsRef}
+            className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Scheduled tasks"
+              onClick={() => {
+                if (!allowWorkspaceLeave()) return;
+                router.push("/tasks");
+              }}
+              className="rounded-full border border-border bg-card px-3 max-sm:px-2"
+            >
+              <CalendarClock className="h-4 w-4 sm:mr-2" />
+              <span className="max-sm:hidden">Tasks</span>
+            </Button>
             {/* Assistant name surfaced over its raw ID — full ID is in tooltip
                 for power users who need to copy it. Clicking opens the
                 config dialog so the agent can be switched directly from
@@ -490,7 +530,11 @@ function HomePageInner({
                 </div>
               </TooltipContent>
             </Tooltip>
-            <span className="mx-1 hidden h-6 w-px bg-border md:block" />
+            <span
+              ref={sidePanel.boundaryRef}
+              aria-hidden="true"
+              className="mx-1 hidden h-6 w-px bg-border md:block"
+            />
             <span className="max-sm:hidden">
               <ThemeToggle />
             </span>
@@ -513,8 +557,8 @@ function HomePageInner({
                   aria-pressed={workspaceOpen}
                   className={
                     workspaceOpen
-                      ? "border-primary/40 rounded-full border bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
-                      : "hover:border-primary/40 rounded-full border border-border bg-card px-3 text-foreground hover:bg-accent max-sm:px-2"
+                      ? "rounded-full border border-[hsl(var(--primary)/0.4)] bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
+                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
                   }
                 >
                   <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
@@ -522,7 +566,7 @@ function HomePageInner({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Models · Tools · Skills · Tokens · Connections
+                Models · Tools · Skills · Tokens · Teams · Connections
               </TooltipContent>
             </Tooltip>
             {isAdmin && (
@@ -563,7 +607,7 @@ function HomePageInner({
                   size="icon"
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="hover:border-primary/40 rounded-full border border-border bg-card text-foreground hover:text-primary max-sm:hidden"
+                  className="rounded-full border border-border bg-card text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:text-primary max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
                 </Button>
@@ -588,7 +632,10 @@ function HomePageInner({
           </div>
         </header>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div
+          ref={sidePanel.containerRef}
+          className="relative min-h-0 flex-1 overflow-hidden"
+        >
           <ResizablePanelGroup
             direction="horizontal"
             autoSaveId="standalone-chat"
@@ -597,10 +644,10 @@ function HomePageInner({
               <>
                 <ResizablePanel
                   id="thread-history"
+                  ref={sidePanel.threadsRef}
                   order={1}
-                  defaultSize={25}
-                  minSize={20}
-                  className="relative min-w-[300px] bg-background max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0"
+                  {...sidePanel.threads}
+                  className="relative min-w-0 bg-background max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full"
                   tabIndex={-1}
                   role="region"
                   aria-label="Thread history"
@@ -615,6 +662,7 @@ function HomePageInner({
                   />
                 </ResizablePanel>
                 <ResizableHandle
+                  aria-label="Resize thread history"
                   className={cn("max-xl:hidden", expandedPanel && "invisible")}
                 />
               </>
@@ -622,6 +670,7 @@ function HomePageInner({
 
             <ResizablePanel
               id="chat"
+              {...sidePanel.chat}
               className="relative flex min-w-0 flex-col max-xl:!w-full"
               order={2}
               inert={overlayPanel !== null}
@@ -647,15 +696,16 @@ function HomePageInner({
             {workspaceOpen && (
               <>
                 <ResizableHandle
+                  aria-label="Resize workspace panel"
                   className={cn("max-xl:hidden", expandedPanel && "invisible")}
                 />
                 <ResizablePanel
                   id="right-panel"
+                  ref={sidePanel.settingsRef}
                   order={3}
-                  defaultSize={28}
-                  minSize={22}
+                  {...sidePanel.settings}
                   className={cn(
-                    "relative min-w-[360px] max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0 max-xl:bg-background",
+                    "relative min-w-0 max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:bg-background",
                     expandedPanel === "workspace" &&
                       "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
                   )}
@@ -686,15 +736,16 @@ function HomePageInner({
             {adminOpen && isAdmin && (
               <>
                 <ResizableHandle
+                  aria-label="Resize admin panel"
                   className={cn("max-xl:hidden", expandedPanel && "invisible")}
                 />
                 <ResizablePanel
                   id="admin-panel"
+                  ref={sidePanel.settingsRef}
                   order={4}
-                  defaultSize={34}
-                  minSize={30}
+                  {...sidePanel.settings}
                   className={cn(
-                    "relative min-w-[500px] max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:!min-w-0 max-xl:bg-background",
+                    "relative min-w-0 max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:bg-background",
                     expandedPanel === "admin" &&
                       "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
                   )}
@@ -738,12 +789,15 @@ function HomePageContent() {
 
   useEffect(() => {
     const savedConfig = getConfig();
-    if (savedConfig && savedConfig.assistantId) {
-      setConfig(savedConfig);
+    if (savedConfig && (assistantId || savedConfig.assistantId)) {
+      setConfig({
+        ...savedConfig,
+        assistantId: assistantId || savedConfig.assistantId,
+      });
     } else if (getDeploymentUrl()) {
       setConfigDialogOpen(true);
     }
-  }, []);
+  }, [assistantId]);
 
   useEffect(() => {
     // nuqs URL writes can cancel an in-flight login redirect. Restore the
@@ -753,10 +807,14 @@ function HomePageContent() {
     }
   }, [authLoading, user, config, assistantId, setAssistantId]);
 
-  const handleSaveConfig = useCallback((newConfig: StandaloneConfig) => {
-    saveConfig(newConfig);
-    setConfig(newConfig);
-  }, []);
+  const handleSaveConfig = useCallback(
+    (newConfig: StandaloneConfig) => {
+      saveConfig(newConfig);
+      setConfig(newConfig);
+      void setAssistantId(newConfig.assistantId);
+    },
+    [setAssistantId]
+  );
 
   // Both values come from build-time env vars, so read them once instead of on
   // every render — `deploymentUrl`/`apiKey` identity churn would otherwise

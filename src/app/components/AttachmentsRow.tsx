@@ -17,7 +17,7 @@ export const AttachmentsRow = React.memo<Props>(
       <div
         role="list"
         aria-label="Attachments"
-        className="flex flex-wrap gap-2 border-b border-border/70 bg-muted/15 px-[18px] py-2.5"
+        className="flex flex-wrap gap-2 border-b border-border/70 px-4 py-3"
       >
         {items.map((item) => (
           <AttachmentChip

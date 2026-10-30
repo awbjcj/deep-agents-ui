@@ -46,8 +46,17 @@ const active = (job: Job) =>
   ["submitting", "queued", "in_progress", "unknown"].includes(job.status);
 
 /** Inspect, cancel and delete this thread's provider jobs without leaving chat. */
-export function ResponseJobs({ threadId }: { threadId: string | null }) {
+export function ResponseJobs({
+  threadId,
+  isRunning = false,
+  onEmptyClose,
+}: {
+  threadId: string | null;
+  isRunning?: boolean;
+  onEmptyClose?: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [hasJobs, setHasJobs] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -61,11 +70,11 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
     : "";
 
   useEffect(() => {
-    if (!open || !base) return;
+    if (!base) return;
     const controller = new AbortController();
     let loading = false;
     const load = async () => {
-      if (loading) return;
+      if (loading || document.hidden) return;
       loading = true;
       try {
         const response = await apiFetch(
@@ -79,6 +88,10 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
         if (!response.ok)
           throw new Error("Background jobs could not be loaded.");
         const listed: Job[] = await response.json();
+        if (controller.signal.aborted) return;
+        // Only the newest page establishes whether this conversation has jobs.
+        if (!before) setHasJobs(listed.length > 0);
+        if (!open) return;
         let stale = false;
         const refreshed = await Promise.all(
           listed.map(async (job) => {
@@ -115,12 +128,16 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
       }
     };
     void load();
-    const timer = setInterval(() => void load(), 3000);
+    // Discover jobs while the panel is closed without polling every job's status.
+    const timer = setInterval(() => void load(), open ? 3000 : 15000);
+    const refreshOnFocus = () => void load();
+    window.addEventListener("focus", refreshOnFocus);
     return () => {
       controller.abort();
       clearInterval(timer);
+      window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [open, base, before, revision]);
+  }, [open, base, before, revision, isRunning]);
 
   function changePage(nextCursors: string[]) {
     setCursors(nextCursors);
@@ -158,25 +175,37 @@ export function ResponseJobs({ threadId }: { threadId: string | null }) {
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (nextOpen) changePage([]);
+        changePage([]);
         setOpen(nextOpen);
       }}
     >
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!threadId}
-          className="gap-2 text-xs text-muted-foreground"
-        >
-          <Clock3
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-          />
-          <span className="sr-only sm:not-sr-only">Background jobs</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl">
+      {(hasJobs || open) && (
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Background jobs"
+            title="Background jobs"
+            className="h-9 min-w-9 shrink-0 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-none hover:text-foreground active:scale-[0.97] motion-reduce:transform-none"
+          >
+            <Clock3
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
+            />
+            <span className="sr-only @[26rem]/composer:not-sr-only">Jobs</span>
+          </Button>
+        </DialogTrigger>
+      )}
+      <DialogContent
+        className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl"
+        onCloseAutoFocus={(event) => {
+          if (!hasJobs && onEmptyClose) {
+            event.preventDefault();
+            onEmptyClose();
+          }
+        }}
+      >
         <div className="shrink-0 space-y-2 border-b border-border p-5 pr-12">
           <DialogTitle className="flex items-center gap-2">
             <Clock3

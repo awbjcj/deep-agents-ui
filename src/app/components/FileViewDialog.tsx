@@ -27,7 +27,7 @@ import { FileContentView } from "@/app/components/FileContentView";
 import { ImagePreview } from "@/app/components/ImagePreview";
 import type { FileItem } from "@/app/types/types";
 import { cn } from "@/lib/utils";
-import { imageMimeForPath } from "@/lib/uploads";
+import { attachmentDisplayName, imageMimeForPath } from "@/lib/uploads";
 import { fileBlob, saveBlob } from "@/lib/file-downloads";
 import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
 
@@ -73,7 +73,12 @@ function FileViewDialogSession({
   const isBinary = file?.encoding === "base64";
   const sourceImage = file?.sourceImage;
   const displayName =
-    sourceImage?.filename || file?.filename || file?.path || "New File";
+    sourceImage?.filename ||
+    file?.filename ||
+    (file?.path ? attachmentDisplayName(file.path) : "New File");
+  // The stored path carries the directory and storage key; show it whenever
+  // the readable name above it hides part of it.
+  const fullPath = file?.path && file.path !== displayName ? file.path : null;
   const sourcePageUrl = sourceImage
     ? safeSourcePageUrl(sourceImage.source_page_url)
     : null;
@@ -196,9 +201,20 @@ function FileViewDialogSession({
               />
             ) : (
               <div className="min-w-0">
-                <span className="block overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium text-primary">
+                <span
+                  className="block break-words text-base font-medium text-primary [overflow-wrap:anywhere]"
+                  data-testid="file-view-title"
+                >
                   {displayName}
                 </span>
+                {fullPath && (
+                  <span
+                    className="mt-0.5 block break-all font-mono text-[11px] text-muted-foreground"
+                    data-testid="file-view-path"
+                  >
+                    {fullPath}
+                  </span>
+                )}
                 {sourceImage && (
                   <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
                     <span className="bg-primary/8 rounded-full px-1.5 py-0.5 font-semibold text-[var(--color-primary)]">
