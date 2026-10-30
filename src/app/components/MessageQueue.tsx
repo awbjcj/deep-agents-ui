@@ -53,7 +53,7 @@ export function MessageQueue({
       role="region"
       aria-label="Message queue"
       tabIndex={-1}
-      className="mb-2 gap-1 rounded-lg bg-muted/20 px-2 shadow-none [&_p]:mb-0"
+      className="mb-2 gap-1 rounded-lg bg-transparent px-2 shadow-none [&_p]:mb-0"
     >
       <div className="flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground">
         <ListOrdered

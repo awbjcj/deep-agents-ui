@@ -32,6 +32,14 @@ import {
   type ApprovalMode,
 } from "@/lib/approval-modes";
 import type { ApprovalModeState } from "@/app/hooks/useApprovalMode";
+import {
+  COMPOSER_OPTION_ROW,
+  COMPOSER_TRIGGER,
+  ComposerMenuOption,
+  OPTION_TILE_TONE,
+  PRESS_FEEDBACK,
+  TRIGGER_TONE,
+} from "./ComposerMenuOption";
 
 interface ApprovalModeControlProps {
   approvals: ApprovalModeState;
@@ -40,8 +48,6 @@ interface ApprovalModeControlProps {
 }
 
 const INSTANT = "!animate-none";
-const PRESS_FEEDBACK =
-  "[transition-timing-function:var(--ease-out)] active:scale-[0.97] active:translate-y-0 focus-visible:transform-none focus-visible:transition-none motion-reduce:transform-none";
 
 const ICONS: Record<ApprovalMode, LucideIcon> = {
   interactive: ShieldCheck,
@@ -49,27 +55,11 @@ const ICONS: Record<ApprovalMode, LucideIcon> = {
   autopilot: ShieldAlert,
 };
 
-// Ghost trigger like the composer's other controls: the mode's tone lives in
-// the icon and label; background appears only on hover or while open.
-const TRIGGER_TONE: Record<ApprovalMode, string> = {
-  interactive:
-    "text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground dark:hover:bg-accent/60 dark:data-[state=open]:bg-accent/60",
-  allow_read:
-    "text-[var(--color-primary)] hover:bg-primary/10 data-[state=open]:bg-primary/10",
-  autopilot:
-    "text-destructive hover:bg-destructive/10 data-[state=open]:bg-destructive/10",
-};
-
-// Rows have no resting fill; the current mode is marked by a filled icon tile
-// (a fill change, not colour alone) and Radix exposes it as aria-selected.
-const TILE_TONE: Record<ApprovalMode, string> = {
-  interactive:
-    "bg-muted text-muted-foreground group-[[data-highlighted][data-state=unchecked]]:text-foreground group-data-[state=checked]:bg-foreground group-data-[state=checked]:text-background",
-  allow_read:
-    "bg-primary/10 text-[var(--color-primary)] group-[[data-highlighted][data-state=unchecked]]:bg-primary/15 group-data-[state=checked]:bg-[var(--color-primary)] group-data-[state=checked]:text-white",
-  autopilot:
-    "bg-destructive/10 text-destructive group-[[data-highlighted][data-state=unchecked]]:bg-destructive/15 group-data-[state=checked]:bg-destructive group-data-[state=checked]:text-destructive-foreground",
-};
+const TONE = {
+  interactive: "neutral",
+  allow_read: "primary",
+  autopilot: "destructive",
+} as const satisfies Record<ApprovalMode, keyof typeof TRIGGER_TONE>;
 
 /**
  * Compact approval-mode picker for the composer.
@@ -130,11 +120,10 @@ export function ApprovalModeControl({
                 : `${copy.label} · ${copy.summary}`)
             }
             className={cn(
-              "h-9 w-auto gap-1.5 rounded-lg border-transparent bg-transparent px-2 text-xs shadow-none transition-[color,background-color,transform] duration-150 focus:ring-offset-0 motion-reduce:transition-none [&>svg]:h-3.5 [&>svg]:w-3.5",
-              PRESS_FEEDBACK,
-              error && mode === "interactive"
-                ? "text-destructive hover:bg-destructive/10 data-[state=open]:bg-destructive/10"
-                : TRIGGER_TONE[mode]
+              COMPOSER_TRIGGER,
+              TRIGGER_TONE[
+                error && mode === "interactive" ? "destructive" : TONE[mode]
+              ]
             )}
           >
             <SelectValue>
@@ -163,7 +152,6 @@ export function ApprovalModeControl({
             }}
           >
             {APPROVAL_MODES.map((option) => {
-              const ItemIcon = ICONS[option];
               const locked = option === "autopilot" && !approvals.canAutopilot;
               return (
                 <Fragment key={option}>
@@ -178,29 +166,18 @@ export function ApprovalModeControl({
                       locked ||
                       (option !== "interactive" && option !== mode && !ready)
                     }
-                    className="group items-start rounded-lg px-2 py-2 transition-colors duration-150 focus:bg-primary/5 focus:text-foreground motion-reduce:transition-none"
+                    className={COMPOSER_OPTION_ROW}
                   >
-                    <span className="flex items-start gap-3">
-                      <span
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 motion-reduce:transition-none",
-                          TILE_TONE[option]
-                        )}
-                        aria-hidden="true"
-                      >
-                        <ItemIcon className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0 pt-px">
-                        <span className="block text-sm font-medium leading-5 text-foreground">
-                          {APPROVAL_MODE_COPY[option].label}
-                        </span>
-                        <span className="block text-xs leading-[1.125rem] text-muted-foreground">
-                          {locked
-                            ? "Available to administrators and developers."
-                            : APPROVAL_MODE_COPY[option].summary}
-                        </span>
-                      </span>
-                    </span>
+                    <ComposerMenuOption
+                      icon={ICONS[option]}
+                      label={APPROVAL_MODE_COPY[option].label}
+                      summary={
+                        locked
+                          ? "Available to administrators and developers."
+                          : APPROVAL_MODE_COPY[option].summary
+                      }
+                      tileClassName={OPTION_TILE_TONE[TONE[option]]}
+                    />
                   </SelectItem>
                 </Fragment>
               );

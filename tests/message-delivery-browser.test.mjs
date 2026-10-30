@@ -263,22 +263,50 @@ test(
       await page.addInitScript(installStreamTransport, { origin: liveUrl });
       await page.evaluate(installStreamTransport, { origin: liveUrl });
       const input = page.getByRole("textbox", { name: "Message", exact: true });
-      const autopilot = page.getByRole("button", {
-        name: "Enable autopilot",
-        exact: true,
+      const enableAutopilot = async () => {
+        await page.getByRole("combobox", { name: /^Approval mode:/ }).click();
+        await page.getByRole("option", { name: /^Autopilot/ }).click();
+        await page
+          .getByRole("button", { name: "I understand, enable autopilot" })
+          .click();
+        await page
+          .getByRole("combobox", { name: "Approval mode: Autopilot" })
+          .waitFor();
+      };
+      const approvalMode = page.getByRole("combobox", {
+        name: /^Approval mode:/,
       });
-      await autopilot.waitFor();
+      await approvalMode.waitFor();
       assert.equal(
-        await autopilot.evaluate((el) => !!el.closest("form")),
+        await approvalMode.evaluate((el) => !!el.closest("form")),
         true
       );
-      assert.ok((await autopilot.boundingBox()).height <= 36);
-      assert.ok((await autopilot.boundingBox()).width < 150);
-      await autopilot.click();
-      await page
-        .getByRole("button", { name: "I understand, enable autopilot" })
-        .click();
-      await page.getByRole("button", { name: "Turn off autopilot" }).waitFor();
+      assert.ok((await approvalMode.boundingBox()).height <= 36);
+      assert.ok((await approvalMode.boundingBox()).width < 150);
+      const attach = page.getByRole("button", { name: "Attach files" });
+      await attach.click();
+      const upload = page.getByRole("menuitem", { name: /^Upload file/ });
+      await page.waitForFunction(
+        () =>
+          document.activeElement?.getAttribute("role") === "menuitem" &&
+          document.activeElement.textContent.startsWith("Upload file")
+      );
+      await page.keyboard.press("End");
+      assert.equal(
+        await upload.evaluate((el) => el === document.activeElement),
+        true,
+        "disabled menu items are skipped"
+      );
+      await page.keyboard.press("Escape");
+      await page.getByRole("menu", { name: "Attach files" }).waitFor({
+        state: "detached",
+      });
+      assert.equal(
+        await attach.evaluate((el) => el === document.activeElement),
+        true,
+        "Escape returns focus to the attach button"
+      );
+      await enableAutopilot();
       await input.fill("Start a long response");
       await page
         .getByRole("button", { name: "Send message", exact: true })
@@ -478,13 +506,13 @@ test(
       assert.equal(await input.inputValue(), "Keep this rejected draft");
       rejectNext = true;
       await page.getByRole("combobox", { name: "Message delivery" }).click();
-      await page.getByRole("option", { name: "Steer · send now" }).click();
+      await page.getByRole("option", { name: /^Steer/ }).click();
       await page.getByRole("button", { name: "Steer now" }).click();
       await page.getByText("Message was not sent", { exact: true }).waitFor();
       assert.equal(await input.inputValue(), "Keep this rejected draft");
       await input.fill("Change focus now");
       await page.getByRole("combobox", { name: "Message delivery" }).click();
-      await page.getByRole("option", { name: "Steer · send now" }).click();
+      await page.getByRole("option", { name: /^Steer/ }).click();
       await page
         .getByText("Message was not sent", { exact: true })
         .waitFor({ state: "hidden" });
@@ -504,9 +532,7 @@ test(
         true
       );
       await page.getByRole("combobox", { name: "Message delivery" }).click();
-      await page
-        .getByRole("option", { name: "Queue · after this run" })
-        .click();
+      await page.getByRole("option", { name: /^Queue/ }).click();
       await input.press("Control+Enter");
       await page
         .getByText("Reply to Change focus now", { exact: true })
@@ -643,15 +669,10 @@ test(
       await input.fill("Run before a pending correction");
       await input.press("Enter");
       await page.getByRole("button", { name: "Stop", exact: true }).waitFor();
-      await page
-        .getByRole("button", { name: "Enable autopilot", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "I understand, enable autopilot" })
-        .click();
+      await enableAutopilot();
       await input.fill("Correct this before approval");
       await page.getByRole("combobox", { name: "Message delivery" }).click();
-      await page.getByRole("option", { name: "Steer · send now" }).click();
+      await page.getByRole("option", { name: /^Steer/ }).click();
       delayAcceptance = true;
       const correctionStarted = new Promise((resolve) => {
         acceptanceStarted = resolve;

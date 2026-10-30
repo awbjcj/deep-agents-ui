@@ -9,29 +9,16 @@ import React, {
   FormEvent,
 } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Square,
-  ArrowUp,
-  Paperclip,
-  Upload,
-  Link2,
-  CornerDownLeft,
-  ListPlus,
-} from "lucide-react";
+import { Square, ArrowUp, CornerDownLeft, ListPlus } from "lucide-react";
 import { ApprovalModeControl } from "./ApprovalModeControl";
+import { AttachMenu } from "./AttachMenu";
+import { DeliveryModeControl } from "./DeliveryModeControl";
 import { ResponseJobs } from "./ResponseJobs";
 import { ComposerShortcuts } from "./ComposerShortcuts";
 import { MessageQueue } from "./MessageQueue";
 import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import type { ApprovalModeState } from "@/app/hooks/useApprovalMode";
 import type { MessageDelivery } from "@/lib/message-delivery";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { Assistant } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import { AttachmentsRow } from "@/app/components/AttachmentsRow";
@@ -170,7 +157,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       [draftKey]
     );
     const [isDragging, setIsDragging] = useState(false);
-    const [attachMenuOpen, setAttachMenuOpen] = useState(false);
     const [referenceDialogOpen, setReferenceDialogOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const focusComposer = useCallback(() => textareaRef.current?.focus(), []);
@@ -230,7 +216,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       onEvidenceConsumed?.();
     }, [evidenceRequest, onEvidenceConsumed, threadId, setInput]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
-    const attachMenuRef = useRef<HTMLDivElement | null>(null);
 
     const ensureAttachmentThreadId = useCallback(async () => {
       const id = await ensureThreadId();
@@ -269,31 +254,6 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const { attachmentsEnabled } = useConnectivity();
 
     const fileKeysCount = Object.keys(files).length;
-
-    // Close the attach menu on outside click / Escape (mirrors AccountMenu).
-    useEffect(() => {
-      if (!attachMenuOpen) return;
-      const handlePointerDown = (event: PointerEvent) => {
-        if (!attachMenuRef.current?.contains(event.target as Node)) {
-          setAttachMenuOpen(false);
-        }
-      };
-      const handleKeyDown = (event: KeyboardEvent) => {
-        if (event.key === "Escape") setAttachMenuOpen(false);
-      };
-      document.addEventListener("pointerdown", handlePointerDown);
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("pointerdown", handlePointerDown);
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }, [attachMenuOpen]);
-
-    // Disabling attachments with the attach menu open would leave a dangling
-    // popover whose actions are all disabled — close it proactively.
-    useEffect(() => {
-      if (!attachmentsEnabled) setAttachMenuOpen(false);
-    }, [attachmentsEnabled]);
 
     const submitDisabled =
       isThreadLoading || !assistant || submitting || isStopping;
@@ -474,7 +434,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           {matchingPendingSkill && (
             <div
               role="status"
-              className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm"
             >
               <p className="min-w-0 flex-1">
                 Keep your message and append the skill authoring request?
@@ -540,7 +500,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             }
             onKeyDown={handleKeyDown}
           />
-          <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-1">
+          <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 p-1">
             <div className="flex shrink-0 items-center gap-2">
               <input
                 ref={fileInputRef}
@@ -555,91 +515,17 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   e.target.value = "";
                 }}
               />
-              <div
-                ref={attachMenuRef}
-                className="relative"
-              >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Attach files"
-                  aria-haspopup="menu"
-                  aria-expanded={attachMenuOpen}
-                  className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
-                  onClick={() => setAttachMenuOpen((v) => !v)}
-                  disabled={attachmentsDisabled}
-                  title={
-                    !attachmentsEnabled
-                      ? "Attachments have been disabled by an administrator"
-                      : undefined
-                  }
-                >
-                  <Paperclip
-                    size={16}
-                    aria-hidden="true"
-                  />
-                </Button>
-                {attachMenuOpen && (
-                  <div
-                    role="menu"
-                    className="absolute bottom-full left-0 z-[80] mb-2 w-64 origin-bottom-left overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[0_16px_40px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md motion-safe:duration-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-1"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setAttachMenuOpen(false);
-                        fileInputRef.current?.click();
-                      }}
-                      className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-primary/5 focus-visible:bg-primary/5"
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)] transition-colors group-hover:bg-primary/15">
-                        <Upload className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium text-foreground">
-                          Upload file
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          From your computer
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={fileKeysCount === 0}
-                      onClick={() => {
-                        setAttachMenuOpen(false);
-                        setReferenceDialogOpen(true);
-                      }}
-                      className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left outline-none transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-                      title={
-                        fileKeysCount === 0
-                          ? "No files in this conversation yet"
-                          : undefined
-                      }
-                    >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)] transition-colors group-hover:bg-primary/15">
-                        <Link2 className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium text-foreground">
-                          Reference existing file
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {fileKeysCount === 0
-                            ? "No files in this chat yet"
-                            : `Reuse one of ${fileKeysCount} file${
-                                fileKeysCount > 1 ? "s" : ""
-                              } in this chat`}
-                        </span>
-                      </span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <AttachMenu
+                disabled={attachmentsDisabled}
+                disabledReason={
+                  !attachmentsEnabled
+                    ? "Attachments have been disabled by an administrator"
+                    : undefined
+                }
+                fileCount={fileKeysCount}
+                onUpload={() => fileInputRef.current?.click()}
+                onReference={() => setReferenceDialogOpen(true)}
+              />
               {approvals && (
                 <ApprovalModeControl
                   key={`${accountId}:${threadId}:${assistant?.assistant_id}`}
@@ -692,32 +578,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                       />
                     </Button>
                   )}
-                  <Select
+                  <DeliveryModeControl
                     value={delivery}
-                    onValueChange={(value) =>
-                      setDelivery(value as MessageDelivery)
-                    }
-                  >
-                    <SelectTrigger
-                      aria-label="Message delivery"
-                      className="h-9 w-auto min-w-24 gap-2 rounded-lg border border-border bg-card px-3 text-xs shadow-none [&>svg]:h-3.5 [&>svg]:w-3.5"
-                      title="Choose when to send"
-                    >
-                      <SelectValue>
-                        {delivery === "queue" ? "Queue" : "Steer"}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent
-                      side="top"
-                      align="end"
-                      className="!animate-none"
-                    >
-                      <SelectItem value="queue">
-                        Queue · after this run
-                      </SelectItem>
-                      <SelectItem value="steer">Steer · send now</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={setDelivery}
+                  />
                 </>
               )}
               <Button

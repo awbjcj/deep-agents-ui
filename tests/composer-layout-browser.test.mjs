@@ -101,9 +101,8 @@ test(
         );
       const input = page.getByRole("textbox", { name: "Message", exact: true });
       const attachment = page.getByRole("button", { name: "Attach files" });
-      const autopilot = page.getByRole("button", {
-        name: "Enable autopilot",
-        exact: true,
+      const approvalMode = page.getByRole("combobox", {
+        name: /^Approval mode:/,
       });
       const background = page.getByRole("button", {
         name: "Background jobs",
@@ -114,7 +113,7 @@ test(
         { exact: true }
       );
       await input.waitFor();
-      await autopilot.waitFor();
+      await approvalMode.waitFor();
       await initialJobs;
       assert.ok(jobLists > 0);
       assert.equal(await background.count(), 0);
@@ -136,7 +135,7 @@ test(
       for (const width of [320, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         const boxes = await Promise.all(
-          [attachment, autopilot, background].map((control) =>
+          [attachment, approvalMode, background].map((control) =>
             control.boundingBox()
           )
         );
@@ -202,7 +201,7 @@ test(
         await input.evaluate((el) => el === document.activeElement),
         true
       );
-      assert.equal(await autopilot.isVisible(), true);
+      assert.equal(await approvalMode.isVisible(), true);
       assert.deepEqual(pageErrors, []);
       assert.deepEqual(consoleErrors, []);
       await context.close();
