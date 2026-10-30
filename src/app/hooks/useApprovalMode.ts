@@ -40,6 +40,16 @@ interface ModeState {
 
 const label = (mode: AutomaticApprovalMode) => APPROVAL_MODE_COPY[mode].label;
 
+/** Re-verify that the signed-in account may still use Autopilot. */
+async function checkAutopilotAccess(signal: AbortSignal, accountId?: string) {
+  const profile = await apiGetProfile(signal);
+  if (profile.user_id !== accountId || !canUseAutopilot(profile.role)) {
+    throw new Error(
+      "Autopilot is available only to administrators and developers."
+    );
+  }
+}
+
 /**
  * Hold the conversation's approval mode and resolve reviews it covers.
  *
@@ -120,18 +130,6 @@ export function useApprovalMode(options: ApprovalModeOptions) {
     };
   }, [options.scope, options.connection, canAutopilot, reset, abortAutomation]);
 
-  const checkAutopilotAccess = useCallback(
-    async (signal: AbortSignal, accountId?: string) => {
-      const profile = await apiGetProfile(signal);
-      if (profile.user_id !== accountId || !canUseAutopilot(profile.role)) {
-        throw new Error(
-          "Autopilot is available only to administrators and developers."
-        );
-      }
-    },
-    []
-  );
-
   const select = useCallback(
     async (next: ApprovalMode) => {
       if (next === "interactive") {
@@ -147,6 +145,9 @@ export function useApprovalMode(options: ApprovalModeOptions) {
       )
         return false;
       if (modeRef.current === next) return true;
+      // Leaving Autopilot must never wait on the server: stop automatic
+      // approvals first so writes ask again even if the new mode fails.
+      if (modeRef.current === "autopilot") reset();
       setError(null);
       if (start.failed) {
         setError(
@@ -212,7 +213,7 @@ export function useApprovalMode(options: ApprovalModeOptions) {
         return false;
       }
     },
-    [apply, checkAutopilotAccess, reset]
+    [apply, reset]
   );
 
   /**
@@ -315,7 +316,6 @@ export function useApprovalMode(options: ApprovalModeOptions) {
     options.busy,
     options.failed,
     pendingKey,
-    checkAutopilotAccess,
     reset,
   ]);
 

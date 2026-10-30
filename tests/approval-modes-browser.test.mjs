@@ -275,6 +275,27 @@ test(
         }
       );
       await t.test(
+        "leaving Autopilot for Allow reads stops write approvals even if the policy fails",
+        async () => {
+          await reset();
+          await enable();
+          await page.evaluate(() => {
+            window.failPolicy = true;
+          });
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            false
+          );
+          assert.equal(await mode(), "interactive");
+          await page.evaluate((pending) => window.update({ pending }), pending);
+          await page.waitForTimeout(800);
+          assert.deepEqual(await page.evaluate(() => window.submissions), []);
+          await page.evaluate(() => {
+            window.failPolicy = false;
+          });
+        }
+      );
+      await t.test(
         "declining Autopilot keeps Allow reads; Autopilot then covers writes",
         async () => {
           await reset();
