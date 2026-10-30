@@ -525,7 +525,7 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
   const rail = page.getByRole("tablist", { name: "Workspace sections" });
   const railBox = await rail.boundingBox();
   const tabs = rail.getByRole("tab");
-  assert.equal(await tabs.count(), 5, `${context}: all five tabs must render`);
+  assert.equal(await tabs.count(), 6, `${context}: all six tabs must render`);
   const tabBoxes = [];
   for (let index = 0; index < (await tabs.count()); index++) {
     const tab = tabs.nth(index);

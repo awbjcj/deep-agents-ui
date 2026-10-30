@@ -182,8 +182,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         <div className="mx-auto w-full max-w-[1120px]">
           <NotificationBanner />
         </div>
+        {/* use-stick-to-bottom owns the scroll position. Browser scroll
+            anchoring can nudge scrollTop up a pixel on re-render, which the
+            hook reads as the user scrolling away, so following stops. */}
         <div
-          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none]"
           aria-label="Conversation"
           ref={scrollRef}
           onWheel={(event) => {

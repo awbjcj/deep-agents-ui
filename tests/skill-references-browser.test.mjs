@@ -105,6 +105,8 @@ function fixture(extraEntries = []) {
           tasks: [],
           next: [],
         });
+      if (path.includes("/runs") && route.request().method() === "GET")
+        return json(route, []);
       if (path.includes("/runs")) {
         const body = route.request().postDataJSON();
         requests.push(body);

@@ -2041,7 +2041,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
       }
     );
     await t.test(
-      "five tabs scroll with manual keyboard activation at 320px",
+      "six tabs scroll with manual keyboard activation at 320px",
       async () => {
         const policy = skillsFixture();
         const { page, context, pageErrors } = await authenticatedPage(
@@ -2075,6 +2075,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             "Tools",
             "Skills",
             "Tokens",
+            "Bots",
             "Connections",
           ]);
           const skillsTab = rail.getByRole("tab", {

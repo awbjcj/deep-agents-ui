@@ -262,9 +262,14 @@ test(
       await page.getByTitle("/_artifacts/result.json").click();
       await page.waitForFunction(() => {
         const pre = document.querySelector('[role="dialog"] pre');
-        return (
-          pre && getComputedStyle(pre).backgroundColor === "rgb(40, 44, 52)"
-        );
+        if (!pre) return false;
+        // Code blocks use the active theme's shared code surface token.
+        const probe = document.createElement("div");
+        probe.style.backgroundColor = "var(--code-block-bg)";
+        document.body.append(probe);
+        const surface = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return getComputedStyle(pre).backgroundColor === surface;
       });
       assert.equal(
         await dialog
