@@ -17,7 +17,10 @@ test(
     const { chromium } = await import(
       process.env.AUTOPILOT_PLAYWRIGHT_MODULE ?? "playwright"
     );
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+      headless: true,
+      channel: process.env.AUTOPILOT_BROWSER_CHANNEL || undefined,
+    });
     const server = await staticServer();
     const fallback = makePolicyFixture();
     const submissions = [];
@@ -109,25 +112,31 @@ test(
         "developer"
       );
       await page.emulateMedia({ reducedMotion: "reduce" });
-      await page
-        .getByRole("button", { name: "Enable autopilot", exact: true })
-        .click();
+      const choose = async (label) => {
+        await page.getByRole("combobox", { name: /^Approval mode/ }).click();
+        await page
+          .getByRole("option", { name: new RegExp(`^${label}`) })
+          .click();
+      };
+      await choose("Autopilot");
       await page
         .getByRole("button", { name: "I understand, enable autopilot" })
         .click();
-      await page.getByRole("button", { name: "Turn off autopilot" }).waitFor();
-      assert.equal(
-        await page
-          .getByRole("button", { name: "Turn off autopilot" })
-          .isVisible(),
-        true
-      );
+      const autopilotOn = page.getByRole("combobox", {
+        name: "Approval mode: Autopilot",
+      });
+      await autopilotOn.waitFor();
+      assert.equal(await autopilotOn.isVisible(), true);
       await firstSubmission;
       assert.deepEqual(submissions[0].command.resume, {
         first: { decisions: [{ type: "approve" }, { type: "approve" }] },
         second: { decisions: [{ type: "approve" }] },
       });
       assert.equal(submissions[0].config.configurable.autopilot, true);
+      assert.equal(
+        submissions[0].config.configurable.approval_mode,
+        "autopilot"
+      );
       assert.equal(submissions[0].config.recursion_limit, 1000);
       assert.equal(submissions[0].multitask_strategy, "reject");
       assert.equal(submissions[0].checkpoint, undefined);
@@ -139,10 +148,10 @@ test(
       await page.screenshot({
         path: "docs/evidence/autopilot/chat-mobile.png",
       });
-      await page.getByRole("button", { name: "Turn off autopilot" }).click();
+      await choose("Interactive");
       assert.equal(
         await page
-          .getByRole("button", { name: "Enable autopilot", exact: true })
+          .getByRole("combobox", { name: "Approval mode: Interactive" })
           .evaluate((element) => element === document.activeElement),
         true
       );
@@ -160,6 +169,10 @@ test(
       ]);
       assert.equal(submissions.length, 2);
       assert.equal(submissions[1].config.configurable.autopilot, false);
+      assert.equal(
+        submissions[1].config.configurable.approval_mode,
+        "interactive"
+      );
       assert.deepEqual(submissions[1].command.resume, {
         third: { decisions: [{ type: "approve" }] },
       });

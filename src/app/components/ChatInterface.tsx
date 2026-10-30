@@ -126,7 +126,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       ensureThreadId,
       stopStream,
       resumeInterrupt,
-      autopilot,
+      approvals,
       createdThreadId,
       serverQueuedCount,
       messageQueue,
@@ -518,7 +518,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               evidenceRequest={evidenceRequest}
               onEvidenceConsumed={consumeEvidence}
               assistant={assistant}
-              autopilot={autopilot}
+              approvals={approvals}
               isThreadLoading={isThreadLoading}
               serverQueuedCount={serverQueuedCount}
               messageQueue={messageQueue}

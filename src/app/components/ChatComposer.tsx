@@ -18,12 +18,12 @@ import {
   CornerDownLeft,
   ListPlus,
 } from "lucide-react";
-import { AutopilotControl } from "./AutopilotControl";
+import { ApprovalModeControl } from "./ApprovalModeControl";
 import { ResponseJobs } from "./ResponseJobs";
 import { ComposerShortcuts } from "./ComposerShortcuts";
 import { MessageQueue } from "./MessageQueue";
 import type { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
-import type { useAutopilot } from "@/app/hooks/useAutopilot";
+import type { ApprovalModeState } from "@/app/hooks/useApprovalMode";
 import type { MessageDelivery } from "@/lib/message-delivery";
 import {
   Select,
@@ -73,7 +73,7 @@ interface ChatComposerProps {
   assistant: Assistant | null;
   isLoading: boolean;
   isThreadLoading?: boolean;
-  autopilot?: ReturnType<typeof useAutopilot>;
+  approvals?: ApprovalModeState;
   files: Record<string, string>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
   sendMessage: (
@@ -110,7 +110,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     onSkillAuthoringRequestConsumed,
     isLoading,
     isThreadLoading = false,
-    autopilot,
+    approvals,
     files,
     sourceImageAttachments,
     sendMessage,
@@ -640,16 +640,16 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   </div>
                 )}
               </div>
-              {autopilot && (
-                <AutopilotControl
+              {approvals && (
+                <ApprovalModeControl
                   key={`${accountId}:${threadId}:${assistant?.assistant_id}`}
-                  autopilot={autopilot}
+                  approvals={approvals}
                   ready={!!threadId && !!assistant && !isThreadLoading}
                   unavailableReason={
                     !assistant
-                      ? "Select an agent to enable autopilot."
+                      ? "Select an agent to choose an approval mode."
                       : !threadId
-                      ? "Start a conversation to enable autopilot."
+                      ? "Start a conversation to choose an approval mode."
                       : "Loading conversation…"
                   }
                 />

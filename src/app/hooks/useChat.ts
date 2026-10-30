@@ -19,7 +19,8 @@ import {
 } from "@/app/utils/interruptResume";
 import { useClient, useDeploymentUrl } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { useAutopilot } from "@/app/hooks/useAutopilot";
+import { useApprovalMode } from "@/app/hooks/useApprovalMode";
+import type { ApprovalMode, AutomaticApprovalMode } from "@/lib/approval-modes";
 import { useMessageRuns } from "@/app/hooks/useMessageRuns";
 import { useQueuedMessages } from "@/app/hooks/useQueuedMessages";
 import {
@@ -220,15 +221,25 @@ export function useChat({
 
   // Read the execution budget on submission, including checkpoint retries/resumes.
   // Do not enable __event_streaming_v2 until the deferred SDK migration lands.
+  // Every run carries the conversation's approval mode for server-side role
+  // checks and audit; only automatic Autopilot resumes set `autopilot`.
+  const approvalModeRef = useRef<ApprovalMode>("interactive");
   const buildConfig = useCallback(
-    (autopilot = false) => {
+    (automatic?: AutomaticApprovalMode) => {
       const config = buildRunConfig(
         activeAssistant?.config ?? {},
         browserRunLimit(username),
         username,
         analysisEngine
       );
-      return { ...config, configurable: { ...config.configurable, autopilot } };
+      return {
+        ...config,
+        configurable: {
+          ...config.configurable,
+          autopilot: automatic === "autopilot",
+          approval_mode: automatic ?? approvalModeRef.current,
+        },
+      };
     },
     [activeAssistant?.config, username, analysisEngine]
   );
@@ -321,7 +332,7 @@ export function useChat({
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
   // Follow-up runs belong to the conversation even while the selected agent
-  // hydrates or changes. Autopilot consent remains scoped to the agent below.
+  // hydrates or changes. The approval mode remains scoped to the agent below.
   const messageRunScope = JSON.stringify([deploymentUrl, userId, threadId]);
   const messageRuns = useMessageRuns({
     client,
@@ -953,13 +964,16 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
 
-  const submitAutopilot = useCallback(
-    async (resume: Record<string, ResumeInterruptValue>) => {
+  const submitAutomaticApproval = useCallback(
+    async (
+      resume: Record<string, ResumeInterruptValue>,
+      mode: AutomaticApprovalMode
+    ) => {
       await streamRef.current.submit(
         null,
         fromLatestCheckpoint({
           command: { resume },
-          config: buildConfig(true),
+          config: buildConfig(mode),
           streamSubgraphs: true,
           streamMode: STREAM_MODES,
           multitaskStrategy: "reject" as const,
@@ -969,7 +983,7 @@ export function useChat({
     },
     [buildConfig, onHistoryRevalidate]
   );
-  const autopilot = useAutopilot({
+  const approvals = useApprovalMode({
     connection: client,
     scope: JSON.stringify([
       user?.user_id,
@@ -989,9 +1003,10 @@ export function useChat({
       historyError ||
       messageQueue.items.some((item) => item.status === "unknown"),
     pending: stream.interrupts,
-    submit: submitAutopilot,
+    submit: submitAutomaticApproval,
   });
-  const disableAutopilot = autopilot.disable;
+  approvalModeRef.current = approvals.mode;
+  const { onManualResume, reset: resetApprovalMode } = approvals;
 
   const interrupt = selectPendingInterrupt(stream.interrupts);
   const selectedInterruptId = interrupt?.id;
@@ -1001,7 +1016,7 @@ export function useChat({
         getPending: () => streamRef.current.interrupts,
         selectedId: selectedInterruptId,
         submit: (resume) => {
-          disableAutopilot();
+          approvalModeRef.current = onManualResume();
           streamRef.current.submit(
             null,
             fromLatestCheckpoint({
@@ -1020,11 +1035,11 @@ export function useChat({
           );
         },
       }),
-    [selectedInterruptId, buildConfig, onHistoryRevalidate, disableAutopilot]
+    [selectedInterruptId, buildConfig, onHistoryRevalidate, onManualResume]
   );
 
   const stopStream = useCallback(async () => {
-    disableAutopilot();
+    resetApprovalMode();
     pauseMessageQueue();
     pendingSendRef.current?.(false);
     pendingSendRef.current = null;
@@ -1041,7 +1056,7 @@ export function useChat({
       if (target) clearStreamReconnectState(target);
       streamRef.current.stop();
     }
-  }, [disableAutopilot, stopMessageRuns, pauseMessageQueue]);
+  }, [resetApprovalMode, stopMessageRuns, pauseMessageQueue]);
 
   // Conversation Projection (see CONTEXT.md): the identity-stable transform
   // from the raw stream into render-ready messages. Tool-call reconciliation
@@ -1107,7 +1122,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
-      autopilot,
+      approvals,
     }),
     [
       threadId,
@@ -1140,7 +1155,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
-      autopilot,
+      approvals,
     ]
   );
 }
