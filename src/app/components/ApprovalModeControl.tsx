@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import {
   BookOpenCheck,
   Loader2,
@@ -21,6 +21,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -48,18 +49,26 @@ const ICONS: Record<ApprovalMode, LucideIcon> = {
   autopilot: ShieldAlert,
 };
 
+// Ghost trigger like the composer's other controls: the mode's tone lives in
+// the icon and label; background appears only on hover or while open.
 const TRIGGER_TONE: Record<ApprovalMode, string> = {
-  interactive: "border-transparent text-muted-foreground hover:text-foreground",
+  interactive:
+    "text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground dark:hover:bg-accent/60 dark:data-[state=open]:bg-accent/60",
   allow_read:
-    "border-primary/30 bg-primary/5 text-[var(--color-primary)] hover:bg-primary/10",
+    "text-[var(--color-primary)] hover:bg-primary/10 data-[state=open]:bg-primary/10",
   autopilot:
-    "border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10",
+    "text-destructive hover:bg-destructive/10 data-[state=open]:bg-destructive/10",
 };
 
-const ITEM_TONE: Record<ApprovalMode, string> = {
-  interactive: "bg-muted text-muted-foreground",
-  allow_read: "bg-primary/10 text-[var(--color-primary)]",
-  autopilot: "bg-destructive/10 text-destructive",
+// Rows have no resting fill; the current mode is marked by a filled icon tile
+// (a fill change, not colour alone) and Radix exposes it as aria-selected.
+const TILE_TONE: Record<ApprovalMode, string> = {
+  interactive:
+    "bg-muted text-muted-foreground group-[[data-highlighted][data-state=unchecked]]:text-foreground group-data-[state=checked]:bg-foreground group-data-[state=checked]:text-background",
+  allow_read:
+    "bg-primary/10 text-[var(--color-primary)] group-[[data-highlighted][data-state=unchecked]]:bg-primary/15 group-data-[state=checked]:bg-[var(--color-primary)] group-data-[state=checked]:text-white",
+  autopilot:
+    "bg-destructive/10 text-destructive group-[[data-highlighted][data-state=unchecked]]:bg-destructive/15 group-data-[state=checked]:bg-destructive group-data-[state=checked]:text-destructive-foreground",
 };
 
 /**
@@ -121,10 +130,10 @@ export function ApprovalModeControl({
                 : `${copy.label} · ${copy.summary}`)
             }
             className={cn(
-              "h-9 w-auto gap-1.5 rounded-lg border px-2 text-xs shadow-none focus:ring-offset-0 [&>svg]:h-3.5 [&>svg]:w-3.5",
+              "h-9 w-auto gap-1.5 rounded-lg border-transparent bg-transparent px-2 text-xs shadow-none transition-[color,background-color,transform] duration-150 focus:ring-offset-0 motion-reduce:transition-none [&>svg]:h-3.5 [&>svg]:w-3.5",
               PRESS_FEEDBACK,
               error && mode === "interactive"
-                ? "border-destructive/30 text-destructive"
+                ? "text-destructive hover:bg-destructive/10 data-[state=open]:bg-destructive/10"
                 : TRIGGER_TONE[mode]
             )}
           >
@@ -146,7 +155,7 @@ export function ApprovalModeControl({
           <SelectContent
             side="top"
             align="start"
-            className={cn("w-72 rounded-xl p-0.5", INSTANT)}
+            className={cn("w-72 rounded-xl", INSTANT)}
             onCloseAutoFocus={(event) => {
               if (!handingOff.current) return;
               handingOff.current = false;
@@ -157,38 +166,43 @@ export function ApprovalModeControl({
               const ItemIcon = ICONS[option];
               const locked = option === "autopilot" && !approvals.canAutopilot;
               return (
-                <SelectItem
-                  key={option}
-                  value={option}
-                  textValue={APPROVAL_MODE_COPY[option].label}
-                  disabled={
-                    locked ||
-                    (option !== "interactive" && option !== mode && !ready)
-                  }
-                  className="items-start gap-3 rounded-lg py-2 pl-8 pr-2 [&>span:first-child]:top-3"
-                >
-                  <span className="flex items-start gap-2.5">
-                    <span
-                      className={cn(
-                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                        ITEM_TONE[option]
-                      )}
-                      aria-hidden="true"
-                    >
-                      <ItemIcon className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-foreground">
-                        {APPROVAL_MODE_COPY[option].label}
+                <Fragment key={option}>
+                  {option === "autopilot" && (
+                    <SelectSeparator className="my-1 bg-border/70" />
+                  )}
+                  <SelectItem
+                    value={option}
+                    textValue={APPROVAL_MODE_COPY[option].label}
+                    indicator={false}
+                    disabled={
+                      locked ||
+                      (option !== "interactive" && option !== mode && !ready)
+                    }
+                    className="group items-start rounded-lg px-2 py-2 transition-colors duration-150 focus:bg-primary/5 focus:text-foreground motion-reduce:transition-none"
+                  >
+                    <span className="flex items-start gap-3">
+                      <span
+                        className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 motion-reduce:transition-none",
+                          TILE_TONE[option]
+                        )}
+                        aria-hidden="true"
+                      >
+                        <ItemIcon className="h-4 w-4" />
                       </span>
-                      <span className="block text-xs leading-5 text-muted-foreground">
-                        {locked
-                          ? "Available to administrators and developers."
-                          : APPROVAL_MODE_COPY[option].summary}
+                      <span className="min-w-0 pt-px">
+                        <span className="block text-sm font-medium leading-5 text-foreground">
+                          {APPROVAL_MODE_COPY[option].label}
+                        </span>
+                        <span className="block text-xs leading-[1.125rem] text-muted-foreground">
+                          {locked
+                            ? "Available to administrators and developers."
+                            : APPROVAL_MODE_COPY[option].summary}
+                        </span>
                       </span>
                     </span>
-                  </span>
-                </SelectItem>
+                  </SelectItem>
+                </Fragment>
               );
             })}
           </SelectContent>
