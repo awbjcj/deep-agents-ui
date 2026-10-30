@@ -9,7 +9,7 @@ export const bindingSchema = z.object({
   enabled: z.boolean(),
   worker_enabled: z.boolean(),
   needs_reconnect: z.boolean().default(false),
-  mode: z.enum(["interactive", "autopilot"]),
+  mode: z.enum(["interactive", "allow_read", "autopilot"]),
   last_error: z.string().nullable(),
   review: z.record(z.string(), z.unknown()).nullable(),
   last_scan_at: z.number().finite(),
@@ -97,10 +97,11 @@ export const teamsChatAPI = {
   },
   chats: (signal?: AbortSignal) =>
     request(chatPageSchema, "/chats", "GET", undefined, signal),
+  /** Teams self-chat starts in Allow reads: reads run automatically, writes ask. */
   connect: (chatId: string) =>
     request(bindingSchema, "/binding", "POST", {
       chat_id: chatId.trim(),
-      mode: "interactive",
+      mode: "allow_read",
     }),
   setEnabled: (enabled: boolean) =>
     request(bindingSchema, "/binding", "PATCH", { enabled }),

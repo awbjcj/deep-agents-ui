@@ -23,6 +23,12 @@ import {
 } from "./channel-meta";
 import { AppTile, StatusBadge } from "./StatusBadge";
 
+const MODE_LABELS: Record<TeamsBinding["mode"], string> = {
+  interactive: "Interactive · you review actions",
+  allow_read: "Allow reads · reads run automatically, writes ask",
+  autopilot: "Autopilot",
+};
+
 /** The account's one live connection, in any transport, and its controls. */
 export function ActiveConnection({
   binding,
@@ -192,6 +198,24 @@ export function ActiveConnection({
             Interactive to review them yourself.
           </Notice>
         )}
+        {binding.mode === "allow_read" && !binding.needs_reconnect && (
+          <Notice
+            title="Allow reads is selected"
+            action={
+              <Button
+                variant="outline"
+                className="min-h-11"
+                disabled={busy || locked}
+                onClick={onInteractive}
+              >
+                Use Interactive mode
+              </Button>
+            }
+          >
+            Searches and other reads run automatically. Writes, sends, and
+            builds still ask you.
+          </Notice>
+        )}
         {binding.review && !binding.needs_reconnect && (
           <Notice
             icon={MessageCircleQuestion}
@@ -237,11 +261,7 @@ export function ActiveConnection({
             </>
           )}
           <dt className="text-muted-foreground">Execution mode</dt>
-          <dd>
-            {binding.mode === "interactive"
-              ? "Interactive · you review actions"
-              : "Autopilot"}
-          </dd>
+          <dd>{MODE_LABELS[binding.mode]}</dd>
         </dl>
       </details>
     </section>

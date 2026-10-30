@@ -14,7 +14,7 @@ const binding = {
   last_scan_at: 100,
 };
 
-test("Teams API changes only the requested setting and connection starts Interactive", async (t) => {
+test("Teams API changes only the requested setting and connection starts in Allow reads", async (t) => {
   const calls = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
     calls.push({ url, ...options });
@@ -30,7 +30,7 @@ test("Teams API changes only the requested setting and connection starts Interac
       { enabled: false },
       { enabled: true },
       { mode: "interactive" },
-      { chat_id: "self-chat", mode: "interactive" },
+      { chat_id: "self-chat", mode: "allow_read" },
     ]
   );
   assert.deepEqual(
@@ -38,6 +38,13 @@ test("Teams API changes only the requested setting and connection starts Interac
     ["PATCH", "PATCH", "PATCH", "POST"]
   );
   assert.ok(calls.every((call) => call.url === "/api/teams-chat/binding"));
+});
+
+test("Teams binding status accepts the Allow reads mode", async (t) => {
+  t.mock.method(globalThis, "fetch", async () =>
+    Response.json({ ...binding, mode: "allow_read" })
+  );
+  assert.equal((await teamsChatAPI.status()).mode, "allow_read");
 });
 
 test("Only the explicit unconnected-account response opens setup", async (t) => {
