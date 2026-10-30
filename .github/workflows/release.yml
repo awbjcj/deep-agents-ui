@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "auto resumes backfill or releases new changes"
+        type: choice
+        options: [auto, release, backfill]
+        default: auto
+      dry_run:
+        description: "Only show the planned versions and releases"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  preview:
+    name: Release / Version preview
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Projected version
+        run: |
+          python scripts/versioning.py current --tip HEAD
+          python scripts/versioning.py plan --tip HEAD --mode single --format markdown >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Release / Tag and publish
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
+    env:
+      MODE: ${{ inputs.mode || 'auto' }}
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Configure tagger identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Plan (dry run)
+        if: inputs.dry_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/versioning.py plan --tip "$RELEASE_SHA" --mode "$MODE" --verbose
+          python scripts/versioning.py publish --tip "$RELEASE_SHA" --dry-run
+      - name: Create and push version tags
+        id: tag
+        if: ${{ !inputs.dry_run }}
+        run: >-
+          python scripts/versioning.py tag
+          --tip "$RELEASE_SHA"
+          --mode "$MODE"
+          --push
+          --github-output "$GITHUB_OUTPUT"
+      - name: Publish GitHub Releases
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.latest_tag }}
+        run: |
+          python scripts/versioning.py publish --tip "$RELEASE_SHA"
+          if [ -n "$TAG" ]; then echo "Version: $TAG" >> "$GITHUB_STEP_SUMMARY"; fi

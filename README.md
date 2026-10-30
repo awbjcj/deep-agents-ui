@@ -123,6 +123,10 @@ Key pieces:
 
 ## Related
 
+Version tags and GitHub Releases are generated automatically from stable
+`main` history after CI passes. See [automated versioning](docs/versioning.md)
+for version rules, historical labels, and the release cadence.
+
 - Backend & agent graphs: [`../vsda-deep-agent`](../vsda-deep-agent)
 - Upstream project: https://github.com/langchain-ai/deep-agents-ui
 - Deep Agents: https://github.com/langchain-ai/deepagents
