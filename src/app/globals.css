@@ -904,6 +904,63 @@ button {
   background: var(--aptiv-orange);
 }
 
+/* ─── Auth (login / forgot password) ───────────────────────────────── */
+/* The brand panel stays dark in both themes, like Aptiv's corporate hero. */
+.auth-brand-panel {
+  background-color: #0b1212;
+  background-image: radial-gradient(
+      ellipse 80% 60% at 0% 100%,
+      color-mix(in srgb, var(--aptiv-turquoise-dark) 55%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 100% 0%,
+      color-mix(in srgb, var(--aptiv-orange) 16%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(160deg, #10191a 0%, #0b1212 55%, #070b0b 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.auth-brand-grid {
+  background-image: linear-gradient(
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 90% 70% at 30% 40%,
+    #000 30%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 90% 70% at 30% 40%,
+    #000 30%,
+    transparent 100%
+  );
+}
+
+.auth-form-backdrop {
+  background-image: radial-gradient(
+    circle,
+    var(--color-border) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+  opacity: 0.45;
+  -webkit-mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    transparent 35%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    transparent 35%,
+    #000 100%
+  );
+}
+
 /* ─── Animations ────────────────────────────────────────────────────── */
 /* All transform/opacity keyframes are gated on `prefers-reduced-motion`
    so users who opt out of motion get instantaneous state changes instead
@@ -957,6 +1014,84 @@ button {
     from {
       opacity: 0;
       transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .auth-entry {
+    animation: authEntry 300ms var(--ease-out) both;
+  }
+
+  /* Re-keyed on login/register/verify switches; not applied on first paint. */
+  .auth-swap {
+    animation: authSwap 180ms var(--ease-out) both;
+  }
+
+  .auth-stagger > * {
+    animation: authEntry 360ms var(--ease-out) both;
+  }
+  .auth-stagger > :nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .auth-stagger > :nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .auth-stagger > :nth-child(4) {
+    animation-delay: 180ms;
+  }
+
+  .auth-icon-swap {
+    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out),
+      filter 150ms var(--ease-out);
+  }
+
+  @starting-style {
+    .auth-icon-swap {
+      opacity: 0;
+      transform: scale(0.8);
+      filter: blur(2px);
+    }
+  }
+
+  .auth-error {
+    transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+  }
+
+  @starting-style {
+    .auth-error {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  .auth-submit-arrow {
+    transition: transform 160ms var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .auth-submit:hover .auth-submit-arrow {
+      transform: translateX(2px);
+    }
+  }
+
+  @keyframes authEntry {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes authSwap {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
