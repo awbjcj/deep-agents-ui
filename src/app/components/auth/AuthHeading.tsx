@@ -1,49 +1,40 @@
 import type { ReactNode } from "react";
 
 interface AuthHeadingProps {
-  eyebrow: string;
   title: string;
   description: ReactNode;
-  step?: { current: number; total: number };
+  step?: { current: number; total: number; label: string };
 }
 
-export function AuthHeading({
-  eyebrow,
-  title,
-  description,
-  step,
-}: AuthHeadingProps) {
+export function AuthHeading({ title, description, step }: AuthHeadingProps) {
   return (
     <div className="mb-8">
-      <div className="flex items-center justify-between gap-4">
-        <span className="aptiv-eyebrow">{eyebrow}</span>
-        {step && (
+      {step && (
+        <div className="mb-6 flex items-center gap-3">
           <span
-            role="img"
-            aria-label={`Step ${step.current} of ${step.total}`}
             className="flex items-center gap-1.5"
+            aria-hidden="true"
           >
             {Array.from({ length: step.total }, (_, index) => (
               <span
                 key={index}
                 className={
                   index < step.current
-                    ? "h-1 w-6 rounded-full bg-[var(--aptiv-orange)] transition-colors duration-200"
+                    ? "h-1 w-6 rounded-full bg-[var(--auth-cta-bg)] transition-colors duration-200"
                     : "h-1 w-6 rounded-full bg-[var(--color-border)] transition-colors duration-200"
                 }
               />
             ))}
           </span>
-        )}
-      </div>
-      <h1 className="mt-2 font-[family-name:var(--font-family-heading)] text-[32px] font-bold leading-[1.05] tracking-normal text-primary">
+          <span className="text-xs text-secondary">
+            Step {step.current} of {step.total} · {step.label}
+          </span>
+        </div>
+      )}
+      <h1 className="mb-0 font-[family-name:var(--font-family-heading)] text-[32px] font-bold leading-[1.15] tracking-normal text-primary [text-wrap:balance]">
         {title}
       </h1>
-      <span
-        className="aptiv-rule"
-        aria-hidden="true"
-      />
-      <p className="mb-0 text-sm leading-relaxed text-secondary">
+      <p className="mb-0 mt-3 text-sm leading-normal text-secondary [text-wrap:pretty]">
         {description}
       </p>
     </div>

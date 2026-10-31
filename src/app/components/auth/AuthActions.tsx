@@ -16,7 +16,7 @@ export function AuthSubmitButton({
   return (
     <Button
       type="submit"
-      className="auth-submit mt-2 h-11 w-full cursor-pointer rounded-lg text-sm font-semibold active:scale-[0.98]"
+      className="auth-submit h-11 w-full cursor-pointer rounded-lg bg-[color:var(--auth-cta-bg)] text-sm font-bold text-[color:var(--auth-cta-fg)] shadow-none hover:bg-[color:var(--auth-cta-hover)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--auth-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)] active:scale-[0.98]"
       disabled={isSubmitting}
       aria-busy={isSubmitting}
     >
@@ -44,11 +44,8 @@ export function AuthSubmitButton({
 /** Divider-separated secondary action under an auth form (switch mode, go back). */
 export function AuthAltAction({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-8 border-t border-secondary pt-6 text-center text-sm">
+    <div className="mt-8 border-t border-secondary pt-6 text-sm text-secondary">
       {children}
     </div>
   );
 }
-
-export const authLinkClassName =
-  "inline-flex cursor-pointer items-center gap-1.5 rounded-sm font-semibold text-brand-primary transition-opacity duration-150 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
