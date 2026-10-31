@@ -445,6 +445,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     reviewConfig={reviewConfig}
                     onResume={onResumeInterrupt}
                     isLoading={isLoading}
+                    files={files}
                   />
                 );
               })}

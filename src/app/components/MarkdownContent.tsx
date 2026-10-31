@@ -12,6 +12,7 @@ import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 import { remarkStreamingEmphasis } from "@/app/utils/streamingMarkdown";
 import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
 import { fileContentToText } from "@/lib/uploads";
+import { isPageRelativeImage } from "@/lib/image-src";
 import { splitFrontmatter, type Frontmatter } from "@/lib/frontmatter";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
@@ -572,6 +573,15 @@ const COMPONENTS: Components = {
   img({ src, alt, node: _node, ...props }) {
     const safeSrc = safeImageSrc(src);
     if (!safeSrc) return null;
+    if (isPageRelativeImage(safeSrc))
+      return (
+        <span
+          title={safeSrc}
+          className="text-sm italic text-muted-foreground"
+        >
+          [Image: {alt || safeSrc.split("/").pop()}]
+        </span>
+      );
     return (
       <MarkdownImage
         {...props}
