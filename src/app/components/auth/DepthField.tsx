@@ -80,8 +80,8 @@ const COLLECTIONS = BRANCH_ANGLES.flatMap((angle, branch) =>
 const FIELD = (
   <svg
     className="depth-field__art"
-    viewBox="0 0 1000 1200"
-    preserveAspectRatio="xMaxYMid slice"
+    viewBox="0 0 1600 1200"
+    preserveAspectRatio="xMidYMid slice"
     aria-hidden="true"
     focusable="false"
   >

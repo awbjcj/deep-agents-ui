@@ -8,11 +8,15 @@ const { chromium } = await import(
   process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
 );
 const phase = process.env.DESIGN_PHASE ?? "after";
-const evidence = join("docs/evidence/background-design", phase);
+const evidence = join(
+  process.env.DESIGN_EVIDENCE_DIR ?? "docs/evidence/background-design",
+  phase
+);
 await mkdir(evidence, { recursive: true });
 const server = await staticServer();
 const browser = await chromium.launch({ headless: true });
 const results = [];
+let captures = 0;
 try {
   for (const theme of ["light", "dark"]) {
     const context = await browser.newContext({
@@ -22,7 +26,7 @@ try {
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.route("**/*", async (route) => {
+    const routeRequest = async (route) => {
       const url = new URL(route.request().url());
       if (url.pathname.startsWith("/api/"))
         return route.fulfill({
@@ -31,7 +35,8 @@ try {
         });
       if (url.origin === server.origin) return route.continue();
       return route.abort();
-    });
+    };
+    await page.route("**/*", routeRequest);
     for (const [width, height] of [
       [1440, 1000],
       [1920, 1080],
@@ -65,12 +70,58 @@ try {
         layout.scrollWidth <= layout.viewport + 1,
         "No horizontal page overflow"
       );
+      if (phase === "after") {
+        const coverage = await page
+          .locator(".depth-field__canvas")
+          .evaluate((canvas) => {
+            const field = canvas.getBoundingClientRect();
+            const shell = document
+              .querySelector(".auth-shell")
+              .getBoundingClientRect();
+            return field.width >= shell.width && field.height >= shell.height;
+          });
+        assert(coverage, "The pattern spans the entire page at every viewport");
+      }
       await page.screenshot({
         path: join(evidence, `login-${theme}-${width}x${height}.png`),
         fullPage: true,
         animations: "disabled",
       });
+      captures++;
       results.push({ theme, width, height, ...layout });
+      if (width === 1440 && height === 1000) {
+        const card = page.locator(".auth-card");
+        const resting = await card.boundingBox();
+        await page.locator(".auth-card").hover();
+        await page.waitForTimeout(200);
+        await page.screenshot({
+          path: join(evidence, `login-${theme}-hover.png`),
+          fullPage: true,
+          animations: "disabled",
+        });
+        captures++;
+        if (phase === "after") {
+          assert.deepEqual(
+            await card.boundingBox(),
+            resting,
+            "Hover does not move the form controls"
+          );
+          assert.equal(
+            await card.evaluate(
+              (element) => getComputedStyle(element, "::before").opacity
+            ),
+            "1"
+          );
+          await page.emulateMedia({ reducedMotion: "reduce" });
+          assert.deepEqual(
+            await card.boundingBox(),
+            resting,
+            "Reduced motion preserves form placement"
+          );
+          await page.emulateMedia({ reducedMotion: "no-preference" });
+        }
+        await page.mouse.move(0, 0);
+      }
     }
 
     if (phase === "after") {
@@ -150,6 +201,7 @@ try {
         fullPage: true,
         animations: "disabled",
       });
+      captures++;
       results.push({
         theme,
         decoration,
@@ -167,17 +219,46 @@ try {
       fullPage: true,
       animations: "disabled",
     });
+    captures++;
     assert.deepEqual(errors, []);
     await context.close();
+
+    const touchContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 1,
+      hasTouch: true,
+      colorScheme: theme,
+      reducedMotion: "reduce",
+    });
+    const touchPage = await touchContext.newPage();
+    await touchPage.route("**/*", routeRequest);
+    await touchPage.goto(`${server.origin}/chat/login.html`, {
+      waitUntil: "networkidle",
+    });
+    await touchPage.getByLabel("Username", { exact: true }).tap();
+    if (phase === "after") {
+      assert.equal(
+        await touchPage
+          .locator(".auth-card")
+          .evaluate((element) => getComputedStyle(element, "::before").opacity),
+        "0",
+        "Touch interaction does not leave a sticky hover shadow"
+      );
+    }
+    await touchPage.screenshot({
+      path: join(evidence, `login-${theme}-touch.png`),
+      fullPage: true,
+      animations: "disabled",
+    });
+    captures++;
+    await touchContext.close();
   }
   await writeFile(
     join(evidence, "checks.json"),
     JSON.stringify(results, null, 2) + "\n"
   );
   console.log(
-    `Captured ${
-      results.length + 2
-    } ${phase} views; no page errors or horizontal overflow.`
+    `Captured ${captures} ${phase} views; no page errors or horizontal overflow.`
   );
 } finally {
   await browser.close();
