@@ -18,6 +18,8 @@ import { CodeAnalysisJob } from "@/app/components/CodeAnalysisJob";
 
 import { parseToolEvidence } from "@/lib/tool-evidence";
 import { ToolEvidenceCards } from "./ToolEvidenceCards";
+import { parseLlmWikiPage } from "@/lib/llm-wiki-page";
+import { LlmWikiPagePreview } from "./LlmWikiPagePreview";
 import { parsePresentation } from "@/lib/ui-presentation";
 import { StructuredToolResult } from "./StructuredToolResult";
 import { RunStatus } from "./RunStatus";
@@ -126,6 +128,10 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       () => (status === "completed" ? parseToolEvidence(name, result) : []),
       [name, result, status]
     );
+    const wikiPage = useMemo(
+      () => (status === "completed" ? parseLlmWikiPage(name, result) : null),
+      [name, result, status]
+    );
     const presentation = useMemo(
       () => (status === "completed" ? parsePresentation(name, result) : null),
       [name, result, status]
@@ -223,6 +229,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     disabled={isLoading}
                   />
                 )}
+                {wikiPage && <LlmWikiPagePreview page={wikiPage} />}
                 {analysisJobId && <CodeAnalysisJob jobId={analysisJobId} />}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
@@ -268,7 +275,9 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 )}
                 {result != null && (
                   <div className="mt-4">
-                    <details open={!evidence.length && !presentation}>
+                    <details
+                      open={!evidence.length && !presentation && !wikiPage}
+                    >
                       <summary className="mb-1 cursor-pointer text-xs font-semibold text-muted-foreground">
                         Raw result
                       </summary>
