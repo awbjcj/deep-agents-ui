@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { parseToolEvidence, evidenceDraft } from "../src/lib/tool-evidence.ts";
-import { parseLlmWikiPage } from "../src/lib/llm-wiki-page.ts";
+import {
+  parseLlmWikiPage,
+  resolveWikiImagePath,
+} from "../src/lib/llm-wiki-page.ts";
+import { isPageRelativeImage } from "../src/lib/image-src.ts";
 
 const search =
   "LLM Wiki search for 'rope embedding' (project current, mode hybrid, 2 result(s)). Scores are only comparable within this response.\n\n1. RoPE embedding\n   path: wiki/concepts/rope.md\n   score: 0.0325, vector similarity 0.81, title match\n   snippet: Rotary position embedding encodes...\n   images: img/a.png\n\n2. wiki/notes/x.md\n   path: wiki/notes/x.md\n   score: 0.0161";
@@ -65,13 +69,49 @@ test("LLM Wiki page reads expose Markdown and truncation", () => {
 test("LLM Wiki page reads drop the saved source-image summary", () => {
   const page = parseLlmWikiPage(
     "read_llm_wiki_page",
-    "LLM Wiki page wiki/sources/a.md (project p1)\n\n# A\n![d](../media/a/1.png)\n\n[Truncated at 20 characters; pass full_content=True for the complete page.]\n\nSource images: 1 saved, 1 skipped (external_origin=1).\n\nSaved source images (use these task file paths to inspect images when needed):\n- 1.png: </t/uploads/abc__1.png> (source: llm_wiki; item: wiki/sources/a.md; attachment: wiki/media/a/1.png; optimized image copy)"
+    "LLM Wiki page wiki/sources/a.md (project p1)\n\n# A\n![d](../media/a/1.png)\n\n[Truncated at 20 characters; pass full_content=True for the complete page.]\n\nSource images: 1 saved, 1 skipped (external_origin=1).\n\nSaved source images (use these task file paths to inspect images when needed):\n- 1.png: </_artifacts/u/t/uploads/abc__1.png> (source: llm_wiki; item: wiki/sources/a.md; attachment: wiki/media/a/1.png; optimized image copy)"
   );
-  assert.equal(page?.markdown, "# A\n![d](../media/a/1.png)");
+  assert.equal(
+    page?.markdown,
+    "# A\n![d](</_artifacts/u/t/uploads/abc__1.png>)"
+  );
   assert.equal(page?.truncatedAt, 20);
   const skippedOnly = parseLlmWikiPage(
     "read_llm_wiki_page",
     "LLM Wiki page wiki/a.md (project p1)\n\nBody\n\nSource images: 0 saved, 1 skipped (missing=1)."
   );
   assert.equal(skippedOnly?.markdown, "Body");
+});
+
+test("LLM Wiki page images link to saved copies and never to the app origin", () => {
+  const page = parseLlmWikiPage(
+    "read_llm_wiki_page",
+    'LLM Wiki page wiki/sources/deep.md (project p1)\n\n![one](../media/s/img-1.png)\n![two](media/s/img-2.png "t")\n![ext](https://x.test/a.png)\n\nSource images: 1 saved, 2 skipped (image_budget=1, external_origin=1).\n\nSaved source images (use these task file paths to inspect images when needed):\n- img-1.png: </_artifacts/u/t/uploads/k1__img-1.png> (source: llm_wiki; item: wiki/sources/deep.md; attachment: wiki/media/s/img-1.png; optimized image copy)'
+  );
+  assert.equal(
+    page?.markdown,
+    '![one](</_artifacts/u/t/uploads/k1__img-1.png>)\n![two](media/s/img-2.png "t")\n![ext](https://x.test/a.png)'
+  );
+  assert.equal(isPageRelativeImage("media/s/img-2.png"), true);
+  assert.equal(isPageRelativeImage("../media/s/img-1.png"), true);
+  assert.equal(isPageRelativeImage("./a.png"), true);
+  assert.equal(isPageRelativeImage("/_artifacts/u/t/uploads/k.png"), false);
+  assert.equal(isPageRelativeImage("https://x.test/a.png"), false);
+  assert.equal(isPageRelativeImage("data:image/png;base64,AA"), false);
+});
+
+test("wiki image paths resolve like the backend source-image resolver", () => {
+  const cases = [
+    ["wiki/sources/a.md", "../media/s/1.png", "wiki/media/s/1.png"],
+    ["wiki/a/b/c.md", "media/x.png", "wiki/media/x.png"],
+    ["wiki/a/b.md", "img/x.png", "wiki/a/img/x.png"],
+    ["wiki/a/b.md", "./img/x%20y.png", "wiki/a/img/x y.png"],
+    ["wiki/a.md", "/abs/wiki/media/z.png", "wiki/media/z.png"],
+    ["wiki/a.md", "raw/sources/r.png", "raw/sources/r.png"],
+    ["wiki/a.md", "../../etc/p.png", null],
+    ["wiki/a.md", "https://x.test/a.png", null],
+    ["wiki/a.md", "//x.test/a.png", null],
+  ];
+  for (const [page, url, expected] of cases)
+    assert.equal(resolveWikiImagePath(page, url), expected, `${page} ${url}`);
 });

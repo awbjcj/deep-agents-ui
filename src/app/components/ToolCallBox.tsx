@@ -34,6 +34,8 @@ interface ToolCallBoxProps {
   reviewConfig?: ReviewConfig;
   onResume?: (value: any) => void;
   isLoading?: boolean;
+  /** Conversation files, so saved source images render without a request. */
+  files?: Record<string, unknown>;
 }
 
 function codeAnalysisJobId(name: string, result: unknown): string | null {
@@ -71,6 +73,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     reviewConfig,
     onResume,
     isLoading,
+    files,
   }) => {
     const [isExpanded, setIsExpanded] = useState(() => !!actionRequest);
     const [pointerMotion, setPointerMotion] = useState(false);
@@ -229,7 +232,12 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     disabled={isLoading}
                   />
                 )}
-                {wikiPage && <LlmWikiPagePreview page={wikiPage} />}
+                {wikiPage && (
+                  <LlmWikiPagePreview
+                    page={wikiPage}
+                    files={files}
+                  />
+                )}
                 {analysisJobId && <CodeAnalysisJob jobId={analysisJobId} />}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">

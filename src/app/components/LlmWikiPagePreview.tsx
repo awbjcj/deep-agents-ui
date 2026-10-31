@@ -4,7 +4,13 @@ import { MarkdownContent } from "@/app/components/MarkdownContent";
 import type { LlmWikiPage } from "@/lib/llm-wiki-page";
 
 /** Render one LLM Wiki page read as authored Markdown in a bounded panel. */
-export function LlmWikiPagePreview({ page }: { page: LlmWikiPage }) {
+export function LlmWikiPagePreview({
+  page,
+  files,
+}: {
+  page: LlmWikiPage;
+  files?: Record<string, unknown>;
+}) {
   return (
     <section
       aria-label={`LLM Wiki page ${page.path}`}
@@ -22,6 +28,7 @@ export function LlmWikiPagePreview({ page }: { page: LlmWikiPage }) {
         <MarkdownContent
           content={page.markdown}
           mode="document"
+          files={files}
           className="text-sm leading-6"
         />
       </div>
