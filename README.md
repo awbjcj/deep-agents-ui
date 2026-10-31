@@ -83,7 +83,7 @@ App Router layout under `src/`:
 src/
   app/
     page.tsx                 Main chat experience
-    login/, forgot-password/ Auth screens
+    login/, forgot-password/ Auth screens (shared shell in components/auth/)
     components/              Chat UI, sidebars, dialogs, approvals
     hooks/                   useChat, useThreads, useTokenUsage, ...
     types/                   Shared TS types

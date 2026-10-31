@@ -1,28 +1,42 @@
 "use client";
 
-import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  AuthAltAction,
+  AuthSubmitButton,
+  authLinkClassName,
+} from "@/app/components/auth/AuthActions";
+import { AuthError, AuthField } from "@/app/components/auth/AuthField";
+import { AuthHeading } from "@/app/components/auth/AuthHeading";
+import { AuthShell } from "@/app/components/auth/AuthShell";
 import { useAuth } from "@/providers/AuthProvider";
-import { useTheme } from "@/providers/ThemeProvider";
 import { apiGetRegistrationPolicy } from "@/lib/auth";
 import { enterFreshAppAfterAuth } from "@/app/utils/navigationRecovery";
 import {
-  ALLOWED_EMAIL_ERROR_MESSAGE,
-  isAllowedRegistrationEmail,
-} from "@/lib/email";
-import { Loader2 } from "lucide-react";
+  MIN_PASSWORD_LENGTH,
+  validateLogin,
+  validateRegistration,
+  validateVerificationCode,
+} from "@/lib/auth-validation";
+import {
+  ArrowLeft,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  Ticket,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Mode = "login" | "register" | "verify";
 
 export default function LoginPage() {
   const { login, registerInit, registerVerify } = useAuth();
-  const { theme } = useTheme();
 
   const [mode, setMode] = useState<Mode>("login");
+  // Only crossfade after a user-initiated switch; first paint uses the shell entry.
+  const [hasSwitchedMode, setHasSwitchedMode] = useState(false);
+  const verificationInputRef = useRef<HTMLInputElement>(null);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,7 +50,6 @@ export default function LoginPage() {
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   const headline =
     mode === "register"
@@ -54,10 +67,6 @@ export default function LoginPage() {
       : "Sign in with the VSDA Deep Agent account you registered — not your Aptiv NetID.";
 
   useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-  }, []);
-
-  useEffect(() => {
     let active = true;
     apiGetRegistrationPolicy()
       .then((policy) => {
@@ -72,8 +81,13 @@ export default function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (mode === "verify") verificationInputRef.current?.focus();
+  }, [mode]);
+
   const switchMode = (next: Mode) => {
     setMode(next);
+    setHasSwitchedMode(true);
     setError("");
     setVerificationCode("");
     if (next === "login") {
@@ -91,8 +105,9 @@ export default function LoginPage() {
     setError("");
 
     if (mode === "login") {
-      if (!username.trim() || !password.trim()) {
-        setError("Username and password are required");
+      const loginError = validateLogin({ username, password });
+      if (loginError) {
+        setError(loginError);
         return;
       }
       setIsSubmitting(true);
@@ -109,24 +124,16 @@ export default function LoginPage() {
 
     if (mode === "register") {
       const normalizedEmail = email.trim().toLowerCase();
-      if (!username.trim() || !normalizedEmail || !password.trim()) {
-        setError("Username, Aptiv email, and password are required");
-        return;
-      }
-      if (!isAllowedRegistrationEmail(normalizedEmail)) {
-        setError(ALLOWED_EMAIL_ERROR_MESSAGE);
-        return;
-      }
-      if (password !== confirmPassword) {
-        setError("Passwords do not match");
-        return;
-      }
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters");
-        return;
-      }
-      if (requireInvitationCode && !invitationCode.trim()) {
-        setError("An invitation code is required to register");
+      const registrationError = validateRegistration({
+        username,
+        normalizedEmail,
+        password,
+        confirmPassword,
+        invitationCode,
+        requireInvitationCode,
+      });
+      if (registrationError) {
+        setError(registrationError);
         return;
       }
       setIsSubmitting(true);
@@ -151,8 +158,9 @@ export default function LoginPage() {
       return;
     }
 
-    if (!/^\d{6}$/.test(verificationCode.trim())) {
-      setError("Enter the 6-digit code from your email");
+    const codeError = validateVerificationCode(verificationCode);
+    if (codeError) {
+      setError(codeError);
       return;
     }
     setIsSubmitting(true);
@@ -170,286 +178,194 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden"
-      style={{ background: "var(--color-background)" }}
-    >
+    <AuthShell title={headline}>
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, var(--color-border) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-          opacity: 0.55,
-        }}
-      />
-
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-8 py-6">
-        <img
-          src={
-            theme === "dark"
-              ? "/assets/aptiv_logo_white.svg"
-              : "/assets/aptiv_logo_color.svg"
-          }
-          alt="Aptiv"
-          className="h-6 w-auto"
-        />
-        <ThemeToggle />
-      </div>
-
-      <div
-        className="relative z-10 w-full max-w-[440px] rounded-lg border p-10"
-        style={{
-          background: "var(--color-surface)",
-          borderColor: "var(--color-border)",
-          boxShadow:
-            "0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent), 0 28px 64px rgba(0, 0, 0, 0.14)",
-        }}
+        key={mode}
+        className={hasSwitchedMode ? "auth-swap" : undefined}
       >
-        <div className="mb-8">
-          <span className="aptiv-eyebrow">VSDA Deep Agent</span>
-          <h1
-            className="mt-2 text-[32px] font-bold leading-[1.05] tracking-normal"
-            style={{
-              fontFamily: "var(--font-family-heading)",
-              color: "var(--color-text-primary)",
-              letterSpacing: "0",
-            }}
-          >
-            {headline}
-          </h1>
-          <span
-            className="aptiv-rule"
-            aria-hidden="true"
-          />
-          <p
-            className="mt-3 text-sm"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {supportingCopy}
-          </p>
-        </div>
+        <AuthHeading
+          eyebrow={mode === "login" ? "VSDA Deep Agent" : "Create account"}
+          title={headline}
+          description={supportingCopy}
+          step={
+            mode === "register"
+              ? { current: 1, total: 2 }
+              : mode === "verify"
+              ? { current: 2, total: 2 }
+              : undefined
+          }
+        />
 
         <form
           onSubmit={handleSubmit}
           className="space-y-4"
+          noValidate
         >
           {mode !== "verify" && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="username"
-                className="text-[13px] font-medium"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Username
-              </Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                disabled={isSubmitting}
-              />
-            </div>
+            <AuthField
+              id="username"
+              label="Username"
+              icon={UserRound}
+              placeholder="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={isSubmitting}
+            />
           )}
 
           {mode === "register" && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="email"
-                className="text-[13px] font-medium"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Aptiv email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="first.last@aptiv.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                disabled={isSubmitting}
-              />
-            </div>
+            <AuthField
+              id="email"
+              type="email"
+              label="Aptiv email"
+              icon={Mail}
+              placeholder="first.last@aptiv.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              disabled={isSubmitting}
+            />
           )}
 
           {mode !== "verify" && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="password"
-                className="text-[13px] font-medium"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={
-                  mode === "register" ? "new-password" : "current-password"
-                }
-                disabled={isSubmitting}
-              />
-            </div>
+            <AuthField
+              id="password"
+              type="password"
+              label="Password"
+              icon={LockKeyhole}
+              placeholder={
+                mode === "register"
+                  ? `At least ${MIN_PASSWORD_LENGTH} characters`
+                  : "Enter your password"
+              }
+              hint={
+                mode === "register"
+                  ? `Use at least ${MIN_PASSWORD_LENGTH} characters.`
+                  : undefined
+              }
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={
+                mode === "register" ? "new-password" : "current-password"
+              }
+              disabled={isSubmitting}
+            />
           )}
 
           {mode === "register" && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="confirmPassword"
-                className="text-[13px] font-medium"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Confirm Password
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                disabled={isSubmitting}
-              />
-            </div>
+            <AuthField
+              id="confirmPassword"
+              type="password"
+              label="Confirm Password"
+              icon={LockKeyhole}
+              placeholder="Confirm your password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              disabled={isSubmitting}
+            />
           )}
 
           {mode === "register" && requireInvitationCode && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="invitationCode"
-                className="text-[13px] font-medium"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                Invitation code
-              </Label>
-              <Input
-                id="invitationCode"
-                type="text"
-                placeholder="Enter your invitation code"
-                value={invitationCode}
-                onChange={(e) => setInvitationCode(e.target.value)}
-                autoComplete="off"
-                disabled={isSubmitting}
-              />
-            </div>
+            <AuthField
+              id="invitationCode"
+              label="Invitation code"
+              icon={Ticket}
+              placeholder="Enter your invitation code"
+              value={invitationCode}
+              onChange={(e) => setInvitationCode(e.target.value)}
+              autoComplete="off"
+              disabled={isSubmitting}
+            />
           )}
 
           {mode === "verify" && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="verificationCode"
-                className="text-[13px] font-medium"
-                style={{ color: "var(--color-text-primary)" }}
+            <AuthField
+              id="verificationCode"
+              label="Verification code"
+              icon={ShieldCheck}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              placeholder="123456"
+              value={verificationCode}
+              onChange={(e) =>
+                setVerificationCode(e.target.value.replace(/\D/g, ""))
+              }
+              autoComplete="one-time-code"
+              disabled={isSubmitting}
+              ref={verificationInputRef}
+              inputClassName="h-12 font-mono text-lg tracking-[0.4em] tabular-nums md:text-lg md:tracking-[0.4em]"
+            />
+          )}
+
+          {mode === "login" && (
+            <div className="-mt-1 flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="rounded-sm text-xs font-medium text-secondary transition-colors duration-150 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
-                Verification code
-              </Label>
-              <Input
-                id="verificationCode"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                placeholder="123456"
-                value={verificationCode}
-                onChange={(e) =>
-                  setVerificationCode(e.target.value.replace(/\D/g, ""))
-                }
-                autoComplete="one-time-code"
-                disabled={isSubmitting}
-              />
+                Forgot password?
+              </Link>
             </div>
           )}
 
-          {error && (
-            <div className="rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          <AuthError message={error} />
 
-          <Button
-            type="submit"
-            className="mt-2 h-11 w-full rounded-lg text-sm font-semibold"
-            disabled={isSubmitting}
+          <AuthSubmitButton
+            isSubmitting={isSubmitting}
+            pendingLabel={
+              mode === "login"
+                ? "Signing in..."
+                : mode === "register"
+                ? "Sending code..."
+                : "Verifying..."
+            }
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {mode === "login" && "Signing in..."}
-                {mode === "register" && "Sending code..."}
-                {mode === "verify" && "Verifying..."}
-              </>
-            ) : mode === "login" ? (
-              "Sign in"
-            ) : mode === "register" ? (
-              "Send Verification Code"
-            ) : (
-              "Verify and Create Account"
-            )}
-          </Button>
+            {mode === "login"
+              ? "Sign in"
+              : mode === "register"
+              ? "Send Verification Code"
+              : "Verify and Create Account"}
+          </AuthSubmitButton>
         </form>
+      </div>
 
-        {mode === "login" && (
-          <div className="mt-3 text-center text-sm">
-            <Link
-              href="/forgot-password"
-              className="font-medium transition-opacity hover:opacity-75"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
-              Forgot password?
-            </Link>
-          </div>
-        )}
-
-        <div className="mt-6 text-center text-sm">
-          {mode === "verify" ? (
+      <AuthAltAction>
+        {mode === "verify" ? (
+          <button
+            type="button"
+            onClick={() => switchMode("register")}
+            className={authLinkClassName}
+          >
+            <ArrowLeft
+              className="h-4 w-4"
+              aria-hidden="true"
+            />
+            Back to registration
+          </button>
+        ) : (
+          <>
+            <span className="text-secondary">
+              {mode === "register"
+                ? "Already have an account? "
+                : "Don't have an account? "}
+            </span>
             <button
               type="button"
-              onClick={() => switchMode("register")}
-              className="font-semibold transition-opacity hover:opacity-75"
-              style={{ color: "var(--color-primary)" }}
+              onClick={() =>
+                switchMode(mode === "register" ? "login" : "register")
+              }
+              className={authLinkClassName}
             >
-              Back to registration
+              {mode === "register" ? "Sign in" : "Register"}
             </button>
-          ) : (
-            <>
-              <span style={{ color: "var(--color-text-secondary)" }}>
-                {mode === "register"
-                  ? "Already have an account? "
-                  : "Don't have an account? "}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  switchMode(mode === "register" ? "login" : "register")
-                }
-                className="font-semibold transition-opacity hover:opacity-75"
-                style={{ color: "var(--color-primary)" }}
-              >
-                {mode === "register" ? "Sign in" : "Register"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div
-        className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between px-8 py-5 text-[11px] uppercase tracking-[0.16em]"
-        style={{ color: "var(--color-text-tertiary)" }}
-      >
-        <span>Precision. Innovation. Safety.</span>
-        <span>
-          {currentYear
-            ? `${currentYear} Aptiv - Confidential`
-            : "Aptiv - Confidential"}
-        </span>
-      </div>
-    </div>
+          </>
+        )}
+      </AuthAltAction>
+    </AuthShell>
   );
 }
