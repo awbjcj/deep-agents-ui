@@ -10,6 +10,10 @@ import React, {
   lazy,
 } from "react";
 import { useQueryState } from "nuqs";
+import {
+  canonicalAssistantId,
+  canonicalSystemAssistant,
+} from "@/lib/assistant-identity";
 import { useRouter } from "next/navigation";
 import {
   getConfig,
@@ -343,7 +347,7 @@ function HomePageInner({
               signal: controller.signal,
             })
           );
-          if (!cancelled) setAssistant(data);
+          if (!cancelled) setAssistant(canonicalSystemAssistant(data));
         } catch (error) {
           if (cancelled) return;
           console.error("Failed to fetch assistant:", error);
@@ -792,7 +796,9 @@ function HomePageContent() {
     if (savedConfig && (assistantId || savedConfig.assistantId)) {
       setConfig({
         ...savedConfig,
-        assistantId: assistantId || savedConfig.assistantId,
+        assistantId: canonicalAssistantId(
+          assistantId || savedConfig.assistantId
+        ),
       });
     } else if (getDeploymentUrl()) {
       setConfigDialogOpen(true);
@@ -802,8 +808,15 @@ function HomePageContent() {
   useEffect(() => {
     // nuqs URL writes can cancel an in-flight login redirect. Restore the
     // saved assistant only after authentication permits staying on this page.
-    if (!authLoading && user && config && !assistantId) {
-      setAssistantId(config.assistantId);
+    if (
+      !authLoading &&
+      user &&
+      config &&
+      (!assistantId || assistantId !== canonicalAssistantId(assistantId))
+    ) {
+      setAssistantId(
+        assistantId ? canonicalAssistantId(assistantId) : config.assistantId
+      );
     }
   }, [authLoading, user, config, assistantId, setAssistantId]);
 
