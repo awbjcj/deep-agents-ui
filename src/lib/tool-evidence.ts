@@ -1,4 +1,4 @@
-/** Display-only projection of the database tools' bounded evidence format. */
+/** Display-only projection of the retrieval tools' bounded evidence formats. */
 export interface ToolEvidence {
   id: string;
   title: string;
@@ -7,11 +7,43 @@ export interface ToolEvidence {
   url?: string;
 }
 
-/** Only turn complete, recognized database results into selectable evidence. */
+const LLM_WIKI_HEADER =
+  /^LLM Wiki search for .*? \(project ([^,\r\n]+), mode ([\w-]+), \d+ result\(s\)\)/;
+const LLM_WIKI_HIT =
+  /^(\d+)\. ([^\r\n]+)\r?\n {3}path: ([^\r\n]+)\r?\n {3}score: ([^\r\n]+)(?:\r?\n {3}snippet: ([^\r\n]*))?(?:\r?\n {3}images: [^\r\n]*)?$/gm;
+
+/** Parse the bounded `search_llm_wiki` format; wiki pages have no browser URL. */
+function parseLlmWikiEvidence(result: string): ToolEvidence[] {
+  const header = result.match(LLM_WIKI_HEADER);
+  if (!header) return [];
+  const [, project, mode] = header;
+  return [...result.matchAll(LLM_WIKI_HIT)]
+    .slice(0, 50)
+    .map((match, index) => ({
+      id: `${match[1]}-${index}`,
+      title: match[2].trim() || match[3],
+      excerpt: match[5]?.trim() || "(no snippet)",
+      metadata: [
+        "source: LLM Wiki",
+        `path: ${match[3]}`,
+        `project: ${project}`,
+        `mode: ${mode}`,
+        `score: ${match[4]}`,
+      ].join(" | "),
+    }));
+}
+
+/** Only turn complete, recognized retrieval results into selectable evidence. */
 export function parseToolEvidence(
   name: string,
   result: unknown
 ): ToolEvidence[] {
+  if (
+    name === "search_llm_wiki" &&
+    typeof result === "string" &&
+    result.length <= 200_000
+  )
+    return parseLlmWikiEvidence(result);
   if (
     !["search_database", "search_database_with_filter"].includes(name) ||
     typeof result !== "string" ||
