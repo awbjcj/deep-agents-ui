@@ -3,6 +3,7 @@ export const SOURCE_IMAGE_SOURCES = [
   "polarion",
   "confluence",
   "graph",
+  "llm_wiki",
 ] as const;
 
 export type SourceImageSource = (typeof SOURCE_IMAGE_SOURCES)[number];
@@ -13,6 +14,7 @@ export const SOURCE_IMAGE_LABELS: Record<SourceImageSource, string> = {
   polarion: "Polarion",
   confluence: "Confluence",
   graph: "Microsoft Graph",
+  llm_wiki: "LLM Wiki",
 };
 
 export interface SourceImagePolicy {
