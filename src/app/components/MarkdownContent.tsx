@@ -12,6 +12,7 @@ import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 import { remarkStreamingEmphasis } from "@/app/utils/streamingMarkdown";
 import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
 import { fileContentToText } from "@/lib/uploads";
+import { splitFrontmatter, type Frontmatter } from "@/lib/frontmatter";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
 import { ImagePreviewDialog } from "./ImagePreviewDialog";
@@ -719,6 +720,50 @@ const ARTIFACT_COMPONENTS: Components = {
   },
 };
 
+/** Document metadata shown as compact key/value rows instead of Markdown. */
+function FrontmatterPanel({ frontmatter }: { frontmatter: Frontmatter }) {
+  const frame =
+    "not-prose mb-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-5";
+  if ("raw" in frontmatter)
+    return (
+      <pre
+        aria-label="Document metadata"
+        className={cn(frame, "overflow-x-auto whitespace-pre font-mono")}
+      >
+        {frontmatter.raw}
+      </pre>
+    );
+  if (!frontmatter.entries.length) return null;
+  return (
+    <dl
+      aria-label="Document metadata"
+      className={cn(frame, "grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1")}
+    >
+      {frontmatter.entries.map(([key, value]) => (
+        <React.Fragment key={key}>
+          <dt className="font-medium text-muted-foreground">{key}</dt>
+          <dd className="min-w-0 break-words">
+            {Array.isArray(value) ? (
+              <span className="flex flex-wrap gap-1">
+                {value.map((item, index) => (
+                  <span
+                    key={index}
+                    className="rounded bg-background px-1.5 font-mono"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </span>
+            ) : (
+              value
+            )}
+          </dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
 export const MarkdownContent = React.memo<MarkdownContentProps>(
   ({
     content,
@@ -727,9 +772,11 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
     files,
     isStreaming = false,
   }) => {
-    const normalizedContent = useMemo(
+    const { frontmatter, body: normalizedContent } = useMemo(
       () =>
-        mode === "document" ? content : normalizeAssistantMarkdown(content),
+        mode === "document"
+          ? splitFrontmatter(content)
+          : { frontmatter: null, body: normalizeAssistantMarkdown(content) },
       [content, mode]
     );
 
@@ -742,6 +789,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
             {normalizedContent.length.toLocaleString()} characters).
           </div>
         )}
+        {frontmatter && <FrontmatterPanel frontmatter={frontmatter} />}
         <MarkdownFilesContext.Provider value={files}>
           <ReactMarkdown
             remarkPlugins={
