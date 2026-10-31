@@ -1,4 +1,5 @@
 import { readBrowserStorage, writeBrowserStorage } from "@/lib/browserStorage";
+import { canonicalAssistantId } from "@/lib/assistant-identity";
 
 export interface StandaloneConfig {
   deploymentUrl: string;
@@ -28,7 +29,7 @@ export function getConfig(): StandaloneConfig | null {
 
   return {
     deploymentUrl,
-    assistantId: parsed?.assistantId || "",
+    assistantId: canonicalAssistantId(parsed?.assistantId || ""),
     langsmithApiKey: getLangsmithApiKey() || undefined,
     analysisEngine:
       parsed?.analysisEngine === "deep_agent" ||
@@ -40,7 +41,10 @@ export function getConfig(): StandaloneConfig | null {
 
 export function saveAssistantId(assistantId: string): void {
   if (typeof window === "undefined") return;
-  writeBrowserStorage(CONFIG_KEY, JSON.stringify({ assistantId }));
+  writeBrowserStorage(
+    CONFIG_KEY,
+    JSON.stringify({ assistantId: canonicalAssistantId(assistantId) })
+  );
 }
 
 export function saveConfig(config: StandaloneConfig): void {
@@ -48,7 +52,7 @@ export function saveConfig(config: StandaloneConfig): void {
   writeBrowserStorage(
     CONFIG_KEY,
     JSON.stringify({
-      assistantId: config.assistantId,
+      assistantId: canonicalAssistantId(config.assistantId),
       ...(config.analysisEngine
         ? { analysisEngine: config.analysisEngine }
         : {}),

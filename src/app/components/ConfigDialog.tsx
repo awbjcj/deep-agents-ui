@@ -1,6 +1,11 @@
 "use client";
 
 import { DEFAULT_ASSISTANT_ID } from "@/lib/chat-links";
+import {
+  canonicalAssistantId,
+  canonicalSystemAssistant,
+  KNOWLEDGE_BASE_ASSISTANT_ID,
+} from "@/lib/assistant-identity";
 import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
@@ -117,16 +122,17 @@ const AGENT_INFO: Record<string, AgentInfo> = {
     ],
     note: "Read-only. Search snippets come from an index, so ask it to download the file when the exact wording matters.",
   },
-  "VSDA Knowledge Base Agent": {
+  [KNOWLEDGE_BASE_ASSISTANT_ID]: {
     description:
-      "Searches the knowledge base: the OpenSearch document library (the vsda_* shelves) and, when configured, the shared LLM Wiki. It finds things by meaning, not by exact ID.",
+      "Searches the OpenSearch document library by meaning, explains its available indices and fields, and searches or reads pages in the shared LLM Wiki when configured.",
     useCases: [
       "Find past tickets or work items that look like a new problem.",
       "Pull together internal documents on a concept, filtered by source, type or date.",
       "Spot recurring patterns across many documents.",
       "Look up curated notes and concepts in the shared LLM Wiki.",
+      "Read a specific LLM Wiki page, or list the available library indices and fields.",
     ],
-    note: "The library and wiki are snapshots. For exact IDs or current status, ask the Jira, Polarion or Confluence agent.",
+    note: "Library snapshots and curated wiki notes may be stale. For exact Jira or Polarion records or live Confluence pages, use the corresponding specialist. Wiki requests do not require an OpenSearch search.",
   },
   "VSDA Polarion Agent": {
     description:
@@ -188,7 +194,7 @@ export function ConfigDialog({
   initialConfig,
 }: ConfigDialogProps) {
   const [assistantId, setAssistantId] = useState(
-    initialConfig?.assistantId || DEFAULT_ASSISTANT_ID
+    canonicalAssistantId(initialConfig?.assistantId || DEFAULT_ASSISTANT_ID)
   );
   const [assistants, setAssistants] =
     useState<AssistantOption[]>(BUILT_IN_ASSISTANTS);
@@ -223,14 +229,27 @@ export function ConfigDialog({
         },
       });
       const results = await client.assistants.search({ limit: 100 });
-      const options: AssistantOption[] = results.map((a) => ({
-        id: a.assistant_id,
-        name: a.name || a.graph_id || a.assistant_id,
-        graphId: a.graph_id,
-      }));
+      const options: AssistantOption[] = Array.from(
+        new Map(
+          results.map(canonicalSystemAssistant).map((a) => [
+            a.assistant_id,
+            {
+              id: a.assistant_id,
+              name: a.name || a.graph_id || a.assistant_id,
+              graphId: a.graph_id,
+            },
+          ])
+        ).values()
+      );
       if (options.length > 0) {
         setAssistantId((current) => {
-          const resolved = options.find((item) => item.graphId === current);
+          const existing = results.find(
+            (item) => item.assistant_id === current
+          );
+          if (existing) return canonicalSystemAssistant(existing).assistant_id;
+          const resolved = options.find(
+            (item) => item.graphId === canonicalAssistantId(current)
+          );
           return resolved?.id ?? current;
         });
         setAssistants(options);
@@ -253,7 +272,11 @@ export function ConfigDialog({
     if (open) {
       fetchAssistants();
       if (initialConfig) {
-        setAssistantId(initialConfig.assistantId || DEFAULT_ASSISTANT_ID);
+        setAssistantId(
+          canonicalAssistantId(
+            initialConfig.assistantId || DEFAULT_ASSISTANT_ID
+          )
+        );
         setAnalysisEngine(initialConfig.analysisEngine ?? "__default__");
       }
     }
