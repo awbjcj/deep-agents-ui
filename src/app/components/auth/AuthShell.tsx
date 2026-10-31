@@ -2,6 +2,7 @@
 
 import { AuthBrandPanel } from "@/app/components/auth/AuthBrandPanel";
 import { AuthThemeToggle } from "@/app/components/auth/AuthThemeToggle";
+import { DepthField } from "@/app/components/auth/DepthField";
 import { useEffect, useState, type ReactNode } from "react";
 
 interface AuthShellProps {
@@ -20,6 +21,7 @@ export function AuthShell({ title, children }: AuthShellProps) {
   return (
     <div className="auth-shell">
       <title>{`${title} · VSDA Deep Agent`}</title>
+      <DepthField />
       <AuthBrandPanel />
 
       <div className="auth-panel">

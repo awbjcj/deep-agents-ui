@@ -908,8 +908,8 @@ button {
 /* Shares token names and values with the LLM Wiki sign-in
    (llm_wiki/docker/rootfs/opt/noVNC/login) so both VSDA tools feel like one
    family; scoped to the auth shell so they never leak into the app. The brand
-   motif differs: Aptiv's circle pattern plus a delegation flow that ends at a
-   single orange human-approval point. */
+   motif is a continuous depth field: branches gather into a shared focal
+   point, with clear space behind the copy and opaque form surfaces. */
 .auth-shell {
   --color-primary: #2f6868;
   --color-primary-hover: #255555;
@@ -934,9 +934,12 @@ button {
   --shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04),
     0 8px 24px rgba(10, 10, 10, 0.06);
 
-  /* Brand panel: pale Aptiv slate in light, Aptiv black in dark. */
-  --brand-bg: #edf2f1;
-  --brand-pattern: rgba(47, 104, 104, 0.2);
+  /* Depth field: mineral slate in light, deep green-black in dark. */
+  --depth-ground: linear-gradient(145deg, #f3f5f2, #e7eeea 65%, #dce8e2);
+  --depth-line: #648d83;
+  --depth-branch: #42766b;
+  --depth-node: #3a7768;
+  --depth-focus: #ca4c2d;
   --brand-divider: rgba(47, 104, 104, 0.18);
   --brand-text: #0a0a0a;
   --brand-text-secondary: #3c3b37;
@@ -946,15 +949,15 @@ button {
   --brand-icon: #2f6868;
   --brand-icon-bg: #edf2f1;
   --brand-icon-border: rgba(47, 104, 104, 0.28);
-  --brand-edge: rgba(47, 104, 104, 0.45);
-  --brand-node: #2f6868;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --duration-press: 160ms;
   --duration: 200ms;
-  --duration-enter: 420ms;
+  --duration-enter: 240ms;
 
+  position: relative;
+  isolation: isolate;
   display: grid;
   min-height: 100dvh;
   grid-template-columns: 1fr;
@@ -986,8 +989,11 @@ button {
   --focus-ring: 0 0 0 3px rgba(63, 160, 154, 0.45);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
 
-  --brand-bg: #000000;
-  --brand-pattern: rgba(183, 209, 207, 0.16);
+  --depth-ground: linear-gradient(145deg, #080f11, #102422 65%, #132c28);
+  --depth-line: #659e91;
+  --depth-branch: #8eb9aa;
+  --depth-node: #adccbb;
+  --depth-focus: #f28763;
   --brand-divider: rgba(255, 255, 255, 0.14);
   --brand-text: #ffffff;
   --brand-text-secondary: rgba(255, 255, 255, 0.72);
@@ -997,8 +1003,6 @@ button {
   --brand-icon: #b7d1cf;
   --brand-icon-bg: #000000;
   --brand-icon-border: rgba(183, 209, 207, 0.28);
-  --brand-edge: rgba(183, 209, 207, 0.4);
-  --brand-node: #b7d1cf;
 }
 
 @media (min-width: 1024px) {
@@ -1034,27 +1038,8 @@ button {
     padding: 2.5rem 3rem;
     overflow: hidden;
     color: var(--brand-text);
-    background-color: var(--brand-bg);
     border-right: 1px solid var(--color-border);
     isolation: isolate;
-  }
-
-  /* Aptiv pattern: equal circles fixed to a square grid, one colour, no
-     orange. Strongest where the delegation flow sits, clear behind the copy. */
-  .auth-brand::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -2;
-    background-image: radial-gradient(
-      circle,
-      var(--brand-pattern) 1.5px,
-      transparent 2px
-    );
-    background-size: 24px 24px;
-    background-position: 12px 12px;
-    -webkit-mask-image: linear-gradient(160deg, transparent 30%, #000 85%);
-    mask-image: linear-gradient(160deg, transparent 30%, #000 85%);
   }
 }
 
@@ -1064,65 +1049,82 @@ button {
   }
 }
 
-.auth-flow {
+/* One full-bleed decorative layer shares the shell's responsive grid.
+   Its geometry is still: depth comes from spacing, not perpetual motion. */
+.depth-field {
   position: absolute;
-  right: 0;
-  bottom: 2.5rem;
-  z-index: -1;
-  width: min(520px, 85%);
-  height: auto;
-  /* Work emerges from the left and resolves at the approval point. */
-  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0%, #000 30%);
-  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0%, #000 30%);
+  inset: 0;
+  display: grid;
+  grid-template-columns: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
 }
 
-/* Short viewports: the copy needs the room. */
-@media (max-height: 760px) {
-  .auth-flow {
-    display: none;
+.depth-field__canvas {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--depth-ground);
+}
+
+.depth-field__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* Let paths emerge at the edges; keep the copy's reading area quiet. */
+  mask-image: radial-gradient(
+    ellipse at 18% 43%,
+    transparent 12%,
+    rgba(0, 0, 0, 0.12) 35%,
+    #000 72%
+  );
+}
+
+.depth-field__contours,
+.depth-field__branches {
+  fill: none;
+  stroke-width: 1;
+}
+
+.depth-field__contours {
+  stroke: var(--depth-line);
+}
+
+.depth-field__branches {
+  stroke: var(--depth-branch);
+  opacity: 0.3;
+}
+
+.depth-field__collections {
+  fill: var(--depth-node);
+  color: var(--depth-node);
+  opacity: 0.7;
+}
+
+.depth-field__ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.45;
+}
+
+.depth-field__focus {
+  fill: var(--depth-focus);
+  color: var(--depth-focus);
+}
+
+/* The compact form keeps a hint of the same field around its opaque card. */
+@media (max-width: 1023px) {
+  .auth-shell .auth-panel {
+    background: transparent;
   }
-}
 
-.auth-flow__wires path {
-  fill: none;
-  stroke: var(--brand-edge);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-
-.auth-flow__step {
-  fill: var(--brand-node);
-  stroke: var(--brand-node);
-  stroke-width: 1.5;
-}
-
-.auth-flow__step--pending {
-  fill: var(--brand-bg);
-}
-
-.auth-flow__agent {
-  fill: var(--brand-node);
-}
-
-.auth-flow__agent-ring {
-  fill: var(--brand-bg);
-  stroke: var(--brand-node);
-  stroke-width: 1.5;
-}
-
-.auth-flow__approval {
-  fill: var(--aptiv-orange);
-}
-
-.auth-flow__await {
-  fill: none;
-  stroke: var(--aptiv-orange);
-  stroke-width: 1.5;
-  opacity: 0.4;
-  transform-box: fill-box;
-  transform-origin: center;
+  .depth-field__art {
+    opacity: 0.5;
+    mask-image: linear-gradient(#000, transparent 45%, #000);
+  }
 }
 
 .auth-brand__top,
@@ -1539,15 +1541,16 @@ button {
 .auth-button {
   display: inline-flex;
   width: 100%;
-  height: 2.75rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   margin-top: 0.25rem;
-  padding: 0 1rem;
+  padding: 0.625rem 1rem;
   font: inherit;
   font-size: 0.9375rem;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--color-on-primary);
   background: var(--color-primary);
   border: 1px solid transparent;
@@ -1764,40 +1767,6 @@ button {
   /* Re-keyed on login/register/verify switches; not applied on first paint. */
   .auth-swap {
     animation: authFade 180ms var(--ease-out) both;
-  }
-
-  /* The flow draws itself once on first paint; nothing loops. */
-  .auth-flow__wires path {
-    animation: authDraw 640ms var(--ease-out) both;
-  }
-
-  .auth-flow__step,
-  .auth-flow__agent,
-  .auth-flow__agent-ring {
-    animation: authFade 240ms var(--ease-out) both;
-  }
-
-  /* Awaiting approval: three slow breaths, then it rests. */
-  .auth-flow__await {
-    animation: authAwait 1.6s var(--ease-out) 700ms 3 both;
-  }
-
-  @keyframes authDraw {
-    from {
-      stroke-dashoffset: 1;
-    }
-  }
-
-  @keyframes authAwait {
-    0% {
-      transform: scale(0.75);
-      opacity: 0.6;
-    }
-    70%,
-    100% {
-      transform: scale(1.5);
-      opacity: 0;
-    }
   }
 }
 
