@@ -8,7 +8,7 @@ This repository is the Next.js frontend root.
 
 Markdown rendering goes through `MarkdownContent` and supports GitHub-flavored Markdown (via `remark-gfm`), LaTeX math (via `remark-math` + `rehype-katex`, with `katex.min.css` imported globally), and Prism-highlighted code blocks.
 
-File previews use `FileContentView`: Markdown files pass `mode="document"` to preserve authored syntax, while chat retains provider-specific normalization. Preview and Source are limited to 50,000 characters before parsing; Copy, Download, and editing use the complete file. Keep typography customizations under `theme.extend.typography` so the default prose styles remain available.
+File previews use `FileContentView`: Markdown files pass `mode="document"` to preserve authored syntax, while chat retains provider-specific normalization. Document mode lifts a leading YAML frontmatter block (`src/lib/frontmatter.ts`) into a metadata panel so CommonMark does not render it as a rule plus a setext heading. Preview and Source are limited to 50,000 characters before parsing; Copy, Download, and editing use the complete file. Keep typography customizations under `theme.extend.typography` so the default prose styles remain available.
 
 `FileContentView` offers Preview/Source modes for `.md` files. `src/app/utils/artifactPreview.ts` applies display-only transforms to agent artifacts: deepagents conversation-history files (`conversation_history/*.md`, LangChain XML message dumps) are rebuilt into a transcript with `read_file` line-number gutters stripped and tool output fenced, and legacy plain-text tool records offloaded as `/_artifacts/<user>/<thread>/<domain>/*.md` open in Source mode. Stored files are never rewritten; the transform runs on the (possibly bounded) preview only.
 
