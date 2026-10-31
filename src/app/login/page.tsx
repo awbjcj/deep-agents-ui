@@ -1,16 +1,12 @@
 "use client";
 
 import {
-  AuthAltAction,
+  AuthAccount,
   AuthSubmitButton,
 } from "@/app/components/auth/AuthActions";
-import { AuthError, AuthField } from "@/app/components/auth/AuthField";
+import { AuthField, AuthStatus } from "@/app/components/auth/AuthField";
 import { AuthHeading } from "@/app/components/auth/AuthHeading";
 import { AuthShell } from "@/app/components/auth/AuthShell";
-import {
-  authLabelLinkClassName,
-  authLinkClassName,
-} from "@/app/components/auth/authStyles";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiGetRegistrationPolicy } from "@/lib/auth";
 import { enterFreshAppAfterAuth } from "@/app/utils/navigationRecovery";
@@ -22,7 +18,7 @@ import {
   type AuthFieldError,
   type AuthFieldName,
 } from "@/lib/auth-validation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -216,20 +212,21 @@ export default function LoginPage() {
         className={hasSwitchedMode ? "auth-swap" : undefined}
       >
         <AuthHeading
+          eyebrow={mode === "login" ? "VSDA Deep Agent" : "Create Account"}
           title={headline}
           description={supportingCopy}
           step={
             mode === "register"
-              ? { current: 1, total: 2, label: "Account details" }
+              ? { current: 1, total: 2 }
               : mode === "verify"
-              ? { current: 2, total: 2, label: "Email verification" }
+              ? { current: 2, total: 2 }
               : undefined
           }
         />
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-5"
+          className="auth-form"
           noValidate
         >
           {mode !== "verify" && (
@@ -276,7 +273,7 @@ export default function LoginPage() {
                 mode === "login" ? (
                   <Link
                     href="/forgot-password"
-                    className={authLabelLinkClassName}
+                    className="auth-link auth-link--subtle"
                   >
                     Forgot password?
                   </Link>
@@ -350,11 +347,11 @@ export default function LoginPage() {
               autoComplete="one-time-code"
               spellCheck={false}
               disabled={isSubmitting}
-              inputClassName="h-12 font-mono text-lg tracking-[0.4em] tabular-nums md:text-lg md:tracking-[0.4em]"
+              inputClassName="auth-field__input--code"
             />
           )}
 
-          <AuthError message={error} />
+          <AuthStatus message={error} />
 
           <AuthSubmitButton
             isSubmitting={isSubmitting}
@@ -375,36 +372,51 @@ export default function LoginPage() {
         </form>
       </div>
 
-      <AuthAltAction>
-        {mode === "verify" ? (
+      {mode === "login" ? (
+        <AuthAccount
+          title="One account for VSDA tools"
+          text="Your VSDA Deep Agent account also signs you in to LLM Wiki. Register here, then use the same username and password everywhere."
+        >
           <button
             type="button"
             onClick={() => switchMode("register")}
-            className={authLinkClassName}
+            className="auth-link auth-link--strong"
+          >
+            Create an Account
+            <ArrowRight
+              className="auth-icon"
+              aria-hidden="true"
+            />
+          </button>
+        </AuthAccount>
+      ) : mode === "register" ? (
+        <AuthAccount>
+          <span>
+            Already have an account?{" "}
+            <button
+              type="button"
+              onClick={() => switchMode("login")}
+              className="auth-link auth-link--strong"
+            >
+              Sign In
+            </button>
+          </span>
+        </AuthAccount>
+      ) : (
+        <AuthAccount>
+          <button
+            type="button"
+            onClick={() => switchMode("register")}
+            className="auth-link auth-link--strong"
           >
             <ArrowLeft
-              className="h-4 w-4"
+              className="auth-icon"
               aria-hidden="true"
             />
             Back to Registration
           </button>
-        ) : (
-          <>
-            {mode === "register"
-              ? "Already have an account? "
-              : "New to VSDA Deep Agent? "}
-            <button
-              type="button"
-              onClick={() =>
-                switchMode(mode === "register" ? "login" : "register")
-              }
-              className={authLinkClassName}
-            >
-              {mode === "register" ? "Sign In" : "Create an Account"}
-            </button>
-          </>
-        )}
-      </AuthAltAction>
+        </AuthAccount>
+      )}
     </AuthShell>
   );
 }

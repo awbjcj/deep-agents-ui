@@ -905,75 +905,900 @@ button {
 }
 
 /* ─── Auth (login / forgot password) ───────────────────────────────── */
-/* Follows the Aptiv brand guidelines: black used liberally, Light Slate Blue
-   as a 25% tint, Aptiv Orange reserved for a single point and focus strokes,
-   one-colour dot patterns on a square grid, no gradients or drop shadows. */
-:root {
-  --auth-cta-bg: #000000;
-  --auth-cta-fg: #ffffff;
-  --auth-cta-hover: #2b2b2b;
-  --auth-panel-bg: color-mix(in srgb, var(--aptiv-slate) 25%, #ffffff);
-  --auth-panel-border: color-mix(in srgb, var(--aptiv-slate) 70%, #ffffff);
-  --auth-panel-card: #ffffff;
-  --auth-pattern-dot: color-mix(in srgb, var(--aptiv-slate) 90%, #4e7c88);
-  --auth-focus: var(--aptiv-orange);
-  --auth-error: #b91c1c;
-  --auth-warning: #92400e;
-}
+/* Shares token names and values with the LLM Wiki sign-in
+   (llm_wiki/docker/rootfs/opt/noVNC/login) so both VSDA tools feel like one
+   family; scoped to the auth shell so they never leak into the app. The brand
+   motif differs: Aptiv's circle pattern plus a delegation flow that ends at a
+   single orange human-approval point. */
+.auth-shell {
+  --color-primary: #2f6868;
+  --color-primary-hover: #255555;
+  --color-primary-active: #1c3c3c;
+  --color-on-primary: #ffffff;
+  --color-accent-text: #c93512;
+  --color-background: #f7f7f6;
+  --color-surface: #ffffff;
+  --color-border: #d6d4cf;
+  --color-border-strong: #a8a69f;
+  --color-text-primary: #0a0a0a;
+  --color-text-secondary: #3c3b37;
+  --color-text-tertiary: #6b6a65;
+  --color-error: #b91c1c;
+  --color-error-bg: #fdf2f2;
+  --color-error-border: #f5c2c2;
+  --color-info: #255555;
+  --color-info-bg: #eef5f4;
+  --color-info-border: #c7dcda;
+  --color-warning-text: #92400e;
+  --focus-ring: 0 0 0 3px rgba(47, 104, 104, 0.35);
+  --shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04),
+    0 8px 24px rgba(10, 10, 10, 0.06);
 
-.dark {
-  --auth-cta-bg: #ffffff;
-  --auth-cta-fg: #000000;
-  --auth-cta-hover: #e5e1da;
-  --auth-panel-bg: #000000;
-  --auth-panel-border: #262626;
-  --auth-panel-card: #111111;
-  --auth-pattern-dot: #3a3d3c;
-  --auth-error: #f87171;
-  --auth-warning: #fcd34d;
-}
+  /* Brand panel: pale Aptiv slate in light, Aptiv black in dark. */
+  --brand-bg: #edf2f1;
+  --brand-pattern: rgba(47, 104, 104, 0.2);
+  --brand-divider: rgba(47, 104, 104, 0.18);
+  --brand-text: #0a0a0a;
+  --brand-text-secondary: #3c3b37;
+  --brand-text-tertiary: #5c5b56;
+  --brand-eyebrow: #c93512;
+  --brand-highlight: #f84018;
+  --brand-icon: #2f6868;
+  --brand-icon-bg: #edf2f1;
+  --brand-icon-border: rgba(47, 104, 104, 0.28);
+  --brand-edge: rgba(47, 104, 104, 0.45);
+  --brand-node: #2f6868;
 
-.auth-page {
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --duration-press: 160ms;
+  --duration: 200ms;
+  --duration-enter: 420ms;
+
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: 1fr;
+  color: var(--color-text-primary);
+  background: var(--color-background);
   touch-action: manipulation;
 }
 
-/* Aptiv pattern: equal circles fixed to a square grid, rendered in one colour. */
-.auth-pattern {
-  background-image: radial-gradient(
-    circle at center,
-    var(--auth-pattern-dot) 1.5px,
-    transparent 2px
-  );
-  background-size: 24px 24px;
-  -webkit-mask-image: radial-gradient(
-    ellipse 75% 65% at 100% 0%,
-    #000 20%,
-    transparent 75%
-  );
-  mask-image: radial-gradient(
-    ellipse 75% 65% at 100% 0%,
-    #000 20%,
-    transparent 75%
-  );
+.dark .auth-shell {
+  --color-primary: #3fa09a;
+  --color-primary-hover: #4db4ae;
+  --color-primary-active: #5fc4bd;
+  --color-on-primary: #0a0a0a;
+  --color-accent-text: #f84018;
+  --color-background: #0a0a0a;
+  --color-surface: #171717;
+  --color-border: #333333;
+  --color-border-strong: #4a4a4a;
+  --color-text-primary: #f5f5f4;
+  --color-text-secondary: #c4c4bf;
+  --color-text-tertiary: #8d8d87;
+  --color-error: #fca5a5;
+  --color-error-bg: #2a1414;
+  --color-error-border: #5c2626;
+  --color-info: #9fd6d2;
+  --color-info-bg: #102221;
+  --color-info-border: #234543;
+  --color-warning-text: #fcd34d;
+  --focus-ring: 0 0 0 3px rgba(63, 160, 154, 0.45);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  --brand-bg: #000000;
+  --brand-pattern: rgba(183, 209, 207, 0.16);
+  --brand-divider: rgba(255, 255, 255, 0.14);
+  --brand-text: #ffffff;
+  --brand-text-secondary: rgba(255, 255, 255, 0.72);
+  --brand-text-tertiary: rgba(255, 255, 255, 0.55);
+  --brand-eyebrow: #f84018;
+  --brand-highlight: #f84018;
+  --brand-icon: #b7d1cf;
+  --brand-icon-bg: #000000;
+  --brand-icon-border: rgba(183, 209, 207, 0.28);
+  --brand-edge: rgba(183, 209, 207, 0.4);
+  --brand-node: #b7d1cf;
 }
 
-/* Aptiv "point": the single orange accent allowed per layout. */
-.aptiv-point {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  border-radius: 9999px;
+@media (min-width: 1024px) {
+  .auth-shell {
+    grid-template-columns: minmax(420px, 5fr) 7fr;
+  }
+}
+
+@media (min-width: 1440px) {
+  .auth-shell {
+    grid-template-columns: minmax(520px, 1fr) 1fr;
+  }
+}
+
+.auth-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+/* Brand panel */
+.auth-brand {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .auth-brand {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 3rem;
+    padding: 2.5rem 3rem;
+    overflow: hidden;
+    color: var(--brand-text);
+    background-color: var(--brand-bg);
+    border-right: 1px solid var(--color-border);
+    isolation: isolate;
+  }
+
+  /* Aptiv pattern: equal circles fixed to a square grid, one colour, no
+     orange. Strongest where the delegation flow sits, clear behind the copy. */
+  .auth-brand::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image: radial-gradient(
+      circle,
+      var(--brand-pattern) 1.5px,
+      transparent 2px
+    );
+    background-size: 24px 24px;
+    background-position: 12px 12px;
+    -webkit-mask-image: linear-gradient(160deg, transparent 30%, #000 85%);
+    mask-image: linear-gradient(160deg, transparent 30%, #000 85%);
+  }
+}
+
+@media (min-width: 1440px) {
+  .auth-brand {
+    padding: 3rem 4rem;
+  }
+}
+
+.auth-flow {
+  position: absolute;
+  right: 0;
+  bottom: 2.5rem;
+  z-index: -1;
+  width: min(520px, 85%);
+  height: auto;
+  /* Work emerges from the left and resolves at the approval point. */
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0%, #000 30%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0%, #000 30%);
+}
+
+/* Short viewports: the copy needs the room. */
+@media (max-height: 760px) {
+  .auth-flow {
+    display: none;
+  }
+}
+
+.auth-flow__wires path {
+  fill: none;
+  stroke: var(--brand-edge);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.auth-flow__step {
+  fill: var(--brand-node);
+  stroke: var(--brand-node);
+  stroke-width: 1.5;
+}
+
+.auth-flow__step--pending {
+  fill: var(--brand-bg);
+}
+
+.auth-flow__agent {
+  fill: var(--brand-node);
+}
+
+.auth-flow__agent-ring {
+  fill: var(--brand-bg);
+  stroke: var(--brand-node);
+  stroke-width: 1.5;
+}
+
+.auth-flow__approval {
+  fill: var(--aptiv-orange);
+}
+
+.auth-flow__await {
+  fill: none;
+  stroke: var(--aptiv-orange);
+  stroke-width: 1.5;
+  opacity: 0.4;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.auth-brand__top,
+.auth-brand__body,
+.auth-brand__footer {
+  position: relative;
+}
+
+.auth-brand__body {
+  max-width: 30rem;
+}
+
+.auth-brand__headline {
+  margin: 0;
+  font-size: clamp(2rem, 2.6vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.auth-brand__highlight {
+  color: var(--brand-highlight);
+}
+
+.auth-brand__lede {
+  margin: 1.25rem 0 0;
+  max-width: 26rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--brand-text-secondary);
+  text-wrap: pretty;
+}
+
+.auth-brand__features {
+  display: grid;
+  gap: 0.875rem;
+  margin: 2.25rem 0 0;
+  padding: 1.5rem 0 0;
+  list-style: none;
+  border-top: 1px solid var(--brand-divider);
+}
+
+.auth-brand__features li {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--brand-text);
+}
+
+.auth-brand__features .auth-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0.5rem;
+  color: var(--brand-icon);
+  stroke-width: 1.75;
+  background: var(--brand-icon-bg);
+  border: 1px solid var(--brand-icon-border);
+  border-radius: var(--radius-md);
+}
+
+.auth-brand__footer {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-text-tertiary);
+}
+
+/* Logos: theme is applied before hydration, so swap with CSS. */
+.auth-logo {
+  width: auto;
+}
+
+.auth-logo--dark,
+.dark .auth-logo--light {
+  display: none;
+}
+
+.dark .auth-logo--dark {
+  display: block;
+}
+
+/* Eyebrow and rule */
+.auth-eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-accent-text);
+}
+
+.auth-eyebrow--brand {
+  margin-bottom: 1.25rem;
+  color: var(--brand-eyebrow);
+}
+
+.auth-rule {
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin: 1rem 0 1.25rem;
   background: var(--aptiv-orange);
 }
 
-.auth-input:focus-visible {
-  border-color: var(--auth-focus);
-  box-shadow: 0 0 0 1px var(--auth-focus);
+.auth-steps {
+  display: flex;
+  gap: 0.375rem;
 }
 
-.auth-input[aria-invalid="true"] {
-  border-color: var(--auth-error);
+.auth-steps__bar {
+  width: 1.5rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: var(--color-border);
+  transition: background-color var(--duration) var(--ease-out);
+}
+
+.auth-steps__bar[data-active="true"] {
+  background: var(--aptiv-orange);
+}
+
+/* Form panel */
+.auth-panel {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 100dvh;
+  flex-direction: column;
+  padding: 1.25rem 1.25rem 1rem;
+  background-color: var(--color-background);
+}
+
+@media (min-width: 768px) {
+  .auth-panel {
+    padding: 2rem 2.5rem 1.5rem;
+  }
+}
+
+.auth-panel__top {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  /* The brand panel already shows the logo on wide screens. */
+  .auth-panel__logos {
+    display: none;
+  }
+
+  .auth-panel__top {
+    justify-content: flex-end;
+  }
+}
+
+.auth-theme-toggle {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease-out),
+    border-color var(--duration) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+.auth-theme-toggle .auth-icon {
+  grid-area: 1 / 1;
+  transition: opacity var(--duration) var(--ease-out),
+    transform var(--duration) var(--ease-out),
+    filter var(--duration) var(--ease-out);
+}
+
+.auth-theme-toggle .auth-icon--sun,
+.dark .auth-theme-toggle .auth-icon--moon {
+  opacity: 0;
+  transform: scale(0.6) rotate(-45deg);
+  filter: blur(2px);
+}
+
+.dark .auth-theme-toggle .auth-icon--sun {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.auth-panel__content {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 2rem 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+@media (min-width: 480px) {
+  .auth-card {
+    padding: 2.5rem;
+  }
+}
+
+.auth-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-card__title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.auth-card__lede {
+  margin: 0 0 1.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  text-wrap: pretty;
+}
+
+/* Status */
+.auth-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--duration) var(--ease-out),
+    transform var(--duration) var(--ease-out);
+}
+
+.auth-status .auth-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.0625rem;
+}
+
+.auth-status--error {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+}
+
+.auth-status--info {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+  border-color: var(--color-info-border);
+}
+
+@starting-style {
+  .auth-status {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* Form */
+.auth-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.auth-field__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-field__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.auth-field__control {
+  position: relative;
+}
+
+.auth-field__input {
+  width: 100%;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  font: inherit;
+  font-size: 1rem; /* 16px avoids iOS zoom on focus */
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out);
+}
+
+.auth-field__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.auth-field__input--with-action {
+  padding-right: 3rem;
+}
+
+.auth-field__input--code {
+  height: 3rem;
+  font-family: var(--font-family-mono);
+  font-size: 1.125rem;
+  letter-spacing: 0.4em;
+  font-variant-numeric: tabular-nums;
+}
+
+.auth-field__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.auth-field__input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.auth-field__input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25);
+}
+
+.auth-field__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auth-field__error,
+.auth-field__hint,
+.auth-field__caps {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.auth-field__error {
+  color: var(--color-error);
+  transition: opacity 150ms var(--ease-out);
+}
+
+@starting-style {
+  .auth-field__error {
+    opacity: 0;
+  }
+}
+
+.auth-field__hint {
+  color: var(--color-text-tertiary);
+}
+
+.auth-field__caps {
+  color: var(--color-warning-text);
+}
+
+.auth-field__action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+.auth-field__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auth-button {
+  display: inline-flex;
+  width: 100%;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  padding: 0 1rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+.auth-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Busy is progress, not a disabled control: keep full strength. */
+.auth-button[aria-busy="true"] {
+  cursor: progress;
+  opacity: 1;
+}
+
+.auth-button .auth-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* Links */
+.auth-link {
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color var(--duration) var(--ease-out);
+}
+
+.auth-link--subtle {
+  font-size: 0.8125rem;
+}
+
+.auth-link--strong {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.auth-link .auth-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Account / alternate action block */
+.auth-account {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.auth-account__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.auth-account__head .auth-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--color-accent-text);
+}
+
+.auth-account__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.auth-account__text {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--color-text-tertiary);
+}
+
+.auth-account__links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* Focus */
+.auth-shell :where(a, button, input):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.auth-shell .auth-field__input:focus-visible {
+  outline: none;
+}
+
+/* Footer */
+.auth-panel__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+.auth-panel__copyright {
+  font-variant-numeric: tabular-nums;
+}
+
+.auth-panel__tagline {
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 1024px) {
+  .auth-panel__tagline {
+    visibility: hidden; /* shown on the brand panel instead */
+  }
+}
+
+/* Hover only where a real pointer can hover; taps would leave it stuck. */
+@media (hover: hover) and (pointer: fine) {
+  .auth-theme-toggle:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-strong);
+  }
+
+  .auth-field__input:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .auth-field__input:focus:hover {
+    border-color: var(--color-primary);
+  }
+
+  .auth-field__input[aria-invalid="true"]:hover {
+    border-color: var(--color-error);
+  }
+
+  .auth-field__action:hover {
+    color: var(--color-text-primary);
+  }
+
+  .auth-button:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+  }
+
+  .auth-link:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+  }
+}
+
+.auth-button:active:not(:disabled) {
+  background: var(--color-primary-active);
+}
+
+@keyframes authRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes authFade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Press feedback: the control confirms it heard the click. */
+  .auth-button:active:not(:disabled),
+  .auth-theme-toggle:active,
+  .auth-field__action:active {
+    transform: scale(0.97);
+  }
+
+  /* First paint: the card and brand copy settle in, staggered. */
+  .auth-card,
+  .auth-brand__body > * {
+    animation: authRise var(--duration-enter) var(--ease-out) both;
+  }
+
+  .auth-brand__body > :nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .auth-brand__body > :nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .auth-brand__body > :nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .auth-card {
+    animation-delay: 60ms;
+  }
+
+  /* Re-keyed on login/register/verify switches; not applied on first paint. */
+  .auth-swap {
+    animation: authFade 180ms var(--ease-out) both;
+  }
+
+  /* The flow draws itself once on first paint; nothing loops. */
+  .auth-flow__wires path {
+    animation: authDraw 640ms var(--ease-out) both;
+  }
+
+  .auth-flow__step,
+  .auth-flow__agent,
+  .auth-flow__agent-ring {
+    animation: authFade 240ms var(--ease-out) both;
+  }
+
+  /* Awaiting approval: three slow breaths, then it rests. */
+  .auth-flow__await {
+    animation: authAwait 1.6s var(--ease-out) 700ms 3 both;
+  }
+
+  @keyframes authDraw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+
+  @keyframes authAwait {
+    0% {
+      transform: scale(0.75);
+      opacity: 0.6;
+    }
+    70%,
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
 }
 
 /* ─── Animations ────────────────────────────────────────────────────── */
@@ -1029,84 +1854,6 @@ button {
     from {
       opacity: 0;
       transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .auth-entry {
-    animation: authEntry 300ms var(--ease-out) both;
-  }
-
-  /* Re-keyed on login/register/verify switches; not applied on first paint. */
-  .auth-swap {
-    animation: authSwap 180ms var(--ease-out) both;
-  }
-
-  .auth-stagger > * {
-    animation: authEntry 360ms var(--ease-out) both;
-  }
-  .auth-stagger > :nth-child(2) {
-    animation-delay: 60ms;
-  }
-  .auth-stagger > :nth-child(3) {
-    animation-delay: 120ms;
-  }
-  .auth-stagger > :nth-child(4) {
-    animation-delay: 180ms;
-  }
-
-  .auth-icon-swap {
-    transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out),
-      filter 150ms var(--ease-out);
-  }
-
-  @starting-style {
-    .auth-icon-swap {
-      opacity: 0;
-      transform: scale(0.8);
-      filter: blur(2px);
-    }
-  }
-
-  .auth-error {
-    transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
-  }
-
-  @starting-style {
-    .auth-error {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-  }
-
-  .auth-submit-arrow {
-    transition: transform 160ms var(--ease-out);
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .auth-submit:hover .auth-submit-arrow {
-      transform: translateX(2px);
-    }
-  }
-
-  @keyframes authEntry {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes authSwap {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
     }
     to {
       opacity: 1;
