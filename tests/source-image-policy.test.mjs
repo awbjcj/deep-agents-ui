@@ -17,6 +17,8 @@ const embeddedPolicy = {
 test("Graph is available in the shared admin, connectivity, and file source catalog", () => {
   assert(SOURCE_IMAGE_SOURCES.includes("graph"));
   assert.equal(SOURCE_IMAGE_LABELS.graph, "Microsoft Graph");
+  assert(SOURCE_IMAGE_SOURCES.includes("llm_wiki"));
+  assert.equal(SOURCE_IMAGE_LABELS.llm_wiki, "LLM Wiki");
 });
 
 test("image and document switches preserve each other's permissions and scope", () => {

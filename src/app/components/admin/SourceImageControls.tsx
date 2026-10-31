@@ -35,6 +35,7 @@ const SOURCE_DESCRIPTIONS: Record<SourceImageSource, string> = {
   polarion: "Work item content",
   confluence: "Page content",
   graph: "Email and Teams attachments",
+  llm_wiki: "Images embedded in wiki pages",
 };
 
 function loadingRows(): PolicyRows {

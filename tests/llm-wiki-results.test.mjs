@@ -61,3 +61,17 @@ test("LLM Wiki page reads expose Markdown and truncation", () => {
   );
   assert.equal(parseLlmWikiPage("search_llm_wiki", "LLM Wiki page x"), null);
 });
+
+test("LLM Wiki page reads drop the saved source-image summary", () => {
+  const page = parseLlmWikiPage(
+    "read_llm_wiki_page",
+    "LLM Wiki page wiki/sources/a.md (project p1)\n\n# A\n![d](../media/a/1.png)\n\n[Truncated at 20 characters; pass full_content=True for the complete page.]\n\nSource images: 1 saved, 1 skipped (external_origin=1).\n\nSaved source images (use these task file paths to inspect images when needed):\n- 1.png: </t/uploads/abc__1.png> (source: llm_wiki; item: wiki/sources/a.md; attachment: wiki/media/a/1.png; optimized image copy)"
+  );
+  assert.equal(page?.markdown, "# A\n![d](../media/a/1.png)");
+  assert.equal(page?.truncatedAt, 20);
+  const skippedOnly = parseLlmWikiPage(
+    "read_llm_wiki_page",
+    "LLM Wiki page wiki/a.md (project p1)\n\nBody\n\nSource images: 0 saved, 1 skipped (missing=1)."
+  );
+  assert.equal(skippedOnly?.markdown, "Body");
+});
