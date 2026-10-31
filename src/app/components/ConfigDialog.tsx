@@ -86,7 +86,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Grade a VSDA triage ticket for completeness.",
       "Draft a ticket from a Polarion requirement. Creating, editing, linking and transitioning tickets is limited to administrators and needs a review.",
     ],
-    note: 'For "find tickets like this one", use the Database Agent instead.',
+    note: 'For "find tickets like this one", use the Knowledge Base Agent instead.',
   },
   "VSDA Teams Agent": {
     description:
@@ -117,15 +117,16 @@ const AGENT_INFO: Record<string, AgentInfo> = {
     ],
     note: "Read-only. Search snippets come from an index, so ask it to download the file when the exact wording matters.",
   },
-  "VSDA Database Agent": {
+  "VSDA Knowledge Base Agent": {
     description:
-      "Semantic search over the OpenSearch document library (the vsda_* shelves). It finds things by meaning, not by exact ID.",
+      "Searches the knowledge base: the OpenSearch document library (the vsda_* shelves) and, when configured, the shared LLM Wiki. It finds things by meaning, not by exact ID.",
     useCases: [
       "Find past tickets or work items that look like a new problem.",
       "Pull together internal documents on a concept, filtered by source, type or date.",
       "Spot recurring patterns across many documents.",
+      "Look up curated notes and concepts in the shared LLM Wiki.",
     ],
-    note: "The library is a snapshot. For exact IDs or current status, ask the Jira, Polarion or Confluence agent.",
+    note: "The library and wiki are snapshots. For exact IDs or current status, ask the Jira, Polarion or Confluence agent.",
   },
   "VSDA Polarion Agent": {
     description:
