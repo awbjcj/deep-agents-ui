@@ -1,9 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Info } from "lucide-react";
 import {
   useState,
   type ComponentProps,
@@ -58,26 +56,26 @@ export function AuthField({
       .join(" ") || undefined;
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <Label
+    <div className="auth-field">
+      <div className="auth-field__row">
+        <label
+          className="auth-field__label"
           htmlFor={id}
-          className="text-sm font-normal text-primary"
         >
           {label}
-        </Label>
+        </label>
         {labelAction}
       </div>
-      <div className="relative">
-        <Input
+      <div className="auth-field__control">
+        <input
           id={id}
           name={inputProps.name ?? id}
           type={isPassword && revealed ? "text" : type}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
-            "auth-input h-11 bg-[var(--color-surface)] px-3.5 text-base md:text-sm",
-            isPassword && "pr-11",
+            "auth-field__input",
+            isPassword && "auth-field__input--with-action",
             inputClassName
           )}
           onKeyDown={(event) => {
@@ -97,23 +95,21 @@ export function AuthField({
         {isPassword && (
           <button
             type="button"
+            className="auth-field__action"
             onClick={() => setRevealed((value) => !value)}
             aria-label={revealed ? "Hide password" : "Show password"}
             aria-pressed={revealed}
             aria-controls={id}
             disabled={inputProps.disabled}
-            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-tertiary transition-colors duration-150 hover:bg-tertiary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--auth-focus)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {revealed ? (
               <EyeOff
-                key="hide"
-                className="auth-icon-swap h-4 w-4"
+                className="auth-icon"
                 aria-hidden="true"
               />
             ) : (
               <Eye
-                key="show"
-                className="auth-icon-swap h-4 w-4"
+                className="auth-icon"
                 aria-hidden="true"
               />
             )}
@@ -123,19 +119,15 @@ export function AuthField({
       {error && (
         <p
           id={errorId}
-          className="auth-error mb-0 flex items-start gap-1.5 text-sm text-[color:var(--auth-error)]"
+          className="auth-field__error"
         >
-          <AlertCircle
-            className="mt-0.5 h-4 w-4 shrink-0"
-            aria-hidden="true"
-          />
-          <span>{error}</span>
+          {error}
         </p>
       )}
       {hint && !error && (
         <p
           id={hintId}
-          className="mb-0 text-xs text-tertiary"
+          className="auth-field__hint"
         >
           {hint}
         </p>
@@ -143,7 +135,7 @@ export function AuthField({
       {capsLock && (
         <p
           id={capsId}
-          className="mb-0 text-xs text-[color:var(--auth-warning)]"
+          className="auth-field__caps"
         >
           Caps Lock is on
         </p>
@@ -152,23 +144,25 @@ export function AuthField({
   );
 }
 
-interface AuthErrorProps {
-  message: string;
+interface AuthStatusProps {
+  message: ReactNode;
+  tone?: "error" | "info";
 }
 
-/** Form-level error for server responses that don't map to a single field. */
-export function AuthError({ message }: AuthErrorProps) {
+/** Form-level status: server errors (alert) or confirmations (status). */
+export function AuthStatus({ message, tone = "error" }: AuthStatusProps) {
   if (!message) return null;
+  const Icon = tone === "error" ? AlertCircle : Info;
   return (
     <div
-      role="alert"
-      className="auth-error flex items-start gap-2.5 rounded-lg border border-[color:var(--auth-error)] bg-[var(--color-surface)] px-3.5 py-3 text-sm text-[color:var(--auth-error)]"
+      role={tone === "error" ? "alert" : "status"}
+      className={`auth-status auth-status--${tone}`}
     >
-      <AlertCircle
-        className="mt-0.5 h-4 w-4 shrink-0"
+      <Icon
+        className="auth-icon"
         aria-hidden="true"
       />
-      <span>{message}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{message}</span>
     </div>
   );
 }

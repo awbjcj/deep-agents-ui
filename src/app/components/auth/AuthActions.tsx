@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { KeyRound, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface AuthSubmitButtonProps {
@@ -14,38 +13,45 @@ export function AuthSubmitButton({
   children,
 }: AuthSubmitButtonProps) {
   return (
-    <Button
+    <button
       type="submit"
-      className="auth-submit h-11 w-full cursor-pointer rounded-lg bg-[color:var(--auth-cta-bg)] text-sm font-bold text-[color:var(--auth-cta-fg)] shadow-none hover:bg-[color:var(--auth-cta-hover)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--auth-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)] active:scale-[0.98]"
+      className="auth-button"
       disabled={isSubmitting}
       aria-busy={isSubmitting}
     >
-      {isSubmitting ? (
-        <>
-          <Loader2
-            className="h-4 w-4 animate-spin"
-            aria-hidden="true"
-          />
-          {pendingLabel}
-        </>
-      ) : (
-        <>
-          {children}
-          <ArrowRight
-            className="auth-submit-arrow h-4 w-4"
-            aria-hidden="true"
-          />
-        </>
+      {isSubmitting && (
+        <Loader2
+          className="auth-icon animate-spin"
+          aria-hidden="true"
+        />
       )}
-    </Button>
+      {isSubmitting ? pendingLabel : children}
+    </button>
   );
 }
 
-/** Divider-separated secondary action under an auth form (switch mode, go back). */
-export function AuthAltAction({ children }: { children: ReactNode }) {
+interface AuthAccountProps {
+  /** Optional heading block, e.g. "One account for VSDA tools". */
+  title?: string;
+  text?: string;
+  children: ReactNode;
+}
+
+/** Divider-separated account block under the form (switch mode, go back). */
+export function AuthAccount({ title, text, children }: AuthAccountProps) {
   return (
-    <div className="mt-8 border-t border-secondary pt-6 text-sm text-secondary">
-      {children}
+    <div className="auth-account">
+      {title && (
+        <div className="auth-account__head">
+          <KeyRound
+            className="auth-icon"
+            aria-hidden="true"
+          />
+          <h2 className="auth-account__title">{title}</h2>
+        </div>
+      )}
+      {text && <p className="auth-account__text">{text}</p>}
+      <div className="auth-account__links">{children}</div>
     </div>
   );
 }

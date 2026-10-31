@@ -1,19 +1,18 @@
 "use client";
 
 import {
-  AuthAltAction,
+  AuthAccount,
   AuthSubmitButton,
 } from "@/app/components/auth/AuthActions";
-import { AuthError, AuthField } from "@/app/components/auth/AuthField";
+import { AuthField, AuthStatus } from "@/app/components/auth/AuthField";
 import { AuthHeading } from "@/app/components/auth/AuthHeading";
 import { AuthShell } from "@/app/components/auth/AuthShell";
-import { authLinkClassName } from "@/app/components/auth/authStyles";
 import { apiForgotPassword } from "@/lib/auth";
 import {
   ALLOWED_EMAIL_ERROR_MESSAGE,
   isAllowedRegistrationEmail,
 } from "@/lib/email";
-import { ArrowLeft, MailCheck } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -59,6 +58,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthShell title="Reset Your Password">
       <AuthHeading
+        eyebrow="Account Recovery"
         title="Reset Your Password"
         description={
           done
@@ -68,23 +68,19 @@ export default function ForgotPasswordPage() {
       />
 
       {done ? (
-        <div
-          role="status"
-          className="auth-error flex items-start gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3.5 text-sm text-primary"
-        >
-          <MailCheck
-            className="mt-0.5 h-5 w-5 shrink-0"
-            aria-hidden="true"
-          />
-          <span className="min-w-0 [overflow-wrap:anywhere]">
-            Check <strong className="font-bold">{email}</strong> for your
-            temporary password, then sign in and change it.
-          </span>
-        </div>
+        <AuthStatus
+          tone="info"
+          message={
+            <>
+              Check <strong>{email}</strong> for your temporary password, then
+              sign in and change it.
+            </>
+          }
+        />
       ) : (
         <form
           onSubmit={handleSubmit}
-          className="space-y-5"
+          className="auth-form"
           noValidate
         >
           <AuthField
@@ -103,7 +99,7 @@ export default function ForgotPasswordPage() {
             disabled={isSubmitting}
           />
 
-          <AuthError message={error} />
+          <AuthStatus message={error} />
 
           <AuthSubmitButton
             isSubmitting={isSubmitting}
@@ -114,18 +110,18 @@ export default function ForgotPasswordPage() {
         </form>
       )}
 
-      <AuthAltAction>
+      <AuthAccount>
         <Link
           href="/login"
-          className={authLinkClassName}
+          className="auth-link auth-link--strong"
         >
           <ArrowLeft
-            className="h-4 w-4"
+            className="auth-icon"
             aria-hidden="true"
           />
           Back to Sign In
         </Link>
-      </AuthAltAction>
+      </AuthAccount>
     </AuthShell>
   );
 }
