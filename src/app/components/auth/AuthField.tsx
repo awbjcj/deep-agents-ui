@@ -3,22 +3,31 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { AlertCircle, Eye, EyeOff, type LucideIcon } from "lucide-react";
-import { useState, type ComponentProps, type KeyboardEvent } from "react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import {
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 interface AuthFieldProps extends Omit<ComponentProps<"input">, "id"> {
   id: string;
   label: string;
-  icon: LucideIcon;
   hint?: string;
+  /** Inline validation message; marks the input invalid and describes it. */
+  error?: string;
+  /** Secondary control aligned with the label, e.g. "Forgot password?". */
+  labelAction?: ReactNode;
   inputClassName?: string;
 }
 
 export function AuthField({
   id,
   label,
-  icon: Icon,
   hint,
+  error,
+  labelAction,
   type = "text",
   inputClassName,
   onKeyDown,
@@ -37,31 +46,37 @@ export function AuthField({
   };
 
   const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
   const capsId = `${id}-caps`;
   const describedBy =
-    [hint ? hintId : null, capsLock ? capsId : null]
+    [
+      error ? errorId : null,
+      hint && !error ? hintId : null,
+      capsLock ? capsId : null,
+    ]
       .filter(Boolean)
       .join(" ") || undefined;
 
   return (
-    <div className="space-y-1.5">
-      <Label
-        htmlFor={id}
-        className="text-xs font-medium text-primary"
-      >
-        {label}
-      </Label>
-      <div className="group/field relative">
-        <Icon
-          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-tertiary transition-colors duration-150 group-focus-within/field:text-brand-primary"
-          aria-hidden="true"
-        />
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <Label
+          htmlFor={id}
+          className="text-sm font-normal text-primary"
+        >
+          {label}
+        </Label>
+        {labelAction}
+      </div>
+      <div className="relative">
         <Input
           id={id}
+          name={inputProps.name ?? id}
           type={isPassword && revealed ? "text" : type}
+          aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
-            "h-11 bg-[var(--color-surface)] pl-10 text-sm dark:bg-[var(--color-surface)]",
+            "auth-input h-11 bg-[var(--color-surface)] px-3.5 text-base md:text-sm",
             isPassword && "pr-11",
             inputClassName
           )}
@@ -87,7 +102,7 @@ export function AuthField({
             aria-pressed={revealed}
             aria-controls={id}
             disabled={inputProps.disabled}
-            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-tertiary transition-colors duration-150 hover:bg-tertiary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-tertiary transition-colors duration-150 hover:bg-tertiary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--auth-focus)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {revealed ? (
               <EyeOff
@@ -105,7 +120,19 @@ export function AuthField({
           </button>
         )}
       </div>
-      {hint && (
+      {error && (
+        <p
+          id={errorId}
+          className="auth-error mb-0 flex items-start gap-1.5 text-sm text-[color:var(--auth-error)]"
+        >
+          <AlertCircle
+            className="mt-0.5 h-4 w-4 shrink-0"
+            aria-hidden="true"
+          />
+          <span>{error}</span>
+        </p>
+      )}
+      {hint && !error && (
         <p
           id={hintId}
           className="mb-0 text-xs text-tertiary"
@@ -116,7 +143,7 @@ export function AuthField({
       {capsLock && (
         <p
           id={capsId}
-          className="mb-0 text-xs font-medium text-amber-800 dark:text-amber-300"
+          className="mb-0 text-xs text-[color:var(--auth-warning)]"
         >
           Caps Lock is on
         </p>
@@ -129,12 +156,13 @@ interface AuthErrorProps {
   message: string;
 }
 
+/** Form-level error for server responses that don't map to a single field. */
 export function AuthError({ message }: AuthErrorProps) {
   if (!message) return null;
   return (
     <div
       role="alert"
-      className="auth-error flex items-start gap-2.5 rounded-lg border border-destructive/25 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+      className="auth-error flex items-start gap-2.5 rounded-lg border border-[color:var(--auth-error)] bg-[var(--color-surface)] px-3.5 py-3 text-sm text-[color:var(--auth-error)]"
     >
       <AlertCircle
         className="mt-0.5 h-4 w-4 shrink-0"

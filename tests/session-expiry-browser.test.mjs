@@ -98,7 +98,7 @@ test(
           });
           await page.goto(`${origin}/chat/${scenario.query}`);
           await page
-            .getByRole("heading", { name: "Sign in", exact: true })
+            .getByRole("heading", { name: "Sign In", exact: true })
             .waitFor({ timeout: 8000 });
           assert.equal(new URL(page.url()).pathname, "/chat/login");
           assert.equal(

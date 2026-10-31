@@ -18,45 +18,57 @@ const registration = (overrides = {}) => ({
   ...overrides,
 });
 
-test("login requires a username and a non-blank password", () => {
+const fieldOf = (result) => result?.field ?? null;
+
+test("login points at the first empty field", () => {
   assert.equal(validateLogin({ username: "a", password: "b" }), null);
   assert.equal(
-    validateLogin({ username: "  ", password: "b" }),
-    "Username and password are required"
+    fieldOf(validateLogin({ username: "  ", password: "" })),
+    "username"
   );
   assert.equal(
-    validateLogin({ username: "a", password: "   " }),
-    "Username and password are required"
+    fieldOf(validateLogin({ username: "a", password: "   " })),
+    "password"
   );
 });
 
-test("registration reports the first failing rule in order", () => {
+test("registration reports the first failing field in visual order", () => {
   assert.equal(validateRegistration(registration()), null);
   assert.equal(
-    validateRegistration(registration({ normalizedEmail: "" })),
-    "Username, Aptiv email, and password are required"
+    fieldOf(validateRegistration(registration({ username: " " }))),
+    "username"
   );
   assert.equal(
+    fieldOf(validateRegistration(registration({ normalizedEmail: "" }))),
+    "email"
+  );
+  assert.deepEqual(
     validateRegistration(registration({ normalizedEmail: "x@gmail.com" })),
-    ALLOWED_EMAIL_ERROR_MESSAGE
-  );
-  assert.equal(
-    validateRegistration(registration({ confirmPassword: "different" })),
-    "Passwords do not match"
+    { field: "email", message: ALLOWED_EMAIL_ERROR_MESSAGE }
   );
   const short = "a".repeat(MIN_PASSWORD_LENGTH - 1);
   assert.equal(
-    validateRegistration(
-      registration({ password: short, confirmPassword: short })
+    fieldOf(
+      validateRegistration(
+        registration({ password: short, confirmPassword: short })
+      )
     ),
-    `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    "password"
+  );
+  assert.equal(
+    fieldOf(
+      validateRegistration(registration({ confirmPassword: "different" }))
+    ),
+    "confirmPassword"
   );
 });
 
 test("registration requires an invitation code only when policy demands it", () => {
   assert.equal(
-    validateRegistration(registration({ requireInvitationCode: true })),
-    "An invitation code is required to register"
+    fieldOf(
+      validateRegistration(registration({ requireInvitationCode: true }))
+    ),
+    "invitationCode"
   );
   assert.equal(
     validateRegistration(
@@ -70,9 +82,6 @@ test("verification codes must be exactly six digits", () => {
   assert.equal(validateVerificationCode("123456"), null);
   assert.equal(validateVerificationCode(" 123456 "), null);
   for (const bad of ["", "12345", "1234567", "12a456"]) {
-    assert.equal(
-      validateVerificationCode(bad),
-      "Enter the 6-digit code from your email"
-    );
+    assert.equal(fieldOf(validateVerificationCode(bad)), "verificationCode");
   }
 });

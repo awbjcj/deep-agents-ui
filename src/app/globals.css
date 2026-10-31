@@ -905,60 +905,75 @@ button {
 }
 
 /* ─── Auth (login / forgot password) ───────────────────────────────── */
-/* The brand panel stays dark in both themes, like Aptiv's corporate hero. */
-.auth-brand-panel {
-  background-color: #0b1212;
-  background-image: radial-gradient(
-      ellipse 80% 60% at 0% 100%,
-      color-mix(in srgb, var(--aptiv-turquoise-dark) 55%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 50% 40% at 100% 0%,
-      color-mix(in srgb, var(--aptiv-orange) 16%, transparent),
-      transparent 70%
-    ),
-    linear-gradient(160deg, #10191a 0%, #0b1212 55%, #070b0b 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+/* Follows the Aptiv brand guidelines: black used liberally, Light Slate Blue
+   as a 25% tint, Aptiv Orange reserved for a single point and focus strokes,
+   one-colour dot patterns on a square grid, no gradients or drop shadows. */
+:root {
+  --auth-cta-bg: #000000;
+  --auth-cta-fg: #ffffff;
+  --auth-cta-hover: #2b2b2b;
+  --auth-panel-bg: color-mix(in srgb, var(--aptiv-slate) 25%, #ffffff);
+  --auth-panel-border: color-mix(in srgb, var(--aptiv-slate) 70%, #ffffff);
+  --auth-panel-card: #ffffff;
+  --auth-pattern-dot: color-mix(in srgb, var(--aptiv-slate) 90%, #4e7c88);
+  --auth-focus: var(--aptiv-orange);
+  --auth-error: #b91c1c;
+  --auth-warning: #92400e;
 }
 
-.auth-brand-grid {
-  background-image: linear-gradient(
-      rgba(255, 255, 255, 0.045) 1px,
-      transparent 1px
-    ),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 48px 48px;
+.dark {
+  --auth-cta-bg: #ffffff;
+  --auth-cta-fg: #000000;
+  --auth-cta-hover: #e5e1da;
+  --auth-panel-bg: #000000;
+  --auth-panel-border: #262626;
+  --auth-panel-card: #111111;
+  --auth-pattern-dot: #3a3d3c;
+  --auth-error: #f87171;
+  --auth-warning: #fcd34d;
+}
+
+.auth-page {
+  touch-action: manipulation;
+}
+
+/* Aptiv pattern: equal circles fixed to a square grid, rendered in one colour. */
+.auth-pattern {
+  background-image: radial-gradient(
+    circle at center,
+    var(--auth-pattern-dot) 1.5px,
+    transparent 2px
+  );
+  background-size: 24px 24px;
   -webkit-mask-image: radial-gradient(
-    ellipse 90% 70% at 30% 40%,
-    #000 30%,
-    transparent 100%
+    ellipse 75% 65% at 100% 0%,
+    #000 20%,
+    transparent 75%
   );
   mask-image: radial-gradient(
-    ellipse 90% 70% at 30% 40%,
-    #000 30%,
-    transparent 100%
+    ellipse 75% 65% at 100% 0%,
+    #000 20%,
+    transparent 75%
   );
 }
 
-.auth-form-backdrop {
-  background-image: radial-gradient(
-    circle,
-    var(--color-border) 1px,
-    transparent 1px
-  );
-  background-size: 28px 28px;
-  opacity: 0.45;
-  -webkit-mask-image: radial-gradient(
-    ellipse 70% 60% at 50% 50%,
-    transparent 35%,
-    #000 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 70% 60% at 50% 50%,
-    transparent 35%,
-    #000 100%
-  );
+/* Aptiv "point": the single orange accent allowed per layout. */
+.aptiv-point {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--aptiv-orange);
+}
+
+.auth-input:focus-visible {
+  border-color: var(--auth-focus);
+  box-shadow: 0 0 0 1px var(--auth-focus);
+}
+
+.auth-input[aria-invalid="true"] {
+  border-color: var(--auth-error);
 }
 
 /* ─── Animations ────────────────────────────────────────────────────── */

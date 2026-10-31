@@ -3,11 +3,14 @@
 import {
   AuthAltAction,
   AuthSubmitButton,
-  authLinkClassName,
 } from "@/app/components/auth/AuthActions";
 import { AuthError, AuthField } from "@/app/components/auth/AuthField";
 import { AuthHeading } from "@/app/components/auth/AuthHeading";
 import { AuthShell } from "@/app/components/auth/AuthShell";
+import {
+  authLabelLinkClassName,
+  authLinkClassName,
+} from "@/app/components/auth/authStyles";
 import { useAuth } from "@/providers/AuthProvider";
 import { apiGetRegistrationPolicy } from "@/lib/auth";
 import { enterFreshAppAfterAuth } from "@/app/utils/navigationRecovery";
@@ -16,19 +19,28 @@ import {
   validateLogin,
   validateRegistration,
   validateVerificationCode,
+  type AuthFieldError,
+  type AuthFieldName,
 } from "@/lib/auth-validation";
-import {
-  ArrowLeft,
-  LockKeyhole,
-  Mail,
-  ShieldCheck,
-  Ticket,
-  UserRound,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Mode = "login" | "register" | "verify";
+
+const COPY: Record<Mode, { title: string; description: string }> = {
+  login: {
+    title: "Sign In",
+    description:
+      "Use your VSDA Deep Agent account. It is separate from your Aptiv NetID.",
+  },
+  register: {
+    title: "Create an Account",
+    description:
+      "Register with your Aptiv email. You’ll choose your own username and password — no NetID needed.",
+  },
+  verify: { title: "Verify Your Email", description: "" },
+};
 
 export default function LoginPage() {
   const { login, registerInit, registerVerify } = useAuth();
@@ -36,7 +48,6 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("login");
   // Only crossfade after a user-initiated switch; first paint uses the shell entry.
   const [hasSwitchedMode, setHasSwitchedMode] = useState(false);
-  const verificationInputRef = useRef<HTMLInputElement>(null);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,22 +60,29 @@ export default function LoginPage() {
   const [expiresInMinutes, setExpiresInMinutes] = useState<number | null>(null);
 
   const [error, setError] = useState("");
+  const [fieldError, setFieldError] = useState<AuthFieldError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const headline =
-    mode === "register"
-      ? "Register"
-      : mode === "verify"
-      ? "Verify email"
-      : "Sign in";
+  const headline = COPY[mode].title;
   const supportingCopy =
-    mode === "register"
-      ? "Register a new account with your Aptiv email. No Aptiv network login (NetID) required — you'll set your own username and password."
-      : mode === "verify"
+    mode === "verify"
       ? `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
           expiresInMinutes ?? 15
         } minutes.`
-      : "Sign in with the VSDA Deep Agent account you registered — not your Aptiv NetID.";
+      : COPY[mode].description;
+
+  const errorFor = (field: AuthFieldName) =>
+    fieldError?.field === field ? fieldError.message : undefined;
+
+  // Show the message beside the field and move focus there so it is announced.
+  const showFieldError = (next: AuthFieldError) => {
+    setFieldError(next);
+    document.getElementById(next.field)?.focus();
+  };
+
+  const clearFieldError = (field: AuthFieldName) => {
+    setFieldError((current) => (current?.field === field ? null : current));
+  };
 
   useEffect(() => {
     let active = true;
@@ -82,13 +100,14 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (mode === "verify") verificationInputRef.current?.focus();
+    if (mode === "verify") document.getElementById("verificationCode")?.focus();
   }, [mode]);
 
   const switchMode = (next: Mode) => {
     setMode(next);
     setHasSwitchedMode(true);
     setError("");
+    setFieldError(null);
     setVerificationCode("");
     if (next === "login") {
       setEmail("");
@@ -103,11 +122,12 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldError(null);
 
     if (mode === "login") {
       const loginError = validateLogin({ username, password });
       if (loginError) {
-        setError(loginError);
+        showFieldError(loginError);
         return;
       }
       setIsSubmitting(true);
@@ -115,7 +135,11 @@ export default function LoginPage() {
         await login(username.trim(), password);
         enterFreshAppAfterAuth();
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Sign in failed");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Sign-in failed. Check your username and password, then try again."
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -133,7 +157,7 @@ export default function LoginPage() {
         requireInvitationCode,
       });
       if (registrationError) {
-        setError(registrationError);
+        showFieldError(registrationError);
         return;
       }
       setIsSubmitting(true);
@@ -151,7 +175,11 @@ export default function LoginPage() {
         setExpiresInMinutes(result.expires_in_minutes);
         switchMode("verify");
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Registration failed");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Registration failed. Check your details and try again."
+        );
       } finally {
         setIsSubmitting(false);
       }
@@ -160,7 +188,7 @@ export default function LoginPage() {
 
     const codeError = validateVerificationCode(verificationCode);
     if (codeError) {
-      setError(codeError);
+      showFieldError(codeError);
       return;
     }
     setIsSubmitting(true);
@@ -171,7 +199,11 @@ export default function LoginPage() {
       });
       enterFreshAppAfterAuth();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Verification failed");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Verification failed. Check the code or go back to request a new one."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -184,31 +216,32 @@ export default function LoginPage() {
         className={hasSwitchedMode ? "auth-swap" : undefined}
       >
         <AuthHeading
-          eyebrow={mode === "login" ? "VSDA Deep Agent" : "Create account"}
           title={headline}
           description={supportingCopy}
           step={
             mode === "register"
-              ? { current: 1, total: 2 }
+              ? { current: 1, total: 2, label: "Account details" }
               : mode === "verify"
-              ? { current: 2, total: 2 }
+              ? { current: 2, total: 2, label: "Email verification" }
               : undefined
           }
         />
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4"
+          className="space-y-5"
           noValidate
         >
           {mode !== "verify" && (
             <AuthField
               id="username"
               label="Username"
-              icon={UserRound}
-              placeholder="Enter your username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                clearFieldError("username");
+              }}
+              error={errorFor("username")}
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
@@ -221,11 +254,15 @@ export default function LoginPage() {
               id="email"
               type="email"
               label="Aptiv email"
-              icon={Mail}
               placeholder="first.last@aptiv.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearFieldError("email");
+              }}
+              error={errorFor("email")}
               autoComplete="email"
+              spellCheck={false}
               disabled={isSubmitting}
             />
           )}
@@ -235,19 +272,27 @@ export default function LoginPage() {
               id="password"
               type="password"
               label="Password"
-              icon={LockKeyhole}
-              placeholder={
-                mode === "register"
-                  ? `At least ${MIN_PASSWORD_LENGTH} characters`
-                  : "Enter your password"
+              labelAction={
+                mode === "login" ? (
+                  <Link
+                    href="/forgot-password"
+                    className={authLabelLinkClassName}
+                  >
+                    Forgot password?
+                  </Link>
+                ) : undefined
               }
               hint={
                 mode === "register"
-                  ? `Use at least ${MIN_PASSWORD_LENGTH} characters.`
+                  ? `At least ${MIN_PASSWORD_LENGTH} characters.`
                   : undefined
               }
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                clearFieldError("password");
+              }}
+              error={errorFor("password")}
               autoComplete={
                 mode === "register" ? "new-password" : "current-password"
               }
@@ -259,11 +304,13 @@ export default function LoginPage() {
             <AuthField
               id="confirmPassword"
               type="password"
-              label="Confirm Password"
-              icon={LockKeyhole}
-              placeholder="Confirm your password"
+              label="Confirm password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                clearFieldError("confirmPassword");
+              }}
+              error={errorFor("confirmPassword")}
               autoComplete="new-password"
               disabled={isSubmitting}
             />
@@ -273,11 +320,15 @@ export default function LoginPage() {
             <AuthField
               id="invitationCode"
               label="Invitation code"
-              icon={Ticket}
-              placeholder="Enter your invitation code"
               value={invitationCode}
-              onChange={(e) => setInvitationCode(e.target.value)}
+              onChange={(e) => {
+                setInvitationCode(e.target.value);
+                clearFieldError("invitationCode");
+              }}
+              error={errorFor("invitationCode")}
               autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
               disabled={isSubmitting}
             />
           )}
@@ -286,31 +337,21 @@ export default function LoginPage() {
             <AuthField
               id="verificationCode"
               label="Verification code"
-              icon={ShieldCheck}
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={6}
               placeholder="123456"
               value={verificationCode}
-              onChange={(e) =>
-                setVerificationCode(e.target.value.replace(/\D/g, ""))
-              }
+              onChange={(e) => {
+                setVerificationCode(e.target.value.replace(/\D/g, ""));
+                clearFieldError("verificationCode");
+              }}
+              error={errorFor("verificationCode")}
               autoComplete="one-time-code"
+              spellCheck={false}
               disabled={isSubmitting}
-              ref={verificationInputRef}
               inputClassName="h-12 font-mono text-lg tracking-[0.4em] tabular-nums md:text-lg md:tracking-[0.4em]"
             />
-          )}
-
-          {mode === "login" && (
-            <div className="-mt-1 flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="rounded-sm text-xs font-medium text-secondary transition-colors duration-150 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                Forgot password?
-              </Link>
-            </div>
           )}
 
           <AuthError message={error} />
@@ -319,17 +360,17 @@ export default function LoginPage() {
             isSubmitting={isSubmitting}
             pendingLabel={
               mode === "login"
-                ? "Signing in..."
+                ? "Signing in…"
                 : mode === "register"
-                ? "Sending code..."
-                : "Verifying..."
+                ? "Sending code…"
+                : "Verifying…"
             }
           >
             {mode === "login"
-              ? "Sign in"
+              ? "Sign In"
               : mode === "register"
               ? "Send Verification Code"
-              : "Verify and Create Account"}
+              : "Verify & Create Account"}
           </AuthSubmitButton>
         </form>
       </div>
@@ -345,15 +386,13 @@ export default function LoginPage() {
               className="h-4 w-4"
               aria-hidden="true"
             />
-            Back to registration
+            Back to Registration
           </button>
         ) : (
           <>
-            <span className="text-secondary">
-              {mode === "register"
-                ? "Already have an account? "
-                : "Don't have an account? "}
-            </span>
+            {mode === "register"
+              ? "Already have an account? "
+              : "New to VSDA Deep Agent? "}
             <button
               type="button"
               onClick={() =>
@@ -361,7 +400,7 @@ export default function LoginPage() {
               }
               className={authLinkClassName}
             >
-              {mode === "register" ? "Sign in" : "Register"}
+              {mode === "register" ? "Sign In" : "Create an Account"}
             </button>
           </>
         )}
