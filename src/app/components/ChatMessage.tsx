@@ -426,7 +426,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             />
           )}
           {hasToolCalls && (
-            <div className="mt-4 flex w-full flex-col">
+            <div className="mt-4 flex w-full flex-col gap-1">
               {toolCalls.map((toolCall: ToolCall) => {
                 if (subAgents.some((agent) => agent.id === toolCall.id))
                   return null;
@@ -456,7 +456,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               {subAgents.map((subAgent) => (
                 <div
                   key={subAgent.id}
-                  className="flex w-full flex-col gap-2"
+                  className="flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card/80 shadow-xs"
                 >
                   <SubAgentIndicator
                     subAgent={subAgent}
@@ -465,7 +465,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   />
                   {isSubAgentExpanded(subAgent.id) && (
                     <div className="w-full max-w-full">
-                      <div className="rounded-xl border border-border bg-muted/30 p-4">
+                      <div className="border-t border-border/70 bg-muted/30 p-4">
                         <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                           Input
                         </h4>

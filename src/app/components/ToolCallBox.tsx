@@ -8,7 +8,7 @@ import React, {
   useRef,
   useId,
 } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
 import { cn } from "@/lib/utils";
@@ -149,8 +149,10 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     return (
       <div
         className={cn(
-          "w-full overflow-hidden rounded-lg border-none shadow-none outline-none transition-colors duration-200 hover:bg-accent",
-          isExpanded && hasContent && "bg-accent"
+          "w-full overflow-hidden rounded-lg border transition-colors duration-150 motion-reduce:transition-none",
+          isExpanded && hasContent
+            ? "border-border bg-card/80"
+            : "border-transparent hover:border-border/70 hover:bg-card/50"
         )}
       >
         <Button
@@ -159,7 +161,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           onClick={toggleExpanded}
           data-motion={pointerMotion ? "animate" : "instant"}
           className={cn(
-            "group/tool flex h-auto w-full items-center justify-between gap-3 whitespace-normal border-none px-3 py-2 text-left shadow-none outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100"
+            "group/tool flex h-auto w-full items-center justify-between gap-3 whitespace-normal rounded-lg border-none px-2.5 py-2 text-left shadow-none outline-none hover:bg-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100 dark:hover:bg-transparent"
           )}
           aria-expanded={isExpanded}
           aria-label={name}
@@ -167,8 +169,19 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           aria-controls={isExpanded && hasContent ? contentId : undefined}
           disabled={!hasContent}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="min-w-0 break-words text-[15px] font-medium text-foreground [overflow-wrap:anywhere]">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+                status === "error"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-primary/10 text-[var(--color-primary)]"
+              )}
+            >
+              <Wrench className="size-3.5" />
+            </span>
+            <span className="min-w-0 break-words font-mono text-[13px] font-medium text-foreground [overflow-wrap:anywhere]">
               {name}
             </span>
           </div>
@@ -191,7 +204,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
         {isExpanded && hasContent && (
           <div
             id={contentId}
-            className="px-4 pb-4"
+            className="border-t border-border/70 px-3.5 pb-4"
           >
             {presentation && (
               <div className="py-3">

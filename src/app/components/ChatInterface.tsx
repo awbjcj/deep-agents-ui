@@ -23,6 +23,27 @@ import { useReducedMotion } from "@/app/hooks/useReducedMotion";
 import { agentActivity } from "@/lib/agent-activity";
 import { AgentActivity } from "./AgentActivity";
 import { Button } from "@/components/ui/button";
+import { WelcomeState } from "./WelcomeState";
+
+/** Placeholder shaped like a conversation turn while saved history loads. */
+function ConversationSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      className="flex flex-col gap-5 py-6"
+    >
+      <span className="sr-only">Loading conversation</span>
+      <div className="ml-auto h-12 w-[min(60%,26rem)] rounded-2xl rounded-br-sm bg-muted motion-safe:animate-pulse" />
+      <div className="flex flex-col gap-2.5">
+        <div className="h-4 w-[72%] rounded bg-muted motion-safe:animate-pulse" />
+        <div className="h-4 w-[88%] rounded bg-muted motion-safe:animate-pulse" />
+        <div className="h-4 w-[54%] rounded bg-muted motion-safe:animate-pulse" />
+      </div>
+      <div className="h-10 w-full rounded-lg bg-muted/70 motion-safe:animate-pulse" />
+    </div>
+  );
+}
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
@@ -68,12 +89,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const [evidenceRequest, setEvidenceRequest] = useState<{
       text: string;
       threadId: string | null;
+      replace?: boolean;
     } | null>(null);
     const addEvidence = useCallback(
       (text: string) => setEvidenceRequest({ text, threadId }),
       [threadId]
     );
     const consumeEvidence = useCallback(() => setEvidenceRequest(null), []);
+    const insertStarterPrompt = useCallback(
+      (text: string) => setEvidenceRequest({ text, threadId, replace: true }),
+      [threadId]
+    );
     const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
     const tasksContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -137,6 +163,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       isLoading && !isThreadLoading,
       !!interrupt
     );
+    // Wait for the assistant so the welcome never flashes another agent's copy.
+    const showWelcome =
+      assistant !== null &&
+      !isThreadLoading &&
+      !historyError &&
+      !isLoading &&
+      !interrupt &&
+      processedMessages.length === 0;
 
     // Single-pass bucket instead of three .filter() calls per render.
     // ChatInterface re-renders on every stream token; the old form
@@ -196,7 +230,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
           }}
         >
           <div
-            className="mx-auto w-full max-w-[960px] px-4 pb-6 pt-4 sm:px-6"
+            className={cn(
+              "mx-auto w-full max-w-[960px] px-4 pb-6 pt-4 sm:px-6",
+              showWelcome && "flex min-h-full flex-col justify-center"
+            )}
             ref={contentRef}
           >
             {historyError && (
@@ -217,9 +254,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             {isThreadLoading &&
             processedMessages.length === 0 &&
             !historyError ? (
-              <div className="flex items-center justify-center p-8">
-                <p className="text-muted-foreground">Loading...</p>
-              </div>
+              <ConversationSkeleton />
+            ) : showWelcome ? (
+              <WelcomeState
+                key={assistant?.graph_id}
+                graphId={assistant?.graph_id}
+                onSelectPrompt={insertStarterPrompt}
+              />
             ) : (
               <>
                 {processedMessages.map((data, index) => {

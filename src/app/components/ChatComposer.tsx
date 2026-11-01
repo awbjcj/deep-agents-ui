@@ -72,7 +72,13 @@ interface ChatComposerProps {
   isStopping?: boolean;
   skillAuthoringRequest?: SkillAuthoringRequest | null;
   onSkillAuthoringRequestConsumed?: (id: string) => void;
-  evidenceRequest?: { text: string; threadId: string | null } | null;
+  /** Text to place in the composer. `replace` swaps out an untouched starter
+   * prompt instead of appending to it; typed drafts are always kept. */
+  evidenceRequest?: {
+    text: string;
+    threadId: string | null;
+    replace?: boolean;
+  } | null;
   onEvidenceConsumed?: () => void;
   assistant: Assistant | null;
   isLoading: boolean;
@@ -181,6 +187,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const focusComposer = useCallback(() => textareaRef.current?.focus(), []);
     const lastEvidenceRef = useRef<typeof evidenceRequest>(null);
+    const lastReplaceableRef = useRef<string | null>(null);
     const handledSkillRequests = useRef(new Set<string>());
     const [pendingSkillRequest, setPendingSkillRequest] =
       useState<SkillAuthoringRequest | null>(null);
@@ -226,11 +233,14 @@ export const ChatComposer = React.memo<ChatComposerProps>(
         return;
       lastEvidenceRef.current = evidenceRequest;
       if (evidenceRequest.threadId === threadId) {
-        setInput((previous) =>
-          previous
-            ? `${previous}\n\n${evidenceRequest.text}`
-            : evidenceRequest.text
-        );
+        const { text, replace } = evidenceRequest;
+        const replaceable = lastReplaceableRef.current;
+        setInput((previous) => {
+          const untouched = !previous || previous === replaceable;
+          if (replace && untouched) return text;
+          return previous ? `${previous}\n\n${text}` : text;
+        });
+        lastReplaceableRef.current = replace ? text : null;
         textareaRef.current?.focus();
       }
       onEvidenceConsumed?.();
