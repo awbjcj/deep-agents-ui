@@ -33,6 +33,10 @@ const PROSE_CLASS =
   "prose-strong:font-semibold prose-strong:text-current " +
   "prose-em:italic prose-em:text-current " +
   "prose-code:text-current prose-headings:text-current prose-p:text-current prose-li:text-current " +
+  // The typography plugin decorates inline code with literal backticks and
+  // blockquotes with curly quotes; both read as stray Markdown syntax here.
+  "prose-code:before:content-none prose-code:after:content-none " +
+  "[&_blockquote_p]:before:content-none [&_blockquote_p]:after:content-none " +
   // Headings: tight top margin for first child, generous rhythm otherwise.
   "[&_h1:first-child]:mt-0 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:font-semibold " +
   "[&_h2:first-child]:mt-0 [&_h2]:mb-4 [&_h2]:mt-6 [&_h2]:font-semibold " +
@@ -437,7 +441,7 @@ const COMPONENTS: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="border-primary/50 bg-secondary/40 my-4 border-l-2 py-2 pl-4 pr-3 italic text-foreground/85">
+      <blockquote className="my-4 rounded-r-md border-l-2 border-[hsl(var(--primary)/0.55)] bg-muted/60 py-2.5 pl-4 pr-3 font-normal not-italic text-foreground/85 [&_p]:my-0">
         {children}
       </blockquote>
     );
