@@ -1,0 +1,503 @@
+import {
+  canonicalAssistantId,
+  KNOWLEDGE_BASE_ASSISTANT_ID,
+} from "@/lib/assistant-identity";
+
+/** Icon names resolved to Lucide components by `WelcomeState`. */
+export type WelcomeIcon =
+  | "agents"
+  | "checklist"
+  | "ticket"
+  | "search"
+  | "history"
+  | "grade"
+  | "chat"
+  | "decision"
+  | "send"
+  | "card"
+  | "mail"
+  | "reply"
+  | "inbox"
+  | "file"
+  | "download"
+  | "library"
+  | "pattern"
+  | "wiki"
+  | "requirement"
+  | "testRun"
+  | "page"
+  | "pageTree"
+  | "build"
+  | "parameters"
+  | "code"
+  | "compare"
+  | "report";
+
+export interface StarterPrompt {
+  title: string;
+  /** Bracketed placeholders are left for the user to fill in before sending. */
+  prompt: string;
+  icon: WelcomeIcon;
+}
+
+export interface AgentWelcome {
+  /** Graph ID shown as the eyebrow, e.g. "VSDA Jira Agent". */
+  name: string;
+  icon: WelcomeIcon;
+  headline: string;
+  lede: string;
+  /** Accessible label for the chip list. */
+  chipsLabel: string;
+  chips: readonly string[];
+  prompts: readonly StarterPrompt[];
+}
+
+export const DEFAULT_WELCOME_AGENT = "VSDA Deep Agent";
+
+// Scope and wording follow the agent catalog in ConfigDialog and the backend
+// Subagent specs; keep the three in step when an agent's abilities change.
+const AGENT_WELCOME: Record<string, AgentWelcome> = {
+  [DEFAULT_WELCOME_AGENT]: {
+    name: DEFAULT_WELCOME_AGENT,
+    icon: "agents",
+    headline: "What should your agents work on?",
+    lede: "The supervisor plans the work and delegates each step to a specialist agent. Anything that changes data waits for your approval.",
+    chipsLabel: "Specialist agents",
+    chips: [
+      "Jira",
+      "Polarion",
+      "Confluence",
+      "Jenkins",
+      "Teams & email",
+      "SharePoint",
+      "Knowledge base",
+      "Code analysis",
+    ],
+    prompts: [
+      {
+        title: "Triage open Jira tickets",
+        prompt:
+          "Summarize the open VSDA Jira tickets for [component], grouped by priority, and flag anything blocked.",
+        icon: "ticket",
+      },
+      {
+        title: "Trace requirement coverage",
+        prompt:
+          "Find the Polarion requirements for [component] and list which ones have no linked test case.",
+        icon: "requirement",
+      },
+      {
+        title: "Diagnose a failed build",
+        prompt:
+          "Look at the latest failed Jenkins build for [job] and explain the most likely root cause.",
+        icon: "build",
+      },
+      {
+        title: "Search engineering knowledge",
+        prompt:
+          "Search the knowledge base and Confluence for [topic] and summarize the current guidance with sources.",
+        icon: "library",
+      },
+    ],
+  },
+  "VSDA Task Agent": {
+    name: "VSDA Task Agent",
+    icon: "checklist",
+    headline: "Which task should be finished and verified?",
+    lede: "Your request becomes a checklist of requirements. Each item gets evidence, and the answer is graded before the task counts as done. Gaps are reported, not guessed.",
+    chipsLabel: "How it works",
+    chips: [
+      "Requirement checklist",
+      "Evidence per item",
+      "Graded answer",
+      "Fixed budget",
+      "Clear final status",
+    ],
+    prompts: [
+      {
+        title: "Build verified release notes",
+        prompt:
+          "Build release notes from [ticket list], link every ticket, and flag any without a fix version.",
+        icon: "ticket",
+      },
+      {
+        title: "Find requirement gaps",
+        prompt:
+          "Check the Polarion requirements in [project or document] against Jira and list the gaps, with the source for each.",
+        icon: "requirement",
+      },
+      {
+        title: "Run and confirm a build",
+        prompt:
+          "Start the Jenkins build for [job] with [parameters], follow it to the end, and report the result you actually saw.",
+        icon: "build",
+      },
+      {
+        title: "Audit with evidence",
+        prompt:
+          "For [topic], collect the evidence from each source and tell me which requirements are met, blocked or need input.",
+        icon: "checklist",
+      },
+    ],
+  },
+  "VSDA Jira Agent": {
+    name: "VSDA Jira Agent",
+    icon: "ticket",
+    headline: "What do you need from Jira?",
+    lede: "Works with live Jira data: exact tickets, current status and comments, change history and JQL searches. You review each query before it runs.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Ticket lookup",
+      "JQL search",
+      "Change history",
+      "Triage grading",
+      "Drafting from Polarion",
+    ],
+    prompts: [
+      {
+        title: "Check where a ticket stands",
+        prompt:
+          "Summarize where [TICKET-KEY] stands, what is blocking it, and what changed this week.",
+        icon: "ticket",
+      },
+      {
+        title: "Search with JQL",
+        prompt:
+          "Find my open P1 bugs in the current sprint and group them by component.",
+        icon: "search",
+      },
+      {
+        title: "See who changed what",
+        prompt:
+          "Show the change history of [TICKET-KEY]: who changed which field, and when.",
+        icon: "history",
+      },
+      {
+        title: "Grade a triage ticket",
+        prompt:
+          "Grade [TICKET-KEY] for triage completeness and list what is missing.",
+        icon: "grade",
+      },
+    ],
+  },
+  "VSDA Teams Agent": {
+    name: "VSDA Teams Agent",
+    icon: "chat",
+    headline: "What should we catch up on in Teams?",
+    lede: "Reads and summarizes your Microsoft Teams chats, and sends messages only after you approve them. It can also draft Adaptive Cards.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Chat summaries",
+      "Decision lookup",
+      "Approved messages",
+      "Adaptive Cards",
+    ],
+    prompts: [
+      {
+        title: "Catch up on a chat",
+        prompt:
+          "Catch me up on the last day of the [chat name] chat: decisions, open questions and anything addressed to me.",
+        icon: "chat",
+      },
+      {
+        title: "Find a decision",
+        prompt:
+          "Find out what the team decided about [topic] and who agreed to it.",
+        icon: "decision",
+      },
+      {
+        title: "Send a status update",
+        prompt:
+          "Draft a short status update for [teammate] about [topic] and show it to me before sending.",
+        icon: "send",
+      },
+      {
+        title: "Draft an Adaptive Card",
+        prompt:
+          "Draft an Adaptive Card that announces [event] with a summary, owner and a link to [URL].",
+        icon: "card",
+      },
+    ],
+  },
+  "VSDA Email Agent": {
+    name: "VSDA Email Agent",
+    icon: "mail",
+    headline: "What should we handle in your inbox?",
+    lede: "Reads your Outlook mailbox and writes email for you. Drafts are saved after you review them, and nothing is sent until you approve it.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Folder summaries",
+      "Message search",
+      "Reviewed drafts",
+      "Approved sending",
+    ],
+    prompts: [
+      {
+        title: "Summarize new mail",
+        prompt:
+          "Summarize what came into my [folder] folder since yesterday and flag anything that needs a reply.",
+        icon: "inbox",
+      },
+      {
+        title: "Draft a reply",
+        prompt:
+          "Draft a reply to the latest email from [sender] about [topic], keeping it short and specific.",
+        icon: "reply",
+      },
+      {
+        title: "Write a follow-up",
+        prompt:
+          "Draft a follow-up to [stakeholder] asking for an update on [topic] by [date].",
+        icon: "send",
+      },
+      {
+        title: "Find a message",
+        prompt:
+          "Find the email thread about [topic] from last month and summarize what was agreed.",
+        icon: "search",
+      },
+    ],
+  },
+  "VSDA SharePoint Agent": {
+    name: "VSDA SharePoint Agent",
+    icon: "file",
+    headline: "Which document are you looking for?",
+    lede: "Searches the SharePoint and OneDrive files you already have access to, and can pull a file into the conversation so its contents can be quoted. Read-only.",
+    chipsLabel: "Capabilities",
+    chips: ["SharePoint", "OneDrive", "File metadata", "Download to chat"],
+    prompts: [
+      {
+        title: "Find the latest version",
+        prompt:
+          "Find the latest version of the [document name] spec or slide deck and tell me where it lives.",
+        icon: "search",
+      },
+      {
+        title: "Check recent changes",
+        prompt: "Who last changed [file name], and when?",
+        icon: "history",
+      },
+      {
+        title: "Quote a document",
+        prompt:
+          "Download [file name] into the chat and summarize its [section] with exact quotes.",
+        icon: "download",
+      },
+      {
+        title: "Browse by topic",
+        prompt:
+          "List the documents about [topic] modified in the last [number] weeks.",
+        icon: "file",
+      },
+    ],
+  },
+  [KNOWLEDGE_BASE_ASSISTANT_ID]: {
+    name: KNOWLEDGE_BASE_ASSISTANT_ID,
+    icon: "library",
+    headline: "What should we look up in the knowledge base?",
+    lede: "Searches the document library by meaning, explains its indices and fields, and searches or reads pages in the shared LLM Wiki when configured.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Similar tickets",
+      "Semantic search",
+      "Cross-document patterns",
+      "LLM Wiki",
+      "Index inventory",
+    ],
+    prompts: [
+      {
+        title: "Find similar problems",
+        prompt:
+          "Find past tickets or work items that look like this problem: [describe the symptom].",
+        icon: "search",
+      },
+      {
+        title: "Gather documents on a concept",
+        prompt:
+          "Pull together internal documents about [concept], filtered to [source or type] from [date range].",
+        icon: "library",
+      },
+      {
+        title: "Spot recurring patterns",
+        prompt:
+          "Look across documents about [component] and describe the issues that keep coming back.",
+        icon: "pattern",
+      },
+      {
+        title: "Read the LLM Wiki",
+        prompt:
+          "Search the LLM Wiki for [topic] and summarize the most relevant page.",
+        icon: "wiki",
+      },
+    ],
+  },
+  "VSDA Polarion Agent": {
+    name: "VSDA Polarion Agent",
+    icon: "requirement",
+    headline: "What do you need from Polarion?",
+    lede: "Works with live Polarion data: work items, LiveDocs, links and comments, plus test runs, verdicts and step results. You review each query before it runs.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Work items",
+      "Lucene search",
+      "LiveDocs",
+      "Test runs",
+      "Requirement drafting",
+    ],
+    prompts: [
+      {
+        title: "Summarize a work item",
+        prompt:
+          "Summarize [WORK-ITEM-ID] with its links, comments and attachments.",
+        icon: "requirement",
+      },
+      {
+        title: "Find uncovered requirements",
+        prompt:
+          "List the requirements in [project] for [component] that have no linked test case.",
+        icon: "search",
+      },
+      {
+        title: "Check a test run",
+        prompt:
+          "Show the verdicts and failed step results for test run [TEST-RUN-ID].",
+        icon: "testRun",
+      },
+      {
+        title: "Draft verification cases",
+        prompt:
+          "Draft verification cases for [WORK-ITEM-ID] based on its acceptance criteria.",
+        icon: "checklist",
+      },
+    ],
+  },
+  "VSDA Confluence Agent": {
+    name: "VSDA Confluence Agent",
+    icon: "page",
+    headline: "What should we find or write in Confluence?",
+    lede: "Finds, reads and summarizes Confluence pages with their comments and attachments, and drafts or updates pages from source evidence once approved.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Page search",
+      "Summaries",
+      "Page drafting",
+      "Component pages",
+      "Attachments",
+    ],
+    prompts: [
+      {
+        title: "Summarize a runbook",
+        prompt:
+          "Find the runbook for [service] and summarize the steps in order.",
+        icon: "page",
+      },
+      {
+        title: "Map a space",
+        prompt:
+          "List the child pages under [space or parent page] with a one-line summary each.",
+        icon: "pageTree",
+      },
+      {
+        title: "Turn notes into a page",
+        prompt:
+          "Turn these meeting notes into a formatted wiki page draft: [paste notes].",
+        icon: "card",
+      },
+      {
+        title: "Refresh a component page",
+        prompt:
+          "Check the [component] page against current Jira and Polarion evidence and draft the updates it needs.",
+        icon: "history",
+      },
+    ],
+  },
+  "VSDA Jenkins Agent": {
+    name: "VSDA Jenkins Agent",
+    icon: "build",
+    headline: "Which build should we look at?",
+    lede: "Looks up Jenkins jobs and builds, reads console output, and starts builds only after you approve the job and parameters.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Job status",
+      "Build parameters",
+      "Console output",
+      "Approved triggers",
+    ],
+    prompts: [
+      {
+        title: "Diagnose a failed build",
+        prompt:
+          "Read the console output of the last failed build of [job] and point to the error.",
+        icon: "build",
+      },
+      {
+        title: "Check a job's history",
+        prompt:
+          "Show the status and the last [number] builds of [job], with durations.",
+        icon: "history",
+      },
+      {
+        title: "Explain build parameters",
+        prompt: "Which parameters does [job] take, and what does each one do?",
+        icon: "parameters",
+      },
+      {
+        title: "Trigger a build",
+        prompt:
+          "Trigger [job] with [parameters] and follow it through the queue to the result.",
+        icon: "send",
+      },
+    ],
+  },
+  "VSDA Code Analyzer Agent": {
+    name: "VSDA Code Analyzer Agent",
+    icon: "code",
+    headline: "Which code should we analyze?",
+    lede: "Answers questions about code in the configured Gerrit repositories, pinned to an exact revision with file-and-line evidence. The code is never built or run.",
+    chipsLabel: "Capabilities",
+    chips: [
+      "Gerrit",
+      "Pinned revisions",
+      "File and line evidence",
+      "Background reports",
+    ],
+    prompts: [
+      {
+        title: "Explain a code path",
+        prompt:
+          "In [repository] at [revision], explain how [feature or function] works, with file and line references.",
+        icon: "code",
+      },
+      {
+        title: "Compare two revisions",
+        prompt:
+          "Compare [revision A] and [revision B] in [repository] and describe what changed in behavior.",
+        icon: "compare",
+      },
+      {
+        title: "Find where it happens",
+        prompt:
+          "Where in [repository] is [behavior] implemented? Cite the files and lines.",
+        icon: "search",
+      },
+      {
+        title: "Run a full analysis",
+        prompt:
+          "Run a background analysis of [module] in [repository] for [concern] and give me the Markdown report.",
+        icon: "report",
+      },
+    ],
+  },
+};
+
+/** Built-in agents with their own welcome view. */
+export const WELCOME_AGENT_IDS = Object.keys(AGENT_WELCOME);
+
+/**
+ * Return welcome copy for a graph ID. Custom assistants built on a known
+ * graph use that graph's copy; anything unrecognized gets the supervisor's.
+ */
+export function agentWelcome(graphId: string | null | undefined): AgentWelcome {
+  const id = graphId ? canonicalAssistantId(graphId) : DEFAULT_WELCOME_AGENT;
+  return AGENT_WELCOME[id] ?? AGENT_WELCOME[DEFAULT_WELCOME_AGENT];
+}

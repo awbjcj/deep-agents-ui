@@ -904,6 +904,64 @@ button {
   background: var(--aptiv-orange);
 }
 
+/* ─── New-conversation welcome ─────────────────────────────────────── */
+/* The mark echoes the sign-in depth field: a teal node with one orange
+   focal dot, flat surfaces only. */
+.welcome-mark {
+  position: relative;
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.875rem;
+  color: var(--color-primary);
+  background: color-mix(
+    in srgb,
+    var(--color-primary) 10%,
+    var(--color-surface)
+  );
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 10px 28px -14px color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+
+.welcome-mark::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--aptiv-orange);
+  box-shadow: 0 0 0 2px var(--color-background);
+}
+
+.starter-card {
+  transition-property: border-color, background-color, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+
+.starter-card:active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .starter-card:active {
+    transform: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .starter-card:hover {
+    border-color: hsl(var(--primary) / 0.45);
+    background-color: hsl(var(--card));
+    box-shadow: 0 8px 24px -16px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  }
+}
+
 /* ─── Auth (login / forgot password) ───────────────────────────────── */
 /* Shares token names and values with the LLM Wiki sign-in
    (llm_wiki/docker/rootfs/opt/noVNC/login) so both VSDA tools feel like one
@@ -1802,6 +1860,19 @@ button {
   @starting-style {
     .agent-activity {
       opacity: 0;
+    }
+  }
+
+  /* Occasional view (once per new conversation): one short rise, no stagger,
+     so it never delays typing. */
+  .welcome-state {
+    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+  }
+
+  @starting-style {
+    .welcome-state {
+      opacity: 0;
+      transform: translateY(6px);
     }
   }
 
