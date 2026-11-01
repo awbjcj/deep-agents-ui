@@ -14,6 +14,12 @@ import {
   canonicalAssistantId,
   canonicalSystemAssistant,
 } from "@/lib/assistant-identity";
+import {
+  agentAccessKnown,
+  allowedAssistantId,
+  canUseAgent,
+} from "@/lib/agent-access";
+import { DEFAULT_ASSISTANT_ID } from "@/lib/chat-links";
 import { useRouter } from "next/navigation";
 import {
   getConfig,
@@ -388,6 +394,18 @@ function HomePageInner({
       controller.abort();
     };
   }, [client, config.assistantId]);
+
+  // A custom or UUID-addressed assistant can resolve to a restricted graph only
+  // after it loads; switch to the default once access is confirmed missing.
+  useEffect(() => {
+    if (
+      assistant &&
+      config.assistantId !== DEFAULT_ASSISTANT_ID &&
+      agentAccessKnown(user) &&
+      !canUseAgent(assistant.graph_id, user)
+    )
+      handleSaveConfig({ ...config, assistantId: DEFAULT_ASSISTANT_ID });
+  }, [assistant, config, user, handleSaveConfig]);
 
   return (
     <>
@@ -805,6 +823,37 @@ function HomePageContent() {
     }
   }, [assistantId]);
 
+  // Restricted graphs render as the default supervisor until the profile
+  // confirms access; the stored selection is replaced only once access is known.
+  const effectiveAssistantId = config?.assistantId
+    ? allowedAssistantId(config.assistantId, user)
+    : undefined;
+  const effectiveConfig = useMemo(
+    () =>
+      config &&
+      effectiveAssistantId &&
+      effectiveAssistantId !== config.assistantId
+        ? { ...config, assistantId: effectiveAssistantId }
+        : config,
+    [config, effectiveAssistantId]
+  );
+
+  useEffect(() => {
+    if (
+      !user ||
+      !config?.assistantId ||
+      !agentAccessKnown(user) ||
+      canUseAgent(config.assistantId, user)
+    )
+      return;
+    const fallback = { ...config, assistantId: DEFAULT_ASSISTANT_ID };
+    const saved = getConfig();
+    if (saved && !canUseAgent(saved.assistantId, user))
+      saveConfig({ ...saved, assistantId: DEFAULT_ASSISTANT_ID });
+    setConfig(fallback);
+    void setAssistantId(DEFAULT_ASSISTANT_ID);
+  }, [config, user, setAssistantId]);
+
   useEffect(() => {
     // nuqs URL writes can cancel an in-flight login redirect. Restore the
     // saved assistant only after authentication permits staying on this page.
@@ -843,7 +892,7 @@ function HomePageContent() {
     return <LoadingScreen />;
   }
 
-  if (!config || !config.assistantId) {
+  if (!effectiveConfig || !effectiveConfig.assistantId) {
     return (
       <>
         {configDialogEverOpened && (
@@ -852,7 +901,7 @@ function HomePageContent() {
               open={configDialogOpen}
               onOpenChange={setConfigDialogOpen}
               onSave={handleSaveConfig}
-              initialConfig={config || undefined}
+              initialConfig={effectiveConfig || undefined}
             />
           </Suspense>
         )}
@@ -881,7 +930,7 @@ function HomePageContent() {
       accessToken={user.access_token}
     >
       <HomePageInner
-        config={config}
+        config={effectiveConfig}
         configDialogOpen={configDialogOpen}
         setConfigDialogOpen={setConfigDialogOpen}
         handleSaveConfig={handleSaveConfig}

@@ -9,6 +9,7 @@ import type {
   SourceImagePolicyResponse,
   SourceImageSource,
 } from "@/lib/source-images";
+import { agentAccessFlags } from "@/lib/agent-access";
 
 export type Role = "user" | "developer" | "admin";
 
@@ -18,6 +19,9 @@ export interface AuthUser {
   role: Role;
   email?: string | null;
   access_token: string;
+  /** Restricted-assistant access from the last profile refresh; absent until then. */
+  can_use_task_agent?: boolean;
+  can_use_code_analyzer?: boolean;
 }
 
 const AUTH_KEY = "deep-agent-auth";
@@ -358,8 +362,13 @@ export interface UserProfile {
   email?: string | null;
   has_graph_api_token: boolean;
   has_jira_api_token: boolean;
+  /** Developer/admin enrolled in the orchestration rollout. */
+  can_use_task_agent: boolean;
+  /** Developer/admin. */
+  can_use_code_analyzer: boolean;
 }
 
+/** Fetch the caller's profile; access flags default to false on older servers. */
 export async function apiGetProfile(
   signal?: AbortSignal
 ): Promise<UserProfile> {
@@ -367,7 +376,8 @@ export async function apiGetProfile(
   if (!res.ok) {
     throw new Error("Failed to fetch profile");
   }
-  return res.json();
+  const profile = (await res.json()) as UserProfile;
+  return { ...profile, ...agentAccessFlags(profile) };
 }
 
 // --- Admin: user management ---

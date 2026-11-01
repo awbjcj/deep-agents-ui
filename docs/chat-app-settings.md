@@ -6,6 +6,11 @@ app is active per account; the conversation thread, any pending review, and
 running tasks move with you when you switch. The retired **Teams** tab opens
 this tab automatically.
 
+Chat apps always talk to VSDA Deep Agent, the legacy supervisor. It never
+switches to VSDA Task Agent; that assistant and VSDA Code Analyzer Agent are
+chosen explicitly in the web UI and are available only to developer and admin
+accounts (the Task Agent also needs server enrollment by an administrator).
+
 | Area            | Behavior                                                                                                                                                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Connected app   | Status badge, **Enable** switch (server-confirmed, never optimistic), autopilot, review-waiting, and needs-attention notices, **Open conversation**, **Unlink** with confirmation, and connection details.          |

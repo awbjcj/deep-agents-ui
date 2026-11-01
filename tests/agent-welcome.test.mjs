@@ -21,11 +21,22 @@ const GRAPHS = [
   "VSDA Code Analyzer Agent",
 ];
 
+const DEVELOPER = {
+  role: "developer",
+  can_use_task_agent: true,
+  can_use_code_analyzer: true,
+};
+const USER = {
+  role: "user",
+  can_use_task_agent: false,
+  can_use_code_analyzer: false,
+};
+
 test("every built-in agent has its own welcome copy and starter prompts", () => {
   assert.deepEqual([...WELCOME_AGENT_IDS].sort(), [...GRAPHS].sort());
   const headlines = new Set();
   for (const graph of GRAPHS) {
-    const welcome = agentWelcome(graph);
+    const welcome = agentWelcome(graph, DEVELOPER);
     assert.equal(welcome.name, graph);
     assert(welcome.lede.length > 40, `${graph} explains its scope`);
     assert(welcome.chips.length >= 4, `${graph} lists its capabilities`);
@@ -46,5 +57,26 @@ test("unknown and legacy agent IDs resolve to sensible welcome copy", () => {
   assert.equal(
     agentWelcome("VSDA Database Agent").name,
     "VSDA Knowledge Base Agent"
+  );
+});
+
+test("ordinary users never see restricted agents or code analysis in welcome copy", () => {
+  for (const access of [USER, undefined, { role: "developer" }]) {
+    for (const graph of ["VSDA Task Agent", "VSDA Code Analyzer Agent"])
+      assert.equal(agentWelcome(graph, access).name, DEFAULT_WELCOME_AGENT);
+    const supervisor = JSON.stringify(agentWelcome("VSDA Deep Agent", access));
+    assert.doesNotMatch(supervisor, /code analy|task agent|checklist|grade/i);
+  }
+  assert(
+    agentWelcome("VSDA Deep Agent", DEVELOPER).chips.includes("Code analysis")
+  );
+  const enrolledOnlyForCode = { ...DEVELOPER, can_use_task_agent: false };
+  assert.equal(
+    agentWelcome("VSDA Task Agent", enrolledOnlyForCode).name,
+    DEFAULT_WELCOME_AGENT
+  );
+  assert.equal(
+    agentWelcome("VSDA Code Analyzer Agent", enrolledOnlyForCode).name,
+    "VSDA Code Analyzer Agent"
   );
 });

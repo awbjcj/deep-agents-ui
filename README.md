@@ -60,6 +60,29 @@ Environment variables (see `.env.example`):
 The assistant ID is selected in the UI and stored in `localStorage`; the JWT from
 login is also kept client-side and attached to backend requests.
 
+### Assistant availability
+
+The **Switch agent** button in the header opens the configuration dialog, which
+lists only the assistants the signed-in account may use.
+**VSDA Deep Agent** is the default supervisor and always stays the legacy
+supervisor; it never switches a conversation to the Task Agent, and a
+conversation stays with the agent it started in. Two assistants are restricted:
+
+- **VSDA Task Agent**: developer and admin accounts only, and only after an
+  administrator enrolls the account on the server (`VSDA_ORCHESTRATION_ROLLOUT`
+  and `VSDA_ORCHESTRATION_ALLOWLIST`). It must be chosen explicitly.
+- **VSDA Code Analyzer Agent**: developer and admin accounts only. Its SCM
+  credential, Copilot credential and Copilot quota panels in **Workspace →
+  Tokens** appear only for these accounts.
+
+The UI reads `can_use_task_agent` and `can_use_code_analyzer` from
+`GET /api/user/profile` (treated as `false` when an older server omits them)
+through `src/lib/agent-access.ts`. Ordinary `user` accounts never see these
+assistants, their descriptions, welcome copy or settings panels, and a saved or
+bookmarked selection of one falls back to VSDA Deep Agent. The server enforces
+the same rules and answers 403 for runs and `/api/code-analysis/*` or
+`/api/user/scm/*` requests from accounts without access.
+
 ### Deployment profiles
 
 `next.config.ts` selects behavior by build mode:

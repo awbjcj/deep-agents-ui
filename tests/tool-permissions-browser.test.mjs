@@ -254,6 +254,8 @@ function makePolicyFixture() {
           email: `${account.role}@example.test`,
           has_graph_api_token: true,
           has_jira_api_token: true,
+          can_use_task_agent: account.role !== "user",
+          can_use_code_analyzer: account.role !== "user",
           access_token: "e30.eyJleHAiOjQxMDI0NDQ4MDB9.sig",
         });
       }
