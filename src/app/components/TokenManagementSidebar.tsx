@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiGetTokens, apiUpdateTokens, UserTokens } from "@/lib/auth";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { useAuth } from "@/providers/AuthProvider";
+import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import {
   getTokenGuide,
   OPEN_TOKEN_WIZARD_EVENT,
@@ -55,6 +56,8 @@ export function TokenManagementSidebar({
   const { applyClearedNotifications } = useNotifications();
   const { user } = useAuth();
   const username = user?.username ?? "";
+  // SCM and Copilot credentials serve only the Code Analyzer.
+  const codeAnalyzerAllowed = canUseCodeAnalyzer(user);
   const [graphToken, setGraphToken] = useState("");
   const [jiraToken, setJiraToken] = useState("");
   // Track whether the user has edited each token field since load.
@@ -615,8 +618,12 @@ export function TokenManagementSidebar({
                   </>
                 )}
               </Button>
-              <ScmCredentials />
-              <CopilotCredentialPanel key={username} />
+              {codeAnalyzerAllowed && (
+                <>
+                  <ScmCredentials />
+                  <CopilotCredentialPanel key={username} />
+                </>
+              )}
             </>
           )}
         </div>

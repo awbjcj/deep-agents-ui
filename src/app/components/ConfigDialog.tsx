@@ -6,7 +6,15 @@ import {
   canonicalSystemAssistant,
   KNOWLEDGE_BASE_ASSISTANT_ID,
 } from "@/lib/assistant-identity";
-import { useState, useEffect, useCallback } from "react";
+import {
+  allowedAssistantId,
+  allowedAssistants,
+  canUseAgent,
+  canUseCodeAnalyzer,
+  CODE_ANALYZER_AGENT_ID,
+  TASK_AGENT_ID,
+} from "@/lib/agent-access";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +39,7 @@ import {
   getLangsmithApiKey,
 } from "@/lib/config";
 import { getAuthUser } from "@/lib/auth";
+import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { Client } from "@langchain/langgraph-sdk";
 import { AlertCircle, CheckCircle2, Loader2, Route } from "lucide-react";
@@ -70,7 +79,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Write a report or diagram from several sources and attach it to the conversation.",
     ],
   },
-  "VSDA Task Agent": {
+  [TASK_AGENT_ID]: {
     description:
       "A stricter take on the Deep Agent for jobs with a clear finish line. Before it starts, it writes your request down as a checklist of requirements. It attaches evidence to each item as it goes, and a grader checks the answer before the task counts as done. If something is missing, it tells you what is missing instead of papering over it.",
     isSupervisor: true,
@@ -80,7 +89,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Start a Jenkins build, follow it to the end, and report the result you actually saw.",
       'Any multi-part request where you would rather hear "blocked" or "needs input" than get a confident guess.',
     ],
-    note: "Only for accounts an administrator has enrolled; anyone else gets an access error. It runs within a fixed budget of model calls, tool calls and time, and finishes with a status: completed, needs input, blocked, budget exhausted or unverified. A conversation that starts here stays here.",
+    note: "Only for developers and administrators that an administrator has enrolled. Choose it explicitly: the Deep Agent never switches to it, and a conversation stays with the agent it started in. It runs within a fixed budget of model calls, tool calls and time, and finishes with a status: completed, needs input, blocked, budget exhausted or unverified.",
   },
   "VSDA Jira Agent": {
     description:
@@ -164,7 +173,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Trigger a build with specific parameters and follow it through the queue.",
     ],
   },
-  "VSDA Code Analyzer Agent": {
+  [CODE_ANALYZER_AGENT_ID]: {
     description:
       "Answers questions about code in the configured Gerrit repositories. It pins each answer to an exact revision and cites files and lines. Analysis runs in an isolated worker that never builds the code or runs its scripts or tests.",
     useCases: [
@@ -172,10 +181,11 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Compare two revisions and describe what changed in behavior.",
       "Run a longer analysis as a background job and download the Markdown report.",
     ],
-    note: "Plastic SCM is not supported yet. The Copilot engine and MATLAB/Simulink inspection appear only where an administrator has enabled them.",
+    note: "Only for developers and administrators. Plastic SCM is not supported yet. The Copilot engine and MATLAB/Simulink inspection appear only where an administrator has enabled them.",
   },
 };
 
+/** Every built-in graph; restricted ones are filtered per account at render. */
 const BUILT_IN_ASSISTANTS: AssistantOption[] = Object.keys(AGENT_INFO).map(
   (graphId) => ({ id: graphId, name: graphId, graphId })
 );
@@ -193,11 +203,17 @@ export function ConfigDialog({
   onSave,
   initialConfig,
 }: ConfigDialogProps) {
-  const [assistantId, setAssistantId] = useState(
-    canonicalAssistantId(initialConfig?.assistantId || DEFAULT_ASSISTANT_ID)
+  const { user } = useAuth();
+  const codeAnalyzerAllowed = canUseCodeAnalyzer(user);
+  const [assistantId, setAssistantId] = useState(() =>
+    allowedAssistantId(initialConfig?.assistantId || DEFAULT_ASSISTANT_ID, user)
   );
-  const [assistants, setAssistants] =
+  const [allAssistants, setAssistants] =
     useState<AssistantOption[]>(BUILT_IN_ASSISTANTS);
+  const assistants = useMemo(
+    () => allowedAssistants(allAssistants, user),
+    [allAssistants, user]
+  );
   const [loading, setLoading] = useState(false);
   const [analysisEngine, setAnalysisEngine] = useState(
     initialConfig?.analysisEngine ?? "__default__"
@@ -211,13 +227,7 @@ export function ConfigDialog({
   const accessToken = getAuthUser()?.access_token;
 
   const fetchAssistants = useCallback(async () => {
-    const catalogPromise = getAnalysisEngines()
-      .then(setEngineCatalog)
-      .catch(() => setEngineCatalog(null));
-    if (!deploymentUrl) {
-      await catalogPromise;
-      return;
-    }
+    if (!deploymentUrl) return;
     setLoading(true);
     try {
       const client = new Client({
@@ -263,10 +273,28 @@ export function ConfigDialog({
         error
       );
     } finally {
-      await catalogPromise;
       setLoading(false);
     }
   }, [accessToken, deploymentUrl, langsmithApiKey]);
+
+  // The engine catalog is a Code Analyzer route; other accounts get a 403.
+  useEffect(() => {
+    if (!open || !codeAnalyzerAllowed) {
+      setEngineCatalog(null);
+      return;
+    }
+    let active = true;
+    getAnalysisEngines()
+      .then((catalog) => {
+        if (active) setEngineCatalog(catalog);
+      })
+      .catch(() => {
+        if (active) setEngineCatalog(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, codeAnalyzerAllowed]);
 
   useEffect(() => {
     if (open) {
@@ -282,9 +310,24 @@ export function ConfigDialog({
     }
   }, [open, initialConfig, fetchAssistants]);
 
+  // A saved, bookmarked or fetched selection on a graph this account may not
+  // use falls back to the default supervisor.
+  useEffect(() => {
+    const selected = allAssistants.find((item) => item.id === assistantId);
+    if (!canUseAgent(selected?.graphId ?? assistantId, user))
+      setAssistantId(DEFAULT_ASSISTANT_ID);
+  }, [allAssistants, assistantId, user]);
+
   const handleSave = () => {
     if (!assistantId) {
       toast.error("Please select an assistant");
+      return;
+    }
+    const selectedGraph =
+      allAssistants.find((item) => item.id === assistantId)?.graphId ??
+      assistantId;
+    if (!canUseAgent(selectedGraph, user)) {
+      toast.error("This assistant is not available to your account");
       return;
     }
 
@@ -310,7 +353,8 @@ export function ConfigDialog({
 
   const selectedAssistant = assistants.find((item) => item.id === assistantId);
   const isCodeAnalyzer =
-    selectedAssistant?.graphId === "VSDA Code Analyzer Agent";
+    codeAnalyzerAllowed &&
+    selectedAssistant?.graphId === CODE_ANALYZER_AGENT_ID;
   const defaultEngine = engineCatalog?.engines.find(
     (engine) => engine.id === engineCatalog.default_engine
   );

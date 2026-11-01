@@ -33,6 +33,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { agentWelcome, type WelcomeIcon } from "@/lib/agent-welcome";
+import { useAuth } from "@/providers/AuthProvider";
 
 const ICONS: Record<WelcomeIcon, LucideIcon> = {
   agents: Waypoints,
@@ -76,7 +77,8 @@ export function WelcomeState({
   graphId?: string | null;
   onSelectPrompt: (prompt: string) => void;
 }) {
-  const welcome = agentWelcome(graphId);
+  const { user } = useAuth();
+  const welcome = agentWelcome(graphId, user);
   const Mark = ICONS[welcome.icon];
   return (
     <section

@@ -1,4 +1,11 @@
 import {
+  canUseAgent,
+  canUseCodeAnalyzer,
+  CODE_ANALYZER_AGENT_ID,
+  TASK_AGENT_ID,
+  type AgentAccess,
+} from "@/lib/agent-access";
+import {
   canonicalAssistantId,
   KNOWLEDGE_BASE_ASSISTANT_ID,
 } from "@/lib/assistant-identity";
@@ -54,6 +61,9 @@ export interface AgentWelcome {
 
 export const DEFAULT_WELCOME_AGENT = "VSDA Deep Agent";
 
+/** Supervisor chip shown only to accounts that may use the Code Analyzer. */
+const CODE_ANALYSIS_CHIP = "Code analysis";
+
 // Scope and wording follow the agent catalog in ConfigDialog and the backend
 // Subagent specs; keep the three in step when an agent's abilities change.
 const AGENT_WELCOME: Record<string, AgentWelcome> = {
@@ -71,7 +81,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
       "Teams & email",
       "SharePoint",
       "Knowledge base",
-      "Code analysis",
+      CODE_ANALYSIS_CHIP,
     ],
     prompts: [
       {
@@ -100,8 +110,8 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
       },
     ],
   },
-  "VSDA Task Agent": {
-    name: "VSDA Task Agent",
+  [TASK_AGENT_ID]: {
+    name: TASK_AGENT_ID,
     icon: "checklist",
     headline: "Which task should be finished and verified?",
     lede: "Your request becomes a checklist of requirements. Each item gets evidence, and the answer is graded before the task counts as done. Gaps are reported, not guessed.",
@@ -449,8 +459,8 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
       },
     ],
   },
-  "VSDA Code Analyzer Agent": {
-    name: "VSDA Code Analyzer Agent",
+  [CODE_ANALYZER_AGENT_ID]: {
+    name: CODE_ANALYZER_AGENT_ID,
     icon: "code",
     headline: "Which code should we analyze?",
     lede: "Answers questions about code in the configured Gerrit repositories, pinned to an exact revision with file-and-line evidence. The code is never built or run.",
@@ -495,9 +505,22 @@ export const WELCOME_AGENT_IDS = Object.keys(AGENT_WELCOME);
 
 /**
  * Return welcome copy for a graph ID. Custom assistants built on a known
- * graph use that graph's copy; anything unrecognized gets the supervisor's.
+ * graph use that graph's copy; anything unrecognized, or a restricted graph
+ * the account may not use, gets the supervisor's. The supervisor mentions code
+ * analysis only to accounts that may use the Code Analyzer.
  */
-export function agentWelcome(graphId: string | null | undefined): AgentWelcome {
+export function agentWelcome(
+  graphId: string | null | undefined,
+  access?: AgentAccess | null
+): AgentWelcome {
   const id = graphId ? canonicalAssistantId(graphId) : DEFAULT_WELCOME_AGENT;
-  return AGENT_WELCOME[id] ?? AGENT_WELCOME[DEFAULT_WELCOME_AGENT];
+  const welcome =
+    (canUseAgent(id, access) ? AGENT_WELCOME[id] : undefined) ??
+    AGENT_WELCOME[DEFAULT_WELCOME_AGENT];
+  if (welcome.name !== DEFAULT_WELCOME_AGENT || canUseCodeAnalyzer(access))
+    return welcome;
+  return {
+    ...welcome,
+    chips: welcome.chips.filter((chip) => chip !== CODE_ANALYSIS_CHIP),
+  };
 }
