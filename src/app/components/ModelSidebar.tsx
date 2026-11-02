@@ -46,11 +46,14 @@ import {
   ReasoningEffortControl,
 } from "@/app/components/ModelInferenceControls";
 import {
-  linkedModelControls,
-  recommendedModelControls,
+  nextModelDraft,
   requiresThinking,
+  switchModelDraft,
+  type ModelDraft,
 } from "@/lib/model-controls";
+import { modelDisplayName, providerDisplayName } from "@/lib/model-names";
 import {
+  MODEL_SELECTION_CHANGED_EVENT,
   apiGetAllowedModels,
   apiGetUserModel,
   apiSetUserModel,
@@ -113,13 +116,7 @@ const PRESET_LABELS: Record<ModelPreset, string> = {
 
 const PRESET_VALUES: ModelPreset[] = ["economy", "balanced", "deep_work"];
 
-interface DraftState {
-  provider: string;
-  model: string;
-  effort: string | null;
-  thinking: boolean | null;
-  max_tokens: number;
-}
+type DraftState = ModelDraft;
 
 function isPreset(v: string | null | undefined): v is ModelPreset {
   return (
@@ -303,6 +300,32 @@ export function ModelSidebar() {
   const dirty =
     draft !== null && baseline !== null && !draftsEqual(draft, baseline);
   const isCustom = serverCustom || dirty || customManuallySelected;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+
+  // Follow saves made elsewhere (the composer's quick picker) unless the user
+  // is mid-edit here; their pending draft wins and autosaves over it.
+  useEffect(() => {
+    function onExternalChange(event: Event) {
+      const next = (event as CustomEvent<UserModelSelection>).detail;
+      if (!next?.effective || dirtyRef.current) return;
+      setSelection(next);
+      setDraft(draftFromEffective(next.effective));
+      if (isPreset(next.preset)) {
+        setActivePreset(next.preset);
+        setServerCustom(false);
+      } else {
+        setActivePreset(null);
+        setServerCustom(true);
+      }
+    }
+    window.addEventListener(MODEL_SELECTION_CHANGED_EVENT, onExternalChange);
+    return () =>
+      window.removeEventListener(
+        MODEL_SELECTION_CHANGED_EVENT,
+        onExternalChange
+      );
+  }, []);
 
   const handleSave = useCallback(
     (silent = false) => {
@@ -406,24 +429,7 @@ export function ModelSidebar() {
   function updateDraft(patch: Partial<DraftState>) {
     failedDraftRef.current = null;
     setSaved(false);
-    setDraft((d) => {
-      if (!d) return d;
-      const next = { ...d, ...patch };
-      const entry = allowed.find(
-        (m) => m.provider === next.provider && m.model === next.model
-      );
-      const reasoningChanged =
-        next.provider !== d.provider ||
-        next.model !== d.model ||
-        next.effort !== d.effort ||
-        next.thinking !== d.thinking;
-      if (reasoningChanged) {
-        Object.assign(next, linkedModelControls(entry, next));
-      } else if (requiresThinking(entry, next.effort)) {
-        next.thinking = true;
-      }
-      return next;
-    });
+    setDraft((d) => (d ? nextModelDraft(allowed, d, patch) : d));
   }
 
   function handleModelChange(value: string) {
@@ -433,11 +439,9 @@ export function ModelSidebar() {
       (m) => m.provider === provider && m.model === model
     );
     if (!entry) return;
-    updateDraft({
-      provider,
-      model,
-      ...recommendedModelControls(entry),
-    });
+    failedDraftRef.current = null;
+    setSaved(false);
+    setDraft((d) => (d ? switchModelDraft(allowed, d, entry) : d));
   }
 
   const effortOptions = currentModelEntry?.efforts.length
@@ -670,12 +674,15 @@ export function ModelSidebar() {
                       <SelectItem
                         key={modelKey(m.provider, m.model)}
                         value={modelKey(m.provider, m.model)}
+                        textValue={modelDisplayName(m.model)}
+                        title={`${m.provider}/${m.model}`}
                       >
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {m.provider}
+                        <span className="text-sm">
+                          {modelDisplayName(m.model)}
                         </span>
-                        <span className="mx-1 text-muted-foreground">/</span>
-                        <span className="text-sm">{m.model}</span>
+                        <span className="ml-1.5 text-xs text-muted-foreground">
+                          {providerDisplayName(m.provider)}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

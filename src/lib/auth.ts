@@ -608,6 +608,12 @@ export interface UserModelSelection extends EffectiveModelSelection {
   effective: EffectiveModelSelection;
 }
 
+/**
+ * Fired with the saved `UserModelSelection` as `detail` after any successful
+ * model update, so the composer picker and the Models panel stay in step.
+ */
+export const MODEL_SELECTION_CHANGED_EVENT = "vsda-model-selection-changed";
+
 export async function apiGetUserModel(): Promise<UserModelSelection> {
   const res = await apiFetch("/user/model");
   if (!res.ok) {
@@ -664,7 +670,15 @@ export async function apiSetUserModel(
       (data as { detail?: string }).detail || "Failed to set user model"
     );
   }
-  return res.json();
+  const selection: UserModelSelection = await res.json();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent<UserModelSelection>(MODEL_SELECTION_CHANGED_EVENT, {
+        detail: selection,
+      })
+    );
+  }
+  return selection;
 }
 
 // --- Admin destructive ops ---

@@ -52,6 +52,7 @@ import {
 import type { SkillCatalogEntry } from "@/lib/skills";
 import { useSkillReferenceCatalog } from "@/app/hooks/useSkillReferenceCatalog";
 import { ReferenceInput } from "./composer/ReferenceInput";
+import { ModelQuickPicker } from "./composer/ModelQuickPicker";
 
 interface MessageDraft {
   text: string;
@@ -713,6 +714,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                   }
                 />
               )}
+              <ModelQuickPicker accountId={accountId} />
               <ResponseJobs
                 key={`${accountId}:${threadId}`}
                 threadId={threadId}

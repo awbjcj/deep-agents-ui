@@ -56,6 +56,69 @@ export function outputTokenStops(
   );
 }
 
+/** The editable per-user model configuration shared by every model control. */
+export interface ModelDraft {
+  provider: string;
+  model: string;
+  effort: string | null;
+  thinking: boolean | null;
+  max_tokens: number;
+}
+
+/**
+ * Apply one control change. Model, effort, or thinking changes re-link the
+ * thinking restriction and its matching output cap; a cap-only change keeps
+ * the user's value but still forces required thinking on.
+ */
+export function nextModelDraft(
+  models: readonly ModelEntry[],
+  current: ModelDraft,
+  patch: Partial<ModelDraft>
+): ModelDraft {
+  const next = { ...current, ...patch };
+  const entry = models.find(
+    (m) => m.provider === next.provider && m.model === next.model
+  );
+  const reasoningChanged =
+    next.provider !== current.provider ||
+    next.model !== current.model ||
+    next.effort !== current.effort ||
+    next.thinking !== current.thinking;
+  if (reasoningChanged) {
+    Object.assign(next, linkedModelControls(entry, next));
+  } else if (requiresThinking(entry, next.effort)) {
+    next.thinking = true;
+  }
+  return next;
+}
+
+/** Switch models, starting from the new model's recommended controls. */
+export function switchModelDraft(
+  models: readonly ModelEntry[],
+  current: ModelDraft,
+  entry: ModelEntry
+): ModelDraft {
+  return nextModelDraft(models, current, {
+    provider: entry.provider,
+    model: entry.model,
+    ...recommendedModelControls(entry),
+  });
+}
+
+/** The neighbouring slider stop, or the same value at either end. */
+export function stepOutputTokenCap(value: number, direction: 1 | -1): number {
+  const stops = outputTokenStops(value);
+  const index = stops.indexOf(value) + direction;
+  return stops[Math.min(Math.max(index, 0), stops.length - 1)];
+}
+
+/** Compact cap label for tight toolbars: 512, 4K, 12.1K. */
+export function formatTokenCap(value: number): string {
+  if (value < 1024) return String(value);
+  const k = value / 1024;
+  return `${Number.isInteger(k) ? k : Number(k.toFixed(1))}K`;
+}
+
 /** Whether the chosen effort requires adaptive thinking for this model. */
 export function requiresThinking(
   model: ModelEntry | null | undefined,

@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   COMMON_OUTPUT_TOKEN_CAPS,
+  formatTokenCap,
+  nextModelDraft,
   outputTokenStops,
+  stepOutputTokenCap,
+  switchModelDraft,
   requiresThinking,
   recommendedModelControls,
   linkedModelControls,
@@ -135,4 +139,61 @@ test("thinking controls handle always-on models and older API responses", () => 
     false
   );
   assert.equal(requiresThinking(null, "max"), false);
+});
+
+test("quick-picker drafts share the panel's linked control rules", () => {
+  const gpt = {
+    provider: "openai",
+    model: "gpt-6",
+    supports_effort: true,
+    efforts: ["low", "medium", "high"],
+    supports_thinking: false,
+    thinking_required: false,
+    recommended_effort: "high",
+    recommended_max_tokens: 32768,
+  };
+  const models = [haiku, gpt];
+  const start = {
+    provider: "anthropic",
+    model: "claude-haiku-5-5",
+    effort: "medium",
+    thinking: false,
+    max_tokens: 8192,
+  };
+  assert.deepEqual(nextModelDraft(models, start, { effort: "xhigh" }), {
+    ...start,
+    effort: "xhigh",
+    thinking: true,
+    max_tokens: 40960,
+  });
+  // A cap-only edit keeps the user's value but still forces required thinking.
+  assert.deepEqual(
+    nextModelDraft(
+      models,
+      { ...start, effort: "max", thinking: false },
+      { max_tokens: 2048 }
+    ),
+    { ...start, effort: "max", thinking: true, max_tokens: 2048 }
+  );
+  assert.deepEqual(switchModelDraft(models, start, gpt), {
+    provider: "openai",
+    model: "gpt-6",
+    effort: "high",
+    thinking: null,
+    max_tokens: 32768,
+  });
+  assert.deepEqual(start.max_tokens, 8192, "inputs are not mutated");
+});
+
+test("output steps and compact labels follow the shared slider stops", () => {
+  assert.equal(stepOutputTokenCap(8192, 1), 16384);
+  assert.equal(stepOutputTokenCap(8192, -1), 4096);
+  assert.equal(stepOutputTokenCap(512, -1), 512);
+  assert.equal(stepOutputTokenCap(65536, 1), 65536);
+  assert.equal(stepOutputTokenCap(12345, 1), 16384);
+  assert.equal(stepOutputTokenCap(12345, -1), 8192);
+  assert.equal(formatTokenCap(512), "512");
+  assert.equal(formatTokenCap(4096), "4K");
+  assert.equal(formatTokenCap(24576), "24K");
+  assert.equal(formatTokenCap(12345), "12.1K");
 });
