@@ -10,8 +10,28 @@ export interface StandaloneConfig {
 
 const CONFIG_KEY = "deep-agent-config";
 
+/** Deployment URL value that makes the UI call the origin it was loaded from. */
+export const SAME_ORIGIN_DEPLOYMENT_URL = "same-origin";
+
+/**
+ * Return the LangGraph/FastAPI base URL the browser should call.
+ *
+ * An absolute `NEXT_PUBLIC_DEPLOYMENT_URL` wins. `same-origin`, or an unset
+ * value in a static export (which the backend always serves under `/chat`),
+ * resolves to the page's own origin so one build works on any host and port:
+ * a local Compose stack, a native run, a desktop shell, or a reverse proxy.
+ */
 export function getDeploymentUrl(): string {
-  return process.env.NEXT_PUBLIC_DEPLOYMENT_URL || "";
+  const configured = (process.env.NEXT_PUBLIC_DEPLOYMENT_URL || "").trim();
+  if (configured && configured !== SAME_ORIGIN_DEPLOYMENT_URL) {
+    return configured;
+  }
+  const sameOrigin =
+    configured === SAME_ORIGIN_DEPLOYMENT_URL ||
+    process.env.NEXT_PUBLIC_VSDA_STATIC_EXPORT === "1";
+  if (!sameOrigin || typeof window === "undefined") return "";
+  const origin = window.location?.origin;
+  return origin && /^https?:\/\//i.test(origin) ? origin : "";
 }
 
 export function getLangsmithApiKey(): string {

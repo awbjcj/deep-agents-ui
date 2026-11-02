@@ -51,11 +51,11 @@ header menu and sidebars.
 
 Environment variables (see `.env.example`):
 
-| Variable                        | Required | Description                                     |
-| ------------------------------- | -------- | ----------------------------------------------- |
-| `NEXT_PUBLIC_DEPLOYMENT_URL`    | Yes      | LangGraph deployment URL the UI connects to     |
-| `NEXT_PUBLIC_LANGSMITH_API_KEY` | No       | LangSmith key for tracing/deployed graphs       |
-| `LANGGRAPH_API_URL`             | No       | Dev-only override for the `/api/*` proxy target |
+| Variable                        | Required | Description                                                                                   |
+| ------------------------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_DEPLOYMENT_URL`    | Dev only | LangGraph deployment URL; `same-origin` (or unset in a static export) uses the serving origin |
+| `NEXT_PUBLIC_LANGSMITH_API_KEY` | No       | LangSmith key for tracing/deployed graphs                                                     |
+| `LANGGRAPH_API_URL`             | No       | Dev-only override for the `/api/*` proxy target                                               |
 
 The assistant ID is selected in the UI and stored in `localStorage`; the JWT from
 login is also kept client-side and attached to backend requests.
@@ -89,9 +89,11 @@ the same rules and answers 403 for runs and `/api/code-analysis/*` or
 
 - **dev** (`next dev`) — talks to `http://localhost:2024`; rewrites proxy `/api/*`.
 - **build / deploy** (`NEXT_STATIC_EXPORT=1`) — a **static export** served under
-  `basePath: /chat`, with the API URL baked in at build time from
-  `NEXT_PUBLIC_DEPLOYMENT_URL`. Static exports ignore rewrites, so there is no
-  dev proxy in this mode.
+  `basePath: /chat`. An absolute `NEXT_PUBLIC_DEPLOYMENT_URL` is baked in at
+  build time (`make deploy` uses `https://agent.vsda.top`); `same-origin`, or no
+  value, makes the export call the origin that served it (`make build`, the
+  native run, and the desktop app). Static exports ignore rewrites, so there is
+  no dev proxy in this mode.
 
 Production builds are orchestrated from the backend repo: `make build` /
 `make deploy` in [`../vsda-deep-agent`](../vsda-deep-agent) run
