@@ -12,6 +12,8 @@ import {
   isRunLimit,
   MAX_RUN_LIMIT,
   MIN_RUN_LIMIT,
+  RUN_LIMIT_ERROR,
+  RUN_LIMIT_RANGE_HINT,
   saveRunLimit,
 } from "@/lib/runLimits";
 
@@ -40,7 +42,8 @@ export function RunLimitSettings() {
         className="text-xs leading-relaxed text-muted-foreground"
       >
         Graph steps available for the next run or resume. Applies across models;
-        saved for your account in this browser.
+        saved for your account in this browser. The minimum leaves room for the
+        agent&apos;s final answer.
       </p>
       <div className="flex items-center gap-2">
         <Input
@@ -80,9 +83,7 @@ export function RunLimitSettings() {
           valid ? "text-muted-foreground" : "text-destructive"
         }`}
       >
-        {valid
-          ? "100–10,000 steps · Default 1,000"
-          : "Enter a whole number from 100 to 10,000."}
+        {valid ? RUN_LIMIT_RANGE_HINT : RUN_LIMIT_ERROR}
       </p>
     </section>
   );
