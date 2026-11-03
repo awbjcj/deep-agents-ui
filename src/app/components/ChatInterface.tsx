@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { TaskOutcomeStatus } from "@/app/components/TaskOutcomeStatus";
-import { isTerminalTaskOutcome } from "@/lib/taskOutcome";
+import { isLatestTaskOutcome, isTerminalTaskOutcome } from "@/lib/taskOutcome";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { PendingToolApproval } from "@/app/components/PendingToolApproval";
 import type { TodoItem } from "@/app/types/types";
@@ -137,6 +137,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const {
       stream,
       processedMessages,
+      messages,
       taskOutcome,
       todos,
       files,
@@ -166,6 +167,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       isLoading &&
         !isThreadLoading &&
         !(
+          isLatestTaskOutcome(taskOutcome, messages) &&
           taskOutcome &&
           (isTerminalTaskOutcome(taskOutcome) ||
             taskOutcome.status === "candidate")
