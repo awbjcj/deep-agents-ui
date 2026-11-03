@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const RUN = process.env.ANIMATION_REFINEMENTS_BROWSER_TEST === "1";
@@ -161,8 +162,8 @@ test(
   "chat motion, loop states and content remain stable across streaming updates",
   { skip: !RUN },
   async (t) => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const { server, url } = await fixture();
     const browser = await chromium.launch({

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const EVIDENCE = process.env.CODE_BLOCK_THEMES_EVIDENCE;
@@ -79,8 +80,8 @@ test(
     const { default: postcss } = await import("postcss");
     const { default: tailwind } = await import("tailwindcss");
     const { default: config } = await import("../tailwind.config.mjs");
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const javascript = [
       "// Keep the source reference with the result.",

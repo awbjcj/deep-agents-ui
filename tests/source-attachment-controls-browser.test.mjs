@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -11,8 +12,8 @@ test(
   { skip: process.env.SOURCE_ATTACHMENT_BROWSER_TEST !== "1" },
   async () => {
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.SOURCE_IMAGE_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.SOURCE_IMAGE_PLAYWRIGHT_MODULE
     );
     const bundle = await build({
       absWorkingDir: ROOT,
@@ -136,6 +137,7 @@ test(
         ["polarion", "Polarion"],
         ["confluence", "Confluence"],
         ["graph", "Microsoft Graph"],
+        ["llm_wiki", "LLM Wiki"],
       ];
       const settled = async (control) => {
         await page.waitForFunction(
@@ -160,7 +162,11 @@ test(
       );
       for (const tier of ["user", "developer", "admin"]) {
         await page.getByRole("tab", { name: tier, exact: true }).click();
-        assert.equal(await page.getByRole("switch").count(), 12);
+        // Documents, images and "Allow all" for every source.
+        assert.equal(
+          await page.getByRole("switch").count(),
+          sources.length * 3
+        );
         for (const [source, label] of sources) {
           const documents = page.getByRole("switch", {
             name: `${label} documents for ${tier} tier`,

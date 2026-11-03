@@ -11,6 +11,7 @@ import {
 } from "../src/app/components/skills/SkillFileList.tsx";
 import { SkillEditor } from "../src/app/components/skills/SkillEditor.tsx";
 import { SkillDetails } from "../src/app/components/skills/SkillDetails.tsx";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const limits = {
   skill_file_bytes: 65536,
@@ -672,8 +673,8 @@ test(
     const { readFile, readdir } = await import("node:fs/promises");
     const { join, resolve } = await import("node:path");
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.PERSONAL_SKILLS_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.PERSONAL_SKILLS_PLAYWRIGHT_MODULE
     );
     const rootDir = resolve(import.meta.dirname, "..");
     const fixture = await build({

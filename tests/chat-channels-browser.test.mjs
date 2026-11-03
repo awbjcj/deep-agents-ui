@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const WCAG = ["wcag2a", "wcag2aa", "wcag21aa"];
@@ -279,8 +280,8 @@ test(
   "Bots settings: choose, link, toggle, switch, unlink, accessible layouts",
   { skip: process.env.CHAT_CHANNELS_BROWSER_TEST !== "1" },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_CHANNELS_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_CHANNELS_PLAYWRIGHT_MODULE
     );
     const { script, css } = await bundleFixture();
     const api = createApi();

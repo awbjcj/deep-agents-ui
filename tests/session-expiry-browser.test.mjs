@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 // Run after `npm run build` to exercise the real Next router and nuqs adapter.
 const OUT = resolve(import.meta.dirname, "../out");
@@ -22,8 +23,8 @@ test(
     timeout: 60000,
   },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     // Mirror the exported backend routes, including extensionless login pages
     // and the text payloads used by Next's client-side navigation.

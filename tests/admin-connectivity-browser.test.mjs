@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -11,8 +12,8 @@ test(
   { skip: process.env.ADMIN_CONNECTIVITY_BROWSER_TEST !== "1" },
   async () => {
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.ADMIN_CONNECTIVITY_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.ADMIN_CONNECTIVITY_PLAYWRIGHT_MODULE
     );
     const { default: postcss } = await import("postcss");
     const { default: tailwind } = await import("tailwindcss");

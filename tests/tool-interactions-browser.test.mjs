@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, readdir, mkdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 test(
@@ -10,8 +11,8 @@ test(
   { skip: process.env.TOOL_INTERACTIONS_BROWSER_TEST !== "1" },
   async () => {
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.TOOL_INTERACTIONS_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.TOOL_INTERACTIONS_PLAYWRIGHT_MODULE
     );
     const bundle = await build({
       absWorkingDir: ROOT,
