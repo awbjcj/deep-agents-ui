@@ -27,6 +27,8 @@ export interface ModelSelectionState {
   draft: ModelDraft | null;
   /** True while a change is waiting to save or a save is in flight. */
   saving: boolean;
+  /** True when the latest save failed and the draft reverted. */
+  saveFailed: boolean;
   /** Re-read the saved selection and allowlist without clearing the UI. */
   refresh: () => void;
   update: (patch: Partial<ModelDraft>) => void;
@@ -63,13 +65,15 @@ function sameDraft(a: ModelDraft | null, b: ModelDraft | null): boolean {
  * Changes apply optimistically and save after a short pause, one request at a
  * time so the server sees them in order. A failed save reverts to the last
  * saved value. Saves made elsewhere (the Models panel) are adopted when no
- * local change is pending.
+ * local change is pending, and a load that overlapped a local edit or save is
+ * never adopted because its response may predate that save.
  */
 export function useModelSelection(accountId?: string): ModelSelectionState {
   const [status, setStatus] = useState<ModelSelectionStatus>("loading");
   const [models, setModels] = useState<ModelEntry[]>([]);
   const [draft, setDraftState] = useState<ModelDraft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const draftRef = useRef<ModelDraft | null>(null);
   const savedRef = useRef<ModelDraft | null>(null);
   const modelsRef = useRef<ModelEntry[]>([]);
@@ -78,6 +82,8 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
   const queuedRef = useRef(false);
   const mountedRef = useRef(true);
   const loadSeqRef = useRef(0);
+  // Bumped on every local edit and save request.
+  const changeSeqRef = useRef(0);
   // Bumped per account so late responses never land on another account.
   const epochRef = useRef(0);
 
@@ -98,6 +104,8 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
   const load = useCallback(
     (silent: boolean) => {
       const seq = ++loadSeqRef.current;
+      const changeSeq = changeSeqRef.current;
+      const busyAtStart = inFlightRef.current || timerRef.current !== null;
       if (!silent) setStatus("loading");
       Promise.all([apiGetUserModel(), apiGetAllowedModels()])
         .then(([selection, allowed]) => {
@@ -107,7 +115,13 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
           }
           modelsRef.current = allowed.models;
           setModels(allowed.models);
-          if (!inFlightRef.current && !timerRef.current) adopt(selection);
+          if (
+            !busyAtStart &&
+            changeSeq === changeSeqRef.current &&
+            !inFlightRef.current &&
+            !timerRef.current
+          )
+            adopt(selection);
           setStatus("ready");
         })
         .catch(() => {
@@ -140,6 +154,7 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
       const epoch = epochRef.current;
       const current = () => mountedRef.current && epoch === epochRef.current;
       inFlightRef.current = true;
+      changeSeqRef.current += 1;
       setSaving(true);
       apiSetUserModel({ ...target })
         .then((result) => {
@@ -157,6 +172,7 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
           );
           queuedRef.current = false;
           setDraft(savedRef.current);
+          setSaveFailed(true);
         })
         .finally(() => {
           if (epoch === epochRef.current) inFlightRef.current = false;
@@ -174,8 +190,10 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
 
   const schedule = useCallback(
     (next: ModelDraft) => {
+      changeSeqRef.current += 1;
       setDraft(next);
       setSaving(true);
+      setSaveFailed(false);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
@@ -219,6 +237,7 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
     inFlightRef.current = false;
     setDraft(null);
     setSaving(false);
+    setSaveFailed(false);
     load(false);
     return () => {
       mountedRef.current = false;
@@ -252,6 +271,7 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
     models,
     draft,
     saving,
+    saveFailed,
     refresh,
     update,
     chooseModel,
