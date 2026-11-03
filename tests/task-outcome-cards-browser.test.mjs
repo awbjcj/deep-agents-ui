@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const EVIDENCE =
@@ -17,8 +18,8 @@ test(
     const { build } = await import("esbuild");
     const { default: postcss } = await import("postcss");
     const { default: tailwind } = await import("tailwindcss");
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const bundle = await build({
       absWorkingDir: ROOT,

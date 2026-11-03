@@ -7,6 +7,7 @@ import {
   authenticatedPage,
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "personal Copilot credential workflow stays masked and validates save/remove",
@@ -15,8 +16,8 @@ test(
     timeout: 90000,
   },
   async () => {
-    const { chromium } = await import(
-      process.env.COPILOT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.COPILOT_PLAYWRIGHT_MODULE
     );
     const browser = await chromium.launch({ headless: true });
     const server = await staticServer();

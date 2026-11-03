@@ -6,6 +6,7 @@ import {
   authenticatedPage,
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "history retry restores text and tool calls without refreshing the page",
@@ -14,8 +15,8 @@ test(
     timeout: 90000,
   },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const browser = await chromium.launch({
       headless: true,

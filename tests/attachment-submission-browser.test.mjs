@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "attachments referenced by a pending message survive removal and navigation",
@@ -11,8 +12,8 @@ test(
   },
   async () => {
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const root = resolve(import.meta.dirname, "..");
     const bundle = await build({

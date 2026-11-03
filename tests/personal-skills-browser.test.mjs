@@ -9,6 +9,7 @@ import {
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
 import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const RUN = process.env.PERSONAL_SKILLS_BROWSER_TEST === "1";
 const EVIDENCE = resolve(
@@ -435,8 +436,8 @@ async function switchAccount(page, policy) {
 }
 
 test("personal skills built UI", { skip: !RUN }, async (t) => {
-  const { chromium } = await import(
-    process.env.PERSONAL_SKILLS_PLAYWRIGHT_MODULE ?? "playwright"
+  const { chromium } = await loadPlaywright(
+    process.env.PERSONAL_SKILLS_PLAYWRIGHT_MODULE
   );
   const server = await staticServer();
   const browser = await chromium.launch({

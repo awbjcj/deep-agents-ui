@@ -11,15 +11,14 @@ Rendered Chromium fixtures for task completion verification:
   the grader revision card and a persisted status notice
   (`tests/task-outcome-cards-browser.test.mjs`).
 
-Reproduce from a static build whose `NEXT_PUBLIC_DEPLOYMENT_URL` is an absolute
-URL other than the page origin, so the fixtures can intercept agent requests:
+Reproduce from a production build (`yarn build`), which serves the static export
+the integration suite loads:
 
 ```bash
-NEXT_PUBLIC_DEPLOYMENT_URL=http://127.0.0.1:2024 yarn build
+yarn build
 TASK_OUTCOME_BROWSER_TEST=1 node --import tsx/esm --test \
   tests/task-outcome-browser.test.mjs tests/task-outcome-cards-browser.test.mjs
 ```
 
-Set `CHAT_PLAYWRIGHT_MODULE` and `CHAT_CHROMIUM_PATH` (or
-`CHAT_BROWSER_EXECUTABLE`) when Playwright or its browser is not installed
-locally. Fixture evidence is distinct from live-provider acceptance.
+Browser setup is described under "Browser tests" in the repository README.
+Fixture evidence is distinct from live-provider acceptance.

@@ -6,13 +6,14 @@ import {
   authenticatedPage,
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "composer keeps controls aligned and reveals jobs only when available",
   { skip: process.env.COMPOSER_LAYOUT_BROWSER_TEST !== "1", timeout: 60000 },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const browser = await chromium.launch({
       headless: true,
