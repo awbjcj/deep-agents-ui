@@ -253,6 +253,139 @@ test(
   }
 );
 
+test(
+  "composer model picker keeps a saved model and reports failed saves",
+  { skip: process.env.MODEL_PICKER_BROWSER_TEST !== "1", timeout: 60000 },
+  async () => {
+    const { chromium } = await import(
+      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    );
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
+    const server = await staticServer();
+    const fallback = makePolicyFixture();
+    let effective = {
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      effort: "medium",
+      thinking: false,
+      max_tokens: 8192,
+    };
+    let slowNextGet = false;
+    let failPuts = false;
+    const state = {
+      values: { messages: [], files: {}, todos: [] },
+      tasks: [],
+      next: [],
+      checkpoint: { thread_id: "picker", checkpoint_id: "head" },
+      parent_checkpoint: null,
+      metadata: {},
+      created_at: "2026-11-01T00:00:00Z",
+    };
+    const policy = {
+      async route(route, account) {
+        const request = route.request();
+        const path = new URL(request.url()).pathname;
+        const json = (body, status = 200) =>
+          route.fulfill({
+            status,
+            contentType: "application/json",
+            body: JSON.stringify(body),
+          });
+        if (path === "/api/user/allowed-models")
+          return json({ models: MODELS });
+        if (path === "/api/user/model") {
+          if (request.method() === "PUT") {
+            if (failPuts) return json({ detail: "Model not allowed" }, 403);
+            effective = { ...effective, ...request.postDataJSON() };
+            return json({ ...effective, preset: "balanced", effective });
+          }
+          // Snapshot now: a slow response must carry the pre-save selection.
+          const snapshot = { ...effective, preset: "balanced", effective };
+          if (slowNextGet) {
+            slowNextGet = false;
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
+          return json(snapshot);
+        }
+        if (path.endsWith("/history")) return json([state]);
+        if (path.endsWith("/state")) return json(state);
+        if (
+          path.endsWith("/runs") ||
+          path.endsWith("/threads/search") ||
+          path.endsWith("/response-jobs")
+        )
+          return json([]);
+        return fallback.route(route, account);
+      },
+    };
+    try {
+      const { page, context, pageErrors } = await authenticatedPage(
+        browser,
+        { ...server, baseUrl: `${server.baseUrl}?threadId=picker` },
+        policy,
+        "developer"
+      );
+      const trigger = page.getByRole("button", { name: /^Model: / });
+      await page
+        .getByRole("button", { name: /^Model: Claude Sonnet 5,/ })
+        .waitFor();
+
+      // The open-time refresh reads the old selection, but answers only after
+      // the new model has been saved; it must not revert the picker.
+      slowNextGet = true;
+      await trigger.click();
+      const list = page.getByRole("listbox", { name: "Model" });
+      await list.waitFor();
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await list.waitFor({ state: "hidden" });
+      await expectEventually(() => assert.equal(effective.model, "gpt-6"));
+      await page.waitForTimeout(2000);
+      await page.getByRole("button", { name: /^Model: GPT-6,/ }).waitFor();
+      assert.equal(
+        await page.getByRole("button", { name: /^Model: Claude/ }).count(),
+        0,
+        "a load that overlapped the save is not adopted"
+      );
+
+      failPuts = true;
+      await trigger.click();
+      await list.waitFor();
+      await page.keyboard.press("ArrowUp");
+      await page.keyboard.press("Enter");
+      await page.getByText("Not saved", { exact: true }).waitFor();
+      assert.equal(await page.getByText("Saved", { exact: true }).count(), 0);
+      assert.equal(
+        await list.getByRole("option").nth(1).getAttribute("aria-selected"),
+        "true",
+        "the draft reverts to the saved model"
+      );
+      await page.keyboard.press("Escape");
+      await list.waitFor({ state: "hidden" });
+
+      failPuts = false;
+      await trigger.click();
+      await list.waitFor();
+      assert.equal(
+        await page.getByText("Not saved", { exact: true }).count(),
+        0,
+        "a reopened picker does not repeat an earlier failure"
+      );
+      await page.keyboard.press("Escape");
+
+      assert.deepEqual(pageErrors, []);
+      await context.close();
+    } finally {
+      await browser.close();
+      await server.close();
+    }
+  }
+);
+
 /** Let open/close transitions settle so screenshots show the final frame. */
 function settled(page) {
   return page.evaluate(() =>

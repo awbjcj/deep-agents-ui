@@ -44,7 +44,7 @@ function Kbd({ children }: { children: React.ReactNode }) {
  */
 export function ModelQuickPicker({ accountId }: { accountId?: string }) {
   const selection = useModelSelection(accountId);
-  const { status, models, draft, saving } = selection;
+  const { status, models, draft, saving, saveFailed } = selection;
   const [open, setOpen] = useState(false);
   const [edited, setEdited] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -166,6 +166,14 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
                   className="h-3 w-3 motion-safe:animate-spin"
                 />
                 Saving…
+              </>
+            ) : edited && saveFailed ? (
+              <>
+                <AlertCircle
+                  aria-hidden="true"
+                  className="h-3 w-3 text-destructive"
+                />
+                Not saved
               </>
             ) : edited ? (
               <>
