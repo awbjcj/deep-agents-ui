@@ -1,3 +1,5 @@
+import type { Message } from "@langchain/langgraph-sdk";
+
 /** Public task outcome v1. Checkpoint values are authoritative after reconnect. */
 export type TaskOutcome = {
   execution_id: string;
@@ -66,7 +68,7 @@ export function isTerminalTaskOutcome(outcome: TaskOutcome): boolean {
   return outcome.status !== "running" && outcome.status !== "candidate";
 }
 
-/** Events cannot choose an active execution or undo a terminal checkpoint. */
+/** Events refine the checkpoint's task and answer without changing their identity. */
 export function reduceTaskOutcome(
   current: TaskOutcome | null,
   incoming: TaskOutcome,
@@ -75,7 +77,10 @@ export function reduceTaskOutcome(
   if (incoming.execution_id !== activeExecutionId) return current;
   if (
     current?.execution_id === activeExecutionId &&
-    isTerminalTaskOutcome(current)
+    (isTerminalTaskOutcome(current) ||
+      current.task_id !== incoming.task_id ||
+      current.revision !== incoming.revision ||
+      current.candidate_message_id !== incoming.candidate_message_id)
   )
     return current;
   return incoming;
@@ -100,6 +105,37 @@ export function isTaskGraderMessage(metadata: unknown): boolean {
     !!stream &&
     typeof stream === "object" &&
     "rubric_grader_configured_model" in stream
+  );
+}
+
+/** An earlier answer must not silence activity for a new human turn. */
+export function isLatestTaskOutcome(
+  outcome: TaskOutcome | null,
+  messages: readonly Message[]
+): boolean {
+  if (!outcome?.candidate_message_id) return false;
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index];
+    if (message.type === "human") return false;
+    if (message.id === outcome.candidate_message_id) return true;
+  }
+  return false;
+}
+
+/** Replace only the current backend fallback notice with the dedicated status UI. */
+export function isTaskOutcomeNotice(
+  message: Message,
+  outcome: TaskOutcome | null
+): boolean {
+  return (
+    !!outcome &&
+    !!taskOutcomePresentation(outcome) &&
+    message.type === "ai" &&
+    message.additional_kwargs?.task_outcome_status === true &&
+    message.id ===
+      `task-status:${outcome.execution_id}:${
+        outcome.candidate_message_id ?? "None"
+      }`
   );
 }
 
@@ -146,7 +182,9 @@ export function taskOutcomePresentation(
       };
       return {
         title: "Completion could not be verified",
-        detail: details[outcome.reason_code],
+        detail: Object.hasOwn(details, outcome.reason_code)
+          ? details[outcome.reason_code]
+          : undefined,
       };
     }
   }

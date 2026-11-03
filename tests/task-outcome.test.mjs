@@ -9,6 +9,8 @@ import {
   taskOutcomeEvent,
   taskOutcomePresentation,
   isTaskGraderMessage,
+  isLatestTaskOutcome,
+  isTaskOutcomeNotice,
 } from "../src/lib/taskOutcome.ts";
 
 const outcome = (status, changes = {}) => ({
@@ -75,6 +77,32 @@ test("stale events and a late checking event cannot replace the active terminal 
   );
 });
 
+test("events from an earlier task revision or candidate cannot verify the active answer", () => {
+  const current = outcome("candidate", { revision: 2 });
+  for (const changes of [
+    { task_id: "another-task" },
+    { revision: 1 },
+    { candidate_message_id: "earlier-answer" },
+  ]) {
+    assert.equal(
+      reduceTaskOutcome(
+        current,
+        outcome("completed", { revision: 2, ...changes }),
+        "execution"
+      ),
+      current
+    );
+  }
+  assert.equal(
+    reduceTaskOutcome(
+      current,
+      outcome("completed", { revision: 2 }),
+      "execution"
+    ).status,
+    "completed"
+  );
+});
+
 test("only root protocol v1 events are accepted", () => {
   const event = {
     type: "task_outcome",
@@ -100,6 +128,18 @@ test("public projection drops private state and never renders arbitrary diagnost
     parseTaskOutcome({ ...outcome("completed"), status: "invented" }),
     null
   );
+});
+
+test("unknown reason codes cannot resolve to inherited properties or crash rendering", () => {
+  for (const reason_code of ["__proto__", "constructor", "toString"]) {
+    const current = outcome("unverified", { reason_code });
+    assert.equal(taskOutcomePresentation(current).detail, undefined);
+    assert.doesNotThrow(() =>
+      renderToStaticMarkup(
+        React.createElement(TaskOutcomeStatus, { outcome: current })
+      )
+    );
+  }
 });
 
 test("simple answers are not presented as verified and terminal limits have no checking label", () => {
@@ -131,6 +171,64 @@ test("native grader tokens are identified by stream diagnostics, never answer wo
     false
   );
   assert.equal(isTaskGraderMessage(null), false);
+});
+
+test("a previous completion cannot silence activity while the next human turn runs", () => {
+  const current = outcome("completed");
+  const messages = [
+    { type: "human", id: "request", content: "First request" },
+    { type: "ai", id: "answer", content: "First answer" },
+  ];
+  assert.equal(isLatestTaskOutcome(current, messages), true);
+  assert.equal(
+    isLatestTaskOutcome(current, [
+      ...messages,
+      { type: "human", id: "follow-up", content: "Next request" },
+      { type: "ai", id: "new-answer", content: "Starting the next answer" },
+    ]),
+    false
+  );
+  assert.equal(
+    isLatestTaskOutcome(
+      outcome("candidate", { candidate_message_id: null }),
+      messages
+    ),
+    false
+  );
+});
+
+test("current fallback notices are replaced without hiding earlier status history", () => {
+  const current = outcome("unverified");
+  const notice = {
+    type: "ai",
+    id: "task-status:execution:answer",
+    content: "Completion could not be verified; the answer above is retained.",
+    additional_kwargs: { task_outcome_status: true },
+  };
+  assert.equal(isTaskOutcomeNotice(notice, current), true);
+  assert.equal(isTaskOutcomeNotice(notice, null), false);
+  assert.equal(
+    isTaskOutcomeNotice(
+      { ...notice, id: "task-status:earlier:answer" },
+      current
+    ),
+    false
+  );
+  assert.equal(
+    isTaskOutcomeNotice({ ...notice, additional_kwargs: {} }, current),
+    false
+  );
+  assert.equal(
+    isTaskOutcomeNotice({ ...notice, type: "human" }, current),
+    false
+  );
+  assert.equal(
+    isTaskOutcomeNotice(
+      notice,
+      outcome("unverified", { reason_code: "simple_answer" })
+    ),
+    false
+  );
 });
 
 test("completion status is announced accessibly while simple answers remain quiet", () => {

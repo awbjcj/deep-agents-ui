@@ -44,6 +44,7 @@ import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
 import {
   isTaskGraderMessage,
+  isTaskOutcomeNotice,
   parseTaskOutcome,
   reduceTaskOutcome,
   taskOutcomeEvent,
@@ -1094,13 +1095,18 @@ export function useChat({
   // every artifact in the thread.
   const isInterrupted = stream.interrupts.length > 0;
   const { messages: streamedMessages, getMessagesMetadata } = stream;
+  const taskOutcome = useMemo(
+    () => parseTaskOutcome(stream.values.task_outcome),
+    [stream.values.task_outcome]
+  );
   const visibleMessages = useMemo(
     () =>
       streamedMessages.filter(
         (message, index) =>
-          !isTaskGraderMessage(getMessagesMetadata(message, index))
+          !isTaskGraderMessage(getMessagesMetadata(message, index)) &&
+          !isTaskOutcomeNotice(message, taskOutcome)
       ),
-    [streamedMessages, getMessagesMetadata]
+    [streamedMessages, getMessagesMetadata, taskOutcome]
   );
   const processedMessages = useProcessedMessages(
     visibleMessages,
@@ -1112,10 +1118,6 @@ export function useChat({
   const todos = stream.values.todos ?? EMPTY_TODOS;
   const email = stream.values.email;
   const ui = stream.values.ui;
-  const taskOutcome = useMemo(
-    () => parseTaskOutcome(stream.values.task_outcome),
-    [stream.values.task_outcome]
-  );
   const messages = visibleMessages;
   const isLoading =
     stream.isLoading ||

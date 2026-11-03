@@ -26,13 +26,15 @@ test(
     const base = {
       execution_id: "active",
       task_id: "task",
-      revision: 1,
+      revision: 2,
       status: "candidate",
       reason_code: "checking",
       requirement_gaps: [],
       candidate_message_id: "answer",
     };
     let outcome = base;
+    let followup = false;
+    let releaseFollowup;
     let historyReady = false;
     let earlyJoin = false;
     const snapshot = () => ({
@@ -45,6 +47,26 @@ test(
             content:
               "The answer is preserved. [Evidence source](https://example.com/evidence)",
           },
+          ...(["unverified", "budget_exhausted"].includes(outcome.status)
+            ? [
+                {
+                  type: "ai",
+                  id: "task-status:active:answer",
+                  content:
+                    "Completion could not be verified; the answer above is retained.",
+                  additional_kwargs: { task_outcome_status: true },
+                },
+              ]
+            : []),
+          ...(followup
+            ? [
+                {
+                  type: "human",
+                  id: "followup",
+                  content: "Find more evidence.",
+                },
+              ]
+            : []),
         ],
         files: {},
         todos: [],
@@ -77,6 +99,17 @@ test(
           earlyJoin ||= !historyReady;
           const message = (event, data) =>
             `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+          if (followup) {
+            return new Promise((resolve) => {
+              releaseFollowup = async () => {
+                await route.fulfill({
+                  contentType: "text/event-stream",
+                  body: message("values", snapshot().values),
+                });
+                resolve();
+              };
+            });
+          }
           return route.fulfill({
             contentType: "text/event-stream",
             body:
@@ -97,6 +130,20 @@ test(
                 outcome: {
                   ...base,
                   execution_id: "stale",
+                  status: "completed",
+                },
+              }) +
+              message("custom", {
+                type: "task_outcome",
+                version: 1,
+                outcome: { ...base, revision: 1, status: "completed" },
+              }) +
+              message("custom", {
+                type: "task_outcome",
+                version: 1,
+                outcome: {
+                  ...base,
+                  candidate_message_id: "earlier-answer",
                   status: "completed",
                 },
               }) +
@@ -170,6 +217,15 @@ test(
         };
         await page.reload({ waitUntil: "domcontentloaded" });
         await page.getByText(label, { exact: true }).waitFor();
+        assert.equal(
+          await page
+            .getByText(
+              "Completion could not be verified; the answer above is retained.",
+              { exact: true }
+            )
+            .count(),
+          0
+        );
         await page
           .getByText("The answer is preserved.", { exact: false })
           .waitFor();
@@ -188,6 +244,15 @@ test(
         await page.evaluate(() => document.activeElement !== document.body),
         true
       );
+      outcome = { ...base, status: "completed" };
+      followup = true;
+      await page.evaluate(() =>
+        sessionStorage.setItem("lg:stream:outcome", "run")
+      );
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.getByText("Working", { exact: true }).waitFor();
+      assert.equal(typeof releaseFollowup, "function");
+      await releaseFollowup();
       assert.deepEqual(pageErrors, []);
       await context.close();
     } finally {
