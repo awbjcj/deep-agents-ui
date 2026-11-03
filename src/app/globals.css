@@ -1876,6 +1876,19 @@ button {
     }
   }
 
+  /* Completion status appears once per checked task. A short rise ties it to
+     the answer above; status changes inside it stay instant. */
+  .task-outcome-status {
+    transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  }
+
+  @starting-style {
+    .task-outcome-status {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
   .agent-activity-dot {
     animation: activityPulse 1400ms ease-in-out infinite;
   }

@@ -8,11 +8,17 @@ import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
-import { TaskOutcomeStatus } from "@/app/components/TaskOutcomeStatus";
-import type { TaskOutcome } from "@/lib/taskOutcome";
 import { SkillReferenceText } from "./skills/SkillReferenceText";
 import { parseSkillReferences } from "@/lib/skill-references";
 import { contextSummary } from "@/lib/context-summary";
+import {
+  isRubricRevisionMessage,
+  isTaskStatusMessage,
+} from "@/lib/task-outcome";
+import {
+  RubricRevisionCard,
+  TaskStatusNotice,
+} from "@/app/components/TaskOutcomeStatus";
 import type {
   SubAgent,
   ToolCall,
@@ -43,7 +49,6 @@ import {
 } from "@/lib/source-images";
 
 interface ChatMessageProps {
-  taskOutcome?: TaskOutcome | null;
   onUseEvidence?: (text: string) => void;
   message: Message;
   toolCalls: ToolCall[];
@@ -57,11 +62,12 @@ interface ChatMessageProps {
   graphId?: string;
   files: Record<string, string>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
+  /** 1-based grader pass number for runtime revision requests. */
+  rubricCheckNumber?: number;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
   ({
-    taskOutcome,
     message,
     onUseEvidence,
     toolCalls,
@@ -75,8 +81,13 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     graphId,
     files,
     sourceImageAttachments,
+    rubricCheckNumber,
   }) => {
-    const isUser = message.type === "human";
+    // Runtime grader requests arrive as human messages but are not the user's
+    // words; they render as a card, never as a user bubble.
+    const isRubricRevision = isRubricRevisionMessage(message);
+    const isTaskStatus = isTaskStatusMessage(message);
+    const isUser = message.type === "human" && !isRubricRevision;
     const messageContent = extractStringFromMessageContent(message);
     const skillReferences = useMemo(
       () =>
@@ -203,6 +214,15 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         [id]: prev[id] === undefined ? false : !prev[id],
       }));
     }, []);
+
+    if (isRubricRevision)
+      return (
+        <RubricRevisionCard
+          content={messageContent}
+          checkNumber={rubricCheckNumber}
+        />
+      );
+    if (isTaskStatus) return <TaskStatusNotice content={messageContent} />;
 
     return (
       <div
@@ -415,7 +435,6 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
             </div>
           )}
-          {!isUser && <TaskOutcomeStatus outcome={taskOutcome ?? null} />}
           {!isUser && (
             <ResponseDetails
               message={message}

@@ -28,7 +28,7 @@ test(
       task_id: "task",
       revision: 2,
       status: "candidate",
-      reason_code: "checking",
+      reason_code: "awaiting_verification",
       requirement_gaps: [],
       candidate_message_id: "answer",
     };
@@ -176,14 +176,22 @@ test(
         policy,
         "admin"
       );
-      await page.getByText("Checking completion", { exact: true }).waitFor();
+      // A candidate checkpoint with no run in progress is not "checking":
+      // a stopped run must never leave a permanent progress state.
+      await page
+        .getByText("The answer is preserved.", { exact: false })
+        .waitFor();
+      assert.equal(await page.getByText(/Checking completion/).count(), 0);
       await page.evaluate(() =>
         sessionStorage.setItem("lg:stream:outcome", "run")
       );
       historyReady = false;
       await page.reload({ waitUntil: "domcontentloaded" });
+      // Only the live event matching the checkpoint's execution, revision and
+      // answer refines it; stale and identity-changing events are ignored.
       await page
         .getByText("Completion could not be verified", { exact: true })
+        .first()
         .waitFor();
       assert.equal(earlyJoin, false);
       assert.equal(
@@ -207,8 +215,8 @@ test(
         ["completed", "Completion verified"],
         ["unverified", "Completion could not be verified"],
         ["blocked", "Task blocked"],
-        ["needs_input", "Your input is needed"],
-        ["budget_exhausted", "Execution limit reached"],
+        ["needs_input", "Waiting for your input"],
+        ["budget_exhausted", "Run allowance used up"],
       ]) {
         outcome = {
           ...base,
@@ -216,7 +224,7 @@ test(
           reason_code: status === "unverified" ? "grader_error" : status,
         };
         await page.reload({ waitUntil: "domcontentloaded" });
-        await page.getByText(label, { exact: true }).waitFor();
+        await page.getByText(label, { exact: true }).first().waitFor();
         assert.equal(
           await page
             .getByText(
@@ -229,10 +237,7 @@ test(
         await page
           .getByText("The answer is preserved.", { exact: false })
           .waitFor();
-        assert.equal(
-          await page.getByText("Checking completion", { exact: true }).count(),
-          0
-        );
+        assert.equal(await page.getByText(/Checking completion/).count(), 0);
         await page.screenshot({
           path: `docs/evidence/task-outcomes/${status}.png`,
           fullPage: true,
