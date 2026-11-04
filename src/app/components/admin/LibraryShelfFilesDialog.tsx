@@ -31,6 +31,7 @@ import {
 import { sortLibraryFiles } from "@/lib/library-file-view";
 
 const ACCEPTED_FILES = ".pdf,.docx,.pptx,.xlsx,.html,.htm,.txt,.md,.msg";
+const PENDING_REFRESH_MS = 5000;
 
 interface LibraryShelfFilesDialogProps {
   shelfId: string;
@@ -85,6 +86,29 @@ export function LibraryShelfFilesDialog({
     return () => controller.abort();
   }, [load, open]);
 
+  // Uploads are converted by the shelf's background sync job, so refresh
+  // while any file is still pending to show it become ready or failed.
+  const hasPending = files.some((file) => file.status === "pending");
+  useEffect(() => {
+    if (!open || !hasPending) return;
+    const controller = new AbortController();
+    const timer = window.setInterval(async () => {
+      try {
+        setFiles(
+          sortLibraryFiles(
+            await apiListLibraryShelfFiles(shelfId, controller.signal)
+          )
+        );
+      } catch {
+        // A failed refresh keeps the last list; the next tick retries.
+      }
+    }, PENDING_REFRESH_MS);
+    return () => {
+      window.clearInterval(timer);
+      controller.abort();
+    };
+  }, [hasPending, open, shelfId]);
+
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -96,7 +120,7 @@ export function LibraryShelfFilesDialog({
       toast.success(
         `${selected.length} ${
           selected.length === 1 ? "file" : "files"
-        } added; indexing queued`
+        } added; conversion and indexing queued`
       );
       await Promise.all([load(), onChanged()]);
     } catch (caught) {
@@ -175,7 +199,7 @@ export function LibraryShelfFilesDialog({
             disabled={locked}
           >
             {uploading ? <Loader2 className="animate-spin" /> : <FileUp />}
-            {uploading ? "Converting files" : "Upload documents"}
+            {uploading ? "Uploading files" : "Upload documents"}
           </Button>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
             PDF, Word, PowerPoint, Excel, HTML, Markdown, text, and Outlook
