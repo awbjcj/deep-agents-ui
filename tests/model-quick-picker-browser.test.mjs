@@ -387,6 +387,205 @@ test(
   }
 );
 
+test(
+  "model surfaces keep an external save when an older read finishes later",
+  { skip: process.env.MODEL_PICKER_BROWSER_TEST !== "1", timeout: 60000 },
+  async () => {
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
+    );
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
+    const server = await staticServer();
+    const fallback = makePolicyFixture();
+    const initial = {
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      effort: "medium",
+      thinking: false,
+      max_tokens: 8192,
+    };
+    let effective = { ...initial };
+    let delayedGet = null;
+    const pendingReads = [];
+    const puts = [];
+    const state = {
+      values: { messages: [], files: {}, todos: [] },
+      tasks: [],
+      next: [],
+      checkpoint: { thread_id: "picker", checkpoint_id: "head" },
+      parent_checkpoint: null,
+      metadata: {},
+      created_at: "2026-11-01T00:00:00Z",
+    };
+    const policy = {
+      async route(route, account) {
+        const request = route.request();
+        const path = new URL(request.url()).pathname;
+        const json = (body) =>
+          route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify(body),
+          });
+        if (path === "/api/user/allowed-models")
+          return json({ models: MODELS });
+        if (path === "/api/user/model") {
+          if (request.method() === "PUT") {
+            const body = request.postDataJSON();
+            puts.push(body);
+            effective = { ...effective, ...body };
+            return json({ ...effective, preset: "balanced", effective });
+          }
+          const snapshot = {
+            ...effective,
+            preset: "balanced",
+            effective: { ...effective },
+          };
+          if (delayedGet) {
+            const delay = delayedGet;
+            delayedGet = null;
+            delay.request = request;
+            delay.markStarted();
+            await delay.released;
+          }
+          return json(snapshot);
+        }
+        if (path.endsWith("/history")) return json([state]);
+        if (path.endsWith("/state")) return json(state);
+        if (
+          path.endsWith("/runs") ||
+          path.endsWith("/threads/search") ||
+          path.endsWith("/response-jobs")
+        )
+          return json([]);
+        return fallback.route(route, account);
+      },
+    };
+    function delayNextGet() {
+      let started;
+      let release;
+      const startedPromise = new Promise((resolve) => (started = resolve));
+      const released = new Promise((resolve) => (release = resolve));
+      delayedGet = {
+        started: startedPromise,
+        markStarted: started,
+        released,
+        release,
+      };
+      pendingReads.push(release);
+      return delayedGet;
+    }
+    async function releaseRead(page, delay) {
+      const response = page.waitForResponse(
+        (res) => res.request() === delay.request
+      );
+      delay.release();
+      await (await response).finished();
+      // Let the resolved fetch and its React update run before asserting.
+      await page.waitForTimeout(150);
+    }
+    async function openPage() {
+      return authenticatedPage(
+        browser,
+        { ...server, baseUrl: `${server.baseUrl}?threadId=picker` },
+        policy,
+        "developer"
+      );
+    }
+    try {
+      // A picker refresh starts first; a save in Workspace > Models then wins.
+      const first = await openPage();
+      const { page } = first;
+      const trigger = page.getByRole("button", { name: /^Model: / });
+      await page
+        .getByRole("button", { name: /^Model: Claude Sonnet 5,/ })
+        .waitFor();
+      const pickerRead = delayNextGet();
+      await trigger.click();
+      await pickerRead.started;
+      await page.keyboard.press("Escape");
+      await page
+        .getByRole("button", { name: "Workspace", exact: true })
+        .click();
+      await page.getByRole("tab", { name: "Models" }).click();
+      const modelSelect = page.locator("#model-select");
+      await modelSelect.click();
+      await page.getByRole("option", { name: /GPT-6/ }).click();
+      await page
+        .getByRole("button", { name: "Save custom configuration" })
+        .click();
+      await page.getByRole("button", { name: /^Model: GPT-6,/ }).waitFor();
+      await releaseRead(page, pickerRead);
+      assert.match(await trigger.getAttribute("aria-label"), /^Model: GPT-6,/);
+
+      // Hold the next refresh too, so it cannot mask a stale draft before edit.
+      await page.getByRole("button", { name: "Close workspace panel" }).click();
+      const editRead = delayNextGet();
+      await trigger.click();
+      await editRead.started;
+      await page.getByRole("radio", { name: "medium" }).click();
+      await page.keyboard.press("Escape");
+      await expectEventually(() => {
+        assert.equal(puts.at(-1)?.model, "gpt-6");
+        assert.equal(puts.at(-1)?.effort, "medium");
+      });
+      await releaseRead(page, editRead);
+      assert.deepEqual(first.pageErrors, []);
+      await first.context.close();
+
+      // The reverse direction: the Models panel is still loading when the
+      // composer saves. Its old read must not replace the new selection.
+      effective = { ...initial };
+      puts.length = 0;
+      const second = await openPage();
+      const otherPage = second.page;
+      const otherTrigger = otherPage.getByRole("button", { name: /^Model: / });
+      await otherPage
+        .getByRole("button", { name: /^Model: Claude Sonnet 5,/ })
+        .waitFor();
+      await otherPage
+        .getByRole("button", { name: "Workspace", exact: true })
+        .click();
+      const panelRead = delayNextGet();
+      await otherPage.getByRole("tab", { name: "Models" }).click();
+      await panelRead.started;
+      await otherPage.evaluate(() => {
+        window.modelEvents = [];
+        window.addEventListener("vsda-model-selection-changed", (event) => {
+          window.modelEvents.push(event.detail.effective.model);
+        });
+      });
+      await otherTrigger.click();
+      await otherPage.getByRole("option", { name: /GPT-6/ }).click();
+      await otherPage.keyboard.press("Escape");
+      await otherPage.getByRole("button", { name: /^Model: GPT-6,/ }).waitFor();
+      await expectEventually(() => assert.equal(effective.model, "gpt-6"));
+      await otherPage.waitForFunction(() =>
+        window.modelEvents.includes("gpt-6")
+      );
+      await releaseRead(otherPage, panelRead);
+      const otherSelect = otherPage.locator("#model-select");
+      await otherSelect.waitFor();
+      assert.match(await otherSelect.innerText(), /GPT-6/);
+      await otherPage
+        .getByRole("button", { name: "medium", exact: true })
+        .click();
+      await expectEventually(() => {
+        assert.equal(puts.at(-1)?.model, "gpt-6");
+        assert.equal(puts.at(-1)?.effort, "medium");
+      });
+      assert.deepEqual(second.pageErrors, []);
+      await second.context.close();
+    } finally {
+      for (const release of pendingReads) release();
+      await browser.close();
+      await server.close();
+    }
+  }
+);
+
 /** Let open/close transitions settle so screenshots show the final frame. */
 function settled(page) {
   return page.evaluate(() =>
