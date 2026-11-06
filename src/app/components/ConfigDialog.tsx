@@ -381,7 +381,10 @@ export function ConfigDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent aria-describedby={undefined} className="flex max-h-[90dvh] flex-col sm:max-w-[525px]">
+      <DialogContent
+        aria-describedby={undefined}
+        className="flex max-h-[90dvh] flex-col sm:max-w-[525px]"
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle>Choose an agent</DialogTitle>
         </DialogHeader>
