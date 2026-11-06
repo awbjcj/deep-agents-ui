@@ -308,10 +308,6 @@ export function IndexInventory({
           >
             Index inventory
           </h4>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Inspect mappings, publish recent writes, and remove obsolete
-            storage.
-          </p>
         </div>
         <div className="flex items-center gap-1.5">
           <Button
@@ -355,9 +351,6 @@ export function IndexInventory({
             >
               Cluster pattern
             </label>
-            <span className="text-[10px] text-muted-foreground/80">
-              Reloads from OpenSearch
-            </span>
           </div>
           <form
             onSubmit={submitPattern}

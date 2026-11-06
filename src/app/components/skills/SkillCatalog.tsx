@@ -50,40 +50,24 @@ export function SkillCatalog({
       aria-label="Skill catalog"
       aria-busy={loading}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-xl font-semibold tracking-tight">Your skills</h3>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Reusable instructions for the way you work. Browse system skills or
-            build your own.
-          </p>
-        </div>
-        <div className="flex w-full flex-wrap gap-2">
-          <Button
-            type="button"
-            onClick={onCreate}
-            className="flex-1"
-          >
-            <Plus aria-hidden="true" /> New skill
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onImport}
-            className="flex-1"
-          >
-            <Upload aria-hidden="true" />
-            Import
-          </Button>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          onClick={onCreate}
+          className="flex-1"
+        >
+          <Plus aria-hidden="true" /> New skill
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onImport}
+          className="flex-1"
+        >
+          <Upload aria-hidden="true" />
+          Import
+        </Button>
       </div>
-      <p className="flex items-center gap-2 text-xs text-muted-foreground">
-        <LockKeyhole
-          aria-hidden="true"
-          className="size-3.5 shrink-0"
-        />
-        Personal skills are private to your account.
-      </p>
       <div className="flex flex-col gap-2 @sm:flex-row">
         <div className="relative min-w-0 flex-1">
           <label
@@ -128,7 +112,7 @@ export function SkillCatalog({
           />
         </div>
       </div>
-      {!unavailable && (
+      {!unavailable && matches.length > 0 && (
         <p
           role="status"
           className="text-xs tabular-nums text-muted-foreground"
@@ -219,7 +203,7 @@ export function SkillCatalog({
           <p>
             {entries.length
               ? "No skills match your search and filter."
-              : "No skills yet. Create a skill or import a SKILL.md package."}
+              : "No skills yet."}
           </p>
           {(search || origin !== "all") && (
             <Button

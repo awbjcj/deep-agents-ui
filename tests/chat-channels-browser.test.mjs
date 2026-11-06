@@ -385,7 +385,10 @@ test(
         true
       );
       await page
-        .getByRole("heading", { name: "Telegram", exact: true })
+        .getByRole("heading", {
+          name: "Private chat with the VSDA bot",
+          exact: true,
+        })
         .waitFor();
       await page.getByRole("button", { name: "Get link code" }).click();
       const ticket = page.locator("code", { hasText: "/start telegram-code" });
@@ -426,10 +429,13 @@ test(
         .getByRole("button", { name: "Link this account" })
         .click();
       await page.getByText("Telegram linked.", { exact: true }).waitFor();
-      await page.getByText("Telegram is connected", { exact: true }).waitFor();
+      await page.getByRole("link", { name: /Open Telegram/ }).waitFor();
       const toggle = page.getByRole("switch", { name: "Enable Telegram" });
       assert.equal(await toggle.isChecked(), true);
-      await page.getByText("@alice · Private chat with the VSDA bot").waitFor();
+      await page
+        .getByRole("region", { name: "Telegram", exact: true })
+        .getByText("@alice", { exact: true })
+        .waitFor();
       await shot("connected-light");
 
       // Keyboard toggle, server-confirmed rather than optimistic.
@@ -445,7 +451,9 @@ test(
       await page.getByText("Telegram paused.", { exact: true }).waitFor();
       assert.equal(await toggle.isChecked(), false);
       assert.deepEqual(patches().at(-1).body, { enabled: false });
-      await page.getByText(/Telegram is paused\. Turn it on above/).waitFor();
+      await page
+        .getByRole("button", { name: "Link a different account" })
+        .waitFor();
 
       api.state.nextWrite = "conflict";
       const before = patches().length;

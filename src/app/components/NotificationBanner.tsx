@@ -1,22 +1,13 @@
 "use client";
 
 import { useCallback } from "react";
-import {
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  ExternalLink,
-  X,
-} from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/app/hooks/useNotifications";
 
 /**
- * Visual identity for each severity level. Designed to feel native to the
- * Aptiv theme — sharp left accent bar, subtle tinted background, no shadow
- * spam. Action button uses the orange accent for the "error" severity so the
- * primary CTA reads as urgent without yelling.
+ * Color and icon pairings for notice severity.
  */
 type SeverityVisual = {
   Icon: typeof AlertCircle;
@@ -68,7 +59,7 @@ export function NotificationBanner() {
 
   return (
     <div
-      className="flex flex-col gap-2 px-6 pt-4"
+      className="flex flex-col gap-2 px-3 pt-3 @container/notices sm:px-6"
       role="region"
       aria-label="Notifications"
     >
@@ -78,14 +69,26 @@ export function NotificationBanner() {
         const service = n.action_params?.service ?? null;
         const showActionButton =
           !!n.action_label && n.action_target === "tokens";
+        const isTokenNotice =
+          showActionButton && /_token_(expired|not_configured)$/.test(n.code);
+        const titleId = `notification-${n.id}-title`;
+        // The title identifies the credential and the action opens its field.
+        // Preserve Graph's cross-service impact and any other notice's detail.
+        const detail = isTokenNotice
+          ? service === "graph"
+            ? "Email and Teams tools need a current token."
+            : ""
+          : n.message?.trim() === n.title?.trim()
+          ? ""
+          : n.message;
 
         return (
           <div
             key={n.id}
-            role="alert"
             className={cn(
-              "group relative flex items-start gap-3 overflow-hidden rounded-lg border py-3 pl-4 pr-3 shadow-sm",
-              "duration-200 animate-in fade-in slide-in-from-top-1",
+              "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 overflow-hidden rounded-lg border py-1.5 pl-3 pr-1.5 @sm/notices:gap-x-3",
+              showActionButton &&
+                "@sm/notices:grid-cols-[auto_minmax(0,1fr)_auto_auto]",
               visual.bgClass,
               visual.borderClass
             )}
@@ -100,12 +103,16 @@ export function NotificationBanner() {
             />
 
             <Icon
-              className={cn("mt-0.5 h-5 w-5 shrink-0", visual.iconClass)}
+              className={cn("mt-2.5 h-5 w-5", visual.iconClass)}
               aria-hidden="true"
             />
 
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div
+              role={n.severity === "error" ? "alert" : "status"}
+              className="min-w-0 py-2.5 [overflow-wrap:anywhere]"
+            >
               <p
+                id={titleId}
                 className={cn(
                   "text-sm font-semibold leading-tight",
                   visual.titleClass
@@ -113,36 +120,45 @@ export function NotificationBanner() {
               >
                 {n.title}
               </p>
-              <p className="mt-0.5 text-sm leading-snug text-foreground/80">
-                {n.message}
-              </p>
+              {detail && (
+                <p className="mt-0.5 text-sm leading-snug text-foreground/80">
+                  {detail}
+                </p>
+              )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-1">
-              {showActionButton && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => handleAction(service)}
-                  className="h-8 gap-1.5 px-3 text-xs font-semibold"
-                >
-                  {n.action_label}
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              )}
-              <button
-                type="button"
-                aria-label="Snooze for one hour"
-                onClick={() => snooze(n.id, 1)}
-                className={cn(
-                  "ml-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md",
-                  "text-muted-foreground/80 transition-colors hover:bg-foreground/5 hover:text-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                )}
+            {showActionButton && (
+              <Button
+                size="sm"
+                variant="outline"
+                aria-describedby={titleId}
+                onClick={() => handleAction(service)}
+                className="col-start-2 row-start-2 min-h-9 justify-self-start whitespace-normal text-left text-xs @sm/notices:col-start-3 @sm/notices:row-start-1"
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+                {n.action_label}
+                <ArrowRight
+                  className="h-3 w-3 shrink-0"
+                  aria-hidden="true"
+                />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Snooze for one hour"
+              aria-describedby={titleId}
+              onClick={() => snooze(n.id, 1)}
+              className={cn(
+                "col-start-3 row-start-1 size-9 text-muted-foreground",
+                showActionButton && "@sm/notices:col-start-4"
+              )}
+            >
+              <X
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
+            </Button>
           </div>
         );
       })}

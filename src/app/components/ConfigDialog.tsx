@@ -18,14 +18,12 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -42,7 +40,7 @@ import { getAuthUser } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { Client } from "@langchain/langgraph-sdk";
-import { AlertCircle, CheckCircle2, Loader2, Route } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import {
   getAnalysisEngines,
   analysisBlockerMessage,
@@ -378,31 +376,21 @@ export function ConfigDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[525px]"
+      >
         <DialogHeader>
-          <span className="aptiv-eyebrow">Settings</span>
-          <DialogTitle className="mt-1">Configuration</DialogTitle>
-          <span
-            className="aptiv-rule"
-            aria-hidden="true"
-          />
-          <DialogDescription>
-            Deployment settings are configured via environment variables. Select
-            an assistant to get started.
-          </DialogDescription>
+          <DialogTitle>Choose an agent</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid min-w-0 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="deploymentUrl">Deployment URL</Label>
-            <Input
-              id="deploymentUrl"
-              value={deploymentUrl}
-              disabled
-              className="bg-muted"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="assistantId">Assistant</Label>
+            <Label
+              htmlFor="assistantId"
+              className="sr-only"
+            >
+              Agent
+            </Label>
             {loading && assistants.length === 0 ? (
               <div className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -435,66 +423,46 @@ export function ConfigDialog({
               const info = selected ? AGENT_INFO[selected.graphId] : undefined;
               if (!info) return null;
               return (
-                <div className="grid gap-2">
-                  <Label>Agent Details</Label>
-                  <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
-                    <p className="text-muted-foreground">{info.description}</p>
-                    <div>
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        What it's good for
-                      </span>
-                      <ul className="mt-1.5 space-y-1.5">
-                        {info.useCases.map((useCase) => (
-                          <li
-                            key={useCase}
-                            className="flex gap-2 text-muted-foreground"
-                          >
-                            <span
-                              aria-hidden="true"
-                              className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
-                            />
-                            <span>{useCase}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {info.note && (
-                      <p className="text-xs text-muted-foreground">
-                        {info.note}
-                      </p>
-                    )}
-                    {info.isSupervisor && (
-                      <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">
-                          Tip:
-                        </span>{" "}
-                        If the job only touches one system, pick that agent
-                        directly. It will be faster and stay on topic. Keep a
-                        supervisor for work that crosses systems or takes
-                        several steps.
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
+                  <p className="text-muted-foreground">{info.description}</p>
+                  <details>
+                    <summary className="cursor-pointer text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+                      Examples
+                    </summary>
+                    <ul className="mt-2 space-y-1.5">
+                      {info.useCases.map((useCase) => (
+                        <li
+                          key={useCase}
+                          className="flex gap-2 text-muted-foreground"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
+                          />
+                          <span>{useCase}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                  {info.note && (
+                    <p className="text-xs text-muted-foreground">{info.note}</p>
+                  )}
+                  {info.isSupervisor && (
+                    <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                      If the job only touches one system, pick that agent
+                      directly. It will be faster and stay on topic. Keep a
+                      supervisor for work that crosses systems or takes several
+                      steps.
+                    </p>
+                  )}
                 </div>
               );
             })()}
           {isCodeAnalyzer && (
             <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-              <header className="flex items-start gap-2.5 border-b border-border/70 bg-muted/25 px-3 py-2.5">
-                <Route
-                  className="mt-0.5 h-4 w-4 shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                <div>
-                  <h3 className="text-sm font-semibold">Analysis route</h3>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                    Choose how new code-analysis requests run in this session.
-                  </p>
-                </div>
-              </header>
               <div className="space-y-3 p-3">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="analysisEngine">Engine</Label>
+                  <Label htmlFor="analysisEngine">Analysis engine</Label>
                   <Select
                     value={analysisEngine}
                     onValueChange={setAnalysisEngine}

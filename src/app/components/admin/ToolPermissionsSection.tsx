@@ -226,8 +226,8 @@ export function ToolPermissionsSection() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="Agent tools"
-        subtitle="Set the maximum tools each account tier may enable"
+        title="Tier permissions"
+        subtitle="Accounts can enable only the tools allowed for their tier."
       />
 
       <div
@@ -332,7 +332,7 @@ export function ToolPermissionsSection() {
               <span className="font-semibold text-foreground">
                 {activeDraft.length}
               </span>{" "}
-              of {snapshot.catalog.length} selected for {activeTier}
+              of {snapshot.catalog.length} allowed
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -367,7 +367,7 @@ export function ToolPermissionsSection() {
             allowedIds={allCatalogIds}
             effectiveIds={activeDraft}
             savedSelectedIds={savedIds}
-            selectedStatusLabel="Allowed"
+            selectedStatusLabel={null}
             compactGroups
             idPrefix={`admin-tools-${activeTier}`}
             saving={saving}

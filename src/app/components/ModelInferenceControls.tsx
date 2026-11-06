@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { outputTokenStops } from "@/lib/model-controls";
 
-/** The original segmented effort control with accessible selection state. */
+/** Effort choices wrap to fit the panel and expose the selected value. */
 export function ReasoningEffortControl({
   options,
   value,
@@ -27,7 +27,7 @@ export function ReasoningEffortControl({
         <span>Reasoning effort</span>
         {!supported && <span className="text-[10px]">Not supported</span>}
       </legend>
-      <div className="effort-btn-group w-0 min-w-full !overflow-x-auto">
+      <div className="effort-btn-group">
         {options.map((effort) => (
           <button
             key={effort}
@@ -35,7 +35,7 @@ export function ReasoningEffortControl({
             aria-pressed={supported && value === effort}
             disabled={!supported || disabled}
             onClick={() => onChange(effort)}
-            className={`effort-btn min-w-max ${
+            className={`effort-btn ${
               supported && value === effort ? "effort-btn--active" : ""
             }`}
           >
@@ -211,7 +211,7 @@ export function OutputTokenControl({
         id={`${id}-help`}
         className="text-xs leading-relaxed text-muted-foreground"
       >
-        Snap to common values. Drag, use the arrow keys, or tap − / + to adjust.
+        Steps use common token caps.
       </p>
     </section>
   );

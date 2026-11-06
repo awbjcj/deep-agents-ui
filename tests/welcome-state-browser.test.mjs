@@ -84,9 +84,12 @@ test(
         name: "What should your agents work on?",
       });
       await welcome.waitFor();
+      assert.equal(await welcome.getByRole("list").count(), 0);
+      assert.equal(await welcome.getByRole("button").count(), 4);
       const message = page.getByRole("textbox", { name: "Message" });
       const triage = page.getByRole("button", {
-        name: /Triage open Jira tickets/,
+        name: "Triage open Jira tickets",
+        exact: true,
       });
       const build = page.getByRole("button", {
         name: /Diagnose a failed build/,

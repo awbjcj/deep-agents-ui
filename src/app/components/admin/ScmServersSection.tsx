@@ -81,7 +81,7 @@ export function ScmServersSection() {
       />
       <DisclosureSection
         title="Server configuration"
-        subtitle={`${servers.length} configured · add or update Gerrit and Plastic connections`}
+        subtitle={`${servers.length} configured`}
         contentClassName="space-y-3"
         detailsRef={configurationRef}
       >

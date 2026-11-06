@@ -452,8 +452,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                             className="flex shrink-0 cursor-pointer items-center gap-2 rounded-tr-2xl px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             aria-expanded={metaOpen === "files"}
                           >
-                            <FileIcon size={16} />
-                            Files (State)
+                            <FileIcon
+                              size={16}
+                              aria-hidden="true"
+                            />
+                            Files
                             <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
                               {fileKeysCount}
                             </span>
@@ -499,7 +502,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           }
                           aria-expanded={metaOpen === "files"}
                         >
-                          Files (State)
+                          Files
                           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
                             {fileKeysCount}
                           </span>

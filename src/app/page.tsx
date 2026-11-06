@@ -43,6 +43,8 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { useTheme } from "@/providers/ThemeProvider";
 import {
+  Bot,
+  ChevronDown,
   LayoutPanelLeft,
   MessagesSquare,
   Shield,
@@ -438,14 +440,14 @@ function HomePageInner({
       </Suspense>
       <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:h-auto max-sm:min-h-16 max-sm:flex-wrap max-sm:gap-2 max-sm:px-3 max-sm:py-2">
+        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:h-auto max-sm:min-h-16 max-sm:flex-wrap max-sm:gap-2 max-sm:px-3 max-sm:py-2 max-[430px]:flex-col max-[430px]:items-stretch">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
             style={{ background: "var(--aptiv-orange)" }}
           />
 
-          <div className="flex min-w-0 items-center gap-4 max-sm:gap-2">
+          <div className="flex min-w-0 items-center gap-4 max-sm:gap-2 max-[430px]:justify-between">
             <div className="flex items-center gap-3">
               <img
                 src={
@@ -462,17 +464,9 @@ function HomePageInner({
                 className="h-5 w-px bg-border max-lg:hidden"
                 aria-hidden="true"
               />
-              <div className="flex flex-col leading-none max-lg:hidden">
-                <span
-                  className="text-[9px] font-bold uppercase tracking-[0.2em]"
-                  style={{ color: "var(--aptiv-orange)" }}
-                >
-                  VSDA
-                </span>
-                <h1 className="text-[15px] font-semibold tracking-tight">
-                  Deep Agent
-                </h1>
-              </div>
+              <h1 className="sr-only text-sm font-semibold tracking-tight max-[430px]:not-sr-only lg:not-sr-only">
+                VSDA Deep Agent
+              </h1>
             </div>
             {!sidebar && (
               <Button
@@ -506,7 +500,7 @@ function HomePageInner({
 
           <div
             ref={sidePanel.headerActionsRef}
-            className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1"
+            className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1 max-[430px]:ml-0 max-[430px]:justify-between"
           >
             <Button
               variant="ghost"
@@ -521,35 +515,34 @@ function HomePageInner({
               <CalendarClock className="h-4 w-4 sm:mr-2" />
               <span className="max-sm:hidden">Tasks</span>
             </Button>
-            {/* Assistant name surfaced over its raw ID — full ID is in tooltip
-                for power users who need to copy it. Clicking opens the
-                config dialog so the agent can be switched directly from
-                the top bar. */}
+            {/* Keep the agent picker reachable when the toolbar becomes compact. */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={() => setConfigDialogOpen(true)}
                   aria-label="Switch agent"
-                  className="hidden items-center gap-1.5 rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-foreground xl:inline-flex"
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2 text-xs text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="font-semibold uppercase tracking-[0.1em]">
-                    Agent
-                  </span>
-                  <span className="max-w-[180px] truncate text-[12px] font-medium text-foreground/80">
-                    {assistant?.graph_id ||
-                      assistant?.name ||
-                      config.assistantId}
-                  </span>
+                  <Bot
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  />
+                  {config.assistantId !== DEFAULT_ASSISTANT_ID && (
+                    <span className="hidden max-w-[11rem] truncate font-medium xl:inline">
+                      {assistant?.graph_id ||
+                        assistant?.name ||
+                        config.assistantId}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className="hidden h-3.5 w-3.5 text-muted-foreground xl:block"
+                    aria-hidden="true"
+                  />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <div className="font-mono text-[11px]">
-                  {config.assistantId}
-                </div>
-                <div className="text-[10px] text-primary-foreground/70">
-                  Click to switch agent
-                </div>
+                {assistant?.graph_id || assistant?.name || config.assistantId}
               </TooltipContent>
             </Tooltip>
             <span
@@ -561,36 +554,29 @@ function HomePageInner({
               <ThemeToggle />
             </span>
             <span className="mx-0.5 hidden h-5 w-px bg-border md:block" />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    if (workspaceOpen && !allowWorkspaceLeave()) return;
-                    setExpandedPanel(null);
-                    setWorkspaceOpen(!workspaceOpen);
-                    if (!workspaceOpen) {
-                      setAdminOpen(false);
-                      if (compactLayout) void setSidebar(null);
-                    } else setWorkspaceTab(undefined);
-                  }}
-                  aria-label="Workspace"
-                  aria-pressed={workspaceOpen}
-                  className={
-                    workspaceOpen
-                      ? "rounded-full border border-[hsl(var(--primary)/0.4)] bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
-                      : "rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
-                  }
-                >
-                  <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
-                  <span className="max-sm:hidden">Workspace</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Models · Tools · Skills · Tokens · Teams · Connections
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (workspaceOpen && !allowWorkspaceLeave()) return;
+                setExpandedPanel(null);
+                setWorkspaceOpen(!workspaceOpen);
+                if (!workspaceOpen) {
+                  setAdminOpen(false);
+                  if (compactLayout) void setSidebar(null);
+                } else setWorkspaceTab(undefined);
+              }}
+              aria-label="Workspace"
+              aria-pressed={workspaceOpen}
+              className={
+                workspaceOpen
+                  ? "rounded-full border border-[hsl(var(--primary)/0.4)] bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
+                  : "rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
+              }
+            >
+              <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
+              <span className="max-sm:hidden">Workspace</span>
+            </Button>
             {isAdmin && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -905,20 +891,17 @@ function HomePageContent() {
             />
           </Suspense>
         )}
-        <div className="flex h-screen items-center justify-center">
+        <main className="flex min-h-dvh items-center justify-center px-4">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Welcome to VSDA Deep Agent</h1>
-            <p className="mt-2 text-muted-foreground">
-              Select an assistant to get started
-            </p>
+            <h1 className="text-2xl font-bold">Start a conversation</h1>
             <Button
               onClick={() => setConfigDialogOpen(true)}
               className="mt-4"
             >
-              Open Configuration
+              Choose an agent
             </Button>
           </div>
-        </div>
+        </main>
       </>
     );
   }

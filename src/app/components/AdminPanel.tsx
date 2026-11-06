@@ -9,7 +9,6 @@ import {
   Maximize2,
   Minimize2,
   Search,
-  Shield,
   Sliders,
   Wrench,
   Users,
@@ -43,7 +42,6 @@ type AdminTab =
 const TABS: readonly {
   id: AdminTab;
   label: string;
-  heading?: string;
   icon?: ComponentType<{ className?: string }>;
 }[] = [
   { id: "users", label: "People", icon: Users },
@@ -83,22 +81,12 @@ export function AdminPanel({
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      <div className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
-        <div className="flex items-start justify-between px-4 pt-4">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--aptiv-orange)] shadow-sm">
-              <Shield className="h-4 w-4" />
-            </span>
-            <div className="flex flex-col leading-none">
-              <span className="aptiv-eyebrow">Admin Console</span>
-              <h2 className="mt-1.5 text-lg font-semibold tracking-tight">
-                {TABS.find((t) => t.id === active)?.heading ??
-                  TABS.find((t) => t.id === active)?.label ??
-                  "Administration"}
-              </h2>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
+      <header className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
+        <div className="flex min-h-12 items-center justify-between gap-2 px-4 py-1">
+          <h2 className="text-base font-semibold tracking-tight">
+            Admin console
+          </h2>
+          <div className="flex shrink-0 items-center gap-1">
             {onToggleExpanded && (
               <Button
                 variant="ghost"
@@ -146,9 +134,8 @@ export function AdminPanel({
           variant="underline"
           activation="manual"
           layout="two-row"
-          className="mt-4"
         />
-      </div>
+      </header>
 
       {/* Only the active section is mounted, so an unopened section never
           issues its requests. */}

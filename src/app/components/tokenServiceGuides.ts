@@ -2,14 +2,10 @@ import type { UserTokens } from "@/lib/auth";
 
 /**
  * Window event used to (re)open the first-time token setup wizard from
- * anywhere in the app (e.g. the "Open guided setup" button in the Tokens
+ * anywhere in the app (e.g. the "Guided setup" button in the Tokens
  * sidebar) without threading open-state props through the tree.
  */
 export const OPEN_TOKEN_WIZARD_EVENT = "vsda:open-token-wizard";
-
-/** Guidance for dynamic SCM credentials, which do not belong in the fixed-token wizard. */
-export const SCM_CREDENTIAL_GUIDANCE =
-  "SCM access is configured per available source-control server in the Tokens panel.";
 
 export type TokenServiceKey =
   | "graph"
@@ -53,7 +49,7 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
     steps: [
       "Open Microsoft Graph Explorer (link below) and sign in with your Aptiv account.",
       'Select the "Access token" tab near the top of the request panel.',
-      "Copy the token shown there and paste it into the field above.",
+      "Copy the token and paste it into the token field.",
     ],
   },
   {
@@ -66,8 +62,8 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
       "https://jiraprod.aptiv.com/secure/ViewProfile.jspa?selectedTab=com.atlassian.pats.pats-plugin:jira-user-personal-access-tokens",
     steps: [
       "Open your Jira personal access tokens page (link below).",
-      'Click "Create token", give it a name, and choose an expiry (up to 90 days).',
-      "Copy the generated token and paste it above — Jira only shows it once.",
+      'Click "Create token", give it a name, and choose an expiry.',
+      "Copy the generated token into the token field. Jira only shows it once.",
     ],
   },
   {
@@ -81,7 +77,7 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
       "Open the Polarion ASUX home page (link below) and sign in.",
       "Go to Settings → My Account → Personal Access Token.",
       "Create a new token and copy its value.",
-      "Paste the token into the field above.",
+      "Paste the token into the token field.",
     ],
   },
   {
@@ -95,7 +91,7 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
       "Open the Polarion Prod1 home page (link below) and sign in.",
       "Go to Settings → My Account → Personal Access Token.",
       "Create a new token and copy its value.",
-      "Paste the token into the field above.",
+      "Paste the token into the token field.",
     ],
   },
   {
@@ -109,7 +105,7 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
     steps: [
       "Open your Confluence personal access tokens page (link below).",
       'Click "Create token", set a name and expiry, then copy it.',
-      "Paste the token into the field above.",
+      "Paste the token into the token field.",
     ],
   },
 ];

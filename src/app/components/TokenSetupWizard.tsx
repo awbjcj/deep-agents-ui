@@ -27,7 +27,6 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import {
   OPEN_TOKEN_WIZARD_EVENT,
-  SCM_CREDENTIAL_GUIDANCE,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
 } from "@/app/components/tokenServiceGuides";
@@ -187,23 +186,15 @@ export function TokenSetupWizard() {
         if (!next) handleClose();
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Set up your access tokens</DialogTitle>
+          <DialogTitle>{current.label}</DialogTitle>
           <DialogDescription>
-            Add your personal tokens so the assistant can reach these services
-            on your behalf. You can skip any of these and add them later from
-            the Tokens panel. {SCM_CREDENTIAL_GUIDANCE}
+            Step {step + 1} of {guides.length}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              Step {step + 1} of {guides.length}
-            </span>
-            <span className="font-medium text-foreground">{current.label}</span>
-          </div>
           {/* Progress rail */}
           <div className="flex gap-1.5">
             {guides.map((g, i) => (
@@ -232,13 +223,12 @@ export function TokenSetupWizard() {
               htmlFor="wizardTokenInput"
               className="text-sm font-medium"
             >
-              Paste your {current.label}
+              Paste token
             </Label>
             <div className="relative">
               <Input
                 id="wizardTokenInput"
                 type={showValue ? "text" : "password"}
-                placeholder={`Enter your ${current.label}`}
                 value={values[current.key] ?? ""}
                 onChange={(e) =>
                   setValues((prev) => ({
@@ -263,7 +253,7 @@ export function TokenSetupWizard() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave this blank to skip — nothing is saved until you finish.
+              Tokens are saved when you finish.
             </p>
           </div>
         </div>

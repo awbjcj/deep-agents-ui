@@ -55,6 +55,7 @@ test(
             build.onLoad({ filter: /[\\/]lib[\\/]auth\.ts$/ }, () => ({
               contents: `
               const effective = {provider: "test", model: "example", effort: "low", thinking: false, max_tokens: Number(new URLSearchParams(location.search).get("cap")) || 4096};
+              export const MODEL_SELECTION_CHANGED_EVENT = "vsda-model-selection-changed";
               export const apiGetUserModel = async () => ({effective, preset: null});
               const linked = new URLSearchParams(location.search).has("linked");
               const entry = {...effective, supports_effort: true, efforts: ["none", "minimal", "low", "medium", "high", "xhigh", "max"], supports_thinking: true, thinking_required: false, disabled_thinking_efforts: ["none", "minimal", "low", "medium", "high"]};
@@ -195,7 +196,7 @@ test(
         max_tokens: 8192,
       });
       await page.getByRole("combobox", { name: "Model" }).click();
-      await page.getByRole("option", { name: /alternative/ }).click();
+      await page.getByRole("option", { name: /alternative/i }).click();
       assert.equal(await linkedThinking.getAttribute("aria-checked"), "true");
       assert.equal(
         await linkedSlider.getAttribute("aria-valuetext"),
@@ -401,7 +402,7 @@ test(
 
       await page.goto(`${url}?view=connectivity`);
       await page.getByRole("radio", { name: /proxy/ }).click();
-      const proxy = page.getByPlaceholder("(not set — using system proxy)");
+      const proxy = page.getByLabel("Proxy base URL");
       await proxy.fill("https://draft.example");
       await page.waitForFunction(() => window.connectivitySaves.length === 1);
       await page.evaluate(() => window.resolveConnectivity());

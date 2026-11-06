@@ -176,15 +176,13 @@ test("the selected multi-action search interrupt renders the real ordered batch 
   assert.ok(isValidElement(rendered.panel));
   assert.equal(rendered.panel.type, BatchToolApprovalInterrupt);
   assert.equal(rendered.panel.key, "search-batch");
-  assert.match(rendered.html, /Review 2 pending actions/);
+  assert.match(rendered.html, /Review pending actions/);
+  assert.match(rendered.html, /0 of 2 reviewed/);
   assert.ok(
     rendered.html.indexOf("Search Jira before Confluence") <
       rendered.html.indexOf("Search Confluence after Jira")
   );
-  assert.ok(
-    rendered.html.indexOf("Action 1 of 2") <
-      rendered.html.indexOf("Action 2 of 2")
-  );
+  assert.doesNotMatch(rendered.html, /Action [12] of 2/);
   assert.match(
     rendered.html,
     /<button[^>]*disabled=""[^>]*>Continue<\/button>/

@@ -317,7 +317,8 @@ test(
         seenRequests.push(`${request.method()} ${path}`);
       }
       const isFixtureAsset =
-        url.origin === fixture.origin && !path.startsWith("/api/");
+        url.origin === fixture.origin &&
+        !/^\/(?:api|assistants|threads|runs|store)(?:\/|$)/.test(path);
       if (isFixtureAsset) return route.continue();
 
       if (path === "/api/user/profile") {
@@ -670,7 +671,9 @@ test(
       };
       await assertAdminTabBounds("desktop");
 
-      await page.getByText("2 accounts in this workspace").waitFor();
+      await page
+        .getByRole("heading", { name: "2 accounts", exact: true })
+        .waitFor();
       const registrationSummary = page
         .locator("details")
         .filter({ hasText: /Registration & invitations/ })
@@ -724,7 +727,7 @@ test(
         exact: true,
       });
       await toolsTab.click();
-      await page.getByRole("heading", { name: "Agent tools" }).waitFor();
+      await page.getByRole("heading", { name: "Tier permissions" }).waitFor();
       await page.getByRole("radio", { name: "developer", exact: true }).click();
       await page.getByText("Email", { exact: true }).waitFor();
       await page.locator("#admin-panel").screenshot({
@@ -778,7 +781,7 @@ test(
       await adminTabs
         .getByRole("tab", { name: "Memories", exact: true })
         .click();
-      await page.getByRole("heading", { name: "Memories" }).last().waitFor();
+      await page.getByRole("heading", { name: "Shared scopes" }).waitFor();
 
       await adminTabs.getByRole("tab", { name: "Search", exact: true }).click();
       await page.getByRole("heading", { name: "Search library" }).waitFor();
@@ -801,7 +804,7 @@ test(
       await adminTabs
         .getByRole("tab", { name: "Newsletters", exact: true })
         .click();
-      await page.getByRole("heading", { name: "Newsletters" }).last().waitFor();
+      await page.getByRole("heading", { name: "New newsletter" }).waitFor();
 
       const sourcesTab = page.getByRole("tab", { name: "Sources" });
       await sourcesTab.focus();
@@ -1026,7 +1029,10 @@ test(
         localStorage.setItem("vsda_workspace_tab", "connectivity")
       );
       await page.getByRole("button", { name: "Workspace" }).click();
-      await page.getByRole("heading", { name: "Connections" }).waitFor();
+      await page
+        .locator("#right-panel")
+        .getByRole("heading", { name: "Run mode" })
+        .waitFor();
       const policyAlert = page.getByRole("alert").filter({
         hasText: "Source image preference could not be loaded",
       });
@@ -1130,7 +1136,7 @@ test(
       assert.doesNotMatch(submittedJson, new RegExp(SOURCE_IMAGE_BYTES));
 
       const filesTrigger = page
-        .getByRole("button", { name: /Files \(State\)/ })
+        .getByRole("button", { name: /^Files \d+$/ })
         .first();
       await filesTrigger.click();
       const fileCard = page.getByTitle(SOURCE_ARTIFACT_PATH);

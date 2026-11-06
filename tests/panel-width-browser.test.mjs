@@ -410,12 +410,12 @@ test(
             (await page.locator("#right-panel").boundingBox()).width - width
           ) < 1
         );
-        assert.equal(await page.locator("#chat").getAttribute("inert"), "");
+        await page.locator("#chat[inert]").waitFor();
         await page.keyboard.press("Escape");
         await page.locator("#right-panel").waitFor({ state: "hidden" });
         await page.keyboard.press("Escape");
         await page.locator("#thread-history").waitFor({ state: "hidden" });
-        assert.equal(await page.locator("#chat").getAttribute("inert"), null);
+        await page.locator("#chat:not([inert])").waitFor();
         await page
           .getByRole("button", { name: "Threads", exact: true })
           .click();

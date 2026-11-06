@@ -19,7 +19,6 @@ export default function TasksPage() {
     return (
       <main className="p-8">
         <h1 className="text-xl font-semibold">Scheduled tasks</h1>
-        <p className="mt-3">Sign in to manage your tasks.</p>
         <Link
           href="/login"
           className="mt-4 inline-block text-primary underline"

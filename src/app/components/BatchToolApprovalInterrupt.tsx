@@ -63,39 +63,32 @@ export function BatchToolApprovalInterrupt({
   return (
     <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-warning bg-card p-5 text-foreground shadow-sm dark:shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
-            Review {actionRequests.length} pending{" "}
-            {actionRequests.length === 1 ? "action" : "actions"}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Mark a decision for each item, then continue the run.
-          </p>
-        </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-warning-primary px-2.5 py-1 text-[11px] font-medium text-warning">
-          {reviewedCount} / {actionRequests.length}
+        <h3 className="text-sm font-semibold tracking-tight text-foreground">
+          Review pending actions
+        </h3>
+        <span
+          role="status"
+          className="inline-flex items-center rounded-full bg-warning-primary px-2.5 py-1 text-xs font-medium text-warning"
+        >
+          {reviewedCount} of {actionRequests.length} reviewed
         </span>
       </div>
 
-      {actionRequests.map((actionRequest, index) => (
-        <div
-          key={`${actionRequest.name}-${index}`}
-          className="flex flex-col gap-2"
-        >
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Action {index + 1} of {actionRequests.length}
-          </div>
-          <ToolApprovalInterrupt
-            actionRequest={actionRequest}
-            reviewConfig={reviewConfigsMap?.get(actionRequest.name)}
-            onDecisionChange={(decision) =>
-              handleDecisionChange(index, decision)
-            }
-            currentDecision={decisions[index] ?? undefined}
-            isLoading={isLoading}
-          />
-        </div>
-      ))}
+      <ol className="space-y-3">
+        {actionRequests.map((actionRequest, index) => (
+          <li key={`${actionRequest.name}-${index}`}>
+            <ToolApprovalInterrupt
+              actionRequest={actionRequest}
+              reviewConfig={reviewConfigsMap?.get(actionRequest.name)}
+              onDecisionChange={(decision) =>
+                handleDecisionChange(index, decision)
+              }
+              currentDecision={decisions[index] ?? undefined}
+              isLoading={isLoading}
+            />
+          </li>
+        ))}
+      </ol>
 
       <div className="flex justify-end">
         <Button

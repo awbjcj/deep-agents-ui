@@ -1,4 +1,4 @@
-import { KeyRound, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface AuthSubmitButtonProps {
@@ -31,27 +31,10 @@ export function AuthSubmitButton({
 }
 
 interface AuthAccountProps {
-  /** Optional heading block, e.g. "One account for VSDA tools". */
-  title?: string;
-  text?: string;
   children: ReactNode;
 }
 
 /** Divider-separated account block under the form (switch mode, go back). */
-export function AuthAccount({ title, text, children }: AuthAccountProps) {
-  return (
-    <div className="auth-account">
-      {title && (
-        <div className="auth-account__head">
-          <KeyRound
-            className="auth-icon"
-            aria-hidden="true"
-          />
-          <h2 className="auth-account__title">{title}</h2>
-        </div>
-      )}
-      {text && <p className="auth-account__text">{text}</p>}
-      <div className="auth-account__links">{children}</div>
-    </div>
-  );
+export function AuthAccount({ children }: AuthAccountProps) {
+  return <div className="auth-account">{children}</div>;
 }

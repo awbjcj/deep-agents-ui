@@ -121,6 +121,7 @@ const allToolIds = catalog.map((tool) => tool.id);
 const MIME = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
@@ -147,7 +148,7 @@ async function staticServer() {
       try {
         if (!(await stat(file)).isFile()) throw new Error("not a file");
       } catch {
-        file = join(OUT, "index.html");
+        file = extname(relative) ? join(OUT, "index.html") : `${file}.html`;
       }
       const bytes = await readFile(file);
       response.writeHead(200, {
@@ -452,7 +453,8 @@ async function authenticatedPage(browser, fixture, policy, role) {
       seenRequests.push(`${route.request().method()} ${url.pathname}`);
     }
     const isFixtureAsset =
-      url.origin === fixture.origin && !url.pathname.startsWith("/api/");
+      url.origin === fixture.origin &&
+      !/^\/(?:api|assistants|threads|runs|store)(?:\/|$)/.test(url.pathname);
     if (isFixtureAsset) return route.continue();
     return policy.route(route, account);
   });
@@ -502,7 +504,7 @@ async function openWorkspaceTools(page) {
       })}`
     );
   }
-  await page.getByRole("heading", { name: "My agent tools" }).waitFor();
+  await page.getByRole("heading", { name: "Account permissions" }).waitFor();
 }
 
 async function openAdminTools(page) {
@@ -512,7 +514,7 @@ async function openAdminTools(page) {
   await toolsTab.waitFor();
   await page.waitForTimeout(150);
   await toolsTab.click();
-  await page.getByRole("heading", { name: "Agent tools" }).waitFor();
+  await page.getByRole("heading", { name: "Tier permissions" }).waitFor();
   const groups = page.locator("#admin-panel details");
   await groups.first().waitFor();
   for (let index = 0; index < (await groups.count()); index += 1) {
@@ -1011,7 +1013,7 @@ test(
       await page.getByRole("button", { name: "Save changes" }).click();
       await page.getByText("Admin tier tools saved.").waitFor();
       await page
-        .getByRole("heading", { name: "Agent tools" })
+        .getByRole("heading", { name: "Tier permissions" })
         .scrollIntoViewIfNeeded();
       await page.locator("#admin-panel").screenshot({
         path: join(EVIDENCE, "admin-tools-desktop.png"),
@@ -1224,7 +1226,7 @@ test(
       await page.keyboard.press("Home");
       await page.keyboard.press("End");
       await page
-        .getByRole("heading", { name: "My agent tools" })
+        .getByRole("heading", { name: "Account permissions" })
         .scrollIntoViewIfNeeded();
       const overflow = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
@@ -1241,7 +1243,7 @@ test(
       });
       await page.setViewportSize({ width: 1440, height: 1000 });
       const mountedHeading = await page
-        .getByRole("heading", { name: "My agent tools" })
+        .getByRole("heading", { name: "Account permissions" })
         .elementHandle();
       assert(mountedHeading, "personal tools heading should be mounted");
       const createDraft = page.getByRole("checkbox", {
@@ -1269,7 +1271,7 @@ test(
       await accountDialog.getByText("Signed in as switched-admin.").waitFor();
       await accountDialog.locator('[data-slot="dialog-close"]').click();
       await accountDialog.waitFor({ state: "hidden" });
-      await page.getByText(/0 selected · 0 active/).waitFor();
+      await page.getByText("0 active", { exact: true }).waitFor();
       assert.equal(
         await mountedHeading.evaluate((node) => node.isConnected),
         true
@@ -1336,7 +1338,7 @@ test(
         }
         await session.page.getByText(`${role} tier`).waitFor();
         await session.page
-          .getByRole("heading", { name: "My agent tools" })
+          .getByRole("heading", { name: "Account permissions" })
           .waitFor();
         assert.deepEqual(session.pageErrors, []);
         assertOnlyExpectedHttpDiagnostics(

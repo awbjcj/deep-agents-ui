@@ -1,6 +1,5 @@
 import {
   canUseAgent,
-  canUseCodeAnalyzer,
   CODE_ANALYZER_AGENT_ID,
   TASK_AGENT_ID,
   type AgentAccess,
@@ -48,21 +47,15 @@ export interface StarterPrompt {
 }
 
 export interface AgentWelcome {
-  /** Graph ID shown as the eyebrow, e.g. "VSDA Jira Agent". */
+  /** Built-in graph name. */
   name: string;
   icon: WelcomeIcon;
   headline: string;
   lede: string;
-  /** Accessible label for the chip list. */
-  chipsLabel: string;
-  chips: readonly string[];
   prompts: readonly StarterPrompt[];
 }
 
 export const DEFAULT_WELCOME_AGENT = "VSDA Deep Agent";
-
-/** Supervisor chip shown only to accounts that may use the Code Analyzer. */
-const CODE_ANALYSIS_CHIP = "Code analysis";
 
 // Scope and wording follow the agent catalog in ConfigDialog and the backend
 // Subagent specs; keep the three in step when an agent's abilities change.
@@ -71,18 +64,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: DEFAULT_WELCOME_AGENT,
     icon: "agents",
     headline: "What should your agents work on?",
-    lede: "The supervisor plans the work and delegates each step to a specialist agent. Anything that changes data waits for your approval.",
-    chipsLabel: "Specialist agents",
-    chips: [
-      "Jira",
-      "Polarion",
-      "Confluence",
-      "Jenkins",
-      "Teams & email",
-      "SharePoint",
-      "Knowledge base",
-      CODE_ANALYSIS_CHIP,
-    ],
+    lede: "The supervisor delegates work across your connected tools.",
     prompts: [
       {
         title: "Triage open Jira tickets",
@@ -114,15 +96,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: TASK_AGENT_ID,
     icon: "checklist",
     headline: "Which task should be finished and verified?",
-    lede: "Your request becomes a checklist of requirements. Each item gets evidence, and the answer is graded before the task counts as done. Gaps are reported, not guessed.",
-    chipsLabel: "How it works",
-    chips: [
-      "Requirement checklist",
-      "Evidence per item",
-      "Graded answer",
-      "Fixed budget",
-      "Clear final status",
-    ],
+    lede: "Each requirement gets evidence before the task counts as done.",
     prompts: [
       {
         title: "Build verified release notes",
@@ -154,15 +128,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Jira Agent",
     icon: "ticket",
     headline: "What do you need from Jira?",
-    lede: "Works with live Jira data: exact tickets, current status and comments, change history and JQL searches. You review each query before it runs.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Ticket lookup",
-      "JQL search",
-      "Change history",
-      "Triage grading",
-      "Drafting from Polarion",
-    ],
+    lede: "Search live tickets with JQL and review each query before it runs.",
     prompts: [
       {
         title: "Check where a ticket stands",
@@ -194,14 +160,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Teams Agent",
     icon: "chat",
     headline: "What should we catch up on in Teams?",
-    lede: "Reads and summarizes your Microsoft Teams chats, and sends messages only after you approve them. It can also draft Adaptive Cards.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Chat summaries",
-      "Decision lookup",
-      "Approved messages",
-      "Adaptive Cards",
-    ],
+    lede: "Review messages and Adaptive Cards before the agent sends them.",
     prompts: [
       {
         title: "Catch up on a chat",
@@ -233,14 +192,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Email Agent",
     icon: "mail",
     headline: "What should we handle in your inbox?",
-    lede: "Reads your Outlook mailbox and writes email for you. Drafts are saved after you review them, and nothing is sent until you approve it.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Folder summaries",
-      "Message search",
-      "Reviewed drafts",
-      "Approved sending",
-    ],
+    lede: "Review Outlook drafts before they’re saved or sent.",
     prompts: [
       {
         title: "Summarize new mail",
@@ -272,9 +224,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA SharePoint Agent",
     icon: "file",
     headline: "Which document are you looking for?",
-    lede: "Searches the SharePoint and OneDrive files you already have access to, and can pull a file into the conversation so its contents can be quoted. Read-only.",
-    chipsLabel: "Capabilities",
-    chips: ["SharePoint", "OneDrive", "File metadata", "Download to chat"],
+    lede: "Search and quote files you can already access in SharePoint or OneDrive.",
     prompts: [
       {
         title: "Find the latest version",
@@ -305,15 +255,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: KNOWLEDGE_BASE_ASSISTANT_ID,
     icon: "library",
     headline: "What should we look up in the knowledge base?",
-    lede: "Searches the document library by meaning, explains its indices and fields, and searches or reads pages in the shared LLM Wiki when configured.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Similar tickets",
-      "Semantic search",
-      "Cross-document patterns",
-      "LLM Wiki",
-      "Index inventory",
-    ],
+    lede: "Search the document library and the shared LLM Wiki when configured.",
     prompts: [
       {
         title: "Find similar problems",
@@ -345,15 +287,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Polarion Agent",
     icon: "requirement",
     headline: "What do you need from Polarion?",
-    lede: "Works with live Polarion data: work items, LiveDocs, links and comments, plus test runs, verdicts and step results. You review each query before it runs.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Work items",
-      "Lucene search",
-      "LiveDocs",
-      "Test runs",
-      "Requirement drafting",
-    ],
+    lede: "Look up LiveDocs, work items, and test results. You review each query.",
     prompts: [
       {
         title: "Summarize a work item",
@@ -385,15 +319,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Confluence Agent",
     icon: "page",
     headline: "What should we find or write in Confluence?",
-    lede: "Finds, reads and summarizes Confluence pages with their comments and attachments, and drafts or updates pages from source evidence once approved.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Page search",
-      "Summaries",
-      "Page drafting",
-      "Component pages",
-      "Attachments",
-    ],
+    lede: "Read pages and attachments, or review drafts before publishing.",
     prompts: [
       {
         title: "Summarize a runbook",
@@ -425,14 +351,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Jenkins Agent",
     icon: "build",
     headline: "Which build should we look at?",
-    lede: "Looks up Jenkins jobs and builds, reads console output, and starts builds only after you approve the job and parameters.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Job status",
-      "Build parameters",
-      "Console output",
-      "Approved triggers",
-    ],
+    lede: "Inspect jobs and build logs. Starting a build requires approval.",
     prompts: [
       {
         title: "Diagnose a failed build",
@@ -463,14 +382,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: CODE_ANALYZER_AGENT_ID,
     icon: "code",
     headline: "Which code should we analyze?",
-    lede: "Answers questions about code in the configured Gerrit repositories, pinned to an exact revision with file-and-line evidence. The code is never built or run.",
-    chipsLabel: "Capabilities",
-    chips: [
-      "Gerrit",
-      "Pinned revisions",
-      "File and line evidence",
-      "Background reports",
-    ],
+    lede: "Get file-and-line evidence tied to an exact repository revision.",
     prompts: [
       {
         title: "Explain a code path",
@@ -506,21 +418,15 @@ export const WELCOME_AGENT_IDS = Object.keys(AGENT_WELCOME);
 /**
  * Return welcome copy for a graph ID. Custom assistants built on a known
  * graph use that graph's copy; anything unrecognized, or a restricted graph
- * the account may not use, gets the supervisor's. The supervisor mentions code
- * analysis only to accounts that may use the Code Analyzer.
+ * the account may not use, gets the supervisor's.
  */
 export function agentWelcome(
   graphId: string | null | undefined,
   access?: AgentAccess | null
 ): AgentWelcome {
   const id = graphId ? canonicalAssistantId(graphId) : DEFAULT_WELCOME_AGENT;
-  const welcome =
+  return (
     (canUseAgent(id, access) ? AGENT_WELCOME[id] : undefined) ??
-    AGENT_WELCOME[DEFAULT_WELCOME_AGENT];
-  if (welcome.name !== DEFAULT_WELCOME_AGENT || canUseCodeAnalyzer(access))
-    return welcome;
-  return {
-    ...welcome,
-    chips: welcome.chips.filter((chip) => chip !== CODE_ANALYSIS_CHIP),
-  };
+    AGENT_WELCOME[DEFAULT_WELCOME_AGENT]
+  );
 }

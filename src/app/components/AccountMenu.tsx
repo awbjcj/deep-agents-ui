@@ -5,7 +5,6 @@ import { ChevronDown, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { RoleBadge } from "@/app/utils/roles";
-import { roleVisual } from "@/app/utils/roleVisual";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -63,16 +62,12 @@ export function AccountMenu() {
             open && "bg-accent text-accent-foreground ring-1 ring-border"
           )}
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          <span
+            aria-hidden="true"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+          >
             {initial}
           </span>
-          <span className="hidden max-w-28 truncate text-sm lg:inline">
-            {user.username}
-          </span>
-          <RoleBadge
-            role={user.role}
-            className="hidden xl:inline-flex"
-          />
           <ChevronDown
             className={cn(
               "h-4 w-4 text-muted-foreground transition-transform",
@@ -92,18 +87,10 @@ export function AccountMenu() {
           >
             <div className="border-b border-border px-3 py-2">
               <p className="truncate text-sm font-medium">{user.username}</p>
-              <p className="mt-0.5 flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
-                {(() => {
-                  const { Icon, color } = roleVisual(user.role);
-                  return (
-                    <Icon
-                      className="h-3.5 w-3.5"
-                      style={{ color }}
-                    />
-                  );
-                })()}
-                {user.role}
-              </p>
+              <RoleBadge
+                role={user.role}
+                className="mt-1"
+              />
             </div>
             <button
               type="button"

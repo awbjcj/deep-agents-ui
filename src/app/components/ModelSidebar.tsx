@@ -16,9 +16,7 @@ import {
   Loader2,
   Save,
   Scale,
-  Sliders,
   SlidersHorizontal,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,13 +66,11 @@ type PresetOption =
       kind: "preset";
       value: ModelPreset;
       label: string;
-      tone: string;
       icon: ComponentType<{ className?: string }>;
     }
   | {
       kind: "custom";
       label: string;
-      tone: string;
       icon: ComponentType<{ className?: string }>;
     };
 
@@ -83,27 +79,23 @@ const PRESET_OPTIONS: PresetOption[] = [
     kind: "preset",
     value: "economy",
     label: "Economy",
-    tone: "Lower spend",
     icon: Leaf,
   },
   {
     kind: "preset",
     value: "balanced",
     label: "Balanced",
-    tone: "Default",
     icon: Scale,
   },
   {
     kind: "preset",
     value: "deep_work",
     label: "Deep Work",
-    tone: "Hard tasks",
     icon: Brain,
   },
   {
     kind: "custom",
     label: "Custom",
-    tone: "Fine-tuned",
     icon: SlidersHorizontal,
   },
 ];
@@ -509,31 +501,6 @@ export function ModelSidebar() {
             </section>
           )}
 
-          <div
-            className="border-t border-dashed border-border"
-            aria-hidden="true"
-          />
-
-          <div className="flex items-baseline justify-between">
-            <div className="flex items-center gap-2">
-              <span className="aptiv-eyebrow">Configuration</span>
-            </div>
-            {!isLoading && draft && (
-              <>
-                {isCustom ? (
-                  <span className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--aptiv-orange)]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)]" />
-                    Custom
-                  </span>
-                ) : activePreset ? (
-                  <span className="border-primary/40 inline-flex items-center gap-1 rounded-full border bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                    {PRESET_LABELS[activePreset]}
-                  </span>
-                ) : null}
-              </>
-            )}
-          </div>
-
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -545,17 +512,15 @@ export function ModelSidebar() {
           ) : (
             <>
               <section className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
-                  <Label className="text-sm font-medium">Quick presets</Label>
-                </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Start with a curated profile, then tweak any of the controls
-                  below to make it your own.
-                </p>
+                <h3
+                  id="model-preset-heading"
+                  className="text-sm font-semibold"
+                >
+                  Model preset
+                </h3>
                 <div
                   role="radiogroup"
-                  aria-label="Model preset"
+                  aria-labelledby="model-preset-heading"
                   className="grid grid-cols-2 gap-2"
                 >
                   {PRESET_OPTIONS.map((option) => {
@@ -582,7 +547,7 @@ export function ModelSidebar() {
                         onClick={handleClick}
                         disabled={isSaving}
                         className={[
-                          "aptiv-glass-soft group relative flex flex-col gap-2 overflow-hidden rounded-md px-2.5 py-3 text-left transition-colors duration-150",
+                          "aptiv-glass-soft group relative flex min-h-11 items-center gap-2 rounded-md py-2 pl-2.5 pr-5 text-left transition-colors duration-150",
                           "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
@@ -605,32 +570,16 @@ export function ModelSidebar() {
                           ].join(" ")}
                         >
                           {loading ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <Loader2
+                              className="h-3.5 w-3.5 animate-spin"
+                              aria-hidden="true"
+                            />
                           ) : (
                             <Icon className="h-3.5 w-3.5" />
                           )}
                         </span>
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span
-                            className={[
-                              "truncate text-xs font-semibold leading-tight",
-                              active
-                                ? "text-[var(--aptiv-orange)]"
-                                : "text-foreground",
-                            ].join(" ")}
-                          >
-                            {option.label}
-                          </span>
-                          <span
-                            className={[
-                              "truncate text-[10px] font-semibold uppercase leading-tight tracking-[0.1em]",
-                              active
-                                ? "text-[var(--aptiv-orange)]/75"
-                                : "text-muted-foreground",
-                            ].join(" ")}
-                          >
-                            {option.tone}
-                          </span>
+                        <span className="min-w-0 break-words text-xs font-semibold leading-tight text-foreground">
+                          {option.label}
                         </span>
                       </button>
                     );
@@ -638,19 +587,9 @@ export function ModelSidebar() {
                 </div>
               </section>
 
-              <div
-                className="flex items-center gap-3 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                aria-hidden="true"
-              >
-                <span className="h-px flex-1 bg-border" />
-                <span className="inline-flex items-center gap-1.5">
-                  <Sliders className="h-3 w-3" />
-                  Fine-tune
-                </span>
-                <span className="h-px flex-1 bg-border" />
+              <div className="border-t border-border pt-4">
+                <RunLimitSettings />
               </div>
-
-              <RunLimitSettings />
               <section className="space-y-2">
                 <Label
                   htmlFor="model-select"

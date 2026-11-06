@@ -119,8 +119,7 @@ export function ScmCredentials() {
             Source-control access
           </h3>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Add a personal access token only for the configured servers you use.
-            Tokens are encrypted and never shown again.
+            Stored tokens are encrypted.
           </p>
         </div>
       </div>
@@ -183,7 +182,6 @@ export function ScmCredentials() {
                     onChange={(event) =>
                       setValue(server.id, "token", event.target.value)
                     }
-                    placeholder="Paste a new token"
                   />
                 </div>
                 <div className="space-y-1">
@@ -201,7 +199,6 @@ export function ScmCredentials() {
                     onChange={(event) =>
                       setValue(server.id, "username", event.target.value)
                     }
-                    placeholder="Optional"
                   />
                 </div>
               </div>

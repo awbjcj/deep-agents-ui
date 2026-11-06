@@ -32,13 +32,15 @@ export default function GlobalError({
           textAlign: "center",
         }}
       >
-        <div style={{ maxWidth: 420 }}>
+        <main style={{ maxWidth: 420, overflowWrap: "anywhere" }}>
           <h1 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 8px" }}>
             The app failed to start
           </h1>
-          <p style={{ fontSize: 14, opacity: 0.75, margin: "0 0 16px" }}>
-            {error.message || "An unexpected error occurred."}
-          </p>
+          {error.message && (
+            <p style={{ fontSize: 14, opacity: 0.75, margin: "0 0 16px" }}>
+              {error.message}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -63,7 +65,7 @@ export default function GlobalError({
           >
             Reload app
           </button>
-        </div>
+        </main>
       </body>
     </html>
   );

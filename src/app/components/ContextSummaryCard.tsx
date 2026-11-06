@@ -37,9 +37,11 @@ export function ContextSummaryCard({ summary }: { summary: ContextSummary }) {
           >
             <h3 className="mb-2 flex items-baseline gap-2 font-medium">
               {label}
-              <span className="text-xs font-normal text-muted-foreground">
-                {items.length} {items.length === 1 ? "item" : "items"}
-              </span>
+              {items.length > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  {items.length} {items.length === 1 ? "item" : "items"}
+                </span>
+              )}
             </h3>
             {items.length === 0 ? (
               <p className="text-xs text-muted-foreground">No items</p>

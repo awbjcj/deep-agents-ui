@@ -400,7 +400,7 @@ async function openSkills(page) {
   await page
     .getByRole("tab", { name: "Skills", exact: true })
     .click({ timeout: 5000 });
-  await page.getByRole("heading", { name: "Your skills" }).waitFor();
+  await page.getByRole("region", { name: "Skill catalog" }).waitFor();
 }
 const editor = (page) => page.getByRole("region", { name: "Skill editor" });
 const content = (page) =>
@@ -1079,7 +1079,9 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           );
           await page.getByLabel("Import destination").selectOption("p1");
           await page
-            .getByText(/Replace my-skill · revision 7\. All saved files/)
+            .getByText("Saving the draft replaces all files in this package.", {
+              exact: true,
+            })
             .waitFor();
           assert.equal(
             await page
@@ -1115,7 +1117,9 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             .getByText("references/new.md", { exact: true })
             .waitFor();
           await page
-            .getByText(/Saving replaces my-skill · revision 7/)
+            .getByText("Saving replaces all files in my-skill (revision 7).", {
+              exact: true,
+            })
             .waitFor();
           await editor(page)
             .getByRole("button", { name: "Save", exact: true })
@@ -1171,7 +1175,9 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           );
           await page.getByLabel("Import destination").selectOption("p1");
           await page
-            .getByText(/Replace my-skill · revision 1\. All saved files/)
+            .getByText("Saving the draft replaces all files in this package.", {
+              exact: true,
+            })
             .waitFor();
           await page.getByLabel("Skill file or ZIP").setInputFiles({
             name: "SKILL.md",
@@ -1283,7 +1289,10 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             );
             assert.equal(
               await page
-                .getByText(/Replace my-skill · revision 1\. All saved files/)
+                .getByText(
+                  "Saving the draft replaces all files in this package.",
+                  { exact: true }
+                )
                 .count(),
               0
             );
@@ -1306,7 +1315,10 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             );
             assert.equal(
               await page
-                .getByText(/Replace my-skill · revision 1\. All saved files/)
+                .getByText(
+                  "Saving the draft replaces all files in this package.",
+                  { exact: true }
+                )
                 .count(),
               0
             );
@@ -1463,7 +1475,9 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             .click();
           await page.getByLabel("Import destination").selectOption("p1");
           await page
-            .getByText(/Replace system-skill · revision 1\. All saved files/)
+            .getByText("Saving the draft replaces all files in this package.", {
+              exact: true,
+            })
             .waitFor();
           await page.getByLabel("Skill file or ZIP").setInputFiles({
             name: "SKILL.md",
@@ -1696,7 +1710,9 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           await page.setViewportSize({ width: 1440, height: 1000 });
           page.once("dialog", (d) => d.accept());
           await page.getByRole("tab", { name: "Tools", exact: true }).click();
-          await page.getByRole("heading", { name: "My agent tools" }).waitFor();
+          await page
+            .getByRole("heading", { name: "Account permissions" })
+            .waitFor();
           await page.getByRole("tab", { name: "Skills", exact: true }).click();
           assert.equal(await editor(page).count(), 0);
           const storage = await page.evaluate(() =>
@@ -1723,7 +1739,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
         await page.getByRole("button", { name: /my-skill Personal/ }).click();
         await switchAccount(page, policy);
         delayed.release();
-        await page.getByRole("heading", { name: "Your skills" }).waitFor();
+        await page.getByRole("region", { name: "Skill catalog" }).waitFor();
         await page
           .getByRole("button", { name: "New skill", exact: true })
           .click();
@@ -2107,7 +2123,9 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           await rail
             .getByRole("tab", { name: "Tools", exact: true })
             .press("Enter");
-          await page.getByRole("heading", { name: "My agent tools" }).waitFor();
+          await page
+            .getByRole("heading", { name: "Account permissions" })
+            .waitFor();
           await page.setViewportSize({ width: 320, height: 800 });
           await page
             .getByRole("button", { name: "Close workspace panel" })

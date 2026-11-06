@@ -39,7 +39,6 @@ test("every built-in agent has its own welcome copy and starter prompts", () => 
     const welcome = agentWelcome(graph, DEVELOPER);
     assert.equal(welcome.name, graph);
     assert(welcome.lede.length > 40, `${graph} explains its scope`);
-    assert(welcome.chips.length >= 4, `${graph} lists its capabilities`);
     assert.equal(welcome.prompts.length, 4, `${graph} offers four prompts`);
     assert.equal(
       new Set(welcome.prompts.map((prompt) => prompt.title)).size,
@@ -67,9 +66,6 @@ test("ordinary users never see restricted agents or code analysis in welcome cop
     const supervisor = JSON.stringify(agentWelcome("VSDA Deep Agent", access));
     assert.doesNotMatch(supervisor, /code analy|task agent|checklist|grade/i);
   }
-  assert(
-    agentWelcome("VSDA Deep Agent", DEVELOPER).chips.includes("Code analysis")
-  );
   const enrolledOnlyForCode = { ...DEVELOPER, can_use_task_agent: false };
   assert.equal(
     agentWelcome("VSDA Task Agent", enrolledOnlyForCode).name,

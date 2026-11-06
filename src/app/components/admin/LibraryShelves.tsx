@@ -195,9 +195,6 @@ export function LibraryShelves({
           >
             Managed shelves
           </h4>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Manifest-backed sources with drift, retention, and sync controls.
-          </p>
         </div>
         <Button
           type="button"
@@ -215,9 +212,9 @@ export function LibraryShelves({
         <div className="flex min-w-0 flex-col gap-1.5">
           <label
             htmlFor="shelf-filter"
-            className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-muted-foreground"
+            className="sr-only"
           >
-            Filter results
+            Search shelves, indices, or sources
           </label>
           <div className="relative min-w-0">
             <Search

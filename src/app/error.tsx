@@ -29,14 +29,18 @@ export default function Error({
     );
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-      <h1 className="text-lg font-semibold">Something went wrong</h1>
-      <p className="max-w-md text-sm text-muted-foreground">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
+      <h1 className="text-lg font-semibold">
         {isChunkError
-          ? "The app couldn't load part of itself, usually because a cached copy is out of date."
-          : error.message || "An unexpected error occurred."}
-      </p>
-      <div className="flex gap-2">
+          ? "The app couldn’t finish loading"
+          : "Something went wrong"}
+      </h1>
+      {!isChunkError && error.message && (
+        <p className="max-w-md break-words text-sm text-muted-foreground">
+          {error.message}
+        </p>
+      )}
+      <div className="flex flex-wrap justify-center gap-2">
         {!isChunkError && (
           <button
             type="button"
@@ -54,6 +58,6 @@ export default function Error({
           Reload app
         </button>
       </div>
-    </div>
+    </main>
   );
 }

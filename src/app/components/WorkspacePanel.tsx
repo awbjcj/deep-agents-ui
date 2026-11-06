@@ -129,21 +129,10 @@ export function WorkspacePanel({
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Shared shell header with tab strip */}
-      <div className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
-        <div className="flex items-center justify-between px-4 pt-4">
-          <div className="flex flex-col leading-none">
-            <span
-              className="aptiv-eyebrow"
-              style={{ color: "var(--color-text-secondary)" }}
-            >
-              Workspace
-            </span>
-            <h2 className="mt-1.5 text-lg font-semibold tracking-tight">
-              {TABS.find((t) => t.id === active)?.label ?? "Workspace"}
-            </h2>
-          </div>
-          <div className="flex items-center gap-1">
+      <header className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
+        <div className="flex min-h-12 items-center justify-between gap-2 px-4 py-1">
+          <h2 className="text-base font-semibold tracking-tight">Workspace</h2>
+          <div className="flex shrink-0 items-center gap-1">
             {onToggleExpanded && (
               <Button
                 variant="ghost"
@@ -192,9 +181,9 @@ export function WorkspacePanel({
           label="Workspace sections"
           variant="underline"
           activation="manual"
-          className="mt-4 grid auto-cols-[minmax(max-content,1fr)] grid-flow-col items-stretch gap-1 overflow-x-auto px-2 [&_[role=tab]]:w-full [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-2"
+          className="grid auto-cols-[minmax(max-content,1fr)] grid-flow-col items-stretch gap-1 overflow-x-auto px-2 [&_[role=tab]]:w-full [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-2"
         />
-      </div>
+      </header>
 
       {/* Panel bodies. We mount only the active tab to avoid running fetches
           for sections the user hasn't opened. */}

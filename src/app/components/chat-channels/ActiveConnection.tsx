@@ -64,13 +64,7 @@ export function ActiveConnection({
       ? { tone: "active", label: "Active" }
       : { tone: "paused", label: "Paused" };
   const showSwitch = linked && !binding.needs_reconnect;
-  const state = locked
-    ? "Status unknown · refresh to confirm"
-    : binding.enabled
-    ? binding.worker_enabled
-      ? "On · listening for your requests"
-      : "On · waiting for service availability"
-    : "Off · messages are paused";
+  const state = locked ? "Refresh to confirm the saved state." : null;
 
   return (
     <section
@@ -84,22 +78,19 @@ export function ActiveConnection({
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <p className="text-xxs font-semibold uppercase tracking-wide text-muted-foreground">
-              Your connected app
-            </p>
+            <h3
+              id="chat-app-active-title"
+              className="text-base font-semibold leading-tight"
+            >
+              {meta.label}
+            </h3>
             <StatusBadge status={status} />
           </div>
-          <h3
-            id="chat-app-active-title"
-            className="mt-0.5 text-base font-semibold leading-tight"
-          >
-            {meta.label}
-          </h3>
-          <p className="mt-1 break-words text-sm text-muted-foreground">
-            {channel?.linked_account
-              ? `${channel.linked_account} · ${meta.place}`
-              : meta.place}
-          </p>
+          {(channel?.linked_account || !channel) && (
+            <p className="mt-1 break-words text-sm text-muted-foreground">
+              {channel?.linked_account || meta.place}
+            </p>
+          )}
         </div>
       </div>
 
@@ -113,12 +104,14 @@ export function ActiveConnection({
               >
                 Enable {meta.short}
               </Label>
-              <p
-                id="chat-app-enabled-state"
-                className="text-sm text-muted-foreground"
-              >
-                {state}
-              </p>
+              {state && (
+                <p
+                  id="chat-app-enabled-state"
+                  className="text-sm text-muted-foreground"
+                >
+                  {state}
+                </p>
+              )}
             </div>
             <Switch
               id="chat-app-enabled"
@@ -126,7 +119,11 @@ export function ActiveConnection({
               disabled={
                 busy || locked || (!binding.worker_enabled && !binding.enabled)
               }
-              aria-describedby="chat-app-enabled-state chat-app-enabled-help"
+              aria-describedby={
+                state
+                  ? "chat-app-enabled-state chat-app-enabled-help"
+                  : "chat-app-enabled-help"
+              }
               className="h-6 w-11 data-[state=unchecked]:bg-foreground/50 motion-reduce:transition-none [&_[data-slot=switch-thumb]]:size-5 [&_[data-slot=switch-thumb]]:data-[state=checked]:translate-x-[22px] [&_[data-slot=switch-thumb]]:motion-reduce:transition-none"
               onCheckedChange={onToggle}
             />
@@ -135,8 +132,8 @@ export function ActiveConnection({
             id="chat-app-enabled-help"
             className="border-t border-border bg-muted/20 px-4 py-3 text-sm leading-relaxed text-muted-foreground"
           >
-            Turning this off pauses requests and replies. A task already running
-            continues; open the conversation to stop it.
+            Pausing stops new requests and replies. To stop a running task, open
+            the conversation.
           </p>
         </>
       )}
@@ -194,8 +191,7 @@ export function ActiveConnection({
               </Button>
             }
           >
-            Eligible actions can be approved automatically. Switch to
-            Interactive to review them yourself.
+            Eligible actions can be approved automatically.
           </Notice>
         )}
         {binding.mode === "allow_read" && !binding.needs_reconnect && (

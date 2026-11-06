@@ -211,7 +211,7 @@ export function ToolPermissionsSidebar() {
         <header className="space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-base font-semibold tracking-tight">
-              My agent tools
+              Account permissions
             </h3>
             {snapshot ? (
               <span className="rounded-full border border-border bg-muted/35 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -220,15 +220,9 @@ export function ToolPermissionsSidebar() {
             ) : null}
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Choose the tools available to your account in every conversation.
-            Actions that require approval follow each conversation&apos;s
-            approval mode: Interactive asks every time, Allow reads runs reads
-            automatically, and Autopilot approves everything.
+            Tool choices apply to every conversation. Approval mode is set
+            separately for each conversation.
           </p>
-          <span
-            className="aptiv-rule"
-            aria-hidden="true"
-          />
         </header>
 
         {error ? (
@@ -302,13 +296,10 @@ export function ToolPermissionsSidebar() {
         ) : snapshot ? (
           <>
             <div className="rounded-lg border border-border bg-muted/25 p-3">
-              <p className="text-xs font-semibold text-foreground">
-                Saved for your account
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                {snapshot.selected_tool_ids.length} selected ·{" "}
-                {snapshot.effective_tool_ids.length} active ·{" "}
-                {snapshot.blocked_tool_ids.length} blocked by your administrator
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {snapshot.effective_tool_ids.length} active
+                {snapshot.blocked_tool_ids.length > 0 &&
+                  ` · ${snapshot.blocked_tool_ids.length} blocked by your administrator`}
                 {Object.keys(snapshot.unavailable_tools ?? {}).length > 0
                   ? ` · ${
                       Object.keys(snapshot.unavailable_tools ?? {}).length
@@ -323,11 +314,6 @@ export function ToolPermissionsSidebar() {
                   {snapshot.allowed_tool_ids.length === 0
                     ? "No tools available for your tier"
                     : "No tools selected yet"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {snapshot.allowed_tool_ids.length === 0
-                    ? "An administrator must allow tools before you can select them."
-                    : "Select available tools to opt in for this account."}
                 </p>
               </div>
             ) : null}

@@ -1,16 +1,5 @@
 "use client";
 
-/**
- * Shared presentational atoms for the admin console sections.
- *
- * These used to live at the bottom of AdminPanel.tsx, which meant the sections
- * that already had their own files (search library, newsletters) could not
- * reach them and hand-rolled their own copies — OpenSearchLibrarySection
- * reproduced SectionHeader's markup, `aptiv-rule` and all. Extracting them
- * here is what makes one visual language across every admin section
- * enforceable rather than aspirational.
- */
-
 import { ChevronDown, Loader2 } from "lucide-react";
 import type { ComponentType, ReactNode, Ref } from "react";
 
@@ -34,10 +23,6 @@ export function SectionHeader({
           {subtitle}
         </p>
       ) : null}
-      <span
-        className="aptiv-rule"
-        aria-hidden="true"
-      />
     </header>
   );
 }
@@ -56,7 +41,7 @@ export function DisclosureSection({
   detailsRef,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: ReactNode;
   className?: string;
   contentClassName?: string;
@@ -75,9 +60,11 @@ export function DisclosureSection({
           <span className="block text-sm font-semibold text-foreground">
             {title}
           </span>
-          <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
-            {subtitle}
-          </span>
+          {subtitle && (
+            <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+              {subtitle}
+            </span>
+          )}
         </span>
         <ChevronDown
           className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
@@ -104,17 +91,10 @@ export function LoadingRow({ compact }: { compact?: boolean }) {
   );
 }
 
-export function EmptyState({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) {
+export function EmptyState({ title }: { title: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
       <p className="text-sm font-semibold text-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
