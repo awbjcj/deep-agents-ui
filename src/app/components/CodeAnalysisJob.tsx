@@ -9,6 +9,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useCodeAnalysisJob } from "@/app/hooks/useCodeAnalysisJob";
+import { useAnalysisReportFile } from "@/app/hooks/useAnalysisReportFile";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -44,6 +45,7 @@ const statuses: Record<string, string> = {
 /** Keep the actual job state visible independently of raw tool details. */
 export function CodeAnalysisJob({ jobId }: { jobId: string }) {
   const { job, error, checkedAt, cancel, refresh } = useCodeAnalysisJob(jobId);
+  const reportFile = useAnalysisReportFile(job);
   const [now, setNow] = useState(() => Date.now());
   const active = Boolean(job && shouldPoll(job.status));
   useEffect(() => {
@@ -103,6 +105,18 @@ export function CodeAnalysisJob({ jobId }: { jobId: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {reportFile && (
+          <p
+            role="status"
+            className="text-sm text-muted-foreground"
+          >
+            {reportFile.saved
+              ? "Report saved to Files"
+              : reportFile.error
+              ? `${reportFile.error}. Retrying automatically; the report is available to download.`
+              : "Saving report to Files…"}
+          </p>
+        )}
         {!job && !error ? (
           <div
             aria-busy="true"
