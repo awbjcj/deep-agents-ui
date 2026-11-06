@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  credentialStateText,
   credentialUpdate,
   deleteScmCredential,
   listScmServers,
@@ -57,12 +58,13 @@ export function ScmCredentials() {
     });
   };
 
-  const save = async (serverId: string) => {
+  const save = async (server: ScmServerView) => {
+    const serverId = server.id;
     const value = values[serverId] ?? { token: "", username: "" };
     try {
-      credentialUpdate(value.token, value.username);
+      credentialUpdate(value.token, value.username, server.provider);
       setSaving(serverId);
-      await saveScmCredential(serverId, value);
+      await saveScmCredential(serverId, value, server.provider);
       // Clear only the successfully sent secret; values for every other
       // server remain untouched so a partial save cannot erase user input.
       setValues((current) => ({
@@ -140,6 +142,8 @@ export function ScmCredentials() {
           const busy = saving !== null;
           const rowBusy = saving === server.id;
           const fieldKey = scmFieldKey(server.id);
+          const isGerrit = server.provider === "gerrit";
+          const state = credentialStateText(server.credential_state);
           return (
             <div
               key={server.id}
@@ -149,9 +153,13 @@ export function ScmCredentials() {
                 <div>
                   <p className="text-sm font-medium">{server.display_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {server.provider === "gerrit" ? "Gerrit" : "Plastic SCM"} ·{" "}
-                    {server.credential_state ?? "missing"}
+                    {isGerrit ? "Gerrit" : "Plastic SCM"} · {state.label}
                   </p>
+                  {state.hint && (
+                    <p className="text-xs text-muted-foreground">
+                      {state.hint}
+                    </p>
+                  )}
                 </div>
                 {server.credential_state !== undefined &&
                   server.credential_state !== "missing" && (
@@ -191,23 +199,26 @@ export function ScmCredentials() {
                     htmlFor={`${fieldKey}:username`}
                     className="text-xs"
                   >
-                    Login name (if required)
+                    {isGerrit
+                      ? "Gerrit login name (required)"
+                      : "Login name (if required)"}
                   </Label>
                   <Input
                     id={`${fieldKey}:username`}
                     autoComplete="username"
                     value={value.username}
                     disabled={busy}
+                    required={isGerrit}
                     onChange={(event) =>
                       setValue(server.id, "username", event.target.value)
                     }
-                    placeholder="Optional"
+                    placeholder={isGerrit ? "Gerrit username" : "Optional"}
                   />
                 </div>
               </div>
               <Button
                 size="sm"
-                onClick={() => void save(server.id)}
+                onClick={() => void save(server)}
                 disabled={busy || !value.token.trim()}
               >
                 {rowBusy ? (

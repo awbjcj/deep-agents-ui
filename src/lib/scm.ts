@@ -70,13 +70,57 @@ export function scmFieldKey(serverId: string): string {
 }
 
 /** Build a credential update only when the user entered a new secret. */
-export function credentialUpdate(token: string, username: string) {
+export function credentialUpdate(
+  token: string,
+  username: string,
+  provider?: ScmServerView["provider"]
+) {
   const normalizedToken = token.trim();
   if (!normalizedToken) throw new Error("Enter a personal access token");
   const normalizedUsername = username.trim();
+  // Gerrit uses HTTP Basic auth, so a token without its login can never work.
+  if (provider === "gerrit" && !normalizedUsername) {
+    throw new Error("Enter your Gerrit login name");
+  }
   return {
     token: normalizedToken,
     ...(normalizedUsername ? { username: normalizedUsername } : {}),
+  };
+}
+
+/** Explain a personal credential state in user terms. */
+export function credentialStateText(state: string | undefined): {
+  label: string;
+  hint?: string;
+} {
+  switch (state) {
+    case "validated":
+      return { label: "validated" };
+    case "unvalidated":
+      return {
+        label: "saved · not yet validated",
+        hint: "Ask the Code Analyzer to validate access with a repository and branch you can read.",
+      };
+    case "reconnect_required":
+      return {
+        label: "server changed · save token again",
+        hint: "An administrator changed this server's connection, so your saved token no longer applies.",
+      };
+    case undefined:
+    case "missing":
+      return { label: "not connected" };
+    default:
+      return { label: state };
+  }
+}
+
+/** Split admin servers so disabled (tombstoned) ones are shown separately. */
+export function partitionScmServers<T extends { enabled: boolean }>(
+  servers: T[]
+): { active: T[]; disabled: T[] } {
+  return {
+    active: servers.filter((server) => server.enabled),
+    disabled: servers.filter((server) => !server.enabled),
   };
 }
 
@@ -92,9 +136,10 @@ export async function listScmServers(
 
 export async function saveScmCredential(
   serverId: string,
-  input: { token: string; username?: string }
+  input: { token: string; username?: string },
+  provider?: ScmServerView["provider"]
 ): Promise<CredentialView> {
-  const update = credentialUpdate(input.token, input.username ?? "");
+  const update = credentialUpdate(input.token, input.username ?? "", provider);
   const data = await responseJson(
     await apiFetch(`/user/scm/credentials/${encodeURIComponent(serverId)}`, {
       method: "PUT",
