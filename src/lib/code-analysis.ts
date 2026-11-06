@@ -587,6 +587,25 @@ export async function getAnalysisEngines(): Promise<EngineCatalog> {
   );
 }
 
+/** Recover background work even when delegated tool messages have disappeared. */
+export async function getRecentAnalysisJobs(
+  threadId: string,
+  signal?: AbortSignal
+): Promise<AnalysisJobView[]> {
+  const query = new URLSearchParams({ thread_id: threadId, limit: "5" });
+  const data = await responseJson(
+    await apiFetch(`/code-analysis/jobs?${query}`, {
+      signal,
+      cache: "no-store",
+    }),
+    "Failed to load conversation analysis jobs"
+  );
+  const jobs = z.array(analysisJobSchema).max(5).parse(data);
+  if (jobs.some((job) => job.thread_id !== threadId))
+    throw new Error("Analysis jobs belong to a different conversation");
+  return jobs;
+}
+
 export async function getAnalysisJob(
   jobId: string,
   signal?: AbortSignal

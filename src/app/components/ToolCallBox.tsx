@@ -40,6 +40,8 @@ interface ToolCallBoxProps {
   isLoading?: boolean;
   /** Conversation files, so saved source images render without a request. */
   files?: Record<string, unknown>;
+  /** The conversation panel owns job cards when this tool is shown in chat. */
+  showAnalysisJob?: boolean;
 }
 
 function codeAnalysisJobId(
@@ -89,6 +91,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     onResume,
     isLoading,
     files,
+    showAnalysisJob = true,
   }) => {
     const [isExpanded, setIsExpanded] = useState(() => !!actionRequest);
     const [pointerMotion, setPointerMotion] = useState(false);
@@ -235,7 +238,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           )}
         </Button>
 
-        {analysisJobId && (
+        {analysisJobId && showAnalysisJob && (
           <div className="px-2.5 pb-3 pt-1">
             <CodeAnalysisJob
               key={analysisJobId}

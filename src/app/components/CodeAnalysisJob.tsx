@@ -100,7 +100,9 @@ export function CodeAnalysisJob({ jobId }: { jobId: string }) {
         </div>
         <CardDescription>
           {job?.operation === "prepare"
-            ? "Source preparation · analysis has not started"
+            ? job.status === "succeeded"
+              ? "Source preparation complete"
+              : "Source preparation · analysis has not started"
             : "Source investigation and evidence report"}
         </CardDescription>
       </CardHeader>
