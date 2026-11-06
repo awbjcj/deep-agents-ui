@@ -16,6 +16,7 @@ import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { cn } from "@/lib/utils";
+import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { ChatComposer } from "@/app/components/ChatComposer";
@@ -324,7 +325,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   );
                 })}
                 {candidateIndex === -1 && outcomeStatus}
-                {(user?.role === "developer" || user?.role === "admin") && (
+                {canUseCodeAnalyzer(user) && (
                   <CodeAnalysisJobs
                     key={threadId ?? createdThreadId}
                     threadId={threadId ?? createdThreadId ?? null}
