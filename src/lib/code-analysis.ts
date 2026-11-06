@@ -371,6 +371,7 @@ export const analysisJobSchema = z.object({
   completeness: z.string().optional(),
   operation: z.string().optional(),
   created_at: z.string().optional(),
+  started_at: z.string().nullable().optional(),
   finished_at: z.string().nullable().optional(),
   configuration: z
     .object({
@@ -592,6 +593,7 @@ export async function getAnalysisJob(
   const data = await responseJson(
     await apiFetch(`/code-analysis/jobs/${encodeURIComponent(jobId)}`, {
       signal,
+      cache: "no-store",
     }),
     "Failed to load code-analysis job"
   );
@@ -599,11 +601,13 @@ export async function getAnalysisJob(
 }
 
 export async function cancelAnalysisJob(
-  jobId: string
+  jobId: string,
+  signal?: AbortSignal
 ): Promise<AnalysisJobView> {
   const data = await responseJson(
     await apiFetch(`/code-analysis/jobs/${encodeURIComponent(jobId)}/cancel`, {
       method: "POST",
+      signal,
     }),
     "Failed to cancel code-analysis job"
   );

@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-
+import { useEffect, useRef, useState } from "react";
 import {
   analysisPollDelay,
   cancelAnalysisJob,
@@ -10,73 +9,66 @@ import {
   type AnalysisJobView,
 } from "@/lib/code-analysis";
 
-/** Poll one durable analysis job and cancel only browser requests on unmount. */
+/** Serialize polling and actions so stale requests cannot undo cancellation. */
 export function useCodeAnalysisJob(jobId: string | null) {
-  const [job, setJob] = useState<AnalysisJobView | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const refreshRef = useRef<() => Promise<void>>(async () => undefined);
-
-  const refresh = useCallback(async () => {
-    if (!jobId) return;
-    const next = await getAnalysisJob(jobId);
-    setJob(next);
-    setError(null);
-  }, [jobId]);
-
-  refreshRef.current = refresh;
+  const [state, setState] = useState<{
+    job: AnalysisJobView | null;
+    error: string | null;
+    checkedAt: number | null;
+  }>({ job: null, error: null, checkedAt: null });
+  const actions = useRef({ refresh: async () => {}, cancel: async () => {} });
 
   useEffect(() => {
-    if (!jobId) {
-      setJob(null);
-      setError(null);
-      return;
-    }
+    setState({ job: null, error: null, checkedAt: null });
+    if (!jobId) return;
     let disposed = false;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let sequence = 0;
+    let failures = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     let controller: AbortController | undefined;
-    let consecutiveFailures = 0;
 
-    const poll = async () => {
+    const request = async (cancel = false) => {
+      const current = ++sequence;
+      clearTimeout(timer);
       controller?.abort();
       controller = new AbortController();
       try {
-        const next = await getAnalysisJob(jobId, controller.signal);
-        if (disposed) return;
-        setJob(next);
-        setError(null);
-        consecutiveFailures = 0;
-        if (shouldPoll(next.status)) {
-          timeout = setTimeout(poll, analysisPollDelay(0));
-        }
+        const next = cancel
+          ? await cancelAnalysisJob(jobId, controller.signal)
+          : await getAnalysisJob(jobId, controller.signal);
+        if (disposed || current !== sequence) return;
+        failures = 0;
+        setState({ job: next, error: null, checkedAt: Date.now() });
+        if (shouldPoll(next.status))
+          timer = setTimeout(() => void request(), analysisPollDelay(0));
       } catch (caught) {
-        if (
-          disposed ||
-          (caught as DOMException | undefined)?.name === "AbortError"
-        )
+        if (disposed || current !== sequence || controller.signal.aborted)
           return;
-        setError(
+        const message =
           caught instanceof Error
             ? caught.message
-            : "Failed to load analysis job"
-        );
-        timeout = setTimeout(poll, analysisPollDelay(consecutiveFailures));
-        consecutiveFailures += 1;
+            : "Could not load analysis status";
+        setState((previous) => ({ ...previous, error: message }));
+        timer = setTimeout(() => void request(), analysisPollDelay(failures++));
+        if (cancel) throw caught;
       }
     };
-    void poll();
+    actions.current = { refresh: () => request(), cancel: () => request(true) };
+    void request();
     return () => {
       disposed = true;
+      ++sequence;
       controller?.abort();
-      if (timeout) clearTimeout(timeout);
+      clearTimeout(timer);
+      actions.current = { refresh: async () => {}, cancel: async () => {} };
     };
   }, [jobId]);
 
-  const cancel = useCallback(async () => {
-    if (!jobId) return;
-    const next = await cancelAnalysisJob(jobId);
-    setJob(next);
-    setError(null);
-  }, [jobId]);
-
-  return { job, error, cancel, refresh: () => refreshRef.current() };
+  const job = state.job?.job_id === jobId ? state.job : null;
+  return {
+    ...state,
+    job,
+    refresh: () => actions.current.refresh(),
+    cancel: () => actions.current.cancel(),
+  };
 }
