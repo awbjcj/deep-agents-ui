@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, stat } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import test from "node:test";
+import { isStaticExportRequest, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "out");
@@ -452,10 +453,8 @@ async function authenticatedPage(browser, fixture, policy, role) {
     if (["fetch", "xhr"].includes(route.request().resourceType())) {
       seenRequests.push(`${route.request().method()} ${url.pathname}`);
     }
-    const isFixtureAsset =
-      url.origin === fixture.origin &&
-      !/^\/(?:api|assistants|threads|runs|store)(?:\/|$)/.test(url.pathname);
-    if (isFixtureAsset) return route.continue();
+    if (isStaticExportRequest(route.request(), fixture.origin))
+      return route.continue();
     return policy.route(route, account);
   });
   await page.goto(fixture.baseUrl, { waitUntil: "domcontentloaded" });
@@ -606,8 +605,8 @@ test(
   "rendered save recovery and independent tier conflict review",
   { skip: !RUN_BROWSER },
   async (t) => {
-    const { chromium } = await import(
-      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE
     );
     const fixture = await staticServer();
     const browser = await chromium.launch({
@@ -952,9 +951,9 @@ test(
   "rendered admin and personal tool policies preserve durable interaction contracts",
   { skip: !RUN_BROWSER },
   async () => {
-    const playwrightModule =
-      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE ?? "playwright";
-    const { chromium } = await import(playwrightModule);
+    const { chromium } = await loadPlaywright(
+      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE
+    );
     await stat(join(OUT, "index.html"));
     await mkdir(EVIDENCE, { recursive: true });
     const fixture = await staticServer();

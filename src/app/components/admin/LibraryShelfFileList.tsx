@@ -78,6 +78,20 @@ export function LibraryShelfFileList({
               {formatBytes(file.byte_size)} · Uploaded by {file.uploaded_by} ·{" "}
               {new Date(file.uploaded_at).toLocaleString()}
             </p>
+            {file.status === "pending" && (
+              <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Loader2
+                  className="h-3 w-3 animate-spin"
+                  aria-hidden="true"
+                />
+                Converting in the sync job
+              </p>
+            )}
+            {file.status === "failed" && (
+              <p className="mt-1 text-[10px] font-semibold text-destructive">
+                Conversion failed; not searchable
+              </p>
+            )}
             {file.warning && (
               <p className="mt-1 text-[10px] text-warning">{file.warning}</p>
             )}

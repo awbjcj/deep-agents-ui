@@ -6,13 +6,14 @@ import {
   authenticatedPage,
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "workspace and admin reopen at the header divider after resizing",
   { skip: process.env.PANEL_WIDTH_BROWSER_TEST !== "1", timeout: 90000 },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const browser = await chromium.launch({
       headless: true,
@@ -125,8 +126,8 @@ test(
   "three columns keep readable bounds through dragging, keyboard limits and viewport changes",
   { skip: process.env.PANEL_WIDTH_BROWSER_TEST !== "1", timeout: 120000 },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const browser = await chromium.launch({
       headless: true,

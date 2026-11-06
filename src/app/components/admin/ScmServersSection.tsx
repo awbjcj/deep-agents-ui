@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Save, Server, Trash2 } from "lucide-react";
+import { Loader2, RotateCcw, Save, Server, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
 import {
   deleteScmServer,
   listAdminScmServers,
+  partitionScmServers,
   saveScmServer,
   type AdminScmServerView,
   type ScmServerInput,
@@ -36,6 +37,9 @@ export function ScmServersSection() {
   const [draft, setDraft] = useState<ScmServerInput>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // ID of the server being edited; the ID is its stable identity, so editing
+  // must update that record rather than create a second one under a new ID.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const configurationRef = useRef<HTMLDetailsElement>(null);
 
   const load = async () => {
@@ -56,12 +60,32 @@ export function ScmServersSection() {
   }, []);
 
   const save = async () => {
+    const original = editingId
+      ? servers.find((server) => server.id === editingId)
+      : undefined;
+    const input = editingId ? { ...draft, id: editingId } : draft;
+    if (!editingId && servers.some((server) => server.id === input.id.trim())) {
+      toast.error(
+        `A server with ID "${input.id.trim()}" already exists. Use Edit or Restore instead.`
+      );
+      return;
+    }
     setSaving(true);
     try {
-      await saveScmServer(draft);
+      await saveScmServer(input);
       setDraft(EMPTY);
+      setEditingId(null);
       await load();
-      toast.success("SCM server saved");
+      const reconnect =
+        original !== undefined &&
+        (original.provider !== input.provider ||
+          original.endpoint !== input.endpoint ||
+          original.auth_profile !== input.auth_profile);
+      toast.success(
+        reconnect
+          ? "SCM server saved. Users must save their token again for the changed connection."
+          : "SCM server saved"
+      );
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -73,6 +97,58 @@ export function ScmServersSection() {
     }
   };
 
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDraft(EMPTY);
+  };
+
+  const toInput = (server: AdminScmServerView): ScmServerInput => ({
+    id: server.id,
+    provider: server.provider,
+    display_name: server.display_name,
+    endpoint: server.endpoint,
+    auth_profile: server.auth_profile,
+    enabled: server.enabled,
+    validation: server.validation,
+  });
+
+  const disable = async (server: AdminScmServerView) => {
+    setSaving(true);
+    try {
+      await deleteScmServer(server.id);
+      if (editingId === server.id) cancelEdit();
+      await load();
+      toast.success(
+        `${server.display_name} disabled. Users can no longer use it; restore it under Disabled servers.`
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to disable SCM server"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const restore = async (server: AdminScmServerView) => {
+    setSaving(true);
+    try {
+      await saveScmServer({ ...toInput(server), enabled: true });
+      await load();
+      toast.success(
+        `${server.display_name} restored. Users must save their token again.`
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to restore SCM server"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const { active, disabled } = partitionScmServers(servers);
+
   return (
     <div className="space-y-5">
       <SectionHeader
@@ -81,12 +157,13 @@ export function ScmServersSection() {
       />
       <DisclosureSection
         title="Server configuration"
-        subtitle={`${servers.length} configured`}
+        subtitle={`${active.length} enabled · ${disabled.length} disabled`}
         contentClassName="space-y-3"
         detailsRef={configurationRef}
       >
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <Server className="h-4 w-4 text-primary" /> Add or update server
+          <Server className="h-4 w-4 text-primary" />{" "}
+          {editingId ? `Edit server ${editingId}` : "Add server"}
         </div>
         <fieldset
           className="space-y-3"
@@ -108,6 +185,13 @@ export function ScmServersSection() {
                   <Input
                     id={`scm-server-${field}`}
                     value={draft[field]}
+                    readOnly={field === "id" && editingId !== null}
+                    aria-readonly={field === "id" && editingId !== null}
+                    title={
+                      field === "id" && editingId !== null
+                        ? "The ID is the server's permanent identity and cannot be changed"
+                        : undefined
+                    }
                     onChange={(event) =>
                       setDraft((value) => ({
                         ...value,
@@ -115,7 +199,11 @@ export function ScmServersSection() {
                       }))
                     }
                     placeholder={
-                      field === "endpoint" ? "https://scm.example" : undefined
+                      field === "endpoint"
+                        ? "https://scm.example"
+                        : field === "auth_profile"
+                        ? "http_token"
+                        : undefined
                     }
                   />
                 </div>
@@ -159,17 +247,28 @@ export function ScmServersSection() {
               />
             </div>
           </div>
-          <Button
-            onClick={() => void save()}
-            disabled={saving}
-          >
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}{" "}
-            Save server
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => void save()}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}{" "}
+              Save server
+            </Button>
+            {editingId !== null && (
+              <Button
+                variant="outline"
+                onClick={cancelEdit}
+                disabled={saving}
+              >
+                Cancel edit
+              </Button>
+            )}
+          </div>
         </fieldset>
       </DisclosureSection>
       {loading ? (
@@ -178,7 +277,7 @@ export function ScmServersSection() {
         </div>
       ) : (
         <div className="space-y-2">
-          {servers.map((server) => (
+          {active.map((server) => (
             <div
               key={server.id}
               className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
@@ -188,8 +287,9 @@ export function ScmServersSection() {
                   {server.display_name}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {server.provider} ·{" "}
-                  {server.validation.ready === true ? "ready" : "not ready"}
+                  {server.id} · {server.provider} · enabled
+                  {server.validation.ready === true && " · operator-verified"}
+                  {editingId === server.id && " · editing"}
                 </p>
               </div>
               <div className="flex gap-1">
@@ -198,15 +298,8 @@ export function ScmServersSection() {
                   size="sm"
                   disabled={saving}
                   onClick={() => {
-                    setDraft({
-                      id: server.id,
-                      provider: server.provider,
-                      display_name: server.display_name,
-                      endpoint: server.endpoint,
-                      auth_profile: server.auth_profile,
-                      enabled: server.enabled,
-                      validation: server.validation,
-                    });
+                    setEditingId(server.id);
+                    setDraft(toInput(server));
                     if (configurationRef.current) {
                       configurationRef.current.open = true;
                     }
@@ -218,35 +311,58 @@ export function ScmServersSection() {
                   variant="ghost"
                   size="sm"
                   disabled={saving}
-                  onClick={() =>
-                    void deleteScmServer(server.id)
-                      .then(load)
-                      .catch((error: unknown) =>
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Failed to disable SCM server"
-                        )
-                      )
-                  }
+                  onClick={() => void disable(server)}
                   aria-label={`Disable ${server.display_name}`}
+                  title="Disable (keeps report history)"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>
             </div>
           ))}
-          {!servers.length && (
-            <p className="text-sm text-muted-foreground">
-              No servers configured.
-            </p>
+          {!active.length && (
+            <p className="text-sm text-muted-foreground">No enabled servers.</p>
+          )}
+          {disabled.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Disabled servers
+              </p>
+              {disabled.map((server) => (
+                <div
+                  key={server.id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border p-3 opacity-80"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {server.display_name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {server.id} · {server.provider} · disabled · hidden from
+                      users
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={() => void restore(server)}
+                    aria-label={`Restore ${server.display_name}`}
+                  >
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Readiness is an operator-verified capability state. Local and container
-        analysis remain unavailable until their separate worker prerequisites
-        pass.
+        Disabling hides a server from users and stops new work, but keeps its ID
+        so existing reports stay traceable. Each user validates their own token
+        through the Code Analyzer. Local and container analysis remain
+        unavailable until their separate worker prerequisites pass.
       </p>
     </div>
   );

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, stat } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import test from "node:test";
+import { isStaticExportRequest, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const OUT = join(ROOT, "out");
@@ -243,9 +244,9 @@ test(
     : "rendered source policy and attachment controls preserve their browser contracts",
   { skip: !RUN_BROWSER && !RUN_GRAPH_ONLY },
   async () => {
-    const playwrightModule =
-      process.env.SOURCE_IMAGE_PLAYWRIGHT_MODULE ?? "playwright";
-    const { chromium } = await import(playwrightModule);
+    const { chromium } = await loadPlaywright(
+      process.env.SOURCE_IMAGE_PLAYWRIGHT_MODULE
+    );
     await stat(join(OUT, "index.html"));
     await mkdir(EVIDENCE, { recursive: true });
 
@@ -316,10 +317,8 @@ test(
       ) {
         seenRequests.push(`${request.method()} ${path}`);
       }
-      const isFixtureAsset =
-        url.origin === fixture.origin &&
-        !/^\/(?:api|assistants|threads|runs|store)(?:\/|$)/.test(path);
-      if (isFixtureAsset) return route.continue();
+      if (isStaticExportRequest(request, fixture.origin))
+        return route.continue();
 
       if (path === "/api/user/profile") {
         return json(route, {

@@ -8,6 +8,7 @@ import {
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
 import { KNOWLEDGE_BASE_ASSISTANT_ID } from "../src/lib/assistant-identity.ts";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "renamed knowledge base resolves old bookmarks and built-in UUIDs in the exported UI",
@@ -16,8 +17,8 @@ test(
     timeout: 60_000,
   },
   async () => {
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const fixture = await staticServer();
     const browser = await chromium.launch({

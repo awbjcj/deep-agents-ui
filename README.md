@@ -47,6 +47,26 @@ header menu and sidebars.
 | `yarn format` / `yarn format:check` | Prettier                                                     |
 | `yarn test`                         | Node test runner over `tests/**/*.mjs`                       |
 
+## Browser tests
+
+UI flows have opt-in Playwright suites (`tests/*browser*.test.mjs`). `yarn test`
+skips them unless their flag is set, for example:
+
+```bash
+TASK_OUTCOME_BROWSER_TEST=1 node --import tsx/esm --test tests/task-outcome-browser.test.mjs
+```
+
+Suites that load the full chat serve the static export in `out/`, so run
+`yarn build` first. The build can call the agent on the serving origin
+(`same-origin`, or unset) or on a separate `NEXT_PUBLIC_DEPLOYMENT_URL`; the
+fixtures intercept both.
+
+Install Playwright's Chromium with `yarn playwright install chromium` where
+Playwright supports the host. On hosts it doesn't support, such as Ubuntu 20.04,
+the suites fall back to the system Google Chrome (`tests/browser-fixtures.mjs`).
+Each suite's `*_PLAYWRIGHT_MODULE` and browser executable variables still
+override both.
+
 ## Configuration
 
 Environment variables (see `.env.example`):

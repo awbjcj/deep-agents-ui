@@ -242,18 +242,22 @@ export function ModelSidebar() {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const failedDraftRef = useRef<DraftState | null>(null);
+  const externalChangeSeqRef = useRef(0);
   const usage = useTokenUsage();
   const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
   useEffect(() => {
     let mounted = true;
+    const externalChangeSeq = externalChangeSeqRef.current;
     setIsLoading(true);
 
     Promise.all([apiGetUserModel(), apiGetAllowedModels()])
       .then(([current, modelsResp]) => {
         if (!mounted) return;
-        setSelection(current);
         setAllowed(modelsResp.models);
+        // An external save received while loading is newer than this read.
+        if (externalChangeSeq !== externalChangeSeqRef.current) return;
+        setSelection(current);
         setDraft(draftFromEffective(current.effective));
         if (isPreset(current.preset)) {
           setActivePreset(current.preset);
@@ -301,6 +305,7 @@ export function ModelSidebar() {
     function onExternalChange(event: Event) {
       const next = (event as CustomEvent<UserModelSelection>).detail;
       if (!next?.effective || dirtyRef.current) return;
+      externalChangeSeqRef.current += 1;
       setSelection(next);
       setDraft(draftFromEffective(next.effective));
       if (isPreset(next.preset)) {

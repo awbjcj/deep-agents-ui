@@ -6,6 +6,7 @@ import {
   authenticatedPage,
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "built chat sends authorized autopilot resumes and returns to manual approval on opt-out",
@@ -14,8 +15,8 @@ test(
     timeout: 60000,
   },
   async () => {
-    const { chromium } = await import(
-      process.env.AUTOPILOT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.AUTOPILOT_PLAYWRIGHT_MODULE
     );
     const browser = await chromium.launch({
       headless: true,

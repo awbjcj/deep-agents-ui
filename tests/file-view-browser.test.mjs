@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const PATH = "/_artifacts/user/thread/confluence/report.md";
@@ -16,8 +17,8 @@ test(
   },
   async () => {
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.FILE_VIEW_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.FILE_VIEW_PLAYWRIGHT_MODULE
     );
     const bundle = await build({
       absWorkingDir: ROOT,

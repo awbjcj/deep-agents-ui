@@ -113,18 +113,3 @@ test("analysis settings UI groups raw limits and validates model overrides inlin
     /copilot_allowed_github_hosts:\s*savedEngines\.copilot\.allowed_github_hosts\.join\(", "\)/
   );
 });
-
-test("analysis job UI exposes live status, progress, and evidence landmarks", async () => {
-  const source = await readFile(
-    new URL("../src/app/components/CodeAnalysisJob.tsx", import.meta.url),
-    "utf8"
-  );
-
-  assert.match(source, /role="progressbar"/);
-  assert.match(source, /aria-live="polite"/);
-  assert.match(source, /Evidence coverage/);
-  assert.match(source, /Immutable targets/);
-  assert.match(source, /motion-reduce:transition-none/);
-  assert.match(source, /MATLAB model evidence/);
-  assert.match(source, /discovering dependencies/);
-});

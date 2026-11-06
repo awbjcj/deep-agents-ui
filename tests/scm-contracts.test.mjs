@@ -2,11 +2,67 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  credentialStateText,
   credentialUpdate,
+  partitionScmServers,
   scmFieldKey,
   scmServerSchema,
 } from "../src/lib/scm.ts";
 import { readFile } from "node:fs/promises";
+
+test("a Gerrit credential requires its Basic-auth login name", () => {
+  assert.throws(
+    () => credentialUpdate("test-pat", "  ", "gerrit"),
+    /Gerrit login name/
+  );
+  assert.deepEqual(credentialUpdate("test-pat", "alice", "gerrit"), {
+    token: "test-pat",
+    username: "alice",
+  });
+  assert.deepEqual(credentialUpdate("test-pat", "", "plastic"), {
+    token: "test-pat",
+  });
+});
+
+test("credential states explain validation and server changes", () => {
+  assert.equal(credentialStateText(undefined).label, "not connected");
+  assert.equal(credentialStateText("missing").label, "not connected");
+  assert.match(credentialStateText("unvalidated").hint ?? "", /Code Analyzer/);
+  assert.match(
+    credentialStateText("reconnect_required").label,
+    /save token again/
+  );
+  assert.equal(credentialStateText("validated").label, "validated");
+});
+
+test("disabled SCM servers are listed separately from enabled ones", () => {
+  const { active, disabled } = partitionScmServers([
+    { id: "a", enabled: true },
+    { id: "b", enabled: false },
+  ]);
+  assert.deepEqual(
+    active.map((s) => s.id),
+    ["a"]
+  );
+  assert.deepEqual(
+    disabled.map((s) => s.id),
+    ["b"]
+  );
+});
+
+test("editing an SCM server keeps its ID and cannot create a duplicate", async () => {
+  const source = await readFile(
+    new URL(
+      "../src/app/components/admin/ScmServersSection.tsx",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  assert.match(source, /readOnly=\{field === "id" && editingId !== null\}/);
+  assert.match(source, /editingId \? \{ \.\.\.draft, id: editingId \} : draft/);
+  assert.match(source, /already exists\. Use Edit or Restore instead/);
+  assert.match(source, /Restore \$\{server\.display_name\}/);
+});
 
 test("an untouched SCM token is not submitted as an empty replacement", () => {
   assert.throws(() => credentialUpdate("", "alice"), /personal access token/);

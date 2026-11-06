@@ -43,14 +43,6 @@ import {
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
 import {
-  isTaskGraderMessage,
-  isTaskOutcomeNotice,
-  parseTaskOutcome,
-  reduceTaskOutcome,
-  taskOutcomeEvent,
-  type TaskOutcome,
-} from "@/lib/taskOutcome";
-import {
   reconcileSourceImageRecords,
   restoreSourceImageRemoval,
   stageSourceImageRemoval,
@@ -66,6 +58,18 @@ import {
   withoutPendingFiles,
   type PendingSubagentFiles,
 } from "@/lib/pending-files";
+import {
+  EMPTY_LIVE_VERIFICATION,
+  isRubricEvent,
+  isTaskGraderMessage,
+  parseTaskOutcome,
+  reduceRubricEvent,
+  reduceTaskOutcome,
+  resolveTaskVerification,
+  taskOutcomeEvent,
+  verificationIsLive,
+  type LiveTaskVerification,
+} from "@/lib/task-outcome";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -73,7 +77,6 @@ export type StateType = {
   messages: Message[];
   todos: TodoItem[];
   files: Record<string, string>;
-  task_outcome?: TaskOutcome | null;
   source_image_attachments?: SourceImageRecordMap;
   email?: {
     id?: string;
@@ -81,6 +84,8 @@ export type StateType = {
     page_content?: string;
   };
   ui?: any;
+  /** Sanitized `TaskOutcome` v1 from agents with completion verification. */
+  task_outcome?: unknown;
 };
 
 // Multi-mode event stream per deepagents event-streaming guide:
@@ -152,12 +157,19 @@ export function useChat({
     threadIdRef.current = threadId;
   }, [threadId]);
 
-  // Root task-outcome notifications refine the active checkpoint status.
-  // Route other `custom` events from ToolErrorNotificationMiddleware:
-  //   - scope "user" → durable banner (handled by NotificationsProvider)
-  //   - scope "thread" → ephemeral sonner toast (kept here so the chat hook
-  //     owns thread-scoped UX; banners are user-wide and live in their
-  //     own provider).
+  const [liveVerification, setLiveVerification] =
+    useState<LiveTaskVerification>(EMPTY_LIVE_VERIFICATION);
+  // Route `custom` stream events:
+  //   - root `task_outcome` → refines `values.task_outcome` in place, within
+  //     the checkpoint's execution, task revision and answer
+  //   - root native rubric passes → thread-scoped live grading detail
+  //   - ToolErrorNotificationMiddleware scope "user" → durable banner
+  //     (handled by NotificationsProvider)
+  //   - ToolErrorNotificationMiddleware scope "thread" → ephemeral sonner
+  //     toast (kept here so the chat hook owns thread-scoped UX; banners are
+  //     user-wide and live in their own provider).
+  // Verification events are keyed on their shape, so every agent that emits
+  // them renders alike; subgraph (worker) events are ignored.
   const handleCustomEvent = useCallback(
     (
       event: unknown,
@@ -166,19 +178,27 @@ export function useChat({
         mutate: (update: (previous: StateType) => Partial<StateType>) => void;
       }
     ) => {
-      const outcome = taskOutcomeEvent(event, options?.namespace);
-      if (outcome && options) {
-        options.mutate((previous) => {
-          const current = parseTaskOutcome(previous.task_outcome);
-          if (!current) return {};
-          return {
-            task_outcome: reduceTaskOutcome(
-              current,
-              outcome,
-              current.execution_id
-            ),
-          };
-        });
+      const eventType =
+        typeof event === "object" && event !== null
+          ? (event as Record<string, unknown>).type
+          : undefined;
+      if (eventType === "task_outcome") {
+        const outcome = taskOutcomeEvent(event, options?.namespace);
+        if (outcome)
+          options?.mutate((previous) => {
+            const current = parseTaskOutcome(previous.task_outcome);
+            if (!current) return {};
+            const next = reduceTaskOutcome(current, outcome);
+            return next === current ? {} : { task_outcome: next };
+          });
+        return;
+      }
+      if (isRubricEvent(event)) {
+        if (options?.namespace?.length) return;
+        const known = parseTaskOutcome(streamRef.current?.values?.task_outcome);
+        setLiveVerification((previous) =>
+          reduceRubricEvent(previous, event, threadIdRef.current, known)
+        );
         return;
       }
       if (
@@ -1095,18 +1115,15 @@ export function useChat({
   // every artifact in the thread.
   const isInterrupted = stream.interrupts.length > 0;
   const { messages: streamedMessages, getMessagesMetadata } = stream;
-  const taskOutcome = useMemo(
-    () => parseTaskOutcome(stream.values.task_outcome),
-    [stream.values.task_outcome]
-  );
+  // Native grader tokens can stream into the root thread; they are private
+  // diagnostics, not part of the answer.
   const visibleMessages = useMemo(
     () =>
       streamedMessages.filter(
         (message, index) =>
-          !isTaskGraderMessage(getMessagesMetadata(message, index)) &&
-          !isTaskOutcomeNotice(message, taskOutcome)
+          !isTaskGraderMessage(getMessagesMetadata(message, index))
       ),
-    [streamedMessages, getMessagesMetadata, taskOutcome]
+    [streamedMessages, getMessagesMetadata]
   );
   const processedMessages = useProcessedMessages(
     visibleMessages,
@@ -1128,6 +1145,22 @@ export function useChat({
   const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
   const serverQueuedCount = messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
+  const stateTaskOutcome = stream.values.task_outcome;
+  const verificationLive = verificationIsLive(
+    stateTaskOutcome,
+    messages,
+    isLoading
+  );
+  const taskVerification = useMemo(
+    () =>
+      resolveTaskVerification(
+        stateTaskOutcome,
+        liveVerification,
+        threadId,
+        verificationLive
+      ),
+    [stateTaskOutcome, liveVerification, threadId, verificationLive]
+  );
 
   // The returned object is the ChatProvider context value. Leaving it as a bare
   // object literal invalidated every chat consumer whenever an unrelated parent
@@ -1143,7 +1176,6 @@ export function useChat({
       sourceImageAttachments,
       email,
       ui,
-      taskOutcome,
       setFiles,
       refreshFiles,
       removeSourceImage,
@@ -1166,6 +1198,7 @@ export function useChat({
       markCurrentThreadAsResolved,
       resumeInterrupt,
       approvals,
+      taskVerification,
     }),
     [
       threadId,
@@ -1177,7 +1210,6 @@ export function useChat({
       sourceImageAttachments,
       email,
       ui,
-      taskOutcome,
       setFiles,
       refreshFiles,
       removeSourceImage,
@@ -1200,6 +1232,7 @@ export function useChat({
       markCurrentThreadAsResolved,
       resumeInterrupt,
       approvals,
+      taskVerification,
     ]
   );
 }

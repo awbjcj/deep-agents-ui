@@ -183,6 +183,11 @@ const AGENT_INFO: Record<string, AgentInfo> = {
   },
 };
 
+/** Human label for an analysis engine id. */
+function engineLabel(id: string): string {
+  return id === "deep_agent" ? "Deep Agent" : "Copilot";
+}
+
 /** Every built-in graph; restricted ones are filtered per account at render. */
 const BUILT_IN_ASSISTANTS: AssistantOption[] = Object.keys(AGENT_INFO).map(
   (graphId) => ({ id: graphId, name: graphId, graphId })
@@ -376,14 +381,11 @@ export function ConfigDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent
-        aria-describedby={undefined}
-        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-[525px]"
-      >
-        <DialogHeader>
+      <DialogContent aria-describedby={undefined} className="flex max-h-[90dvh] flex-col sm:max-w-[525px]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Choose an agent</DialogTitle>
         </DialogHeader>
-        <div className="grid min-w-0 gap-4">
+        <div className="-mx-6 grid min-h-0 gap-4 overflow-y-auto px-6 py-1">
           <div className="grid gap-2">
             <Label
               htmlFor="assistantId"
@@ -459,107 +461,91 @@ export function ConfigDialog({
               );
             })()}
           {isCodeAnalyzer && (
-            <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-              <div className="space-y-3 p-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="analysisEngine">Analysis engine</Label>
-                  <Select
-                    value={analysisEngine}
-                    onValueChange={setAnalysisEngine}
+            <div className="grid gap-2">
+              <Label htmlFor="analysisEngine">Analysis engine</Label>
+              <Select
+                value={analysisEngine}
+                onValueChange={setAnalysisEngine}
+              >
+                <SelectTrigger id="analysisEngine">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    value="__default__"
+                    disabled={defaultEngine?.ready === false}
                   >
-                    <SelectTrigger id="analysisEngine">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        value="__default__"
-                        disabled={defaultEngine?.ready === false}
+                    Administrator default
+                    {engineCatalog
+                      ? ` · ${engineLabel(engineCatalog.default_engine)}`
+                      : ""}
+                  </SelectItem>
+                  {(engineCatalog?.engines ?? []).map((engine) => (
+                    <SelectItem
+                      key={engine.id}
+                      value={engine.id}
+                      disabled={!engine.ready}
+                    >
+                      {engineLabel(engine.id)}
+                      {!engine.ready ? " — unavailable" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {engineCatalog ? (
+                <ul className="flex flex-wrap gap-1.5">
+                  {engineCatalog.engines.map((engine) => {
+                    const Icon = engine.ready ? CheckCircle2 : AlertCircle;
+                    const detail = engine.ready
+                      ? engine.id === "copilot" && engine.quota
+                        ? engine.quota.unlimited
+                          ? "Unlimited"
+                          : `${engine.quota.remaining_percentage.toFixed(
+                              1
+                            )}% left`
+                        : "Ready"
+                      : engine.blockers.map(analysisBlockerMessage).join(" ") ||
+                        "Unavailable";
+                    return (
+                      <li
+                        key={engine.id}
+                        title={detail}
+                        className={`flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                          engine.ready
+                            ? "border-success/35 bg-success-primary/60"
+                            : "border-warning/35 bg-warning-primary/60"
+                        }`}
                       >
-                        Administrator default
-                        {engineCatalog
-                          ? ` · ${
-                              engineCatalog.default_engine === "deep_agent"
-                                ? "Deep Agent"
-                                : "Copilot"
-                            }`
-                          : ""}
-                      </SelectItem>
-                      {(engineCatalog?.engines ?? []).map((engine) => (
-                        <SelectItem
-                          key={engine.id}
-                          value={engine.id}
-                          disabled={!engine.ready}
-                        >
-                          {engine.id === "deep_agent"
-                            ? "Deep Agent"
-                            : "Copilot"}
-                          {!engine.ready ? " — unavailable" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {engineCatalog ? (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {engineCatalog.engines.map((engine) => {
-                      const Icon = engine.ready ? CheckCircle2 : AlertCircle;
-                      return (
-                        <div
-                          key={engine.id}
-                          className={`flex min-w-0 items-start gap-2 rounded-md border px-2.5 py-2 ${
+                        <Icon
+                          className={`h-3 w-3 shrink-0 ${
                             engine.ready
-                              ? "border-success/35 bg-success-primary/60"
-                              : "border-warning/35 bg-warning-primary/60"
+                              ? "text-success dark:text-emerald-300"
+                              : "text-warning dark:text-amber-300"
                           }`}
-                        >
-                          <Icon
-                            className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                              engine.ready
-                                ? "text-success dark:text-emerald-300"
-                                : "text-warning dark:text-amber-300"
-                            }`}
-                            aria-hidden="true"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold">
-                              {engine.id === "deep_agent"
-                                ? "Deep Agent"
-                                : "Copilot"}
-                            </p>
-                            <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
-                              {engine.ready
-                                ? engine.id === "copilot" && engine.quota
-                                  ? engine.quota.unlimited
-                                    ? "Ready · Unlimited premium interactions"
-                                    : `Ready · ${engine.quota.remaining_percentage.toFixed(
-                                        1
-                                      )}% premium interactions remaining`
-                                  : "Ready"
-                                : engine.blockers
-                                    .map(analysisBlockerMessage)
-                                    .join(" ") || "Unavailable"}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Live readiness is unavailable. The administrator default
-                    remains the safest choice.
-                  </p>
-                )}
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  {COPILOT_USAGE_EXPLANATION} This choice applies only to new
-                  analysis submissions; it does not change the administrator
-                  policy.
-                </p>
-              </div>
-            </section>
+                          aria-hidden="true"
+                        />
+                        <span className="font-medium">
+                          {engineLabel(engine.id)}
+                        </span>
+                        <span className="truncate text-muted-foreground">
+                          {detail}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+              <p
+                className="text-[11px] leading-relaxed text-muted-foreground"
+                title={COPILOT_USAGE_EXPLANATION}
+              >
+                Applies to new analyses only. Copilot usage is billed to your
+                GitHub account.
+              </p>
+            </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

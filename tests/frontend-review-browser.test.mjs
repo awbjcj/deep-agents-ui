@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -11,8 +12,8 @@ test(
   { skip: process.env.FRONTEND_REVIEW_BROWSER_TEST !== "1" },
   async () => {
     const { build } = await import("esbuild");
-    const { chromium } = await import(
-      process.env.CHAT_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
     );
     const { default: postcss } = await import("postcss");
     const { default: tailwind } = await import("tailwindcss");
@@ -55,14 +56,21 @@ test(
             build.onLoad({ filter: /[\\/]lib[\\/]auth\.ts$/ }, () => ({
               contents: `
               const effective = {provider: "test", model: "example", effort: "low", thinking: false, max_tokens: Number(new URLSearchParams(location.search).get("cap")) || 4096};
-              export const MODEL_SELECTION_CHANGED_EVENT = "vsda-model-selection-changed";
               export const apiGetUserModel = async () => ({effective, preset: null});
               const linked = new URLSearchParams(location.search).has("linked");
               const entry = {...effective, supports_effort: true, efforts: ["none", "minimal", "low", "medium", "high", "xhigh", "max"], supports_thinking: true, thinking_required: false, disabled_thinking_efforts: ["none", "minimal", "low", "medium", "high"]};
               const defaults = [{effort: "low", thinking: false, max_tokens: 8192}, {effort: "low", thinking: true, max_tokens: 12288}, {effort: "xhigh", thinking: true, max_tokens: 40960}];
               export const apiGetAllowedModels = async () => ({models: linked ? [{...entry, control_defaults: defaults}, {...entry, model: "alternative", recommended_effort: "medium", recommended_thinking: true, recommended_max_tokens: 16384, control_defaults: [{effort: "medium", thinking: true, max_tokens: 16384}]}] : [entry]});
               window.modelSaves = [];
-              export const apiSetUserModel = async (payload) => { window.modelSaves.push(payload); if (window.modelSaveSucceeds) return {effective: {...effective, ...payload}, preset: null}; throw new Error("Save unavailable"); };
+              // Mirrors src/lib/auth.ts: a successful save is broadcast so other model surfaces follow.
+              export const MODEL_SELECTION_CHANGED_EVENT = "vsda-model-selection-changed";
+              export const apiSetUserModel = async (payload) => {
+                window.modelSaves.push(payload);
+                if (!window.modelSaveSucceeds) throw new Error("Save unavailable");
+                const selection = {effective: {...effective, ...payload}, preset: null};
+                window.dispatchEvent(new CustomEvent(MODEL_SELECTION_CHANGED_EVENT, {detail: selection}));
+                return selection;
+              };
               let connectivity = {run_mode: "gateway", proxy_url: "https://saved.example", default_run_mode: "gateway", run_mode_source: "user", proxy_url_source: "user"};
               export const apiGetUserConnectivity = async () => connectivity;
               window.connectivitySaves = [];
@@ -196,7 +204,8 @@ test(
         max_tokens: 8192,
       });
       await page.getByRole("combobox", { name: "Model" }).click();
-      await page.getByRole("option", { name: /alternative/i }).click();
+      // Options show product names (src/lib/model-names.ts), not raw IDs.
+      await page.getByRole("option", { name: "Alternative" }).click();
       assert.equal(await linkedThinking.getAttribute("aria-checked"), "true");
       assert.equal(
         await linkedSlider.getAttribute("aria-valuetext"),

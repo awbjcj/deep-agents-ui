@@ -3,13 +3,14 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { extname, join, resolve, sep } from "node:path";
 import test from "node:test";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "Responses citations, background jobs and binary downloads work in chat",
   { skip: process.env.RESPONSES_BROWSER_TEST !== "1" },
   async () => {
-    const { chromium } = await import(
-      process.env.RESPONSES_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.RESPONSES_PLAYWRIGHT_MODULE
     );
     const root = resolve(import.meta.dirname, "../out");
     const evidence = resolve(

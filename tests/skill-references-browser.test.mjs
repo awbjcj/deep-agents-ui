@@ -8,6 +8,7 @@ import {
   makePolicyFixture,
 } from "./tool-permissions-browser.test.mjs";
 import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const RUN = process.env.SKILL_REFERENCES_BROWSER_TEST === "1";
 const EVIDENCE =
@@ -151,8 +152,8 @@ function fixture(extraEntries = [], files = {}) {
 }
 
 test("skill references in the built chat UI", { skip: !RUN }, async (t) => {
-  const { chromium } = await import(
-    process.env.SKILL_REFERENCES_PLAYWRIGHT_MODULE ?? "playwright"
+  const { chromium } = await loadPlaywright(
+    process.env.SKILL_REFERENCES_PLAYWRIGHT_MODULE
   );
   const browser = await chromium.launch({
     headless: true,

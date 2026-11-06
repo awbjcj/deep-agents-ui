@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
@@ -185,10 +186,19 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               {name}
             </span>
           </div>
-          <RunStatus
-            id={`${contentId}-status`}
-            status={status}
-          />
+          {analysisJobId ? (
+            <Badge
+              id={`${contentId}-status`}
+              variant="outline"
+            >
+              Background job
+            </Badge>
+          ) : (
+            <RunStatus
+              id={`${contentId}-status`}
+              status={status}
+            />
+          )}
           {hasContent && (
             <ChevronDown
               size={14}
@@ -200,6 +210,15 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
             />
           )}
         </Button>
+
+        {analysisJobId && (
+          <div className="px-2.5 pb-3 pt-1">
+            <CodeAnalysisJob
+              key={analysisJobId}
+              jobId={analysisJobId}
+            />
+          </div>
+        )}
 
         {isExpanded && hasContent && (
           <div
@@ -251,7 +270,6 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     files={files}
                   />
                 )}
-                {analysisJobId && <CodeAnalysisJob jobId={analysisJobId} />}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

@@ -8,13 +8,14 @@ import {
   makePolicyFixture,
   staticServer,
 } from "./tool-permissions-browser.test.mjs";
+import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
   "proxy tools are disabled and refresh after a connection-mode change",
   { skip: process.env.PROXY_TOOLS_BROWSER_TEST !== "1" },
   async () => {
-    const { chromium } = await import(
-      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE ?? "playwright"
+    const { chromium } = await loadPlaywright(
+      process.env.TOOL_PERMISSIONS_PLAYWRIGHT_MODULE
     );
     const fixture = await staticServer();
     const browser = await chromium.launch({

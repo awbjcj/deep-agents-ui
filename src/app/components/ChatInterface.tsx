@@ -9,8 +9,6 @@ import {
   X,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
-import { TaskOutcomeStatus } from "@/app/components/TaskOutcomeStatus";
-import { isLatestTaskOutcome, isTerminalTaskOutcome } from "@/lib/taskOutcome";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
 import { PendingToolApproval } from "@/app/components/PendingToolApproval";
 import type { TodoItem } from "@/app/types/types";
@@ -26,6 +24,12 @@ import { agentActivity } from "@/lib/agent-activity";
 import { AgentActivity } from "./AgentActivity";
 import { Button } from "@/components/ui/button";
 import { WelcomeState } from "./WelcomeState";
+import { TaskOutcomeStatus } from "./TaskOutcomeStatus";
+import {
+  isLatestTaskOutcome,
+  isTaskOutcomeNotice,
+  rubricCheckNumbers,
+} from "@/lib/task-outcome";
 
 /** Placeholder shaped like a conversation turn while saved history loads. */
 function ConversationSkeleton() {
@@ -138,7 +142,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       stream,
       processedMessages,
       messages,
-      taskOutcome,
       todos,
       files,
       pendingFilePaths,
@@ -161,18 +164,33 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       serverQueuedCount,
       messageQueue,
       isStopping,
+      taskVerification,
     } = useChatContext();
+    // Once the latest answer is being checked or has an outcome, the status
+    // card reports progress; an earlier answer's outcome never silences a new
+    // turn's activity.
     const activity = agentActivity(
       processedMessages,
       isLoading &&
         !isThreadLoading &&
-        !(
-          isLatestTaskOutcome(taskOutcome, messages) &&
-          taskOutcome &&
-          (isTerminalTaskOutcome(taskOutcome) ||
-            taskOutcome.status === "candidate")
-        ),
+        !isLatestTaskOutcome(taskVerification?.outcome, messages),
       !!interrupt
+    );
+    const checkNumbers = useMemo(
+      () => rubricCheckNumbers(processedMessages),
+      [processedMessages]
+    );
+    // Attach the current run's completion status to the answer it judges. The
+    // run's own persisted notice would repeat it, so that row is skipped.
+    const candidateId = taskVerification?.outcome.candidate_message_id;
+    const candidateIndex = candidateId
+      ? processedMessages.findIndex((data) => data.message.id === candidateId)
+      : -1;
+    const outcomeStatus = taskVerification && (
+      <TaskOutcomeStatus
+        key={taskVerification.outcome.execution_id}
+        verification={taskVerification}
+      />
     );
     // Wait for the assistant so the welcome never flashes another agent's copy.
     const showWelcome =
@@ -275,44 +293,48 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             ) : (
               <>
                 {processedMessages.map((data, index) => {
+                  if (isTaskOutcomeNotice(data.message, taskVerification))
+                    return null;
                   const messageUi = data.message.id
                     ? uiByMessageId.get(data.message.id)
                     : undefined;
                   return (
-                    <ChatMessage
-                      onUseEvidence={addEvidence}
-                      key={data.stableKey}
-                      message={data.message}
-                      toolCalls={data.toolCalls}
-                      isLoading={isLoading}
-                      isStreaming={
-                        isLoading && index === processedMessages.length - 1
-                      }
-                      ui={messageUi}
-                      stream={messageUi?.length ? stream : undefined}
-                      onResumeInterrupt={resumeInterrupt}
-                      graphId={assistant?.graph_id}
-                      files={files}
-                      sourceImageAttachments={sourceImageAttachments}
-                      taskOutcome={
-                        taskOutcome?.candidate_message_id === data.message.id
-                          ? taskOutcome
-                          : null
-                      }
-                    />
+                    <Fragment key={data.stableKey}>
+                      <ChatMessage
+                        onUseEvidence={addEvidence}
+                        message={data.message}
+                        toolCalls={data.toolCalls}
+                        isLoading={isLoading}
+                        isStreaming={
+                          isLoading && index === processedMessages.length - 1
+                        }
+                        ui={messageUi}
+                        stream={messageUi?.length ? stream : undefined}
+                        onResumeInterrupt={resumeInterrupt}
+                        graphId={assistant?.graph_id}
+                        files={files}
+                        sourceImageAttachments={sourceImageAttachments}
+                        rubricCheckNumber={checkNumbers.get(data.stableKey)}
+                      />
+                      {index === candidateIndex && outcomeStatus}
+                    </Fragment>
                   );
                 })}
-                {!processedMessages.some(
-                  (data) =>
-                    data.message.id === taskOutcome?.candidate_message_id
-                ) && <TaskOutcomeStatus outcome={taskOutcome} />}
+                {candidateIndex === -1 && outcomeStatus}
                 <PendingToolApproval
                   key={interrupt?.id}
                   interrupt={interrupt}
                   onResume={resumeInterrupt}
                   isLoading={isLoading}
                 />
-                <AgentActivity label={activity} />
+                <AgentActivity
+                  label={
+                    taskVerification?.checking
+                      ? "Checking completion"
+                      : activity
+                  }
+                  visuallyHidden={taskVerification?.checking}
+                />
               </>
             )}
           </div>
