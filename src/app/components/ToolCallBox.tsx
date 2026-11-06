@@ -24,6 +24,9 @@ import { LlmWikiPagePreview } from "./LlmWikiPagePreview";
 import { parsePresentation } from "@/lib/ui-presentation";
 import { StructuredToolResult } from "./StructuredToolResult";
 import { RunStatus } from "./RunStatus";
+import { scmToolMarkdown } from "@/lib/scm-tool-result";
+import { readableToolResult } from "@/lib/tool-result";
+import { ReadableToolResult } from "./ReadableToolResult";
 
 interface ToolCallBoxProps {
   onUseEvidence?: (text: string) => void;
@@ -39,13 +42,24 @@ interface ToolCallBoxProps {
   files?: Record<string, unknown>;
 }
 
-function codeAnalysisJobId(name: string, result: unknown): string | null {
+function codeAnalysisJobId(
+  name: string,
+  result: unknown,
+  args: Record<string, unknown>
+): string | null {
   if (
     !name.includes("code_analysis") &&
     name !== "analyze_code_workspace" &&
     name !== "prepare_code_workspace"
   )
     return null;
+  if (
+    name === "get_code_analysis_job" &&
+    scmToolMarkdown(name, result) &&
+    typeof args.job_id === "string" &&
+    args.job_id.trim()
+  )
+    return args.job_id;
   const value =
     typeof result === "string"
       ? (() => {
@@ -140,11 +154,21 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       () => (status === "completed" ? parsePresentation(name, result) : null),
       [name, result, status]
     );
+    const readableResult = useMemo(
+      () =>
+        (status === "completed" || status === "error") &&
+        !evidence.length &&
+        !presentation &&
+        !wikiPage
+          ? readableToolResult(name, result)
+          : null,
+      [name, result, status, evidence.length, presentation, wikiPage]
+    );
     const hasContent =
       !!actionRequest || result != null || Object.keys(args).length > 0;
     const analysisJobId = useMemo(
-      () => codeAnalysisJobId(name, result),
-      [name, result]
+      () => codeAnalysisJobId(name, result, args),
+      [name, result, args]
     );
 
     return (
@@ -270,6 +294,9 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     files={files}
                   />
                 )}
+                {readableResult && (
+                  <ReadableToolResult result={readableResult} />
+                )}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -315,7 +342,12 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 {result != null && (
                   <div className="mt-4">
                     <details
-                      open={!evidence.length && !presentation && !wikiPage}
+                      open={
+                        !evidence.length &&
+                        !presentation &&
+                        !wikiPage &&
+                        !readableResult
+                      }
                     >
                       <summary className="mb-1 cursor-pointer text-xs font-semibold text-muted-foreground">
                         Raw result
