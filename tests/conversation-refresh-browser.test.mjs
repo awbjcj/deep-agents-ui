@@ -313,7 +313,7 @@ test(
           const workspace = page.locator("#right-panel");
           await workspace.waitFor();
           await workspace
-            .getByRole("heading", { name: "My agent tools" })
+            .getByRole("heading", { name: "Account permissions" })
             .waitFor();
           const box = await workspace.boundingBox();
           assert(

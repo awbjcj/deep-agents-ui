@@ -272,7 +272,6 @@ export function ReferenceInput({
           listId={listId}
           label="Skill suggestions"
           title="Skills"
-          description="Search names and introductions"
           status={
             loading
               ? "Loading skills"
@@ -301,7 +300,6 @@ export function ReferenceInput({
           listId={listId}
           label="File suggestions"
           title="Files"
-          description="Reference files in this conversation"
           status={fileUnavailableReason ?? `${fileMatches.length} files found`}
           maxHeight={panelHeight}
         >

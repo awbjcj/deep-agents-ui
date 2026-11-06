@@ -37,6 +37,10 @@ const libraryFileSchema = z.object({
   uploaded_by: z.string(),
   conversion_engine: z.string().nullable().default(null),
   warning: z.string().nullable().default(null),
+  // pending: waiting for the shelf's sync job to convert it; ready: indexed;
+  // failed: not indexed, `warning` says why. A string so a new server status
+  // degrades to the default rendering rather than a parse failure.
+  status: z.string().default("ready"),
 });
 
 const shelfAuditSchema = z.object({

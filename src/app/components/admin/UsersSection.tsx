@@ -243,12 +243,13 @@ export function UsersSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <SectionHeader
-          title="People"
-          subtitle={`${users.length} ${
-            users.length === 1 ? "account" : "accounts"
-          } in this workspace`}
+          title={
+            isLoading
+              ? "Accounts"
+              : `${users.length} ${users.length === 1 ? "account" : "accounts"}`
+          }
         />
         <div title="Which weekly cap the usage bars show">
           <UsageDimensionToggle
@@ -279,7 +280,7 @@ export function UsersSection() {
                       borderColor: `color-mix(in srgb, ${roleColor} 40%, transparent)`,
                       background: `color-mix(in srgb, ${roleColor} 12%, transparent)`,
                     }}
-                    title={u.role}
+                    aria-hidden="true"
                   >
                     <RoleIcon className="h-3.5 w-3.5" />
                   </div>
@@ -363,7 +364,6 @@ export function UsersSection() {
 
       <DisclosureSection
         title="Bulk account operations"
-        subtitle="Reset weekly usage or issue temporary passwords"
         contentClassName="space-y-2"
       >
         <Button

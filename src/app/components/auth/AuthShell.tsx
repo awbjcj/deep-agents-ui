@@ -27,7 +27,7 @@ export function AuthShell({ title, children }: AuthShellProps) {
       <div className="auth-panel">
         <div className="auth-panel__top">
           <span
-            className="auth-panel__logos"
+            className="auth-panel__brand"
             translate="no"
           >
             <img
@@ -44,6 +44,7 @@ export function AuthShell({ title, children }: AuthShellProps) {
               width={98}
               height={22}
             />
+            <span>VSDA Deep Agent</span>
           </span>
           <AuthThemeToggle />
         </div>
@@ -56,9 +57,6 @@ export function AuthShell({ title, children }: AuthShellProps) {
         </main>
 
         <footer className="auth-panel__footer">
-          <span className="auth-panel__tagline">
-            Precision. Innovation. Safety.
-          </span>
           <span className="auth-panel__copyright">
             © {currentYear ? `${currentYear} ` : ""}Aptiv · Confidential
           </span>

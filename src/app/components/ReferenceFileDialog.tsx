@@ -77,15 +77,10 @@ export const ReferenceFileDialog = React.memo<Props>(
       >
         <DialogContent className="flex h-[min(70dvh,680px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-4xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
           <DialogTitle className="pr-10 text-base font-semibold tracking-tight">
-            Reference an existing file
+            Reference conversation files
           </DialogTitle>
-          <span
-            className="aptiv-rule"
-            aria-hidden="true"
-          />
           <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            Pick one or more files already in this conversation to attach to
-            your next message. Referencing a file does not re-upload it.
+            Selected files will be attached to your draft.
           </DialogDescription>
 
           <div className="mt-3 min-h-0 flex-1 overflow-hidden">
@@ -117,7 +112,7 @@ export const ReferenceFileDialog = React.memo<Props>(
                         {entry.thumb ? (
                           <img
                             src={entry.thumb}
-                            alt={entry.label}
+                            alt=""
                             className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border"
                           />
                         ) : (

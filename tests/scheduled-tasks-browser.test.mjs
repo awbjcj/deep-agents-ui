@@ -200,11 +200,16 @@ test(
           []
         );
       };
-      await page.getByText("Make room for recurring work").waitFor();
+      await page.getByText("No scheduled tasks yet").waitFor();
+      assert.equal(await page.getByRole("heading", { level: 1 }).count(), 1);
+      assert.equal(
+        await page
+          .getByRole("button", { name: "New task", exact: true })
+          .count(),
+        1
+      );
       await checkAccessibility();
-      await page
-        .getByRole("button", { name: "Schedule your first task" })
-        .click();
+      await page.getByRole("button", { name: "New task" }).click();
       const dialog = page.getByRole("dialog");
       await dialog
         .getByLabel("Task name", { exact: true })
@@ -340,6 +345,9 @@ test(
       assert.equal(tasks[0].status, "active");
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "hidden" });
+      await page.waitForFunction(
+        () => document.activeElement?.textContent?.trim() === "History"
+      );
       assert.equal(
         await article
           .getByRole("button", { name: "History", exact: true })
@@ -402,7 +410,7 @@ test(
       await dialog
         .getByRole("button", { name: "Delete task", exact: true })
         .click();
-      await page.getByText("Make room for recurring work").waitFor();
+      await page.getByText("No scheduled tasks yet").waitFor();
       await page.evaluate(() => window.setRole("user"));
       await page.getByRole("button", { name: "New task", exact: true }).click();
       await dialog.getByText(/Autopilot requires an administrator/).waitFor();
@@ -414,6 +422,9 @@ test(
       );
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "hidden" });
+      await page.waitForFunction(
+        () => document.activeElement?.textContent?.trim() === "New task"
+      );
       assert.equal(
         await page
           .getByRole("button", { name: "New task", exact: true })

@@ -216,10 +216,6 @@ export function CopilotCredentialPanel() {
                 : "No personal token configured"}
             </p>
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Connect your GitHub account for optional Copilot-powered code
-            analysis.
-          </p>
         </div>
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
@@ -232,13 +228,6 @@ export function CopilotCredentialPanel() {
         error={quotaError}
         onRefresh={() => void refreshQuota()}
       />
-      <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-        <KeyRound
-          aria-hidden="true"
-          className="h-3.5 w-3.5 text-primary"
-        />
-        Account credential
-      </div>
       <fieldset
         disabled={busy || !status}
         className="space-y-3 disabled:opacity-70"

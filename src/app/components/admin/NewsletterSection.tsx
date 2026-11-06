@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Check,
   ChevronRight,
-  Clock3,
   FileText,
   History,
   Loader2,
@@ -26,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { SectionHeader } from "@/app/components/admin/primitives";
 import { PanelTabs, type PanelTabDef } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 import type { Role } from "@/lib/auth";
@@ -303,10 +301,6 @@ export function NewsletterSection() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
-        title="Newsletters"
-        subtitle="Write in Markdown, preview the email, send a proof, and publish"
-      />
       <section
         className="aptiv-glass-soft grid grid-cols-3 gap-2 rounded-lg p-3 shadow-sm"
         aria-label="Newsletter status summary"
@@ -341,14 +335,9 @@ export function NewsletterSection() {
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold">
+              <h3 className="text-sm font-semibold">
                 {editingId ? "Edit draft" : "New newsletter"}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {editingId
-                  ? "Changes stay private until you send."
-                  : "Choose a starting point or begin from scratch."}
-              </p>
+              </h3>
             </div>
             {editingId && (
               <Button
@@ -375,9 +364,6 @@ export function NewsletterSection() {
                   <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
                   <span className="mt-2 block text-xs font-semibold">
                     {starter.label}
-                  </span>
-                  <span className="mt-1 block text-[10px] leading-relaxed text-muted-foreground">
-                    Pre-filled structure
                   </span>
                 </button>
               ))}
@@ -685,21 +671,15 @@ function HistoryView({
       <div className="rounded-xl border border-dashed border-border bg-muted/20 px-5 py-10 text-center">
         <Mail className="mx-auto h-6 w-6 text-muted-foreground" />
         <p className="mt-3 text-sm font-semibold">No newsletters yet</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Saved drafts and sent messages will appear here.
-        </p>
       </div>
     );
   return (
     <div className="space-y-2">
       <div className="flex items-end justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold">Recent newsletters</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Newest first · {newsletters.length} total
-          </p>
-        </div>
-        <Clock3 className="mb-1 h-4 w-4 text-muted-foreground" />
+        <p className="text-xs tabular-nums text-muted-foreground">
+          {newsletters.length}{" "}
+          {newsletters.length === 1 ? "newsletter" : "newsletters"}
+        </p>
       </div>
       {newsletters.map((item) => (
         <button
@@ -756,12 +736,7 @@ function NewsletterDetailView({
       <div className="aptiv-glass-soft rounded-xl p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="aptiv-eyebrow">
-              {newsletter.status === "draft"
-                ? "Saved draft"
-                : "Delivery report"}
-            </p>
-            <h3 className="mt-2 text-lg font-semibold leading-tight tracking-tight">
+            <h3 className="break-words text-lg font-semibold leading-tight tracking-tight">
               {newsletter.subject}
             </h3>
           </div>

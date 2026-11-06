@@ -137,7 +137,7 @@ test(
         const errors = [];
         page.on("pageerror", (error) => errors.push(error.message));
         await page.goto(`http://127.0.0.1:${server.address().port}`);
-        await page.getByRole("button", { name: "Files (State) 12" }).click();
+        await page.getByRole("button", { name: "Files 12" }).click();
         const close = page.getByRole("button", {
           name: "Close panel",
           exact: true,
@@ -290,12 +290,12 @@ test(
           .getByRole("button", { name: "Remove planning-notes.md" })
           .click();
         assert.equal(await page.evaluate(() => window.removed), "draft");
-        await page.getByRole("button", { name: "Files (State) 12" }).click();
+        await page.getByRole("button", { name: "Files 12" }).click();
         await panel
           .getByRole("button", { name: /^Delete / })
           .first()
           .click();
-        await page.getByRole("button", { name: "Files (State) 11" }).waitFor();
+        await page.getByRole("button", { name: "Files 11" }).waitFor();
         assert.equal(
           Object.keys(await page.evaluate(() => window.saved)).length,
           11

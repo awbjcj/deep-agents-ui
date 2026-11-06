@@ -12,19 +12,13 @@ import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import {
   getTokenGuide,
   OPEN_TOKEN_WIZARD_EVENT,
+  TOKEN_SERVICE_GUIDES,
+  type TokenServiceGuide,
 } from "@/app/components/tokenServiceGuides";
 import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
 import { CopilotCredentialPanel } from "@/app/components/CopilotCredentialPanel";
-import {
-  CheckCircle,
-  Clock,
-  Eye,
-  EyeOff,
-  Loader2,
-  Save,
-  Wand2,
-} from "lucide-react";
+import { Eye, EyeOff, Loader2, Save, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -65,20 +59,14 @@ export function TokenManagementSidebar({
   // so we never accidentally overwrite a stored token with an empty string.
   const [graphDirty, setGraphDirty] = useState(false);
   const [jiraDirty, setJiraDirty] = useState(false);
-  const [showGraphToken, setShowGraphToken] = useState(false);
-  const [showJiraToken, setShowJiraToken] = useState(false);
   const [polarionAsuxToken, setPolarionAsuxToken] = useState("");
   const [polarionAsuxDirty, setPolarionAsuxDirty] = useState(false);
-  const [showPolarionAsuxToken, setShowPolarionAsuxToken] = useState(false);
   const [polarionProd1Token, setPolarionProd1Token] = useState("");
   const [polarionProd1Dirty, setPolarionProd1Dirty] = useState(false);
-  const [showPolarionProd1Token, setShowPolarionProd1Token] = useState(false);
   const [confluenceToken, setConfluenceToken] = useState("");
   const [confluenceDirty, setConfluenceDirty] = useState(false);
-  const [showConfluenceToken, setShowConfluenceToken] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [savedIndicator, setSavedIndicator] = useState(false);
   const [tokenMeta, setTokenMeta] = useState<UserTokens | null>(null);
 
   const fetchTokens = useCallback(async () => {
@@ -109,7 +97,9 @@ export function TokenManagementSidebar({
   // → false), then consume the focus request so the parent state clears.
   useEffect(() => {
     if (!initialFocus || isLoading) return;
-    const targetId = `${initialFocus}Token`;
+    const service =
+      initialFocus === "polarion" ? "polarion_asux" : initialFocus;
+    const targetId = `${service}Token`;
     const el = document.getElementById(targetId) as HTMLInputElement | null;
     if (el) {
       el.scrollIntoView({
@@ -167,9 +157,7 @@ export function TokenManagementSidebar({
       setPolarionProd1Dirty(false);
       setConfluenceToken("");
       setConfluenceDirty(false);
-      setSavedIndicator(true);
-      toast.success("Tokens updated successfully");
-      setTimeout(() => setSavedIndicator(false), 2000);
+      toast.success("Tokens saved");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to update tokens"
@@ -178,6 +166,10 @@ export function TokenManagementSidebar({
       setIsSaving(false);
     }
   };
+
+  const missingCount = TOKEN_SERVICE_GUIDES.filter(
+    (guide) => !tokenMeta?.[guide.previewField]
+  ).length;
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -190,434 +182,121 @@ export function TokenManagementSidebar({
             </div>
           ) : (
             <>
-              {/* Guided setup entry point. Highlights when one or more
-                  services have no token stored yet so first-time users are
-                  nudged to finish setup; always available as a refresher. */}
-              {(() => {
-                const missingCount = [
-                  tokenMeta?.graph_api_token_preview,
-                  tokenMeta?.jira_api_token_preview,
-                  tokenMeta?.polarion_asux_api_token_preview,
-                  tokenMeta?.polarion_prod1_api_token_preview,
-                  tokenMeta?.confluence_api_token_preview,
-                ].filter((preview) => !preview).length;
-                const launchWizard = () =>
-                  window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT));
-                return (
-                  <div className="relative flex items-start gap-3 overflow-hidden rounded-lg border border-border bg-card py-3 pl-4 pr-3 shadow-sm duration-200 animate-in fade-in slide-in-from-top-1">
-                    {/* Aptiv orange accent stripe — onboarding is a brand touchpoint. */}
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-0 top-0 h-full w-[3px]"
-                      style={{ background: "var(--aptiv-orange)" }}
-                    />
-                    <Wand2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                      <p className="text-sm font-semibold leading-tight">
-                        {missingCount > 0
-                          ? "Finish setting up your access tokens"
-                          : "Token setup guide"}
-                      </p>
-                      <p className="text-sm leading-snug text-foreground/80">
-                        {missingCount > 0
-                          ? `${missingCount} service${
-                              missingCount === 1 ? "" : "s"
-                            } still need a token. Add them so the assistant can reach Graph, Jira, Polarion, and Confluence on your behalf.`
-                          : "Step through each integration to refresh a token or check where to find it."}
-                      </p>
-                      <Button
-                        size="sm"
-                        variant={missingCount > 0 ? "default" : "outline"}
-                        onClick={launchWizard}
-                        className="mt-0.5 h-8 w-fit gap-1.5 px-3 text-xs font-semibold"
-                      >
-                        <Wand2 className="h-3.5 w-3.5" />
-                        Open guided setup
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Graph API Token */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="graphToken"
-                  className="text-sm font-medium"
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-border bg-card p-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT))
+                  }
+                  className="min-h-9"
                 >
-                  Graph API Token
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Used for Microsoft Graph API integration
-                </p>
-                {tokenMeta && tokenMeta.graph_api_token_preview && (
-                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="font-mono text-xs text-foreground">
-                      {tokenMeta.graph_api_token_preview}
-                    </code>
-                  </div>
-                )}
-                {tokenMeta &&
-                  hasUpdatedAt(tokenMeta.graph_api_token_updated_at) && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.graph_api_token_updated_at}
-                      >
-                        {formatTimestamp(tokenMeta.graph_api_token_updated_at)}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.graph_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
-                <div className="relative">
-                  <Input
-                    id="graphToken"
-                    type={showGraphToken ? "text" : "password"}
-                    placeholder="Enter your Graph API token"
-                    value={graphToken}
-                    onChange={(e) => {
-                      setGraphToken(e.target.value);
-                      setGraphDirty(true);
-                    }}
-                    autoComplete="off"
-                    className="pr-10"
+                  <Wand2
+                    className="size-4"
+                    aria-hidden="true"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowGraphToken(!showGraphToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showGraphToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <TokenSetupGuide
+                  Guided setup
+                </Button>
+                {tokenMeta && missingCount > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {missingCount}{" "}
+                    {missingCount === 1 ? "service needs" : "services need"} a
+                    token
+                  </span>
+                )}
+              </div>
+
+              <fieldset
+                disabled={isSaving}
+                className="min-w-0 space-y-5"
+              >
+                <TokenField
                   guide={getTokenGuide("graph")}
                   username={username}
+                  value={graphToken}
+                  preview={tokenMeta?.graph_api_token_preview}
+                  updatedAt={tokenMeta?.graph_api_token_updated_at}
+                  timeGap={tokenMeta?.graph_api_token_time_gap}
+                  onChange={(value) => {
+                    setGraphToken(value);
+                    setGraphDirty(true);
+                  }}
                 />
-              </div>
-
-              {/* JIRA API Token */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="jiraToken"
-                  className="text-sm font-medium"
-                >
-                  JIRA API Token
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Used for JIRA project management integration
-                </p>
-                {tokenMeta && tokenMeta.jira_api_token_preview && (
-                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="font-mono text-xs text-foreground">
-                      {tokenMeta.jira_api_token_preview}
-                    </code>
-                  </div>
-                )}
-                {tokenMeta &&
-                  hasUpdatedAt(tokenMeta.jira_api_token_updated_at) && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.jira_api_token_updated_at}
-                      >
-                        {formatTimestamp(tokenMeta.jira_api_token_updated_at)}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.jira_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
-                <div className="relative">
-                  <Input
-                    id="jiraToken"
-                    type={showJiraToken ? "text" : "password"}
-                    placeholder="Enter your JIRA API token"
-                    value={jiraToken}
-                    onChange={(e) => {
-                      setJiraToken(e.target.value);
-                      setJiraDirty(true);
-                    }}
-                    autoComplete="off"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowJiraToken(!showJiraToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showJiraToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <TokenSetupGuide
+                <TokenField
                   guide={getTokenGuide("jira")}
                   username={username}
+                  value={jiraToken}
+                  preview={tokenMeta?.jira_api_token_preview}
+                  updatedAt={tokenMeta?.jira_api_token_updated_at}
+                  timeGap={tokenMeta?.jira_api_token_time_gap}
+                  onChange={(value) => {
+                    setJiraToken(value);
+                    setJiraDirty(true);
+                  }}
                 />
-              </div>
-
-              {/* Polarion ASUX Token */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="polarion_asuxToken"
-                  className="text-sm font-medium"
-                >
-                  Polarion (ASUX) Token
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Used for Polarion ASUX server work item integration
-                </p>
-                {tokenMeta && tokenMeta.polarion_asux_api_token_preview && (
-                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="font-mono text-xs text-foreground">
-                      {tokenMeta.polarion_asux_api_token_preview}
-                    </code>
-                  </div>
-                )}
-                {tokenMeta &&
-                  hasUpdatedAt(
-                    tokenMeta.polarion_asux_api_token_updated_at
-                  ) && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.polarion_asux_api_token_updated_at}
-                      >
-                        {formatTimestamp(
-                          tokenMeta.polarion_asux_api_token_updated_at
-                        )}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.polarion_asux_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
-                <div className="relative">
-                  <Input
-                    id="polarion_asuxToken"
-                    type={showPolarionAsuxToken ? "text" : "password"}
-                    placeholder="Enter your Polarion ASUX token"
-                    value={polarionAsuxToken}
-                    onChange={(e) => {
-                      setPolarionAsuxToken(e.target.value);
-                      setPolarionAsuxDirty(true);
-                    }}
-                    autoComplete="off"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPolarionAsuxToken(!showPolarionAsuxToken)
-                    }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPolarionAsuxToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <TokenSetupGuide
+                <TokenField
                   guide={getTokenGuide("polarion_asux")}
                   username={username}
+                  value={polarionAsuxToken}
+                  preview={tokenMeta?.polarion_asux_api_token_preview}
+                  updatedAt={tokenMeta?.polarion_asux_api_token_updated_at}
+                  timeGap={tokenMeta?.polarion_asux_api_token_time_gap}
+                  onChange={(value) => {
+                    setPolarionAsuxToken(value);
+                    setPolarionAsuxDirty(true);
+                  }}
                 />
-              </div>
-
-              {/* Polarion Prod1 Token */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="polarion_prod1Token"
-                  className="text-sm font-medium"
-                >
-                  Polarion (Prod1) Token
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Used for Polarion Prod1 server work item integration
-                </p>
-                {tokenMeta && tokenMeta.polarion_prod1_api_token_preview && (
-                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="font-mono text-xs text-foreground">
-                      {tokenMeta.polarion_prod1_api_token_preview}
-                    </code>
-                  </div>
-                )}
-                {tokenMeta &&
-                  hasUpdatedAt(
-                    tokenMeta.polarion_prod1_api_token_updated_at
-                  ) && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.polarion_prod1_api_token_updated_at}
-                      >
-                        {formatTimestamp(
-                          tokenMeta.polarion_prod1_api_token_updated_at
-                        )}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.polarion_prod1_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
-                <div className="relative">
-                  <Input
-                    id="polarion_prod1Token"
-                    type={showPolarionProd1Token ? "text" : "password"}
-                    placeholder="Enter your Polarion Prod1 token"
-                    value={polarionProd1Token}
-                    onChange={(e) => {
-                      setPolarionProd1Token(e.target.value);
-                      setPolarionProd1Dirty(true);
-                    }}
-                    autoComplete="off"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPolarionProd1Token(!showPolarionProd1Token)
-                    }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPolarionProd1Token ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <TokenSetupGuide
+                <TokenField
                   guide={getTokenGuide("polarion_prod1")}
                   username={username}
+                  value={polarionProd1Token}
+                  preview={tokenMeta?.polarion_prod1_api_token_preview}
+                  updatedAt={tokenMeta?.polarion_prod1_api_token_updated_at}
+                  timeGap={tokenMeta?.polarion_prod1_api_token_time_gap}
+                  onChange={(value) => {
+                    setPolarionProd1Token(value);
+                    setPolarionProd1Dirty(true);
+                  }}
                 />
-              </div>
-
-              {/* Confluence API Token */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="confluenceToken"
-                  className="text-sm font-medium"
-                >
-                  Confluence API Token
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Used for retrieving Confluence spaces, pages, and attachments.
-                </p>
-                {tokenMeta && tokenMeta.confluence_api_token_preview && (
-                  <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-                    <code className="font-mono text-xs text-foreground">
-                      {tokenMeta.confluence_api_token_preview}
-                    </code>
-                  </div>
-                )}
-                {tokenMeta &&
-                  hasUpdatedAt(tokenMeta.confluence_api_token_updated_at) && (
-                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-foreground/80">
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-muted-foreground">
-                        Updated
-                      </span>
-                      <time
-                        className="font-mono tabular-nums"
-                        dateTime={tokenMeta.confluence_api_token_updated_at}
-                      >
-                        {formatTimestamp(
-                          tokenMeta.confluence_api_token_updated_at
-                        )}
-                      </time>
-                      <span className="text-muted-foreground/80">
-                        ({tokenMeta.confluence_api_token_time_gap})
-                      </span>
-                    </div>
-                  )}
-                <div className="relative">
-                  <Input
-                    id="confluenceToken"
-                    type={showConfluenceToken ? "text" : "password"}
-                    placeholder="Enter your Confluence API token"
-                    value={confluenceToken}
-                    onChange={(e) => {
-                      setConfluenceToken(e.target.value);
-                      setConfluenceDirty(true);
-                    }}
-                    autoComplete="off"
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfluenceToken(!showConfluenceToken)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfluenceToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <TokenSetupGuide
+                <TokenField
                   guide={getTokenGuide("confluence")}
                   username={username}
+                  value={confluenceToken}
+                  preview={tokenMeta?.confluence_api_token_preview}
+                  updatedAt={tokenMeta?.confluence_api_token_updated_at}
+                  timeGap={tokenMeta?.confluence_api_token_time_gap}
+                  onChange={(value) => {
+                    setConfluenceToken(value);
+                    setConfluenceDirty(true);
+                  }}
                 />
-              </div>
 
-              {/* Save Button */}
-              <Button
-                onClick={handleSave}
-                disabled={
-                  isSaving ||
-                  (!graphDirty &&
-                    !jiraDirty &&
-                    !polarionAsuxDirty &&
-                    !polarionProd1Dirty &&
-                    !confluenceDirty)
-                }
-                className="w-full"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : savedIndicator ? (
-                  <>
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Saved!
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save tokens
-                  </>
-                )}
-              </Button>
+                {/* Save Button */}
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    isSaving ||
+                    (!graphDirty &&
+                      !jiraDirty &&
+                      !polarionAsuxDirty &&
+                      !polarionProd1Dirty &&
+                      !confluenceDirty)
+                  }
+                  className="w-full"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save tokens
+                    </>
+                  )}
+                </Button>
+              </fieldset>
               {codeAnalyzerAllowed && (
                 <>
                   <ScmCredentials />
@@ -629,5 +308,77 @@ export function TokenManagementSidebar({
         </div>
       </ScrollArea>
     </div>
+  );
+}
+
+function TokenField({
+  guide,
+  username,
+  value,
+  preview,
+  updatedAt,
+  timeGap,
+  onChange,
+}: {
+  guide: TokenServiceGuide;
+  username: string;
+  value: string;
+  preview?: string | null;
+  updatedAt?: string | null;
+  timeGap?: string | null;
+  onChange: (value: string) => void;
+}) {
+  const [show, setShow] = useState(false);
+  const id = `${guide.key}Token`;
+  return (
+    <section className="space-y-2 border-t border-border pt-4">
+      <Label
+        htmlFor={id}
+        className="text-sm font-medium"
+      >
+        {guide.label}
+      </Label>
+      {(preview || hasUpdatedAt(updatedAt)) && (
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {preview && (
+            <code className="break-all rounded bg-muted px-1.5 py-0.5 text-foreground">
+              {preview}
+            </code>
+          )}
+          {hasUpdatedAt(updatedAt) && (
+            <span>
+              Updated{" "}
+              <time dateTime={updatedAt}>{formatTimestamp(updatedAt)}</time>
+              {timeGap && <span> ({timeGap})</span>}
+            </span>
+          )}
+        </div>
+      )}
+      <div className="relative">
+        <Input
+          id={id}
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoComplete="off"
+          className="pr-11"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`${show ? "Hide" : "Show"} ${guide.label}`}
+          aria-controls={id}
+          onClick={() => setShow((visible) => !visible)}
+          className="absolute inset-y-0 right-0"
+        >
+          {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+        </Button>
+      </div>
+      <TokenSetupGuide
+        guide={guide}
+        username={username}
+      />
+    </section>
   );
 }

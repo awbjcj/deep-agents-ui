@@ -8,11 +8,13 @@ import { AppTile, StatusBadge } from "./StatusBadge";
 
 /** Native radio group: arrow keys move between apps, Tab leaves the group. */
 export function ChannelPicker({
+  label,
   channels,
   binding,
   value,
   onChange,
 }: {
+  label: string;
   channels: ChatChannel[];
   binding: TeamsBinding | null;
   value: ChannelId;
@@ -20,7 +22,7 @@ export function ChannelPicker({
 }) {
   return (
     <fieldset className="min-w-0">
-      <legend className="sr-only">Chat app</legend>
+      <legend className="mb-2 text-sm font-semibold">{label}</legend>
       <div className="grid gap-2 @md/bots:grid-cols-3">
         {channels.map((channel, index) => {
           const meta = CHANNEL_META[channel.id];
@@ -45,6 +47,7 @@ export function ChannelPicker({
                 name="chat-app"
                 value={channel.id}
                 checked={checked}
+                aria-label={meta.label}
                 onChange={() => onChange(channel.id)}
                 aria-describedby={statusId}
                 className="sr-only"

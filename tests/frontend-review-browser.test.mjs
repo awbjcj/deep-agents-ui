@@ -411,7 +411,7 @@ test(
 
       await page.goto(`${url}?view=connectivity`);
       await page.getByRole("radio", { name: /proxy/ }).click();
-      const proxy = page.getByPlaceholder("(not set — using system proxy)");
+      const proxy = page.getByLabel("Proxy base URL");
       await proxy.fill("https://draft.example");
       await page.waitForFunction(() => window.connectivitySaves.length === 1);
       await page.evaluate(() => window.resolveConnectivity());

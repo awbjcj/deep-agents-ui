@@ -14,6 +14,7 @@ import { PendingToolApproval } from "@/app/components/PendingToolApproval";
 import type { TodoItem } from "@/app/types/types";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
@@ -25,6 +26,7 @@ import { AgentActivity } from "./AgentActivity";
 import { Button } from "@/components/ui/button";
 import { WelcomeState } from "./WelcomeState";
 import { TaskOutcomeStatus } from "./TaskOutcomeStatus";
+import { CodeAnalysisJobs } from "./CodeAnalysisJobs";
 import {
   isLatestTaskOutcome,
   isTaskOutcomeNotice,
@@ -92,6 +94,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     onSkillAuthoringRequestConsumed,
   }) => {
     const { threadId } = useChatContext();
+    const { user } = useAuth();
     const [evidenceRequest, setEvidenceRequest] = useState<{
       text: string;
       threadId: string | null;
@@ -321,6 +324,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   );
                 })}
                 {candidateIndex === -1 && outcomeStatus}
+                {(user?.role === "developer" || user?.role === "admin") && (
+                  <CodeAnalysisJobs
+                    key={threadId ?? createdThreadId}
+                    threadId={threadId ?? createdThreadId ?? null}
+                    isLoading={isLoading}
+                  />
+                )}
                 <PendingToolApproval
                   key={interrupt?.id}
                   interrupt={interrupt}
@@ -474,8 +484,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                             className="flex shrink-0 cursor-pointer items-center gap-2 rounded-tr-2xl px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                             aria-expanded={metaOpen === "files"}
                           >
-                            <FileIcon size={16} />
-                            Files (State)
+                            <FileIcon
+                              size={16}
+                              aria-hidden="true"
+                            />
+                            Files
                             <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
                               {fileKeysCount}
                             </span>
@@ -521,7 +534,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           }
                           aria-expanded={metaOpen === "files"}
                         >
-                          Files (State)
+                          Files
                           <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
                             {fileKeysCount}
                           </span>

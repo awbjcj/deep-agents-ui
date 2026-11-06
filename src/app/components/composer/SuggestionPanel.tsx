@@ -10,7 +10,6 @@ export function SuggestionPanel({
   listId,
   label,
   title,
-  description,
   status,
   busy = false,
   maxHeight,
@@ -19,7 +18,6 @@ export function SuggestionPanel({
   listId: string;
   label: string;
   title: string;
-  description: string;
   status: string;
   busy?: boolean;
   maxHeight: number;
@@ -36,8 +34,12 @@ export function SuggestionPanel({
           aria-hidden="true"
           className="size-3.5"
         />
-        <span className="font-medium text-foreground">{title}</span>
-        <span className="min-w-0 flex-1 truncate">{description}</span>
+        <span
+          id={`${listId}-title`}
+          className="min-w-0 flex-1 font-medium text-foreground"
+        >
+          {title}
+        </span>
         <kbd className="rounded border border-border px-1">Esc</kbd>
       </div>
       <div
@@ -49,7 +51,7 @@ export function SuggestionPanel({
       <div
         id={listId}
         role="listbox"
-        aria-label={title}
+        aria-labelledby={`${listId}-title`}
         aria-busy={busy}
         className="min-h-0 overflow-y-auto overscroll-contain p-1"
       >

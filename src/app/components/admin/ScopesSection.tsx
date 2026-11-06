@@ -258,10 +258,7 @@ export function ScopesSection() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
-        title="Memories"
-        subtitle="Shared knowledge containers (project / vehicle / feature) with per-user read or write access"
-      />
+      <SectionHeader title="Shared scopes" />
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button
@@ -313,10 +310,7 @@ export function ScopesSection() {
       {isLoading ? (
         <LoadingRow />
       ) : scopes.length === 0 ? (
-        <EmptyState
-          title="No scopes yet"
-          subtitle="Create a project, vehicle, or feature scope to start sharing memory across users."
-        />
+        <EmptyState title="No scopes yet" />
       ) : (
         <div className="space-y-5">
           {SCOPE_TYPES.map((type) => {

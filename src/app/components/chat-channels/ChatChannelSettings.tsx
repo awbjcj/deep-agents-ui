@@ -131,17 +131,10 @@ export function ChatChannelSettings({
     <div className="absolute inset-0 flex flex-col">
       <ScrollArea className="h-0 flex-1">
         <div className="mx-auto max-w-2xl space-y-5 p-4 text-foreground @container/bots">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold">
-                Your agent, in your chat app
-              </h3>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Send tasks and approve actions from Microsoft Teams, Slack, or
-                Telegram. One app is active at a time, and your conversation
-                moves with you when you switch.
-              </p>
-            </div>
+          <div className="flex items-center gap-3">
+            <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
+              Switching apps moves your conversation to the new app.
+            </p>
             <Button
               variant="ghost"
               size="icon"
@@ -227,18 +220,9 @@ export function ChatChannelSettings({
           )}
 
           {data && detail && (
-            <section
-              aria-labelledby="chat-app-choose"
-              className="space-y-3"
-            >
-              <p
-                id="chat-app-choose"
-                className="aptiv-eyebrow"
-                style={{ color: "var(--color-text-secondary)" }}
-              >
-                {binding ? "Switch or manage apps" : "Choose an app"}
-              </p>
+            <div className="space-y-3">
               <ChannelPicker
+                label={binding ? "Chat apps" : "Choose an app"}
                 channels={data.channels}
                 binding={binding}
                 value={current}
@@ -291,7 +275,7 @@ export function ChatChannelSettings({
                 }
                 onManageToken={onManageToken}
               />
-            </section>
+            </div>
           )}
         </div>
       </ScrollArea>

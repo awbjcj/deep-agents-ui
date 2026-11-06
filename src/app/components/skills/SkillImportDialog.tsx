@@ -115,8 +115,7 @@ export function SkillImportDialog({
         <DialogHeader className="shrink-0 pr-6">
           <DialogTitle>Import skill package</DialogTitle>
           <DialogDescription>
-            Choose SKILL.md or a ZIP of text resources. Preview the complete
-            package before opening an unsaved draft.
+            Preview a SKILL.md file or a ZIP of text resources before importing.
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 min-w-0 space-y-5 overflow-y-auto overscroll-contain p-1 @container">
@@ -156,16 +155,9 @@ export function SkillImportDialog({
               </p>
             ) : target ? (
               <p className="break-words text-sm text-muted-foreground">
-                Replace {target.name} · revision {target.revision}. All saved
-                files will be replaced by the imported package only when you
-                Save the draft.
+                Saving the draft replaces all files in this package.
               </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Choose an owned package explicitly to replace it. Matching names
-                never select a replacement automatically.
-              </p>
-            )}
+            ) : null}
           </div>
           <div className="space-y-2">
             <label

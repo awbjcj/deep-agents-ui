@@ -83,10 +83,7 @@ export function RunModeSection() {
 
   return (
     <div className="space-y-3">
-      <SectionHeader
-        title="Run mode"
-        subtitle="How agent requests reach the LLM backend"
-      />
+      <SectionHeader title="Run mode" />
       {isLoading ? (
         <ConnectivityLoadingState />
       ) : !info ? (

@@ -95,7 +95,8 @@ test(
           }
           assert(!searchedGraphs.includes("VSDA Database Agent"));
           await switcher.click();
-          const dialog = page.getByRole("dialog", { name: "Configuration" });
+          const dialog = page.getByRole("dialog", { name: "Choose an agent" });
+          await dialog.getByText("Examples", { exact: true }).click();
           await dialog
             .getByText(
               "Read a specific LLM Wiki page, or list the available library indices and fields.",

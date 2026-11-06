@@ -222,13 +222,12 @@ export function ApprovalModeControl({
           </div>
           <DialogTitle>Enable autopilot?</DialogTitle>
           <DialogDescription>
-            Automatically approve pending and future requests in this
-            conversation, including writes and subagents.
+            Automatically approve pending and future actions in this chat,
+            including subagent calls.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm leading-6">
-          <p className="font-semibold text-destructive">This is dangerous.</p>
-          <p className="mt-1">
+          <p>
             The agent can send messages, change external data, and trigger
             builds without asking. Actions may be irreversible.
           </p>
@@ -243,10 +242,10 @@ export function ApprovalModeControl({
             </dd>
           </div>
           <div>
-            <dt className="font-medium">Prefer a safer default?</dt>
+            <dt className="font-medium">Allow reads</dt>
             <dd className="mt-0.5 text-muted-foreground">
-              Allow reads approves searches and reads automatically but still
-              asks before anything is written or sent.
+              Searches and reads run automatically. Writes and sends still
+              require approval.
             </dd>
           </div>
         </dl>

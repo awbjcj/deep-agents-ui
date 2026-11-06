@@ -18,14 +18,12 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -42,7 +40,7 @@ import { getAuthUser } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { Client } from "@langchain/langgraph-sdk";
-import { AlertCircle, CheckCircle2, Loader2, Route } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import {
   getAnalysisEngines,
   analysisBlockerMessage,
@@ -184,6 +182,11 @@ const AGENT_INFO: Record<string, AgentInfo> = {
     note: "Only for developers and administrators. Plastic SCM is not supported yet. The Copilot engine and MATLAB/Simulink inspection appear only where an administrator has enabled them.",
   },
 };
+
+/** Human label for an analysis engine id. */
+function engineLabel(id: string): string {
+  return id === "deep_agent" ? "Deep Agent" : "Copilot";
+}
 
 /** Every built-in graph; restricted ones are filtered per account at render. */
 const BUILT_IN_ASSISTANTS: AssistantOption[] = Object.keys(AGENT_INFO).map(
@@ -378,31 +381,21 @@ export function ConfigDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className="sm:max-w-[525px]">
-        <DialogHeader>
-          <span className="aptiv-eyebrow">Settings</span>
-          <DialogTitle className="mt-1">Configuration</DialogTitle>
-          <span
-            className="aptiv-rule"
-            aria-hidden="true"
-          />
-          <DialogDescription>
-            Deployment settings are configured via environment variables. Select
-            an assistant to get started.
-          </DialogDescription>
+      <DialogContent
+        aria-describedby={undefined}
+        className="flex max-h-[90dvh] flex-col sm:max-w-[525px]"
+      >
+        <DialogHeader className="shrink-0">
+          <DialogTitle>Choose an agent</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="-mx-6 grid min-h-0 gap-4 overflow-y-auto px-6 py-1">
           <div className="grid gap-2">
-            <Label htmlFor="deploymentUrl">Deployment URL</Label>
-            <Input
-              id="deploymentUrl"
-              value={deploymentUrl}
-              disabled
-              className="bg-muted"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="assistantId">Assistant</Label>
+            <Label
+              htmlFor="assistantId"
+              className="sr-only"
+            >
+              Agent
+            </Label>
             {loading && assistants.length === 0 ? (
               <div className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -435,163 +428,127 @@ export function ConfigDialog({
               const info = selected ? AGENT_INFO[selected.graphId] : undefined;
               if (!info) return null;
               return (
-                <div className="grid gap-2">
-                  <Label>Agent Details</Label>
-                  <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
-                    <p className="text-muted-foreground">{info.description}</p>
-                    <div>
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        What it's good for
-                      </span>
-                      <ul className="mt-1.5 space-y-1.5">
-                        {info.useCases.map((useCase) => (
-                          <li
-                            key={useCase}
-                            className="flex gap-2 text-muted-foreground"
-                          >
-                            <span
-                              aria-hidden="true"
-                              className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
-                            />
-                            <span>{useCase}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {info.note && (
-                      <p className="text-xs text-muted-foreground">
-                        {info.note}
-                      </p>
-                    )}
-                    {info.isSupervisor && (
-                      <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">
-                          Tip:
-                        </span>{" "}
-                        If the job only touches one system, pick that agent
-                        directly. It will be faster and stay on topic. Keep a
-                        supervisor for work that crosses systems or takes
-                        several steps.
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
+                  <p className="text-muted-foreground">{info.description}</p>
+                  <details>
+                    <summary className="cursor-pointer text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+                      Examples
+                    </summary>
+                    <ul className="mt-2 space-y-1.5">
+                      {info.useCases.map((useCase) => (
+                        <li
+                          key={useCase}
+                          className="flex gap-2 text-muted-foreground"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
+                          />
+                          <span>{useCase}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                  {info.note && (
+                    <p className="text-xs text-muted-foreground">{info.note}</p>
+                  )}
+                  {info.isSupervisor && (
+                    <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                      If the job only touches one system, pick that agent
+                      directly. It will be faster and stay on topic. Keep a
+                      supervisor for work that crosses systems or takes several
+                      steps.
+                    </p>
+                  )}
                 </div>
               );
             })()}
           {isCodeAnalyzer && (
-            <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-              <header className="flex items-start gap-2.5 border-b border-border/70 bg-muted/25 px-3 py-2.5">
-                <Route
-                  className="mt-0.5 h-4 w-4 shrink-0 text-primary"
-                  aria-hidden="true"
-                />
-                <div>
-                  <h3 className="text-sm font-semibold">Analysis route</h3>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                    Choose how new code-analysis requests run in this session.
-                  </p>
-                </div>
-              </header>
-              <div className="space-y-3 p-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="analysisEngine">Engine</Label>
-                  <Select
-                    value={analysisEngine}
-                    onValueChange={setAnalysisEngine}
+            <div className="grid gap-2">
+              <Label htmlFor="analysisEngine">Analysis engine</Label>
+              <Select
+                value={analysisEngine}
+                onValueChange={setAnalysisEngine}
+              >
+                <SelectTrigger id="analysisEngine">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    value="__default__"
+                    disabled={defaultEngine?.ready === false}
                   >
-                    <SelectTrigger id="analysisEngine">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem
-                        value="__default__"
-                        disabled={defaultEngine?.ready === false}
+                    Administrator default
+                    {engineCatalog
+                      ? ` · ${engineLabel(engineCatalog.default_engine)}`
+                      : ""}
+                  </SelectItem>
+                  {(engineCatalog?.engines ?? []).map((engine) => (
+                    <SelectItem
+                      key={engine.id}
+                      value={engine.id}
+                      disabled={!engine.ready}
+                    >
+                      {engineLabel(engine.id)}
+                      {!engine.ready ? " — unavailable" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {engineCatalog ? (
+                <ul className="flex flex-wrap gap-1.5">
+                  {engineCatalog.engines.map((engine) => {
+                    const Icon = engine.ready ? CheckCircle2 : AlertCircle;
+                    const detail = engine.ready
+                      ? engine.id === "copilot" && engine.quota
+                        ? engine.quota.unlimited
+                          ? "Unlimited"
+                          : `${engine.quota.remaining_percentage.toFixed(
+                              1
+                            )}% left`
+                        : "Ready"
+                      : engine.blockers.map(analysisBlockerMessage).join(" ") ||
+                        "Unavailable";
+                    return (
+                      <li
+                        key={engine.id}
+                        title={detail}
+                        className={`flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                          engine.ready
+                            ? "border-success/35 bg-success-primary/60"
+                            : "border-warning/35 bg-warning-primary/60"
+                        }`}
                       >
-                        Administrator default
-                        {engineCatalog
-                          ? ` · ${
-                              engineCatalog.default_engine === "deep_agent"
-                                ? "Deep Agent"
-                                : "Copilot"
-                            }`
-                          : ""}
-                      </SelectItem>
-                      {(engineCatalog?.engines ?? []).map((engine) => (
-                        <SelectItem
-                          key={engine.id}
-                          value={engine.id}
-                          disabled={!engine.ready}
-                        >
-                          {engine.id === "deep_agent"
-                            ? "Deep Agent"
-                            : "Copilot"}
-                          {!engine.ready ? " — unavailable" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {engineCatalog ? (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {engineCatalog.engines.map((engine) => {
-                      const Icon = engine.ready ? CheckCircle2 : AlertCircle;
-                      return (
-                        <div
-                          key={engine.id}
-                          className={`flex min-w-0 items-start gap-2 rounded-md border px-2.5 py-2 ${
+                        <Icon
+                          className={`h-3 w-3 shrink-0 ${
                             engine.ready
-                              ? "border-success/35 bg-success-primary/60"
-                              : "border-warning/35 bg-warning-primary/60"
+                              ? "text-success dark:text-emerald-300"
+                              : "text-warning dark:text-amber-300"
                           }`}
-                        >
-                          <Icon
-                            className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${
-                              engine.ready
-                                ? "text-success dark:text-emerald-300"
-                                : "text-warning dark:text-amber-300"
-                            }`}
-                            aria-hidden="true"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold">
-                              {engine.id === "deep_agent"
-                                ? "Deep Agent"
-                                : "Copilot"}
-                            </p>
-                            <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
-                              {engine.ready
-                                ? engine.id === "copilot" && engine.quota
-                                  ? engine.quota.unlimited
-                                    ? "Ready · Unlimited premium interactions"
-                                    : `Ready · ${engine.quota.remaining_percentage.toFixed(
-                                        1
-                                      )}% premium interactions remaining`
-                                  : "Ready"
-                                : engine.blockers
-                                    .map(analysisBlockerMessage)
-                                    .join(" ") || "Unavailable"}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Live readiness is unavailable. The administrator default
-                    remains the safest choice.
-                  </p>
-                )}
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  {COPILOT_USAGE_EXPLANATION} This choice applies only to new
-                  analysis submissions; it does not change the administrator
-                  policy.
-                </p>
-              </div>
-            </section>
+                          aria-hidden="true"
+                        />
+                        <span className="font-medium">
+                          {engineLabel(engine.id)}
+                        </span>
+                        <span className="truncate text-muted-foreground">
+                          {detail}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+              <p
+                className="text-[11px] leading-relaxed text-muted-foreground"
+                title={COPILOT_USAGE_EXPLANATION}
+              >
+                Applies to new analyses only. Copilot usage is billed to your
+                GitHub account.
+              </p>
+            </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

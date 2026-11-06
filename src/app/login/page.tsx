@@ -24,18 +24,10 @@ import { useEffect, useState } from "react";
 
 type Mode = "login" | "register" | "verify";
 
-const COPY: Record<Mode, { title: string; description: string }> = {
-  login: {
-    title: "Sign In",
-    description:
-      "Use your VSDA Deep Agent account. It is separate from your Aptiv NetID.",
-  },
-  register: {
-    title: "Create an Account",
-    description:
-      "Register with your Aptiv email. You’ll choose your own username and password — no NetID needed.",
-  },
-  verify: { title: "Verify Your Email", description: "" },
+const TITLES: Record<Mode, string> = {
+  login: "Sign in",
+  register: "Create an account",
+  verify: "Verify your email",
 };
 
 export default function LoginPage() {
@@ -59,13 +51,15 @@ export default function LoginPage() {
   const [fieldError, setFieldError] = useState<AuthFieldError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const headline = COPY[mode].title;
+  const headline = TITLES[mode];
   const supportingCopy =
     mode === "verify"
       ? `Enter the 6-digit code sent to ${pendingEmail}. It expires in ${
           expiresInMinutes ?? 15
         } minutes.`
-      : COPY[mode].description;
+      : mode === "login"
+      ? "Use your VSDA account credentials, which are separate from your Aptiv NetID."
+      : undefined;
 
   const errorFor = (field: AuthFieldName) =>
     fieldError?.field === field ? fieldError.message : undefined;
@@ -212,7 +206,6 @@ export default function LoginPage() {
         className={hasSwitchedMode ? "auth-swap" : undefined}
       >
         <AuthHeading
-          eyebrow={mode === "login" ? "VSDA Deep Agent" : "Create Account"}
           title={headline}
           description={supportingCopy}
           step={
@@ -364,30 +357,30 @@ export default function LoginPage() {
             }
           >
             {mode === "login"
-              ? "Sign In"
+              ? "Sign in"
               : mode === "register"
-              ? "Send Verification Code"
-              : "Verify & Create Account"}
+              ? "Send verification code"
+              : "Verify and create account"}
           </AuthSubmitButton>
         </form>
       </div>
 
       {mode === "login" ? (
-        <AuthAccount
-          title="One account for VSDA tools"
-          text="Your VSDA Deep Agent account also signs you in to LLM Wiki. Register here, then use the same username and password everywhere."
-        >
+        <AuthAccount>
           <button
             type="button"
             onClick={() => switchMode("register")}
             className="auth-link auth-link--strong"
           >
-            Create an Account
+            Create an account
             <ArrowRight
               className="auth-icon"
               aria-hidden="true"
             />
           </button>
+          <p className="auth-account__note">
+            Your VSDA account also works with LLM Wiki.
+          </p>
         </AuthAccount>
       ) : mode === "register" ? (
         <AuthAccount>
@@ -398,7 +391,7 @@ export default function LoginPage() {
               onClick={() => switchMode("login")}
               className="auth-link auth-link--strong"
             >
-              Sign In
+              Sign in
             </button>
           </span>
         </AuthAccount>
@@ -413,7 +406,7 @@ export default function LoginPage() {
               className="auth-icon"
               aria-hidden="true"
             />
-            Back to Registration
+            Back to registration
           </button>
         </AuthAccount>
       )}

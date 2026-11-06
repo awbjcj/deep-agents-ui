@@ -55,25 +55,19 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  const title = done ? "Check your email" : "Reset your password";
+
   return (
-    <AuthShell title="Reset Your Password">
-      <AuthHeading
-        eyebrow="Account Recovery"
-        title="Reset Your Password"
-        description={
-          done
-            ? "If the address is registered, a temporary password is on its way."
-            : "Enter your Aptiv email to receive a temporary password."
-        }
-      />
+    <AuthShell title={title}>
+      <AuthHeading title={title} />
 
       {done ? (
         <AuthStatus
           tone="info"
           message={
             <>
-              Check <strong>{email}</strong> for your temporary password, then
-              sign in and change it.
+              If <strong>{email}</strong> is registered, you’ll receive a
+              temporary password. Use it to sign in and change your password.
             </>
           }
         />
@@ -105,7 +99,7 @@ export default function ForgotPasswordPage() {
             isSubmitting={isSubmitting}
             pendingLabel="Sending…"
           >
-            Email Temporary Password
+            Email temporary password
           </AuthSubmitButton>
         </form>
       )}
@@ -119,7 +113,7 @@ export default function ForgotPasswordPage() {
             className="auth-icon"
             aria-hidden="true"
           />
-          Back to Sign In
+          Back to sign in
         </Link>
       </AuthAccount>
     </AuthShell>

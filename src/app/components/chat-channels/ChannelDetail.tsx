@@ -1,13 +1,7 @@
 "use client";
 
 import { forwardRef, useState } from "react";
-import {
-  ArrowUpRight,
-  CircleCheck,
-  CircleSlash,
-  KeyRound,
-  ListChecks,
-} from "lucide-react";
+import { ArrowUpRight, CircleSlash, KeyRound, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   CHANNEL_TRANSPORT,
@@ -60,14 +54,26 @@ export const ChannelDetail = forwardRef<HTMLHeadingElement, ChannelDetailProps>(
         />
       );
     } else if (usable && binding?.enabled) {
-      body = <Connected channel={channel} />;
+      body = channel.bot_url && (
+        <Button
+          asChild
+          variant="outline"
+          className="min-h-11 w-full"
+        >
+          <a
+            href={channel.bot_url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {meta.open}
+            <ArrowUpRight aria-hidden="true" />
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>
+        </Button>
+      );
     } else if (usable && !relinking) {
       body = (
         <div className="space-y-3 text-sm">
-          <p className="leading-relaxed text-muted-foreground">
-            {meta.label} is paused. Turn it on above to resume, or link a
-            different {meta.short} account.
-          </p>
           <Button
             variant="outline"
             className="min-h-11 w-full"
@@ -104,9 +110,8 @@ export const ChannelDetail = forwardRef<HTMLHeadingElement, ChannelDetailProps>(
               tabIndex={-1}
               className="text-base font-semibold leading-tight focus:outline-none"
             >
-              {meta.label}
+              {meta.place}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">{meta.place}</p>
           </div>
         </div>
         <div className="space-y-4 p-4">
@@ -115,10 +120,7 @@ export const ChannelDetail = forwardRef<HTMLHeadingElement, ChannelDetailProps>(
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0"
             />
-            <span>
-              <span className="font-medium text-foreground">Reviews: </span>
-              {meta.reviews}
-            </span>
+            <span>{meta.reviews}</span>
           </p>
           {body}
         </div>
@@ -167,44 +169,6 @@ function Unavailable({ channel }: { channel: ChatChannel }) {
             in the backend repository.
           </p>
         </div>
-      )}
-    </div>
-  );
-}
-
-function Connected({ channel }: { channel: ChatChannel }) {
-  const meta = CHANNEL_META[channel.id];
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-3 rounded-lg border border-success bg-success-secondary p-4 motion-safe:duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95">
-        <CircleCheck
-          aria-hidden="true"
-          className="mt-0.5 size-5 shrink-0 text-success"
-        />
-        <div className="space-y-1 text-sm">
-          <p className="font-semibold">{meta.label} is connected</p>
-          <p className="leading-relaxed text-muted-foreground">
-            Send a task to the VSDA bot in {meta.short}. Progress, results, and
-            reviews arrive there.
-          </p>
-        </div>
-      </div>
-      {channel.bot_url && (
-        <Button
-          asChild
-          variant="outline"
-          className="min-h-11 w-full"
-        >
-          <a
-            href={channel.bot_url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {meta.open}
-            <ArrowUpRight aria-hidden="true" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
-        </Button>
       )}
     </div>
   );

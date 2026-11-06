@@ -1,22 +1,20 @@
 import type { ReactNode } from "react";
 
 interface AuthHeadingProps {
-  eyebrow: string;
   title: string;
-  description: ReactNode;
+  description?: ReactNode;
   step?: { current: number; total: number };
 }
 
-export function AuthHeading({
-  eyebrow,
-  title,
-  description,
-  step,
-}: AuthHeadingProps) {
+export function AuthHeading({ title, description, step }: AuthHeadingProps) {
   return (
     <>
-      <div className="auth-card__head">
-        <p className="auth-eyebrow">{eyebrow}</p>
+      <div
+        className={
+          step ? "auth-card__head auth-card__head--steps" : "auth-card__head"
+        }
+      >
+        <h1 className="auth-card__title">{title}</h1>
         {step && (
           <span
             role="img"
@@ -33,12 +31,13 @@ export function AuthHeading({
           </span>
         )}
       </div>
-      <h1 className="auth-card__title">{title}</h1>
-      <span
-        className="auth-rule"
-        aria-hidden="true"
-      />
-      <p className="auth-card__lede">{description}</p>
+      {!step && (
+        <span
+          className="auth-rule"
+          aria-hidden="true"
+        />
+      )}
+      {description && <p className="auth-card__lede">{description}</p>}
     </>
   );
 }

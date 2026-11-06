@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
@@ -23,6 +24,9 @@ import { LlmWikiPagePreview } from "./LlmWikiPagePreview";
 import { parsePresentation } from "@/lib/ui-presentation";
 import { StructuredToolResult } from "./StructuredToolResult";
 import { RunStatus } from "./RunStatus";
+import { scmToolMarkdown } from "@/lib/scm-tool-result";
+import { readableToolResult } from "@/lib/tool-result";
+import { ReadableToolResult } from "./ReadableToolResult";
 
 interface ToolCallBoxProps {
   onUseEvidence?: (text: string) => void;
@@ -36,15 +40,28 @@ interface ToolCallBoxProps {
   isLoading?: boolean;
   /** Conversation files, so saved source images render without a request. */
   files?: Record<string, unknown>;
+  /** The conversation panel owns job cards when this tool is shown in chat. */
+  showAnalysisJob?: boolean;
 }
 
-function codeAnalysisJobId(name: string, result: unknown): string | null {
+function codeAnalysisJobId(
+  name: string,
+  result: unknown,
+  args: Record<string, unknown>
+): string | null {
   if (
     !name.includes("code_analysis") &&
     name !== "analyze_code_workspace" &&
     name !== "prepare_code_workspace"
   )
     return null;
+  if (
+    name === "get_code_analysis_job" &&
+    scmToolMarkdown(name, result) &&
+    typeof args.job_id === "string" &&
+    args.job_id.trim()
+  )
+    return args.job_id;
   const value =
     typeof result === "string"
       ? (() => {
@@ -74,6 +91,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
     onResume,
     isLoading,
     files,
+    showAnalysisJob = true,
   }) => {
     const [isExpanded, setIsExpanded] = useState(() => !!actionRequest);
     const [pointerMotion, setPointerMotion] = useState(false);
@@ -139,11 +157,21 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       () => (status === "completed" ? parsePresentation(name, result) : null),
       [name, result, status]
     );
+    const readableResult = useMemo(
+      () =>
+        (status === "completed" || status === "error") &&
+        !evidence.length &&
+        !presentation &&
+        !wikiPage
+          ? readableToolResult(name, result)
+          : null,
+      [name, result, status, evidence.length, presentation, wikiPage]
+    );
     const hasContent =
       !!actionRequest || result != null || Object.keys(args).length > 0;
     const analysisJobId = useMemo(
-      () => codeAnalysisJobId(name, result),
-      [name, result]
+      () => codeAnalysisJobId(name, result, args),
+      [name, result, args]
     );
 
     return (
@@ -185,10 +213,19 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               {name}
             </span>
           </div>
-          <RunStatus
-            id={`${contentId}-status`}
-            status={status}
-          />
+          {analysisJobId ? (
+            <Badge
+              id={`${contentId}-status`}
+              variant="outline"
+            >
+              Background job
+            </Badge>
+          ) : (
+            <RunStatus
+              id={`${contentId}-status`}
+              status={status}
+            />
+          )}
           {hasContent && (
             <ChevronDown
               size={14}
@@ -200,6 +237,15 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
             />
           )}
         </Button>
+
+        {analysisJobId && showAnalysisJob && (
+          <div className="px-2.5 pb-3 pt-1">
+            <CodeAnalysisJob
+              key={analysisJobId}
+              jobId={analysisJobId}
+            />
+          </div>
+        )}
 
         {isExpanded && hasContent && (
           <div
@@ -251,7 +297,9 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     files={files}
                   />
                 )}
-                {analysisJobId && <CodeAnalysisJob jobId={analysisJobId} />}
+                {readableResult && (
+                  <ReadableToolResult result={readableResult} />
+                )}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -297,7 +345,12 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 {result != null && (
                   <div className="mt-4">
                     <details
-                      open={!evidence.length && !presentation && !wikiPage}
+                      open={
+                        !evidence.length &&
+                        !presentation &&
+                        !wikiPage &&
+                        !readableResult
+                      }
                     >
                       <summary className="mb-1 cursor-pointer text-xs font-semibold text-muted-foreground">
                         Raw result

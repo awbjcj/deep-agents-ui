@@ -313,18 +313,7 @@ export function ConnectivitySidebar() {
             />
           ) : (
             <>
-              <header className="space-y-1">
-                <h3 className="text-sm font-semibold tracking-tight">
-                  Run mode
-                </h3>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  How your requests reach the LLM backend
-                </p>
-                <span
-                  className="aptiv-rule"
-                  aria-hidden="true"
-                />
-              </header>
+              <h3 className="text-sm font-semibold tracking-tight">Run mode</h3>
 
               <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
                 <ConnectivityModeSelector
@@ -359,10 +348,6 @@ export function ConnectivitySidebar() {
                     >
                       Proxy base URL
                     </Label>
-                    <p className="text-xxs text-muted-foreground">
-                      Your personal proxy endpoint. Leave empty to use the
-                      system default.
-                    </p>
                   </header>
                   <Input
                     id="user-proxy-url"
@@ -371,33 +356,17 @@ export function ConnectivitySidebar() {
                     spellCheck={false}
                     value={proxyUrl}
                     onChange={(e) => setProxyUrl(e.target.value)}
-                    placeholder="(not set — using system proxy)"
+                    placeholder="System proxy when blank"
                     className={cn(
                       "h-10 rounded-md font-mono text-lg sm:text-xs",
                       proxyUrl ? "border-[var(--color-primary)]/40" : ""
                     )}
                   />
-                  {data?.proxy_url_source === "user" && data.proxy_url && (
-                    <span className="text-xxs text-[var(--color-primary)]">
-                      Using your custom proxy URL
-                    </span>
-                  )}
                 </div>
               )}
 
               {imageFetchingLoaded && (
                 <div className="space-y-3 border-t border-border/40 pt-4">
-                  <header className="space-y-1">
-                    <h3 className="text-sm font-semibold tracking-tight">
-                      Source images and attachments
-                    </h3>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      Let agents include images from connected tickets, work
-                      items, pages, emails, and Teams messages. Chat uploads are
-                      controlled separately. Document access follows your tier’s
-                      permissions and does not require image opt-in.
-                    </p>
-                  </header>
                   <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
                     <div className="flex items-start gap-3 p-3.5">
                       <span className="bg-[var(--color-primary)]/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--color-primary)]">
@@ -423,9 +392,7 @@ export function ConnectivitySidebar() {
                             ? "Checking your source image preference…"
                             : imageFetchingDisabledByAdmin
                             ? "Unavailable because no connected source is enabled for your tier."
-                            : imageFetching
-                            ? "Agents may include images when they read connected content."
-                            : "Agents will read connected text without fetching its images."}
+                            : "Controls images from connected sources. Chat uploads and document access use separate settings."}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2 pt-0.5">

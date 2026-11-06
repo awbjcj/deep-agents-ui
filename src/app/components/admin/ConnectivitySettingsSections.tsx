@@ -245,10 +245,7 @@ export function AttachmentPolicySection() {
 
   return (
     <div className="space-y-3">
-      <SectionHeader
-        title="Attachments"
-        subtitle="File and image uploads in the chat composer"
-      />
+      <SectionHeader title="Chat uploads" />
       {loading ? (
         <ConnectivityLoadingState />
       ) : error ? (
@@ -382,7 +379,6 @@ export function UrlOverridesSection() {
   return (
     <DisclosureSection
       title="Provider endpoints"
-      subtitle="Base URLs and credentials for remote, gateway and proxy connections"
       contentClassName="space-y-4"
     >
       {loading ? (

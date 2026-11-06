@@ -20,7 +20,7 @@ interface ToolPermissionListProps {
   effectiveIds?: readonly string[];
   unavailableTools?: Readonly<Record<string, string>>;
   savedSelectedIds?: readonly string[];
-  selectedStatusLabel?: string;
+  selectedStatusLabel?: string | null;
   compactGroups?: boolean;
   idPrefix: string;
   saving: boolean;
@@ -136,7 +136,7 @@ export function ToolPermissionList({
                         <span className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold text-foreground">
                           Pending removal
                         </span>
-                      ) : effective ? (
+                      ) : effective && selectedStatusLabel ? (
                         <span className="shrink-0 text-[10px] font-semibold text-[var(--aptiv-orange)]">
                           {selectedStatusLabel}
                         </span>

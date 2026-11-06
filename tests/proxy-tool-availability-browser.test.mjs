@@ -80,7 +80,9 @@ test(
       );
       await page.getByRole("button", { name: "Workspace" }).click();
       await page.getByRole("tab", { name: "Tools", exact: true }).click();
-      await page.getByRole("heading", { name: "My agent tools" }).waitFor();
+      await page
+        .getByRole("heading", { name: "Account permissions" })
+        .waitFor();
       for (const id of ids) {
         const checkbox = page.getByRole("checkbox", { name: labels[id] });
         await checkbox.waitFor();

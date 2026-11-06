@@ -1,488 +1,227 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  AlertTriangle,
+  AlertCircle,
   CheckCircle2,
-  CircleDashed,
-  Download,
-  FileSearch,
+  Clock3,
   Loader2,
-  RotateCcw,
-  Square,
-  X,
-  XCircle,
+  WifiOff,
 } from "lucide-react";
-import { toast } from "sonner";
-
 import { useCodeAnalysisJob } from "@/app/hooks/useCodeAnalysisJob";
-import { Button } from "@/components/ui/button";
+import { useAnalysisReportFile } from "@/app/hooks/useAnalysisReportFile";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  analysisMatlabSummary,
-  analysisTargets,
-  analysisWarnings,
-  downloadAnalysisReport,
-  releaseCodeWorkspace,
-  reportFilename,
-  shouldPoll,
-} from "@/lib/code-analysis";
-import { cn } from "@/lib/utils";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { analysisWarnings, shouldPoll } from "@/lib/code-analysis";
+import {
+  analysisElapsed,
+  analysisPercentage,
+  analysisPhase,
+} from "@/lib/code-analysis-progress";
+import { CodeAnalysisJobActions } from "./CodeAnalysisJobActions";
+import { CodeAnalysisJobDetails } from "./CodeAnalysisJobDetails";
 
-type Action = "cancel" | "refresh" | "download" | "release" | null;
-
-const TERMINAL_SUCCESS = new Set(["succeeded"]);
-const TERMINAL_FAILURE = new Set(["failed", "cancelled", "interrupted"]);
-
-const PHASE_LABELS: Record<string, string> = {
-  discovering_dependencies: "discovering dependencies",
-  waiting_for_matlab: "waiting for MATLAB",
-  initializing_matlab: "initializing MATLAB",
-  inspecting_models: "inspecting models",
-  validating_evidence: "validating model evidence",
-  cleaning_up_matlab: "cleaning up MATLAB",
+const statuses: Record<string, string> = {
+  queued: "Queued",
+  running: "Running",
+  cancel_requested: "Stopping",
+  succeeded: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  interrupted: "Interrupted",
 };
 
-function readable(value: string): string {
-  return PHASE_LABELS[value] ?? value.replaceAll("_", " ");
-}
-
-function engineName(engine: string): string {
-  return engine === "deep_agent"
-    ? "Deep Agent"
-    : engine === "copilot"
-    ? "Copilot"
-    : readable(engine);
-}
-
-/** Durable progress panel rendered from a job handle returned in a tool result. */
+/** Keep the actual job state visible independently of raw tool details. */
 export function CodeAnalysisJob({ jobId }: { jobId: string }) {
-  const { job, error, cancel, refresh } = useCodeAnalysisJob(jobId);
-  const [acting, setActing] = useState<Action>(null);
-
-  const cancelJob = async () => {
-    setActing("cancel");
-    try {
-      await cancel();
-      toast.success(
-        "Cancellation requested; cleanup waits for the worker to exit."
-      );
-    } catch (caught) {
-      toast.error(
-        caught instanceof Error ? caught.message : "Failed to cancel analysis"
-      );
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const refreshJob = async () => {
-    setActing("refresh");
-    try {
-      await refresh();
-    } catch (caught) {
-      toast.error(
-        caught instanceof Error ? caught.message : "Failed to refresh analysis"
-      );
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const release = async () => {
-    setActing("release");
-    try {
-      await releaseCodeWorkspace();
-      toast.success("Workspace released");
-    } catch (caught) {
-      toast.error(
-        caught instanceof Error ? caught.message : "Workspace is still in use"
-      );
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const download = async () => {
-    if (!job?.report_id) return;
-    setActing("download");
-    try {
-      const blob = await downloadAnalysisReport(job.report_id);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = reportFilename(job.report_id);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (caught) {
-      toast.error(
-        caught instanceof Error ? caught.message : "Failed to download report"
-      );
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const pending = !job || shouldPoll(job.status);
-  const succeeded = Boolean(job && TERMINAL_SUCCESS.has(job.status));
-  const failed = Boolean(job && TERMINAL_FAILURE.has(job.status));
-  const targets = job ? analysisTargets(job.result) : [];
+  const { job, error, checkedAt, cancel, refresh } = useCodeAnalysisJob(jobId);
+  const reportFile = useAnalysisReportFile(job);
+  const [now, setNow] = useState(() => Date.now());
+  const active = Boolean(job && shouldPoll(job.status));
+  useEffect(() => {
+    if (!active) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [active]);
+  const failed = job?.status === "failed" || job?.status === "interrupted";
+  const elapsed = job ? analysisElapsed(job, now) : null;
+  const percentage = job ? analysisPercentage(job) : null;
+  const [phase, description] = job
+    ? analysisPhase(job)
+    : ["Loading status", "Connecting to your analysis job."];
   const warnings = job ? analysisWarnings(job.result) : [];
-  const matlab = job ? analysisMatlabSummary(job.result) : null;
-  const engine =
-    job?.configuration?.engine ??
-    (typeof job?.result.engine === "string" ? job.result.engine : null);
-  const model =
-    job?.configuration?.model ??
-    (typeof job?.result.model === "string" ? job.result.model : null);
-  const termination =
-    typeof job?.result.termination_reason === "string"
-      ? job.result.termination_reason
-      : null;
-  const completeness =
-    typeof job?.result.completeness === "string"
-      ? job.result.completeness
-      : null;
-  const coverage =
-    job?.result.coverage && typeof job.result.coverage === "object"
-      ? (job.result.coverage as Record<string, unknown>)
-      : null;
-  const StatusIcon = succeeded
+  const Icon = failed
+    ? AlertCircle
+    : job?.status === "succeeded"
     ? CheckCircle2
-    : failed
-    ? XCircle
-    : pending
+    : active
     ? Loader2
-    : CircleDashed;
+    : Clock3;
 
   return (
-    <section
-      className="mt-3 overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+    <Card
+      role="region"
       aria-label="Code analysis progress"
+      className="min-w-0 overflow-hidden"
     >
-      <header className="flex items-start justify-between gap-4 border-b border-border/70 bg-muted/25 px-4 py-3.5">
-        <div className="flex min-w-0 items-start gap-3">
-          <div
-            className={cn(
-              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
-              succeeded
-                ? "border-success/35 bg-success-primary text-success dark:text-emerald-300"
-                : failed
-                ? "border-destructive/35 bg-destructive/10 text-destructive"
-                : "border-primary/30 bg-primary/10 text-primary"
-            )}
-          >
-            <FileSearch
-              className="h-4 w-4"
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>
+            <h2>
+              {job?.operation === "prepare"
+                ? "Preparing source"
+                : "Code analysis"}
+            </h2>
+          </CardTitle>
+          <Badge variant={failed ? "destructive" : "secondary"}>
+            <Icon
+              data-icon="inline-start"
               aria-hidden="true"
+              className={
+                active && !error ? "motion-safe:animate-spin" : undefined
+              }
             />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold">Code analysis</h3>
-            <p
-              className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
-              title={jobId}
-            >
-              Job {jobId}
-            </p>
-          </div>
+            {job
+              ? statuses[job.status] ?? "In progress"
+              : error
+              ? "Unavailable"
+              : "Loading"}
+          </Badge>
         </div>
-        <div
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize",
-            succeeded
-              ? "border-success/35 bg-success-primary text-success dark:text-emerald-300"
-              : failed
-              ? "border-destructive/35 bg-destructive/10 text-destructive"
-              : "border-primary/30 bg-primary/10 text-primary"
-          )}
-          role="status"
-          aria-live="polite"
-        >
-          <StatusIcon
-            className={cn("h-3 w-3", pending && "animate-spin")}
-            aria-hidden="true"
-          />
-          {job ? readable(job.status) : "Loading"}
-        </div>
-      </header>
-
-      <div className="space-y-4 p-4">
-        <div>
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <span className="font-medium capitalize text-foreground">
-              {job ? readable(job.phase) : "Connecting to worker"}
-            </span>
-            <span className="tabular-nums text-muted-foreground">
-              {job ? `${job.progress}%` : "—"}
-            </span>
-          </div>
+        <CardDescription>
+          {job?.operation === "prepare"
+            ? job.status === "succeeded"
+              ? "Source preparation complete"
+              : "Source preparation · analysis has not started"
+            : "Source investigation and evidence report"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {reportFile && (
+          <p
+            role="status"
+            className="text-sm text-muted-foreground"
+          >
+            {reportFile.saved
+              ? "Report saved to Files"
+              : reportFile.error
+              ? `${reportFile.error}. Retrying automatically; the report is available to download.`
+              : "Saving report to Files…"}
+          </p>
+        )}
+        {!job && !error ? (
           <div
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
-            role="progressbar"
-            aria-label="Analysis progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={job?.progress}
+            aria-busy="true"
+            aria-label="Loading analysis status"
+            className="flex flex-col gap-3"
           >
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
-              style={{ width: `${job?.progress ?? 0}%` }}
-            />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-2 w-full" />
           </div>
-        </div>
-
-        {(engine || model || completeness || termination) && (
-          <dl className="grid gap-px overflow-hidden rounded-md border border-border/70 bg-border/70 sm:grid-cols-2 lg:grid-cols-4">
-            {engine && (
-              <Meta
-                label="Engine"
-                value={engineName(engine)}
-              />
-            )}
-            {model && (
-              <Meta
-                label="Model"
-                value={model}
-                mono
-              />
-            )}
-            {completeness && (
-              <Meta
-                label="Completeness"
-                value={readable(completeness)}
-              />
-            )}
-            {termination && (
-              <Meta
-                label="Finished by"
-                value={readable(termination)}
-              />
-            )}
-          </dl>
-        )}
-
-        {coverage && (
-          <div>
-            <p className="aptiv-eyebrow">Evidence coverage</p>
-            <dl className="mt-2 grid grid-cols-3 divide-x divide-border/70 overflow-hidden rounded-md border border-border/70 bg-background/35">
-              <Metric
-                label="Read ranges"
-                value={coverage.read_range_count}
-              />
-              <Metric
-                label="Paths searched"
-                value={coverage.searched_path_count}
-              />
-              <Metric
-                label="Tool calls"
-                value={coverage.tool_calls}
-              />
-            </dl>
-          </div>
-        )}
-
-        {matlab && (
-          <div>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="aptiv-eyebrow">MATLAB model evidence</p>
-              <span className="text-[11px] font-medium capitalize text-muted-foreground">
-                {readable(matlab.initializationStatus)}
-              </span>
-            </div>
-            <dl className="mt-2 grid grid-cols-3 divide-x divide-border/70 overflow-hidden rounded-md border border-border/70 bg-background/35">
-              <Metric
-                label="Artifacts"
-                value={matlab.artifactCount}
-              />
-              <Metric
-                label="Models"
-                value={matlab.modelCount}
-              />
-              <Metric
-                label="Evidence items"
-                value={matlab.evidenceCount}
-              />
-            </dl>
-          </div>
-        )}
-
-        {targets.length > 0 && (
-          <div>
-            <p className="aptiv-eyebrow">Immutable targets</p>
-            <ul className="mt-2 divide-y divide-border/70 overflow-hidden rounded-md border border-border/70 bg-background/35">
-              {targets.map((target) => (
-                <li
-                  key={`${target.serverId}:${target.repository}:${target.revision}`}
-                  className="grid min-w-0 gap-1 px-3 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+        ) : job ? (
+          <>
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="text-sm font-medium"
                 >
-                  <span className="min-w-0 truncate font-medium text-foreground">
-                    {target.serverId}: {target.repository}
+                  {phase}
+                </p>
+                {elapsed && (
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {elapsed} elapsed
                   </span>
-                  <code className="w-fit max-w-full truncate border-0 bg-transparent p-0 text-[10px] text-muted-foreground">
-                    @ {target.revision}
-                  </code>
-                </li>
-              ))}
-            </ul>
-          </div>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">{description}</p>
+              {percentage !== null &&
+                job.operation === "prepare" &&
+                !failed && (
+                  <Progress
+                    value={percentage}
+                    aria-label="Source preparation progress"
+                    aria-valuetext={`${percentage}% of preparation stages`}
+                  />
+                )}
+            </div>
+            <CodeAnalysisJobDetails
+              job={job}
+              now={now}
+            />
+          </>
+        ) : null}
+        {job?.error_message && (
+          <Alert variant="destructive">
+            <AlertCircle aria-hidden="true" />
+            <AlertTitle>
+              {job.error_code === "capacity_exceeded"
+                ? "Source limit reached"
+                : "Run could not complete"}
+            </AlertTitle>
+            <AlertDescription>
+              {job.error_message}
+              {job.error_message === "Git blob exceeds artifact byte limit" && (
+                <p className="mt-2">
+                  A source file exceeds the allowed size. Select a smaller
+                  source target or ask an administrator to review the source
+                  limits.
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
-
-        {(warnings.length > 0 || job?.error_message || error) && (
-          <div className="space-y-2">
-            {warnings.map((warning) => (
-              <Notice
-                key={warning}
-                tone="warning"
-              >
-                {warning}
-              </Notice>
-            ))}
-            {job?.error_message && (
-              <Notice tone="error">{job.error_message}</Notice>
-            )}
-            {error && <Notice tone="error">{error}</Notice>}
-          </div>
+        {warnings.map((warning, index) => (
+          <Alert key={`${index}:${warning}`}>
+            <AlertDescription>{warning}</AlertDescription>
+          </Alert>
+        ))}
+        {error && (
+          <Alert>
+            <WifiOff aria-hidden="true" />
+            <AlertTitle>Reconnecting</AlertTitle>
+            <AlertDescription>
+              {error}. Retrying automatically.
+              {job && " Showing the last known job state."}
+            </AlertDescription>
+          </Alert>
         )}
-      </div>
-
-      <footer className="flex flex-wrap items-center gap-2 border-t border-border/70 bg-muted/15 px-4 py-3">
-        {job?.report_id && (
-          <Button
-            size="sm"
-            disabled={acting !== null}
-            onClick={() => void download()}
-          >
-            {acting === "download" ? (
-              <Loader2
-                className="animate-spin"
-                aria-hidden="true"
-              />
-            ) : (
-              <Download aria-hidden="true" />
-            )}
-            Download report
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={acting !== null}
-          onClick={() => void refreshJob()}
+      </CardContent>
+      <Separator />
+      <CardFooter className="flex flex-wrap gap-3 pt-3">
+        <CodeAnalysisJobActions
+          job={job}
+          cancel={cancel}
+          refresh={refresh}
+        />
+        <span
+          className="text-xs text-muted-foreground sm:ml-auto"
+          title={
+            checkedAt
+              ? `Last checked ${new Date(checkedAt).toLocaleTimeString()}`
+              : undefined
+          }
         >
-          <RotateCcw
-            className={cn(acting === "refresh" && "animate-spin")}
-            aria-hidden="true"
-          />{" "}
-          Refresh
-        </Button>
-        {pending && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            disabled={acting !== null}
-            onClick={() => void cancelJob()}
-          >
-            {acting === "cancel" ? (
-              <Loader2
-                className="animate-spin"
-                aria-hidden="true"
-              />
-            ) : (
-              <Square aria-hidden="true" />
-            )}{" "}
-            Cancel
-          </Button>
-        )}
-        {!pending && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="sm:ml-auto"
-            disabled={acting !== null}
-            onClick={() => void release()}
-          >
-            {acting === "release" ? (
-              <Loader2
-                className="animate-spin"
-                aria-hidden="true"
-              />
-            ) : (
-              <X aria-hidden="true" />
-            )}{" "}
-            Release workspace
-          </Button>
-        )}
-      </footer>
-    </section>
-  );
-}
-
-function Meta({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="min-w-0 bg-background/50 px-3 py-2.5">
-      <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </dt>
-      <dd
-        className={cn(
-          "mt-1 truncate text-xs font-medium capitalize text-foreground",
-          mono && "font-mono normal-case"
-        )}
-        title={value}
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: unknown }) {
-  return (
-    <div className="flex flex-col px-2 py-2.5 text-center">
-      <dt className="order-2 mt-0.5 text-[10px] leading-tight text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="order-1 text-sm font-semibold tabular-nums text-foreground">
-        {String(value ?? 0)}
-      </dd>
-    </div>
-  );
-}
-
-function Notice({
-  children,
-  tone,
-}: {
-  children: string;
-  tone: "warning" | "error";
-}) {
-  const Icon = tone === "warning" ? AlertTriangle : XCircle;
-  return (
-    <div
-      className={cn(
-        "flex items-start gap-2 rounded-md border px-3 py-2 text-xs leading-relaxed",
-        tone === "warning"
-          ? "border-warning/35 bg-warning-primary/60 text-warning dark:text-amber-200"
-          : "border-destructive/35 bg-destructive/5 text-destructive"
-      )}
-      role={tone === "error" ? "alert" : "status"}
-    >
-      <Icon
-        className="mt-0.5 h-3.5 w-3.5 shrink-0"
-        aria-hidden="true"
-      />
-      <span>{children}</span>
-    </div>
+          {error
+            ? "Updates delayed"
+            : active
+            ? "Connected"
+            : job
+            ? "Final status"
+            : "Connecting…"}
+        </span>
+      </CardFooter>
+    </Card>
   );
 }

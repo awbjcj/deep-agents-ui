@@ -25,6 +25,13 @@ export function TaskRow({
   onDelete: () => void;
 }) {
   const active = task.active_run;
+  const nextRun = task.status === "active" ? task.next_run_at : null;
+  const frequency =
+    task.frequency === "once"
+      ? "Once"
+      : task.frequency === "daily"
+      ? "Every day"
+      : "Every week";
   return (
     <article className="min-w-0 border-b border-border bg-card px-4 py-5 last:border-b-0 sm:px-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-8">
@@ -41,6 +48,7 @@ export function TaskRow({
             {task.prompt}
           </p>
           <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>{frequency}</span>
             <span>
               {task.destination === "new" ? (
                 "New chat each time"
@@ -60,30 +68,42 @@ export function TaskRow({
             </span>
           </p>
         </div>
-        <div className="min-w-0 text-sm">
-          <p className="text-xs text-muted-foreground">
-            {task.status === "paused" ? "Schedule paused" : "Next run"} ·{" "}
-            {task.frequency === "once"
-              ? "Once"
-              : task.frequency === "daily"
-              ? "Every day"
-              : "Every week"}
-          </p>
-          <p className="mt-1 font-medium tabular-nums">
-            {taskDate(task.next_run_at, task.timezone)}
-          </p>
-          <p className="mt-1 break-words text-xs text-muted-foreground">
-            {task.timezone}
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {task.last_run
-              ? "Last run: " +
-                taskStatus[task.last_run.status] +
-                " · " +
-                taskDate(task.last_run.created_at, task.timezone)
-              : "No executions yet"}
-          </p>
-        </div>
+        <dl className="min-w-0 space-y-2 text-sm">
+          {nextRun && (
+            <div>
+              <dt className="text-xs text-muted-foreground">Next run</dt>
+              <dd className="mt-0.5 font-medium tabular-nums">
+                <time dateTime={nextRun}>
+                  {taskDate(nextRun, task.timezone)}
+                </time>{" "}
+                <span className="ml-2 break-words text-xs font-normal text-muted-foreground">
+                  {task.timezone}
+                </span>
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-xs text-muted-foreground">Last run</dt>
+            <dd className="mt-0.5 text-xs">
+              {task.last_run ? (
+                <>
+                  {taskStatus[task.last_run.status]} ·{" "}
+                  <time dateTime={task.last_run.created_at}>
+                    {taskDate(task.last_run.created_at, task.timezone)}
+                  </time>
+                  {!nextRun && (
+                    <span className="ml-2 text-muted-foreground">
+                      {" "}
+                      {task.timezone}
+                    </span>
+                  )}
+                </>
+              ) : (
+                "No runs yet"
+              )}
+            </dd>
+          </div>
+        </dl>
       </div>
       {active && (
         <div

@@ -55,8 +55,8 @@ export function ScheduledTasks({
 
   return (
     <main className="min-h-dvh bg-background text-foreground [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none">
-      <header className="border-b border-border px-4 py-4 sm:px-8">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+      <header className="border-b border-border">
+        <div className="mx-auto max-w-5xl px-4 pb-5 pt-2 sm:px-8 sm:pb-6">
           <Link
             href="/"
             className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
@@ -67,45 +67,41 @@ export function ScheduledTasks({
             />
             Back to chat
           </Link>
-          <Button
-            ref={newTask}
-            className="min-h-11"
-            onClick={() => open({ kind: "edit", task: null })}
-          >
-            <Plus
-              className="h-4 w-4"
-              aria-hidden="true"
-            />
-            New task
-          </Button>
-        </div>
-      </header>
-      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
               Scheduled tasks
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Your prompts, on a schedule. Review upcoming runs and pick up
-              results here.
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                className="size-11 shrink-0"
+                aria-label="Refresh tasks"
+                aria-busy={refreshing}
+                onClick={() => void refresh()}
+              >
+                <RefreshCw
+                  className={
+                    refreshing ? "h-4 w-4 motion-safe:animate-spin" : "h-4 w-4"
+                  }
+                  aria-hidden="true"
+                />
+              </Button>
+              <Button
+                ref={newTask}
+                className="min-h-11"
+                onClick={() => open({ kind: "edit", task: null })}
+              >
+                <Plus
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
+                New task
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="outline"
-            className="size-11 shrink-0"
-            aria-label="Refresh tasks"
-            aria-busy={refreshing}
-            onClick={() => void refresh()}
-          >
-            <RefreshCw
-              className={
-                refreshing ? "h-4 w-4 motion-safe:animate-spin" : "h-4 w-4"
-              }
-              aria-hidden="true"
-            />
-          </Button>
         </div>
+      </header>
+      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-8">
         {data?.scheduler_enabled === false && (
           <p
             role="status"
@@ -136,7 +132,7 @@ export function ScheduledTasks({
         )}
         <p
           role="status"
-          className="text-sm text-muted-foreground"
+          className={notice ? "text-sm text-muted-foreground" : "sr-only"}
         >
           {notice}
         </p>
@@ -156,30 +152,15 @@ export function ScheduledTasks({
           </div>
         )}
         {data?.items.length === 0 && (
-          <section className="border-y border-border py-12">
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-12 text-center text-muted-foreground">
             <CalendarClock
-              className="mb-4 h-7 w-7 text-muted-foreground"
+              className="h-7 w-7"
               aria-hidden="true"
             />
-            <h2 className="text-lg font-medium">
-              {offset
-                ? "No tasks on this page"
-                : "Make room for recurring work"}
-            </h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              {offset
-                ? "Return to the previous page to see your remaining tasks."
-                : "Schedule a one-time task, a daily briefing, or a weekly review. Start a new chat or continue an existing one."}
+            <p className="text-sm font-medium">
+              {offset ? "No tasks on this page" : "No scheduled tasks yet"}
             </p>
-            {!offset && (
-              <Button
-                className="mt-5 min-h-11"
-                onClick={() => open({ kind: "edit", task: null })}
-              >
-                Schedule your first task
-              </Button>
-            )}
-          </section>
+          </div>
         )}
         {!!data?.items.length && (
           <div className="overflow-hidden rounded-lg border border-border">

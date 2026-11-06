@@ -65,8 +65,8 @@ function sameDraft(a: ModelDraft | null, b: ModelDraft | null): boolean {
  * Changes apply optimistically and save after a short pause, one request at a
  * time so the server sees them in order. A failed save reverts to the last
  * saved value. Saves made elsewhere (the Models panel) are adopted when no
- * local change is pending, and a load that overlapped a local edit or save is
- * never adopted because its response may predate that save.
+ * local change is pending, and a load that overlapped a local edit or any
+ * adopted save is never adopted because its response may predate that save.
  */
 export function useModelSelection(accountId?: string): ModelSelectionState {
   const [status, setStatus] = useState<ModelSelectionStatus>("loading");
@@ -82,7 +82,7 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
   const queuedRef = useRef(false);
   const mountedRef = useRef(true);
   const loadSeqRef = useRef(0);
-  // Bumped on every local edit and save request.
+  // Bumped on every local edit, save request, and adopted external save.
   const changeSeqRef = useRef(0);
   // Bumped per account so late responses never land on another account.
   const epochRef = useRef(0);
@@ -256,6 +256,7 @@ export function useModelSelection(accountId?: string): ModelSelectionState {
       const selection = (event as CustomEvent<UserModelSelection>).detail;
       if (!selection?.effective || inFlightRef.current || timerRef.current)
         return;
+      changeSeqRef.current += 1;
       adopt(selection);
     }
     window.addEventListener(MODEL_SELECTION_CHANGED_EVENT, onExternalChange);

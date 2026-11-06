@@ -265,10 +265,7 @@ export function RegistrationSection() {
         {isLoadingCodes ? (
           <LoadingRow />
         ) : codes.length === 0 ? (
-          <EmptyState
-            title="No invitation codes"
-            subtitle="Generate a code above to invite a new user."
-          />
+          <EmptyState title="No invitation codes" />
         ) : (
           <div className="space-y-2">
             {codes.map((code) => (

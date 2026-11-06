@@ -121,12 +121,7 @@ export function ChangeProfileDialog({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <span className="aptiv-eyebrow">Profile</span>
-          <DialogTitle className="mt-1">Account</DialogTitle>
-          <span
-            className="aptiv-rule"
-            aria-hidden="true"
-          />
+          <DialogTitle>Account</DialogTitle>
           <DialogDescription>Signed in as {user?.username}.</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="username">
@@ -142,7 +137,6 @@ export function ChangeProfileDialog({
             <Input
               id="newUsername"
               type="text"
-              placeholder={user?.username ?? ""}
               value={newUsername}
               onChange={(e) => setNewUsername(e.target.value)}
               autoComplete="off"

@@ -434,7 +434,7 @@ test(
           .evaluate((element) => element === document.activeElement),
         true
       );
-      await page.getByRole("button", { name: /Files \(State\)/ }).click();
+      await page.getByRole("button", { name: /^Files \d+$/ }).click();
       await page
         .getByRole("button", { name: "report.xlsx", exact: true })
         .click();

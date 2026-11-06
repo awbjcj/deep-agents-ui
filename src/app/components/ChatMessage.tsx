@@ -459,6 +459,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 const reviewConfig = reviewConfigsMap?.get(toolCall.name);
                 return (
                   <ToolCallBox
+                    showAnalysisJob={false}
                     onUseEvidence={onUseEvidence}
                     key={toolCall.id}
                     toolCall={toolCall}

@@ -18,7 +18,6 @@ import { saveBlob } from "@/lib/file-downloads";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -198,6 +197,7 @@ export function ResponseJobs({
         </DialogTrigger>
       )}
       <DialogContent
+        aria-describedby={undefined}
         className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-xl"
         onCloseAutoFocus={(event) => {
           if (!hasJobs && onEmptyClose) {
@@ -214,9 +214,6 @@ export function ResponseJobs({
             />
             Background jobs
           </DialogTitle>
-          <DialogDescription>
-            Track model calls for this conversation and retrieve their results.
-          </DialogDescription>
         </div>
         <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
@@ -226,9 +223,11 @@ export function ResponseJobs({
               className="text-xs tabular-nums text-muted-foreground"
             >
               {loaded
-                ? `${jobs.filter(active).length} active · ${
-                    jobs.length
-                  } jobs on this page`
+                ? jobs.length
+                  ? `${jobs.filter(active).length} active · ${
+                      jobs.length
+                    } on this page`
+                  : ""
                 : error
                 ? "Status unavailable"
                 : "Loading background jobs…"}
@@ -317,11 +316,11 @@ export function ResponseJobs({
               <p className="mb-2 text-sm font-medium">
                 {before ? "No older jobs" : "No background jobs yet"}
               </p>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {before
-                  ? "Return to Newer jobs to view more recent results."
-                  : "No background jobs in this conversation. Enable “Run models in the background” in Tool Permissions to use them."}
-              </p>
+              {!before && (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Enable “Run models in the background” in Workspace → Tools.
+                </p>
+              )}
             </div>
           )}
           {jobs.map((job) => (

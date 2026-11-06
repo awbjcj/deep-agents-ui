@@ -11,7 +11,7 @@ export function SourceImagePolicySection() {
     <div className="space-y-3">
       <SectionHeader
         title="Source images and attachments"
-        subtitle="Choose a tier to manage access. Changes save automatically."
+        subtitle="Changes save automatically."
       />
       <Tabs
         defaultValue="user"

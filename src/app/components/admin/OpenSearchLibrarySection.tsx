@@ -192,10 +192,7 @@ export function OpenSearchLibrarySection() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader
-        title="Search library"
-        subtitle="Operate OpenSearch storage and manifest-backed knowledge sources from one control surface."
-      />
+      <SectionHeader title="Search library" />
 
       <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 shadow-sm">
         {[
