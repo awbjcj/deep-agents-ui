@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
@@ -36,6 +38,11 @@ export function CopilotCredentialPanel() {
   const [quota, setQuota] = useState<CopilotQuotaStatus | null>(null);
   const [quotaBusy, setQuotaBusy] = useState(false);
   const [quotaError, setQuotaError] = useState("");
+  useSettingsDraft(
+    !!token ||
+      !!expiry ||
+      (status !== null && githubHost !== status.github_host)
+  );
   const quotaRequest = useRef<{
     id: number;
     controller: AbortController | null;

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -102,6 +104,11 @@ export function NewsletterSection() {
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedComposer, setSavedComposer] = useState({
+    subject: "",
+    body: "",
+    targetTiers: null as Role[] | null,
+  });
   const [isActioning, setIsActioning] = useState<
     "test" | "send" | "delete" | null
   >(null);
@@ -151,8 +158,16 @@ export function NewsletterSection() {
   }, [newsletters]);
 
   const isDirty = subject.trim().length > 0 || body.trim().length > 0;
+  const unsaved =
+    subject !== savedComposer.subject ||
+    body !== savedComposer.body ||
+    JSON.stringify(targetTiers) !== JSON.stringify(savedComposer.targetTiers);
+  useSettingsDraft(unsaved || isSaving || isActioning !== null);
 
   const resetComposer = () => {
+    if (unsaved && !window.confirm("Discard unsaved newsletter changes?"))
+      return;
+    setSavedComposer({ subject: "", body: "", targetTiers: null });
     setEditingId(null);
     setSubject("");
     setBody("");
@@ -204,6 +219,9 @@ export function NewsletterSection() {
       const preview = editingId
         ? await apiUpdateNewsletter(editingId, payload)
         : await apiCreateNewsletter(payload);
+      setSavedComposer({ subject: cleanSubject, body: cleanBody, targetTiers });
+      setSubject((current) => (current === subject ? cleanSubject : current));
+      setBody((current) => (current === body ? cleanBody : current));
       setEditingId(preview.id);
       setPreviewHtml(preview.body_html);
       setRecipientCount(preview.recipient_count);
@@ -232,6 +250,13 @@ export function NewsletterSection() {
 
   const editSelected = () => {
     if (!selected || selected.status !== "draft") return;
+    if (unsaved && !window.confirm("Discard unsaved newsletter changes?"))
+      return;
+    setSavedComposer({
+      subject: selected.subject,
+      body: selected.body_markdown,
+      targetTiers: selected.target_tiers,
+    });
     setEditingId(selected.id);
     setSubject(selected.subject);
     setBody(selected.body_markdown);
@@ -451,7 +476,7 @@ export function NewsletterSection() {
                     id="newsletter-body"
                     value={body}
                     onChange={(event) => setBody(event.target.value)}
-                    placeholder="Hello team,\n\nShare your update…"
+                    placeholder={"Hello team,\n\nShare your update…"}
                     className="min-h-[260px] resize-y font-mono text-[13px] leading-relaxed"
                   />
                   <p className="text-[10px] leading-relaxed text-muted-foreground">
@@ -602,7 +627,7 @@ function AudienceButton({
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[border-color,background-color,color,transform] duration-150 ease-out active:scale-[.97]",
         selected
-          ? "border-[var(--aptiv-orange)]/50 bg-[var(--aptiv-orange)]/10 text-[var(--aptiv-orange)]"
+          ? "border-primary/50 bg-primary/10 text-primary"
           : "border-border bg-card text-muted-foreground hover:text-foreground"
       )}
     >

@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 export interface PanelTabDef<Id extends string = string> {
   id: Id;
   label: string;
+  /** Brief purpose shown beside navigation in a wide settings panel. */
+  description?: string;
   icon?: React.ComponentType<{ className?: string }>;
   /**
    * Optional trailing count. Rendered into a fixed-min-width tabular slot so a
@@ -43,7 +45,7 @@ type PanelTabsVariant = "underline" | "segmented";
  * automatic, which is the more discoverable default.
  */
 type PanelTabsActivation = "automatic" | "manual";
-type PanelTabsLayout = "strip" | "two-row";
+type PanelTabsLayout = "strip" | "two-row" | "rail";
 
 interface PanelTabsProps<Id extends string> {
   tabs: readonly PanelTabDef<Id>[];
@@ -57,6 +59,8 @@ interface PanelTabsProps<Id extends string> {
   activation?: PanelTabsActivation;
   /** Arrange an underline tab list as a compact grid with exactly two rows. */
   layout?: PanelTabsLayout;
+  /** Compact navigation column count; the default preserves the admin grid. */
+  columns?: number;
   className?: string;
 }
 
@@ -69,6 +73,7 @@ export function PanelTabs<Id extends string>({
   variant = "underline",
   activation = "automatic",
   layout = "strip",
+  columns = 4,
   className,
 }: PanelTabsProps<Id>) {
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -89,9 +94,10 @@ export function PanelTabs<Id extends string>({
   const onKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
       let nextIndex = -1;
-      if (event.key === "ArrowRight") {
+      const vertical = layout === "rail";
+      if (event.key === (vertical ? "ArrowDown" : "ArrowRight")) {
         nextIndex = (currentIndex + 1) % tabs.length;
-      } else if (event.key === "ArrowLeft") {
+      } else if (event.key === (vertical ? "ArrowUp" : "ArrowLeft")) {
         nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
       } else if (event.key === "Home") {
         nextIndex = 0;
@@ -104,28 +110,31 @@ export function PanelTabs<Id extends string>({
       if (activation === "automatic" && !next.disabled) onValueChange(next.id);
       focusTab(next.id);
     },
-    [activation, focusTab, onValueChange, tabs]
+    [activation, focusTab, onValueChange, tabs, layout]
   );
 
   const isUnderline = variant === "underline";
   const isTwoRow = isUnderline && layout === "two-row";
+  const isRail = isUnderline && layout === "rail";
 
   return (
     <div
       ref={listRef}
       role="tablist"
       aria-label={label}
-      aria-orientation="horizontal"
+      aria-orientation={isRail ? "vertical" : "horizontal"}
       style={
         isTwoRow
           ? {
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
             }
           : undefined
       }
       className={cn(
         isUnderline
-          ? isTwoRow
+          ? isRail
+            ? "flex min-w-0 flex-col gap-1 px-3"
+            : isTwoRow
             ? "grid min-w-0 items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
             : "flex min-w-0 items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
@@ -161,13 +170,17 @@ export function PanelTabs<Id extends string>({
               "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
               isUnderline
                 ? cn(
-                    "min-h-11 shrink-0 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal @[480px]/panel:text-sm",
+                    "min-h-touch shrink-0 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal @[480px]/panel:text-sm",
                     isTwoRow &&
-                      "w-full min-w-0 gap-1 px-1 text-[11px] @[440px]/panel:gap-1.5 @[440px]/panel:px-2 @[440px]/panel:text-xs"
+                      "w-full min-w-0 flex-col gap-1 px-0.5 py-2 text-xs @[440px]/panel:flex-row @[440px]/panel:px-1",
+                    isRail &&
+                      "w-full justify-start gap-2 rounded-md px-3 text-sm"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
               isActive
-                ? isUnderline
+                ? isRail
+                  ? "bg-primary/10 text-primary"
+                  : isUnderline
                   ? "bg-background/60 text-foreground"
                   : "bg-card text-foreground shadow-sm"
                 : isUnderline
@@ -179,15 +192,19 @@ export function PanelTabs<Id extends string>({
           >
             {Icon ? (
               <Icon
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isTwoRow &&
-                    "h-3 w-3 @[440px]/panel:h-3.5 @[440px]/panel:w-3.5"
-                )}
+                className={cn("h-4 w-4 shrink-0", isTwoRow && "h-3.5 w-3.5")}
                 aria-hidden="true"
               />
             ) : null}
-            {tab.label}
+            <span
+              data-slot="panel-tab-label"
+              className={cn(
+                "min-w-0 whitespace-normal break-words",
+                isRail ? "text-left" : "text-center"
+              )}
+            >
+              {tab.label}
+            </span>
             {tab.count !== undefined ? (
               <span
                 className={cn(
@@ -198,7 +215,7 @@ export function PanelTabs<Id extends string>({
                 {tab.count}
               </span>
             ) : null}
-            {isUnderline ? (
+            {isUnderline && !isRail ? (
               <span
                 aria-hidden="true"
                 className={cn(

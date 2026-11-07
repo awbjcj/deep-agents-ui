@@ -1,10 +1,13 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import {
   type Dispatch,
   type SetStateAction,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -288,7 +291,7 @@ export function ScopesSection() {
       </div>
 
       <div className="aptiv-glass-soft space-y-2 rounded-lg p-3">
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Role access grants read to users and write to developers/admins.
           Existing custom write grants are preserved, and future users inherit
           access by role.
@@ -370,6 +373,7 @@ function CreateScopeCard({
   onCancel: () => void;
   onCreated: (scope: MemoryScope) => void;
 }) {
+  const formId = useId();
   const [scopeType, setScopeType] = useState<ScopeType>("project");
   const [scopeId, setScopeId] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -388,6 +392,13 @@ function CreateScopeCard({
   }, []);
 
   const canSubmit = scopeId.trim().length > 0 && !submitting;
+  const dirty =
+    !!scopeId ||
+    !!displayName ||
+    !!aliases ||
+    scopeType !== "project" ||
+    defaultAccess !== "tier";
+  useSettingsDraft(dirty || submitting);
 
   const handleCreate = async () => {
     if (!canSubmit) return;
@@ -422,17 +433,23 @@ function CreateScopeCard({
 
   return (
     <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
-      <p className="aptiv-eyebrow">New scope</p>
+      <h4 className="text-sm font-semibold">New scope</h4>
       <div className="grid grid-cols-[110px_1fr] gap-2">
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Label
+            htmlFor={`${formId}-type`}
+            className="text-xs font-medium text-muted-foreground"
+          >
             Type
           </Label>
           <Select
             value={scopeType}
             onValueChange={(v) => setScopeType(v as ScopeType)}
           >
-            <SelectTrigger className="h-9">
+            <SelectTrigger
+              id={`${formId}-type`}
+              className="h-11"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -448,10 +465,14 @@ function CreateScopeCard({
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Label
+            htmlFor={`${formId}-id`}
+            className="text-xs font-medium text-muted-foreground"
+          >
             ID
           </Label>
           <Input
+            id={`${formId}-id`}
             value={scopeId}
             onChange={(e) => setScopeId(e.target.value)}
             placeholder="e.g. VSDA, ACC, X7"
@@ -461,13 +482,17 @@ function CreateScopeCard({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Label
+          htmlFor={`${formId}-name`}
+          className="text-xs font-medium text-muted-foreground"
+        >
           Display name{" "}
           <span className="font-normal normal-case text-muted-foreground/60">
             (optional)
           </span>
         </Label>
         <Input
+          id={`${formId}-name`}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Vehicle Software Development Acceleration"
@@ -475,13 +500,17 @@ function CreateScopeCard({
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Label
+          htmlFor={`${formId}-aliases`}
+          className="text-xs font-medium text-muted-foreground"
+        >
           Aliases{" "}
           <span className="font-normal normal-case text-muted-foreground/60">
             (comma-separated)
           </span>
         </Label>
         <Input
+          id={`${formId}-aliases`}
           value={aliases}
           onChange={(e) => setAliases(e.target.value)}
           placeholder="vsda, deepagent"
@@ -489,7 +518,10 @@ function CreateScopeCard({
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Label
+          htmlFor={`${formId}-access`}
+          className="text-xs font-medium text-muted-foreground"
+        >
           Default access
         </Label>
         <Select
@@ -499,7 +531,8 @@ function CreateScopeCard({
           }
         >
           <SelectTrigger
-            className="h-9"
+            id={`${formId}-access`}
+            className="h-11"
             aria-label="Default scope access"
           >
             <SelectValue />
@@ -519,7 +552,9 @@ function CreateScopeCard({
         <Button
           type="button"
           variant="ghost"
-          onClick={onCancel}
+          onClick={() => {
+            if (!dirty || window.confirm("Discard this new scope?")) onCancel();
+          }}
           className="flex-1"
         >
           Cancel
@@ -569,6 +604,7 @@ function ScopeCard({
     scope.default_access ?? "tier"
   );
   const [saving, setSaving] = useState(false);
+  const formId = useId();
 
   const [members, setMembers] = useState<ScopeMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -580,6 +616,13 @@ function ScopeCard({
   // (add/remove) or a new load starts. A late-arriving load may only commit
   // its result if no newer mutation has happened in the meantime.
   const mutationGenRef = useRef(0);
+
+  const editDirty =
+    editing &&
+    (displayName !== (scope.display_name ?? "") ||
+      aliases !== (scope.aliases ?? []).join(", ") ||
+      defaultAccess !== (scope.default_access ?? "tier"));
+  useSettingsDraft(editDirty || !!newMemberName || saving || adding);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -784,20 +827,28 @@ function ScopeCard({
           ) : (
             <div className="space-y-2.5">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor={`${formId}-name`}
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Display name
                 </Label>
                 <Input
+                  id={`${formId}-name`}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="h-9"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor={`${formId}-aliases`}
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Aliases
                 </Label>
                 <Input
+                  id={`${formId}-aliases`}
                   value={aliases}
                   onChange={(e) => setAliases(e.target.value)}
                   className="h-9"
@@ -805,7 +856,10 @@ function ScopeCard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Label
+                  htmlFor={`${formId}-access`}
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   Default access
                 </Label>
                 <Select
@@ -815,7 +869,8 @@ function ScopeCard({
                   }
                 >
                   <SelectTrigger
-                    className="h-9"
+                    id={`${formId}-access`}
+                    className="h-11"
                     aria-label="Default scope access"
                   >
                     <SelectValue />
@@ -870,7 +925,7 @@ function ScopeCard({
             {membersLoading ? (
               <LoadingRow compact />
             ) : members.length === 0 ? (
-              <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-3 text-center text-[11px] text-muted-foreground">
+              <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-3 text-center text-xs text-muted-foreground">
                 No members yet. Add one below.
               </p>
             ) : (
@@ -892,7 +947,10 @@ function ScopeCard({
                           handleMemberAccessChange(m.username, v as ScopeAccess)
                         }
                       >
-                        <SelectTrigger className="h-7 w-[92px] gap-1 px-2 text-[11px]">
+                        <SelectTrigger
+                          aria-label={`Access for ${m.username}`}
+                          className="h-11 w-[100px] gap-1 px-2 text-xs"
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -932,6 +990,7 @@ function ScopeCard({
 
             <div className="flex items-center gap-1.5 pt-1">
               <Input
+                aria-label="New member username"
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 placeholder="username"
@@ -947,7 +1006,10 @@ function ScopeCard({
                 value={newMemberAccess}
                 onValueChange={(v) => setNewMemberAccess(v as ScopeAccess)}
               >
-                <SelectTrigger className="h-8 w-[92px] gap-1 px-2 text-[11px]">
+                <SelectTrigger
+                  aria-label="New member access"
+                  className="h-11 w-[100px] gap-1 px-2 text-xs"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

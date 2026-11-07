@@ -1,5 +1,8 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+import { SettingsLoading } from "@/app/components/settings/SettingsFeedback";
+
 import { formatTimestamp } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,11 +70,20 @@ export function TokenManagementSidebar({
   const [confluenceDirty, setConfluenceDirty] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [tokenMeta, setTokenMeta] = useState<UserTokens | null>(null);
+  const dirty =
+    graphDirty ||
+    jiraDirty ||
+    polarionAsuxDirty ||
+    polarionProd1Dirty ||
+    confluenceDirty;
+  useSettingsDraft(dirty || isSaving);
 
   const fetchTokens = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(false);
       const tokens = await apiGetTokens();
       // Backend only returns masked previews — never full token values.
       // Token input fields start empty; we only send values the user types.
@@ -82,7 +94,7 @@ export function TokenManagementSidebar({
       setPolarionProd1Dirty(false);
       setConfluenceDirty(false);
     } catch {
-      toast.error("Failed to load tokens");
+      setLoadError(true);
     } finally {
       setIsLoading(false);
     }
@@ -167,6 +179,19 @@ export function TokenManagementSidebar({
     }
   };
 
+  const discard = () => {
+    setGraphToken("");
+    setJiraToken("");
+    setPolarionAsuxToken("");
+    setPolarionProd1Token("");
+    setConfluenceToken("");
+    setGraphDirty(false);
+    setJiraDirty(false);
+    setPolarionAsuxDirty(false);
+    setPolarionProd1Dirty(false);
+    setConfluenceDirty(false);
+  };
+
   const missingCount = TOKEN_SERVICE_GUIDES.filter(
     (guide) => !tokenMeta?.[guide.previewField]
   ).length;
@@ -177,8 +202,22 @@ export function TokenManagementSidebar({
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-5 p-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <SettingsLoading />
+          ) : loadError ? (
+            <div
+              role="alert"
+              className="space-y-3 rounded-lg border border-border p-4 text-sm"
+            >
+              <p>
+                Could not load your token settings. Your saved credentials have
+                not changed.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => void fetchTokens()}
+              >
+                Retry loading tokens
+              </Button>
             </div>
           ) : (
             <>
@@ -206,97 +245,79 @@ export function TokenManagementSidebar({
                 )}
               </div>
 
-              <fieldset
-                disabled={isSaving}
-                className="min-w-0 space-y-5"
+              <form
+                id="token-settings-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSave();
+                }}
               >
-                <TokenField
-                  guide={getTokenGuide("graph")}
-                  username={username}
-                  value={graphToken}
-                  preview={tokenMeta?.graph_api_token_preview}
-                  updatedAt={tokenMeta?.graph_api_token_updated_at}
-                  timeGap={tokenMeta?.graph_api_token_time_gap}
-                  onChange={(value) => {
-                    setGraphToken(value);
-                    setGraphDirty(true);
-                  }}
-                />
-                <TokenField
-                  guide={getTokenGuide("jira")}
-                  username={username}
-                  value={jiraToken}
-                  preview={tokenMeta?.jira_api_token_preview}
-                  updatedAt={tokenMeta?.jira_api_token_updated_at}
-                  timeGap={tokenMeta?.jira_api_token_time_gap}
-                  onChange={(value) => {
-                    setJiraToken(value);
-                    setJiraDirty(true);
-                  }}
-                />
-                <TokenField
-                  guide={getTokenGuide("polarion_asux")}
-                  username={username}
-                  value={polarionAsuxToken}
-                  preview={tokenMeta?.polarion_asux_api_token_preview}
-                  updatedAt={tokenMeta?.polarion_asux_api_token_updated_at}
-                  timeGap={tokenMeta?.polarion_asux_api_token_time_gap}
-                  onChange={(value) => {
-                    setPolarionAsuxToken(value);
-                    setPolarionAsuxDirty(true);
-                  }}
-                />
-                <TokenField
-                  guide={getTokenGuide("polarion_prod1")}
-                  username={username}
-                  value={polarionProd1Token}
-                  preview={tokenMeta?.polarion_prod1_api_token_preview}
-                  updatedAt={tokenMeta?.polarion_prod1_api_token_updated_at}
-                  timeGap={tokenMeta?.polarion_prod1_api_token_time_gap}
-                  onChange={(value) => {
-                    setPolarionProd1Token(value);
-                    setPolarionProd1Dirty(true);
-                  }}
-                />
-                <TokenField
-                  guide={getTokenGuide("confluence")}
-                  username={username}
-                  value={confluenceToken}
-                  preview={tokenMeta?.confluence_api_token_preview}
-                  updatedAt={tokenMeta?.confluence_api_token_updated_at}
-                  timeGap={tokenMeta?.confluence_api_token_time_gap}
-                  onChange={(value) => {
-                    setConfluenceToken(value);
-                    setConfluenceDirty(true);
-                  }}
-                />
-
-                {/* Save Button */}
-                <Button
-                  onClick={handleSave}
-                  disabled={
-                    isSaving ||
-                    (!graphDirty &&
-                      !jiraDirty &&
-                      !polarionAsuxDirty &&
-                      !polarionProd1Dirty &&
-                      !confluenceDirty)
-                  }
-                  className="w-full"
+                <fieldset
+                  disabled={isSaving}
+                  className="min-w-0 space-y-5"
                 >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save tokens
-                    </>
-                  )}
-                </Button>
-              </fieldset>
+                  <TokenField
+                    guide={getTokenGuide("graph")}
+                    username={username}
+                    value={graphToken}
+                    preview={tokenMeta?.graph_api_token_preview}
+                    updatedAt={tokenMeta?.graph_api_token_updated_at}
+                    timeGap={tokenMeta?.graph_api_token_time_gap}
+                    onChange={(value) => {
+                      setGraphToken(value);
+                      setGraphDirty(true);
+                    }}
+                  />
+                  <TokenField
+                    guide={getTokenGuide("jira")}
+                    username={username}
+                    value={jiraToken}
+                    preview={tokenMeta?.jira_api_token_preview}
+                    updatedAt={tokenMeta?.jira_api_token_updated_at}
+                    timeGap={tokenMeta?.jira_api_token_time_gap}
+                    onChange={(value) => {
+                      setJiraToken(value);
+                      setJiraDirty(true);
+                    }}
+                  />
+                  <TokenField
+                    guide={getTokenGuide("polarion_asux")}
+                    username={username}
+                    value={polarionAsuxToken}
+                    preview={tokenMeta?.polarion_asux_api_token_preview}
+                    updatedAt={tokenMeta?.polarion_asux_api_token_updated_at}
+                    timeGap={tokenMeta?.polarion_asux_api_token_time_gap}
+                    onChange={(value) => {
+                      setPolarionAsuxToken(value);
+                      setPolarionAsuxDirty(true);
+                    }}
+                  />
+                  <TokenField
+                    guide={getTokenGuide("polarion_prod1")}
+                    username={username}
+                    value={polarionProd1Token}
+                    preview={tokenMeta?.polarion_prod1_api_token_preview}
+                    updatedAt={tokenMeta?.polarion_prod1_api_token_updated_at}
+                    timeGap={tokenMeta?.polarion_prod1_api_token_time_gap}
+                    onChange={(value) => {
+                      setPolarionProd1Token(value);
+                      setPolarionProd1Dirty(true);
+                    }}
+                  />
+                  <TokenField
+                    guide={getTokenGuide("confluence")}
+                    username={username}
+                    value={confluenceToken}
+                    preview={tokenMeta?.confluence_api_token_preview}
+                    updatedAt={tokenMeta?.confluence_api_token_updated_at}
+                    timeGap={tokenMeta?.confluence_api_token_time_gap}
+                    onChange={(value) => {
+                      setConfluenceToken(value);
+                      setConfluenceDirty(true);
+                    }}
+                  />
+                </fieldset>
+              </form>
               {codeAnalyzerAllowed && (
                 <>
                   <ScmCredentials />
@@ -307,6 +328,52 @@ export function TokenManagementSidebar({
           )}
         </div>
       </ScrollArea>
+      {!isLoading && !loadError && (
+        <footer className="shrink-0 border-t border-border bg-card p-4">
+          <p
+            role="status"
+            className="mb-3 text-xs text-muted-foreground"
+          >
+            {isSaving
+              ? "Saving tokens…"
+              : dirty
+              ? "Unsaved token changes"
+              : "Only edited tokens are saved."}
+          </p>
+          <div className="flex items-center gap-2">
+            {dirty && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={discard}
+                disabled={isSaving}
+                className="min-h-touch"
+              >
+                Discard
+              </Button>
+            )}
+            <Button
+              type="submit"
+              form="token-settings-form"
+              disabled={isSaving || !dirty}
+              className="min-h-touch flex-1"
+            >
+              {isSaving ? (
+                <Loader2
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Save
+                  className="size-4"
+                  aria-hidden="true"
+                />
+              )}
+              {isSaving ? "Saving…" : "Save tokens"}
+            </Button>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
@@ -361,6 +428,9 @@ function TokenField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder={preview ? "Enter a replacement token" : "Paste a token"}
           className="pr-11"
         />
         <Button

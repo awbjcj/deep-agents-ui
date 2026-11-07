@@ -1,5 +1,9 @@
 "use client";
 
+import { navigateRadioGroup } from "@/lib/radio-navigation";
+
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -143,6 +147,14 @@ export function ToolPermissionsSection() {
   const savedIds = snapshot?.tiers[activeTier].allowed_tool_ids ?? [];
   const activeDraft = drafts[activeTier];
   const dirty = !sameToolIds(activeDraft, savedIds);
+  useSettingsDraft(
+    saving ||
+      (!!snapshot &&
+        ROLES.some(
+          (role) =>
+            !sameToolIds(drafts[role], snapshot.tiers[role].allowed_tool_ids)
+        ))
+  );
   const canSave = canSaveToolPermissions({
     hasSnapshot: Boolean(snapshot && policyResolved),
     dirty,
@@ -232,6 +244,7 @@ export function ToolPermissionsSection() {
 
       <div
         role="radiogroup"
+        onKeyDown={navigateRadioGroup}
         aria-label="Tool permission tier"
         className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/35 p-1"
       >
@@ -241,6 +254,7 @@ export function ToolPermissionsSection() {
             type="button"
             role="radio"
             aria-checked={activeTier === tier}
+            tabIndex={activeTier === tier ? 0 : -1}
             onClick={() => setActiveTier(tier)}
             className={`rounded-md px-2 py-2 text-xs font-semibold capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
               activeTier === tier

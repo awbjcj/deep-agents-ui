@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useEffect, useState } from "react";
 import {
   CheckCircle,
@@ -343,6 +345,7 @@ export function UrlOverridesSection() {
         ([key, value]) => value !== (connectivity.urls[key]?.value ?? "")
       )
     : false;
+  useSettingsDraft(dirty || saving);
 
   const saveUrls = async () => {
     if (!connectivity || !dirty) return;

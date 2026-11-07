@@ -249,7 +249,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             anchoring can nudge scrollTop up a pixel on re-render, which the
             hook reads as the user scrolling away, so following stops. */}
         <div
-          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none]"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          id="conversation"
+          role="region"
+          tabIndex={0}
           aria-label="Conversation"
           ref={scrollRef}
           onWheel={(event) => {

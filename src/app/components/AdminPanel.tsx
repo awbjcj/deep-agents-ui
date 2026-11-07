@@ -6,18 +6,17 @@ import {
   GitBranch,
   Layers,
   Mail,
-  Maximize2,
-  Minimize2,
   Search,
   Sliders,
   Wrench,
   Users,
-  X,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PanelTabs } from "@/components/ui/panel-tabs";
+import { SettingsPanel } from "./settings/SettingsPanel";
+import { SettingsDrafts } from "./settings/SettingsDrafts";
+import { useSettingsLeaveGuard } from "./settings/useSettingsDrafts";
+import { useAuth } from "@/providers/AuthProvider";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 
 import { PeopleSection } from "@/app/components/admin/PeopleSection";
@@ -42,16 +41,58 @@ type AdminTab =
 const TABS: readonly {
   id: AdminTab;
   label: string;
+  description: string;
   icon?: ComponentType<{ className?: string }>;
 }[] = [
-  { id: "users", label: "People", icon: Users },
-  { id: "tiers", label: "Models", icon: Sliders },
-  { id: "tools", label: "Tools", icon: Wrench },
-  { id: "runmode", label: "Runtime", icon: Activity },
-  { id: "scopes", label: "Memories", icon: Layers },
-  { id: "library", label: "Search", icon: Search },
-  { id: "scm", label: "Sources", icon: GitBranch },
-  { id: "newsletters", label: "Newsletters", icon: Mail },
+  {
+    id: "users",
+    label: "People",
+    icon: Users,
+    description: "Manage accounts, access levels, and registration.",
+  },
+  {
+    id: "tiers",
+    label: "Models",
+    icon: Sliders,
+    description: "Set model access and usage limits for each role.",
+  },
+  {
+    id: "tools",
+    label: "Tools",
+    icon: Wrench,
+    description: "Set which tools each role can use across the service.",
+  },
+  {
+    id: "runmode",
+    label: "Runtime",
+    icon: Activity,
+    description:
+      "Configure shared routing, provider endpoints, and execution limits.",
+  },
+  {
+    id: "scopes",
+    label: "Memories",
+    icon: Layers,
+    description: "Manage shared memory scopes and their membership.",
+  },
+  {
+    id: "library",
+    label: "Search",
+    icon: Search,
+    description: "Manage the document library, search indices, and embeddings.",
+  },
+  {
+    id: "scm",
+    label: "Sources",
+    icon: GitBranch,
+    description: "Manage source-control servers and attachment policies.",
+  },
+  {
+    id: "newsletters",
+    label: "Newsletters",
+    icon: Mail,
+    description: "Compose, review, and send updates to account holders.",
+  },
 ];
 
 const SECTIONS: Record<AdminTab, ComponentType> = {
@@ -67,86 +108,57 @@ const SECTIONS: Record<AdminTab, ComponentType> = {
 
 interface AdminPanelProps {
   onClose: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   expanded?: boolean;
   onToggleExpanded?: () => void;
 }
 
-export function AdminPanel({
+/** Admin forms share responsive navigation and account-scoped draft protection. */
+export function AdminPanel(props: AdminPanelProps) {
+  const { user } = useAuth();
+  return (
+    <SettingsDrafts
+      key={user?.user_id ?? "signed-out"}
+      onDirtyChange={props.onDirtyChange}
+    >
+      <AdminPanelContent {...props} />
+    </SettingsDrafts>
+  );
+}
+
+function AdminPanelContent({
   onClose,
   expanded = false,
   onToggleExpanded,
 }: AdminPanelProps) {
   const [active, setActive] = useState<AdminTab>("users");
   const ActiveSection = SECTIONS[active];
+  const confirmLeave = useSettingsLeaveGuard();
 
   return (
-    <div className="absolute inset-0 flex flex-col">
-      <header className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
-        <div className="flex min-h-12 items-center justify-between gap-2 px-4 py-1">
-          <h2 className="text-base font-semibold tracking-tight">
-            Admin console
-          </h2>
-          <div className="flex shrink-0 items-center gap-1">
-            {onToggleExpanded && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggleExpanded}
-                className="h-8 w-8"
-                aria-label={
-                  expanded ? "Restore admin panel" : "Expand admin panel"
-                }
-                aria-pressed={expanded}
-              >
-                {expanded ? (
-                  <Minimize2
-                    aria-hidden="true"
-                    className="h-4 w-4"
-                  />
-                ) : (
-                  <Maximize2
-                    aria-hidden="true"
-                    className="h-4 w-4"
-                  />
-                )}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-              aria-label="Close admin panel"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        {/* Manual activation: each section runs its own fetches on mount, so
-            arrow-keying across the strip must move focus without mounting
-            every section on the way past. */}
-        <PanelTabs
-          tabs={TABS}
-          value={active}
-          onValueChange={setActive}
-          idPrefix="admin"
-          label="Admin sections"
-          variant="underline"
-          activation="manual"
-          layout="two-row"
-        />
-      </header>
-
+    <SettingsPanel
+      title="Admin console"
+      tabs={TABS}
+      active={active}
+      onSelect={(next) => {
+        if (next !== active && confirmLeave()) setActive(next);
+      }}
+      idPrefix="admin"
+      navigationLabel="Admin sections"
+      onClose={onClose}
+      expanded={expanded}
+      onToggleExpanded={onToggleExpanded}
+    >
       {/* Only the active section is mounted, so an unopened section never
           issues its requests. */}
       <ScrollArea className="h-0 flex-1">
         <div
           {...panelTabPanelProps("admin", active)}
-          className="space-y-6 p-4 focus-visible:outline-none"
+          className="mx-auto w-full max-w-4xl space-y-6 p-4 focus-visible:outline-none sm:p-6"
         >
           <ActiveSection />
         </div>
       </ScrollArea>
-    </div>
+    </SettingsPanel>
   );
 }

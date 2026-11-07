@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { ComponentType, ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 import type { ActionIntent } from "@/app/components/admin/primitives-utils";
+import { SettingsLoading } from "@/app/components/settings/SettingsFeedback";
 
 export type { ActionIntent } from "@/app/components/admin/primitives-utils";
 
@@ -79,16 +80,7 @@ export function DisclosureSection({
 }
 
 export function LoadingRow({ compact }: { compact?: boolean }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-center",
-        compact ? "py-2" : "py-6"
-      )}
-    >
-      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-    </div>
-  );
+  return <SettingsLoading compact={compact} />;
 }
 
 export function EmptyState({ title }: { title: string }) {
@@ -118,7 +110,7 @@ export function ActionPill({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+        "inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 text-xs font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         "disabled:cursor-not-allowed disabled:opacity-40",
         intent === "neutral" &&

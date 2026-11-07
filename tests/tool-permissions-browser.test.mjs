@@ -538,11 +538,9 @@ async function assertWorkspaceTabsFullyVisible(page, context) {
     tabBoxes.push(
       await tab.evaluate((tab) => {
         const box = tab.getBoundingClientRect();
-        const textNode = [...tab.childNodes].find(
-          (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
-        );
+        const textNode = tab.querySelector('[data-slot="panel-tab-label"]');
         const range = document.createRange();
-        if (textNode) range.selectNode(textNode);
+        if (textNode) range.selectNodeContents(textNode);
         const textBox = textNode ? range.getBoundingClientRect() : null;
         return {
           left: box.left,
@@ -1241,10 +1239,13 @@ test(
         animations: "disabled",
       });
       await page.setViewportSize({ width: 1440, height: 1000 });
-      const mountedHeading = await page
+      const previousAccountHeading = await page
         .getByRole("heading", { name: "Account permissions" })
         .elementHandle();
-      assert(mountedHeading, "personal tools heading should be mounted");
+      assert(
+        previousAccountHeading,
+        "personal tools heading should be mounted"
+      );
       const createDraft = page.getByRole("checkbox", {
         name: "Create draft email",
       });
@@ -1272,8 +1273,9 @@ test(
       await accountDialog.waitFor({ state: "hidden" });
       await page.getByText("0 active", { exact: true }).waitFor();
       assert.equal(
-        await mountedHeading.evaluate((node) => node.isConnected),
-        true
+        await previousAccountHeading.evaluate((node) => node.isConnected),
+        false,
+        "changing accounts removes the previous account's settings panel"
       );
       assert.equal(await createDraft.isEnabled(), true);
       await createDraft.click();

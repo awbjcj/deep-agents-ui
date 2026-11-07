@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +17,7 @@ import {
 import { LoadingRow, SectionHeader } from "@/app/components/admin/primitives";
 import { ROLES } from "@/app/components/admin/primitives-utils";
 import { UsageLimitControls } from "@/app/components/admin/UsageLimitControls";
+import { SettingsLoadError } from "@/app/components/settings/SettingsFeedback";
 
 type TierMap = Record<Role, TierModelEntry[]>;
 type TierTextMap = Record<Role, string>;
@@ -32,15 +35,20 @@ export function TiersSection() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
+    let current = true;
     setIsLoading(true);
+    setLoadFailed(false);
     Promise.all([
       apiGetTierModels("user"),
       apiGetTierModels("developer"),
       apiGetTierModels("admin"),
     ])
       .then(([u, d, a]) => {
+        if (!current) return;
         const next: TierMap = {
           user: u.models,
           developer: d.models,
@@ -49,15 +57,42 @@ export function TiersSection() {
         setTiers(next);
         setTierText(tierMapToText(next));
       })
-      .catch(() => toast.error("Failed to load tier allowlists"))
-      .finally(() => setIsLoading(false));
-  }, []);
+      .catch(() => {
+        if (current) setLoadFailed(true);
+      })
+      .finally(() => {
+        if (current) setIsLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [loadAttempt]);
 
   const savedText = useMemo(() => tierMapToText(tiers), [tiers]);
   const dirty =
     tierText.user !== savedText.user ||
     tierText.developer !== savedText.developer ||
     tierText.admin !== savedText.admin;
+  useSettingsDraft(dirty || isSaving);
+  const errors = useMemo(
+    () =>
+      Object.fromEntries(
+        ROLES.map((role) => {
+          try {
+            parseTierText(tierText[role]);
+            return [role, ""];
+          } catch (error) {
+            return [
+              role,
+              error instanceof Error
+                ? error.message
+                : "Use provider:model, one per line.",
+            ];
+          }
+        })
+      ) as Record<Role, string>,
+    [tierText]
+  );
 
   const handleSave = async () => {
     const parsed = {} as TierMap;
@@ -88,12 +123,20 @@ export function TiersSection() {
     <div className="space-y-5">
       <SectionHeader
         title="Tier model allowlists"
-        subtitle="Which provider/model pairs each role can pick from"
+        subtitle="Enter provider:model, one per line. Empty lists remove model access for that role."
       />
       {isLoading ? (
         <LoadingRow />
+      ) : loadFailed ? (
+        <SettingsLoadError
+          message="Could not load role model access. Retry before editing."
+          onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+        />
       ) : (
-        <>
+        <fieldset
+          disabled={isSaving}
+          className="min-w-0 space-y-5"
+        >
           {ROLES.map((tier) => (
             <div
               key={tier}
@@ -102,11 +145,11 @@ export function TiersSection() {
               <div className="flex items-baseline justify-between">
                 <Label
                   htmlFor={`tier-${tier}`}
-                  className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
+                  className="text-sm font-medium capitalize text-foreground"
                 >
                   {tier}
                 </Label>
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground/60">
+                <span className="font-mono text-xs tabular-nums text-muted-foreground/60">
                   {tiers[tier].length} model
                   {tiers[tier].length === 1 ? "" : "s"}
                 </span>
@@ -123,14 +166,28 @@ export function TiersSection() {
                 rows={Math.max(2, tierText[tier].split("\n").length + 1)}
                 placeholder="provider:model (one per line)"
                 className="min-h-[72px] font-mono text-xs"
+                aria-invalid={!!errors[tier]}
+                aria-describedby={
+                  errors[tier] ? `tier-${tier}-error` : undefined
+                }
               />
+              {errors[tier] && (
+                <p
+                  id={`tier-${tier}-error`}
+                  className="text-xs text-destructive"
+                >
+                  {errors[tier]}
+                </p>
+              )}
             </div>
           ))}
           <Button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || !dirty}
-            className="w-full"
+            disabled={
+              isSaving || !dirty || ROLES.some((role) => !!errors[role])
+            }
+            className="min-h-touch w-full"
           >
             {isSaving ? (
               <>
@@ -144,7 +201,7 @@ export function TiersSection() {
               </>
             )}
           </Button>
-        </>
+        </fieldset>
       )}
 
       <UsageLimitControls />

@@ -157,7 +157,7 @@ function HomePageInner({
     () =>
       workspaceDirty.current.accountId !== user?.user_id ||
       !workspaceDirty.current.value ||
-      window.confirm("Discard unsaved skill changes?"),
+      window.confirm("Discard unsaved settings changes?"),
     [user?.user_id]
   );
   const consumeSkillAuthoringRequest = useCallback(
@@ -181,6 +181,29 @@ function HomePageInner({
     undefined
   );
   const [adminOpen, setAdminOpen] = useState(false);
+  const adminDirty = useRef<{ accountId: string | null; value: boolean }>({
+    accountId: null,
+    value: false,
+  });
+  const handleAdminDirtyChange = useCallback(
+    (value: boolean) => {
+      adminDirty.current = { accountId: user?.user_id ?? null, value };
+    },
+    [user?.user_id]
+  );
+  const allowAdminLeave = useCallback(
+    () =>
+      adminDirty.current.accountId !== user?.user_id ||
+      !adminDirty.current.value ||
+      window.confirm("Discard unsaved settings changes?"),
+    [user?.user_id]
+  );
+  const allowSettingsLeave = useCallback(
+    () =>
+      (!workspaceOpen || allowWorkspaceLeave()) &&
+      (!adminOpen || allowAdminLeave()),
+    [workspaceOpen, adminOpen, allowWorkspaceLeave, allowAdminLeave]
+  );
   const sidePanel = usePanelLayout({
     openPanel: workspaceOpen ? "workspace" : adminOpen ? "admin" : null,
     compact: compactLayout,
@@ -234,9 +257,10 @@ function HomePageInner({
     [requestTokenFocus]
   );
   const handleAdminClose = useCallback(() => {
+    if (!allowAdminLeave()) return;
     setAdminOpen(false);
     setExpandedPanel(null);
-  }, []);
+  }, [allowAdminLeave]);
 
   // Keep focus inside a visible panel across responsive/expanded layout changes;
   // only return it to the trigger when the panel actually closes.
@@ -298,12 +322,16 @@ function HomePageInner({
   // pass the service key through so the matching input scrolls into focus.
   useEffect(() => {
     if (pendingTokenFocus) {
+      if (adminOpen && !allowAdminLeave()) {
+        requestTokenFocus(null);
+        return;
+      }
       setExpandedPanel(null);
       setWorkspaceOpen(true);
       setWorkspaceTab("tokens");
       setAdminOpen(false);
     }
-  }, [pendingTokenFocus]);
+  }, [pendingTokenFocus, adminOpen, allowAdminLeave, requestTokenFocus]);
 
   useEffect(() => {
     // Cancellation guard: `config.assistantId`/`client` can change (or the page
@@ -440,7 +468,7 @@ function HomePageInner({
       </Suspense>
       <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-16 flex-shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-6 backdrop-blur-sm max-sm:h-auto max-sm:min-h-16 max-sm:flex-wrap max-sm:gap-2 max-sm:px-3 max-sm:py-2 max-[430px]:flex-col max-[430px]:items-stretch">
+        <header className="sticky top-0 z-40 flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-4 border-b border-border bg-card/70 px-6 py-2 backdrop-blur-sm max-sm:gap-2 max-sm:px-3 max-[430px]:flex-col max-[430px]:items-stretch">
           {/* Orange accent underline */}
           <div
             className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
@@ -448,7 +476,7 @@ function HomePageInner({
           />
 
           <div className="flex min-w-0 items-center gap-4 max-sm:gap-2 max-[430px]:justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <img
                 src={
                   theme === "dark"
@@ -458,13 +486,13 @@ function HomePageInner({
                 alt="Aptiv"
                 width={76}
                 height={22}
-                className="h-5 w-auto"
+                className="h-5 w-auto shrink-0"
               />
               <span
                 className="h-5 w-px bg-border max-lg:hidden"
                 aria-hidden="true"
               />
-              <h1 className="sr-only text-sm font-semibold tracking-tight max-[430px]:not-sr-only lg:not-sr-only">
+              <h1 className="sr-only min-w-0 break-words text-sm font-semibold tracking-tight max-[430px]:not-sr-only lg:not-sr-only">
                 VSDA Deep Agent
               </h1>
             </div>
@@ -475,7 +503,7 @@ function HomePageInner({
                 aria-label="Threads"
                 onClick={() => {
                   if (compactLayout) {
-                    if (workspaceOpen && !allowWorkspaceLeave()) return;
+                    if (!allowSettingsLeave()) return;
                     setWorkspaceOpen(false);
                     setAdminOpen(false);
                     setExpandedPanel(null);
@@ -500,14 +528,14 @@ function HomePageInner({
 
           <div
             ref={sidePanel.headerActionsRef}
-            className="flex min-w-0 items-center gap-1.5 max-sm:ml-auto max-sm:gap-1 max-[430px]:ml-0 max-[430px]:justify-between"
+            className="flex min-w-0 flex-wrap items-center gap-1.5 max-sm:ml-auto max-sm:gap-1 max-[430px]:ml-0 max-[430px]:justify-between"
           >
             <Button
               variant="ghost"
               size="sm"
               aria-label="Scheduled tasks"
               onClick={() => {
-                if (!allowWorkspaceLeave()) return;
+                if (!allowSettingsLeave()) return;
                 router.push("/tasks");
               }}
               className="rounded-full border border-border bg-card px-3 max-sm:px-2"
@@ -528,13 +556,13 @@ function HomePageInner({
                     className="h-4 w-4"
                     aria-hidden="true"
                   />
-                  {config.assistantId !== DEFAULT_ASSISTANT_ID && (
-                    <span className="hidden max-w-[11rem] truncate font-medium xl:inline">
-                      {assistant?.graph_id ||
-                        assistant?.name ||
-                        config.assistantId}
-                    </span>
-                  )}
+                  <span className="hidden max-w-[11rem] truncate font-medium xl:inline">
+                    {(
+                      assistant?.graph_id ||
+                      assistant?.name ||
+                      config.assistantId
+                    ).replace(/^VSDA /, "")}
+                  </span>
                   <ChevronDown
                     className="hidden h-3.5 w-3.5 text-muted-foreground xl:block"
                     aria-hidden="true"
@@ -558,7 +586,7 @@ function HomePageInner({
               variant="ghost"
               size="sm"
               onClick={() => {
-                if (workspaceOpen && !allowWorkspaceLeave()) return;
+                if (!allowSettingsLeave()) return;
                 setExpandedPanel(null);
                 setWorkspaceOpen(!workspaceOpen);
                 if (!workspaceOpen) {
@@ -584,8 +612,7 @@ function HomePageInner({
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      if (!adminOpen && workspaceOpen && !allowWorkspaceLeave())
-                        return;
+                      if (!allowSettingsLeave()) return;
                       setExpandedPanel(null);
                       setAdminOpen(!adminOpen);
                       if (!adminOpen) {
@@ -636,7 +663,10 @@ function HomePageInner({
               />
               <span className="max-lg:hidden">New Thread</span>
             </Button>
-            <AccountMenu />
+            <AccountMenu
+              onOpenSettings={() => setAccountDialogOpen(true)}
+              onBeforeSignOut={allowSettingsLeave}
+            />
           </div>
         </header>
 
@@ -723,6 +753,7 @@ function HomePageInner({
                 >
                   <Suspense fallback={<PanelFallback label="Workspace" />}>
                     <WorkspacePanel
+                      key={user?.user_id ?? "signed-out"}
                       initialTab={workspaceTab}
                       initialTokenFocus={pendingTokenFocus}
                       onTokenFocusConsumed={handleTokenFocusConsumed}
@@ -763,7 +794,9 @@ function HomePageInner({
                 >
                   <Suspense fallback={<PanelFallback label="Admin console" />}>
                     <AdminPanel
+                      key={user?.user_id ?? "signed-out"}
                       onClose={handleAdminClose}
+                      onDirtyChange={handleAdminDirtyChange}
                       expanded={expandedPanel === "admin"}
                       onToggleExpanded={() =>
                         setExpandedPanel((current) =>

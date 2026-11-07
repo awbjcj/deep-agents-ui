@@ -101,7 +101,7 @@ test("usage limit controls use compact aligned geometry", async () => {
   assert.match(limits, /grid-cols-\[76px_/);
   assert.match(limits, /h-8 w-16/);
   assert.doesNotMatch(limits, /transition-all/);
-  assert.match(toggle, /inline-grid h-8 grid-cols-3/);
+  assert.match(toggle, /inline-grid min-h-10 grid-cols-3/);
   assert.match(toggle, /active:scale-\[0\.97\]/);
 });
 

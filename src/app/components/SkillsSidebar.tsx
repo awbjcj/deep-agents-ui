@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useEffect, useRef } from "react";
 import { ArrowLeft, Check, RefreshCw, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +16,7 @@ import { SkillDiagnostics, SkillFilePreview } from "./skills/SkillFileList";
 
 export interface SkillsSidebarProps {
   onCreateWithAgent: () => void;
-  onDirtyChange: (dirty: boolean) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   onEditingChange?: (editing: boolean) => void;
 }
 
@@ -37,6 +39,7 @@ function AccountSkills({
   onEditingChange,
 }: SkillsSidebarProps & { accountId: string }) {
   const skills = usePersonalSkills(accountId);
+  useSettingsDraft(skills.dirty || skills.busy);
   const scrollArea = useRef<HTMLDivElement>(null);
   const catalogArea = useRef<HTMLDivElement>(null);
   const taskArea = useRef<HTMLDivElement>(null);
@@ -73,8 +76,8 @@ function AccountSkills({
     previousMode.current = mode;
   }, [mode]);
   useEffect(() => {
-    onDirtyChange(skills.dirty);
-    return () => onDirtyChange(false);
+    onDirtyChange?.(skills.dirty);
+    return () => onDirtyChange?.(false);
   }, [skills.dirty, onDirtyChange]);
   const key = `${accountId}:${skills.selected?.origin ?? "new"}:${
     skills.selected?.id ?? "draft"

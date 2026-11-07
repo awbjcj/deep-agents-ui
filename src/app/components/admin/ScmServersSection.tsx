@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useEffect, useRef, useState } from "react";
 import { Loader2, RotateCcw, Save, Server, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,6 +43,18 @@ export function ScmServersSection() {
   // must update that record rather than create a second one under a new ID.
   const [editingId, setEditingId] = useState<string | null>(null);
   const configurationRef = useRef<HTMLDetailsElement>(null);
+  const originalDraft = editingId
+    ? servers.find((server) => server.id === editingId)
+    : null;
+  const baseline = originalDraft ?? EMPTY;
+  useSettingsDraft(
+    saving ||
+      Object.keys(EMPTY).some(
+        (key) =>
+          JSON.stringify(draft[key as keyof ScmServerInput]) !==
+          JSON.stringify(baseline[key as keyof ScmServerInput])
+      )
+  );
 
   const load = async () => {
     setLoading(true);

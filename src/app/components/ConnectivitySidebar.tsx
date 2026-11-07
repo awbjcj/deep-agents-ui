@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +151,7 @@ export function ConnectivitySidebar() {
   const dirty =
     data !== null &&
     (pendingMode !== data.run_mode || proxyUrl !== data.proxy_url);
+  useSettingsDraft(dirty || isSaving);
   const imageFetchingDisabledByAdmin =
     sourceImagePolicies !== null &&
     SOURCE_IMAGE_SOURCES.every(
@@ -322,12 +325,12 @@ export function ConnectivitySidebar() {
                 />
 
                 {data && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xxs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     <span className="font-semibold uppercase tracking-wider">
                       System default
                     </span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xxs font-semibold tabular-nums">
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums">
                       {data.default_run_mode}
                     </span>
                     {data.run_mode_source === "user" && (
@@ -384,7 +387,7 @@ export function ConnectivitySidebar() {
                         </label>
                         <p
                           id="source-image-attachments-description"
-                          className="text-xxs leading-relaxed text-muted-foreground"
+                          className="text-xs leading-relaxed text-muted-foreground"
                         >
                           {imageFetchingError
                             ? "Status unavailable. Retry before changing this preference."
@@ -423,7 +426,7 @@ export function ConnectivitySidebar() {
                     </div>
                     {sourceImagePolicies && (
                       <div className="border-t border-border/60 bg-muted/20 px-3.5 py-2.5">
-                        <p className="mb-2 text-xxs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                           Effective access
                         </p>
                         <div className="divide-y divide-border/50">
@@ -445,10 +448,10 @@ export function ConnectivitySidebar() {
                                   )}
                                   aria-hidden="true"
                                 />
-                                <span className="min-w-0 flex-1 text-xxs font-semibold text-foreground">
+                                <span className="min-w-0 flex-1 text-xs font-semibold text-foreground">
                                   {SOURCE_IMAGE_LABELS[source]}
                                 </span>
-                                <span className="max-w-[58%] text-right text-xxs leading-relaxed text-muted-foreground">
+                                <span className="max-w-[58%] text-right text-xs leading-relaxed text-muted-foreground">
                                   {sourcePolicyDescription(
                                     policy,
                                     imageFetching
@@ -470,7 +473,7 @@ export function ConnectivitySidebar() {
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xxs leading-relaxed text-destructive">
+                          <p className="text-xs leading-relaxed text-destructive">
                             {imageFetchingError}
                           </p>
                           <Button
@@ -478,7 +481,7 @@ export function ConnectivitySidebar() {
                             variant="outline"
                             size="sm"
                             onClick={loadImageFetching}
-                            className="mt-2 h-10 px-3 text-xxs"
+                            className="mt-2 h-10 px-3 text-xs"
                             disabled={isLoadingImageFetching}
                           >
                             {isLoadingImageFetching ? "Retrying…" : "Retry"}
@@ -494,8 +497,14 @@ export function ConnectivitySidebar() {
         </div>
       </ScrollArea>
       {!isLoading && data && (
-        <div className="flex-shrink-0 border-t border-border bg-card/70 p-4 backdrop-blur-sm">
+        <div className="flex-shrink-0 border-t border-border bg-card p-4">
           <div className="flex flex-col gap-2">
+            <p
+              role="status"
+              className="text-xs leading-relaxed text-muted-foreground"
+            >
+              Connection mode saves automatically. Save proxy URL changes below.
+            </p>
             <Button
               type="button"
               onClick={handleSave}
@@ -531,7 +540,7 @@ export function ConnectivitySidebar() {
               variant="ghost"
               onClick={handleReset}
               disabled={isSaving}
-              className="h-10 w-full gap-1.5 text-xxs text-muted-foreground hover:text-foreground"
+              className="h-10 w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3" />
               Reset to system defaults

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -120,6 +122,21 @@ export function UsageLimitControls() {
   const [savingTier, setSavingTier] = useState<Role | null>(null);
   const [errors, setErrors] = useState<Partial<Record<Role, string>>>({});
   const [quotaLoadFailed, setQuotaLoadFailed] = useState(false);
+  useSettingsDraft(
+    savingTier !== null ||
+      !!(
+        drafts &&
+        limits &&
+        ROLES.some((role) => {
+          const baseline = quotaToDraft(limits[role]);
+          return Object.keys(baseline).some(
+            (key) =>
+              drafts[role][key as keyof TierQuotaDraft] !==
+              baseline[key as keyof TierQuotaDraft]
+          );
+        })
+      )
+  );
 
   const loadSettings = useCallback(async (signal?: AbortSignal) => {
     setSettingsLoadFailed(false);

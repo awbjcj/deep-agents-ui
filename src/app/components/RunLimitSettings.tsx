@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,7 @@ export function RunLimitSettings() {
   }, [user?.username]);
   const parsed = Number(value);
   const valid = isRunLimit(parsed);
+  useSettingsDraft(value !== String(savedValue));
   return (
     <section className="space-y-3">
       <Label

@@ -18,6 +18,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -381,9 +382,12 @@ export function ConfigDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent aria-describedby={undefined} className="flex max-h-[90dvh] flex-col sm:max-w-[525px]">
+      <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-[525px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>Choose an agent</DialogTitle>
+          <DialogDescription>
+            Choose the agent for your next conversation.
+          </DialogDescription>
         </DialogHeader>
         <div className="-mx-6 grid min-h-0 gap-4 overflow-y-auto px-6 py-1">
           <div className="grid gap-2">
@@ -450,7 +454,7 @@ export function ConfigDialog({
                     <p className="text-xs text-muted-foreground">{info.note}</p>
                   )}
                   {info.isSupervisor && (
-                    <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                    <p className="rounded-md bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                       If the job only touches one system, pick that agent
                       directly. It will be faster and stay on topic. Keep a
                       supervisor for work that crosses systems or takes several

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("admin navigation uses an exact two-row tab layout", async () => {
+test("admin navigation shares the responsive settings shell", async () => {
   const [panel, tabs] = await Promise.all([
     readFile(
       new URL("../src/app/components/AdminPanel.tsx", import.meta.url),
@@ -14,9 +14,9 @@ test("admin navigation uses an exact two-row tab layout", async () => {
     ),
   ]);
 
-  assert.match(panel, /layout="two-row"/);
-  assert.match(tabs, /gridTemplateColumns: "repeat\(4, minmax\(0, 1fr\)\)"/);
-  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 gap-1 /);
+  assert.match(panel, /<SettingsPanel/);
+  assert.match(tabs, /gridTemplateColumns:/);
+  assert.match(tabs, /isTwoRow &&[\s\S]*"w-full min-w-0 /);
   assert.doesNotMatch(panel, /id: "registration"/);
   const destinations = [
     ["users", "People"],
@@ -30,7 +30,9 @@ test("admin navigation uses an exact two-row tab layout", async () => {
   ];
   let previous = -1;
   for (const [id, label] of destinations) {
-    const position = panel.indexOf(`id: "${id}", label: "${label}"`);
+    const position = panel.search(
+      new RegExp(`id: "${id}",\\s*label: "${label}"`)
+    );
     assert(position > previous, `${label} should appear in row-major order`);
     previous = position;
   }
@@ -129,11 +131,13 @@ test("workspace tabs preserve ids and use the compact requested order", async ()
   ];
   let previous = -1;
   for (const [id, label] of destinations) {
-    const position = workspace.indexOf(`id: "${id}", label: "${label}"`);
+    const position = workspace.search(
+      new RegExp(`id: "${id}",\\s*label: "${label}"`)
+    );
     assert(position > previous, `${label} should appear in order`);
     previous = position;
   }
-  assert.match(workspace, /overflow-x-auto/);
+  assert.match(workspace, /<SettingsPanel/);
   assert.doesNotMatch(workspace, /grid-cols-4/);
   assert.match(workspace, /icon: Bot/);
   assert.match(workspace, /icon: Wrench/);

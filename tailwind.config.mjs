@@ -12,6 +12,9 @@ export default {
   darkMode: ["class", '[data-joy-color-scheme="dark"]'],
   theme: {
     extend: {
+      spacing: {
+        touch: "44px",
+      },
       fontSize: {
         xxs: [
           "0.75rem", // 12px

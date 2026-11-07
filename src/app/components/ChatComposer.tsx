@@ -675,7 +675,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             onKeyDown={handleKeyDown}
           />
           <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 p-1">
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
