@@ -151,11 +151,12 @@ test("apiGetProfile normalizes missing access flags from an older server", async
 test("UI surfaces gate restricted assistants and Code Analyzer panels", async () => {
   const source = (path) =>
     readFile(new URL(`../src/${path}`, import.meta.url), "utf8");
-  const [dialog, sidebar, page, welcome] = await Promise.all([
+  const [dialog, sidebar, page, welcome, chat] = await Promise.all([
     source("app/components/ConfigDialog.tsx"),
     source("app/components/TokenManagementSidebar.tsx"),
     source("app/page.tsx"),
     source("app/components/WelcomeState.tsx"),
+    source("app/components/ChatInterface.tsx"),
   ]);
   // Both the built-in list and the fetched list pass through one filter.
   assert.match(dialog, /useState<AssistantOption\[\]>\(BUILT_IN_ASSISTANTS\)/);
@@ -184,4 +185,5 @@ test("UI surfaces gate restricted assistants and Code Analyzer panels", async ()
   assert.match(page, /allowedAssistantId\(config\.assistantId, user\)/);
   assert.match(page, /agentAccessKnown\(user\)/);
   assert.match(welcome, /agentWelcome\(graphId, user\)/);
+  assert.match(chat, /\{canUseCodeAnalyzer\(user\) && \(\s*<CodeAnalysisJobs/);
 });

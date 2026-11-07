@@ -42,6 +42,7 @@ import {
 } from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
 import { deleteUpload } from "@/lib/uploads";
+import { CONVERSATION_FILES_CHANGED_EVENT } from "@/lib/conversation-files";
 import {
   reconcileSourceImageRecords,
   restoreSourceImageRemoval,
@@ -955,8 +956,8 @@ export function useChat({
     ]
   );
 
-  // Uploads and deletes run as separate attachment-maintenance runs that this
-  // stream never observes, so re-read the thread state once they complete.
+  // Uploads, deletes and background reports run outside this stream, so read
+  // the persisted thread files after their maintenance runs complete.
   const refreshFiles = useCallback(
     async (targetThreadId?: string | null) => {
       const target = targetThreadId ?? threadIdRef.current;
@@ -984,6 +985,23 @@ export function useChat({
     },
     [client]
   );
+
+  useEffect(() => {
+    const refreshChangedFiles = (event: Event) => {
+      const target = (event as CustomEvent<{ threadId?: string }>).detail
+        ?.threadId;
+      if (target && target === threadIdRef.current) void refreshFiles(target);
+    };
+    window.addEventListener(
+      CONVERSATION_FILES_CHANGED_EVENT,
+      refreshChangedFiles
+    );
+    return () =>
+      window.removeEventListener(
+        CONVERSATION_FILES_CHANGED_EVENT,
+        refreshChangedFiles
+      );
+  }, [refreshFiles]);
 
   const continueStream = useCallback(
     (hasTaskToolCall?: boolean) => {

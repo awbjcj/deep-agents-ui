@@ -361,6 +361,7 @@ const analysisResultSchema = z.record(z.string(), z.unknown()).default({});
 
 export const analysisJobSchema = z.object({
   job_id: z.string().min(1),
+  thread_id: z.string().min(1).optional(),
   status: z.string(),
   phase: z.string().default("queued"),
   progress: z.number().int().min(0).max(100).default(0),
@@ -586,6 +587,25 @@ export async function getAnalysisEngines(): Promise<EngineCatalog> {
   );
 }
 
+/** Recover background work even when delegated tool messages have disappeared. */
+export async function getRecentAnalysisJobs(
+  threadId: string,
+  signal?: AbortSignal
+): Promise<AnalysisJobView[]> {
+  const query = new URLSearchParams({ thread_id: threadId, limit: "5" });
+  const data = await responseJson(
+    await apiFetch(`/code-analysis/jobs?${query}`, {
+      signal,
+      cache: "no-store",
+    }),
+    "Failed to load conversation analysis jobs"
+  );
+  const jobs = z.array(analysisJobSchema).max(5).parse(data);
+  if (jobs.some((job) => job.thread_id !== threadId))
+    throw new Error("Analysis jobs belong to a different conversation");
+  return jobs;
+}
+
 export async function getAnalysisJob(
   jobId: string,
   signal?: AbortSignal
@@ -644,4 +664,27 @@ export async function downloadAnalysisReport(reportId: string): Promise<Blob> {
   );
   if (!res.ok) await responseJson(res, "Failed to download analysis report");
   return res.blob();
+}
+
+/** Save to the job's owning conversation, even if the user switches chats. */
+export async function saveAnalysisReportToWorkspace(
+  reportId: string,
+  threadId: string,
+  signal?: AbortSignal
+): Promise<{ artifact_path: string; thread_id: string }> {
+  const data = await responseJson(
+    await apiFetch(
+      `/code-analysis/reports/${encodeURIComponent(
+        reportId
+      )}/workspace?thread_id=${encodeURIComponent(threadId)}`,
+      { method: "POST", signal }
+    ),
+    "Could not save the report to Files"
+  );
+  return z
+    .object({
+      artifact_path: z.string().min(1),
+      thread_id: z.literal(threadId),
+    })
+    .parse(data);
 }

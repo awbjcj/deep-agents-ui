@@ -14,7 +14,9 @@ import { PendingToolApproval } from "@/app/components/PendingToolApproval";
 import type { TodoItem } from "@/app/types/types";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { cn } from "@/lib/utils";
+import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { ChatComposer } from "@/app/components/ChatComposer";
@@ -25,6 +27,7 @@ import { AgentActivity } from "./AgentActivity";
 import { Button } from "@/components/ui/button";
 import { WelcomeState } from "./WelcomeState";
 import { TaskOutcomeStatus } from "./TaskOutcomeStatus";
+import { CodeAnalysisJobs } from "./CodeAnalysisJobs";
 import {
   isLatestTaskOutcome,
   isTaskOutcomeNotice,
@@ -92,6 +95,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     onSkillAuthoringRequestConsumed,
   }) => {
     const { threadId } = useChatContext();
+    const { user } = useAuth();
     const [evidenceRequest, setEvidenceRequest] = useState<{
       text: string;
       threadId: string | null;
@@ -324,6 +328,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   );
                 })}
                 {candidateIndex === -1 && outcomeStatus}
+                {canUseCodeAnalyzer(user) && (
+                  <CodeAnalysisJobs
+                    key={threadId ?? createdThreadId}
+                    threadId={threadId ?? createdThreadId ?? null}
+                    isLoading={isLoading}
+                  />
+                )}
                 <PendingToolApproval
                   key={interrupt?.id}
                   interrupt={interrupt}

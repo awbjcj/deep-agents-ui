@@ -37,6 +37,28 @@ test(
             { type: "links", items: [{ label: "Structured source", url: "https://example.com/structured" }] },
             { type: "suggestions", items: ["Compare these sources"] }
           ] };
+          const revision = [
+            "### SCM revision resolved", "",
+            "- Server: \`primary-gerrit\`",
+            "- Repository: \`STLA_IFV_Gen6_Common_L2\`",
+            "- Selector: \`28.07.01.26.43.91\`",
+            "- Revision: \`e187786b32413642b3c5075ec050728857a0bac1\`",
+            "- Target handle (\`target_handle\`): \`primary-gerrit~3add0b1f82dc403693aa9169ab94de50\`",
+            "- Completeness: complete",
+            "- Source: [View revision](<https://example.com/revision>)", "",
+            "Use \`target_handle\` in \`prepare_code_workspace(target_handles=[...], idempotency_key=...)\`."
+          ].join("\\n");
+          const validation = [
+            "### SCM access validation", "",
+            "- Status: \`running\`",
+            "- Server: \`primary-gerrit\`",
+            "- Repository: \`STLA_IFV_Gen6_Common_L2\`",
+            "- Selector: \`28.07.01.26.43.91\`",
+            "- Job ID (\`job_id\`): \`4622a0a3-972f-4afd-b60d-c4f66196b389\`",
+            "- Progress: 0%", "",
+            "SCM access is not yet validated.",
+            "Check progress with \`get_code_analysis_job(job_id='4622a0a3-972f-4afd-b60d-c4f66196b389', wait_seconds=20)\`."
+          ].join("\\n");
           function Fixture() {
             const [extra, setExtra] = React.useState(false);
             const [approval, setApproval] = React.useState(undefined);
@@ -57,6 +79,10 @@ test(
               <ToolCallBox toolCall={{ id: "structured", name: "present_result", args: {}, status: "completed", result: JSON.stringify(presentation) }} onUseEvidence={text => window.draft = text} />
               <ToolCallBox toolCall={{ id: "database", name: "search_database", args: { query: "source" }, status: "completed", result: "[1] (score: 0.8)\\n    evidence: Retrieved source excerpt\\n    metadata: title: Retrieved notes | url: https://example.com/database" }} onUseEvidence={text => window.draft = text} />
               <ToolCallBox toolCall={{ id: "generic", name: "read_file", args: {}, status: "completed", result: "Plain tool output" }} />
+              <ToolCallBox toolCall={{ id: "revision", name: "get_scm_revision", args: {}, status: "completed", result: revision }} />
+              <ToolCallBox toolCall={{ id: "validation", name: "validate_scm_access", args: {}, status: "completed", result: validation }} />
+              <ToolCallBox toolCall={{ id: "metadata", name: "list_confluence_pages", args: {}, status: "completed", result: JSON.stringify({ results: [{ id: "exact/ID", title: "Architecture" }], pagination: { hasMore: null, nextStart: 25 }, coverage: "partial" }) }} />
+              <ToolCallBox toolCall={{ id: "failure", name: "failed_lookup", args: {}, status: "error", result: JSON.stringify({ ok: false, error: { code: "credentials_invalid", message: "Access denied", retryable: false } }) }} />
               <ToolCallBox toolCall={{ id: "approval", name: "update_ticket", args: { title: "Reviewed" }, status: "interrupted" }} actionRequest={approval} onResume={decision => window.decision = decision} />
               <ResponseDetails message={{ type: "ai", content: "No citations" }} />
             </main>;
@@ -69,7 +95,19 @@ test(
       format: "esm",
       define: { "process.env.NODE_ENV": '"development"' },
     });
-    const server = createServer((request, response) => {
+    const server = createServer(async (request, response) => {
+      if (/^\/fonts\/[\w.-]+\.(?:woff2?|ttf)$/.test(request.url || "")) {
+        response.setHeader(
+          "Content-Type",
+          request.url.endsWith(".woff2")
+            ? "font/woff2"
+            : request.url.endsWith(".woff")
+            ? "font/woff"
+            : "font/ttf"
+        );
+        response.end(await readFile(join(ROOT, "public", request.url)));
+        return;
+      }
       response.setHeader(
         "Content-Type",
         request.url === "/app.js"
@@ -97,9 +135,19 @@ test(
       const page = await browser.newPage();
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
+      page.on("console", (message) => {
+        if (["error", "warning"].includes(message.type()))
+          errors.push(message.text());
+      });
       for (const width of [320, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 940 });
         await page.goto(`http://127.0.0.1:${server.address().port}`);
+        assert.equal(await page.title(), "Tool results review");
+        assert.equal(new URL(page.url()).hostname, "127.0.0.1");
+        await page
+          .getByRole("heading", { name: "Tool results", exact: true })
+          .waitFor();
+        assert.equal(await page.locator("nextjs-portal").count(), 0);
         const sources = page.getByRole("navigation", {
           name: "Response sources",
         });
@@ -147,9 +195,22 @@ test(
           ["present_result", "Research findings"],
           ["search_database", "Retrieved source excerpt"],
           ["read_file", "Plain tool output"],
+          ["get_scm_revision", "SCM revision resolved"],
+          ["validate_scm_access", "SCM access validation"],
+          ["list_confluence_pages", "exact/ID"],
+          ["failed_lookup", "Access denied"],
         ]) {
           const trigger = page.getByRole("button", { name, exact: true });
-          const output = page.getByText(content, { exact: true });
+          const output = [
+            "read_file",
+            "list_confluence_pages",
+            "failed_lookup",
+          ].includes(name)
+            ? trigger
+                .locator("..")
+                .locator('section[aria-label="Tool result"]')
+                .getByText(content, { exact: true })
+            : page.getByText(content, { exact: true });
           assert.equal(await trigger.getAttribute("aria-expanded"), "false");
           assert.equal(await output.isVisible(), false);
           await trigger.focus();
@@ -182,6 +243,74 @@ test(
               await page.evaluate(() => window.draft),
               /Retrieved source excerpt/
             );
+          }
+          if (name === "get_scm_revision" || name === "validate_scm_access") {
+            const content = page.locator(
+              `[id="${await trigger.getAttribute("aria-controls")}"]`
+            );
+            const raw = content.locator("details").filter({
+              has: page.locator("summary", { hasText: "Raw result" }),
+            });
+            assert.equal(await raw.getAttribute("open"), null);
+            if (name === "get_scm_revision") {
+              assert.equal(
+                await content
+                  .getByRole("link", { name: "View revision" })
+                  .getAttribute("href"),
+                "https://example.com/revision"
+              );
+              assert.equal(
+                await content
+                  .locator("code")
+                  .filter({
+                    hasText: /^e187786b32413642b3c5075ec050728857a0bac1$/,
+                  })
+                  .innerText(),
+                "e187786b32413642b3c5075ec050728857a0bac1"
+              );
+            } else {
+              assert.match(
+                await content.innerText(),
+                /SCM access is not yet validated/
+              );
+              assert.match(await content.innerText(), /get_code_analysis_job/);
+            }
+            await raw.locator("summary").click();
+            assert.notEqual(await raw.getAttribute("open"), null);
+            await raw.locator("summary").click();
+          }
+          if (name === "list_confluence_pages" || name === "failed_lookup") {
+            const card = trigger.locator("..");
+            const view = card.locator('section[aria-label="Tool result"]');
+            assert.equal(
+              await card.locator("details").getAttribute("open"),
+              null
+            );
+            if (name === "list_confluence_pages") {
+              assert.equal(
+                await view.getByText("hasMore", { exact: true }).isVisible(),
+                true
+              );
+              assert.equal(
+                await view.getByText("null", { exact: true }).isVisible(),
+                true
+              );
+              assert.equal(
+                await view.getByText("partial", { exact: true }).isVisible(),
+                true
+              );
+            } else {
+              assert.equal(
+                await view
+                  .getByText("credentials_invalid", { exact: true })
+                  .isVisible(),
+                true
+              );
+              assert.equal(
+                await view.getByText("false", { exact: true }).count(),
+                2
+              );
+            }
           }
           if (evidence)
             await page.screenshot({
