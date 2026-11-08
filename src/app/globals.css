@@ -290,7 +290,8 @@
       "Roboto Mono", Consolas, "Liberation Mono", "Courier New", monospace;
 
     /* Font scale */
-    --font-size-xs: 0.75rem;
+    --font-size-xxs: 0.75rem;
+    --font-size-xs: 0.8125rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
     --font-size-lg: 1.125rem;
@@ -1926,11 +1927,13 @@ button {
 /* ─── Aptiv effort button group ────────────────────────────────────── */
 .effort-btn-group {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 0;
+  min-width: 100%;
   gap: 2px;
   padding: 2px;
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
   border: 1px solid var(--aptiv-glass-border);
   background-color: var(--aptiv-glass-bg);
   -webkit-backdrop-filter: blur(8px) saturate(130%);
@@ -1940,14 +1943,14 @@ button {
 
 .effort-btn {
   position: relative;
-  flex: 1 1 4rem;
-  min-width: 0;
+  flex: 1 0 auto;
+  min-width: max-content;
   min-height: 2.25rem;
   padding: 9px 6px;
-  font-family: var(--font-family-heading);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-xxs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
   background: transparent;
@@ -1957,7 +1960,8 @@ button {
   transition: color 180ms ease, background 180ms ease;
   text-align: center;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .effort-btn:hover:not(:disabled):not(.effort-btn--active) {

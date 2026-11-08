@@ -17,38 +17,38 @@ export default {
       },
       fontSize: {
         xxs: [
-          "0.75rem", // 12px
+          "var(--font-size-xxs)",
           {
             lineHeight: "1.125rem", // 18px
           },
         ],
         xs: [
-          "0.8125rem", // 13px
+          "var(--font-size-xs)",
           {
             lineHeight: "1.125rem", // 18px
           },
         ],
         sm: [
-          "0.875rem", // 14px
+          "var(--font-size-sm)",
           {
             lineHeight: "1.25rem", // 20px
           },
         ],
         base: [
-          "1rem", // 16px
+          "var(--font-size-base)",
           {
             lineHeight: "1.5rem", // 24px
           },
         ],
         lg: [
-          "1.125rem", // 18px
+          "var(--font-size-lg)",
           {
             lineHeight: "1.75rem", // 28px
             letterSpacing: "-0.01em", // tracking-tight
           },
         ],
         xl: [
-          "1.25rem", // 20px
+          "var(--font-size-xl)",
           {
             lineHeight: "1.875rem", // 30px
             letterSpacing: "-0.01em", // tracking-tight

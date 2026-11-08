@@ -157,7 +157,7 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
           </div>
           <span
             role="status"
-            className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground"
+            className="flex shrink-0 items-center gap-1 text-xxs text-muted-foreground"
           >
             {saving ? (
               <>
@@ -264,7 +264,7 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
           </>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-b-xl border-t border-border bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-b-xl border-t border-border bg-muted/40 px-3 py-2 text-xxs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Kbd>↑↓</Kbd> model
           </span>

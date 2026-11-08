@@ -19,7 +19,7 @@ import {
 } from "@/lib/model-controls";
 
 const SECTION_LABEL =
-  "text-[11px] font-medium uppercase tracking-wider text-muted-foreground";
+  "text-xxs font-medium uppercase tracking-wider text-muted-foreground";
 
 function modelId(entry: Pick<ModelEntry, "provider" | "model">) {
   return `${entry.provider}::${entry.model}`;
@@ -97,7 +97,7 @@ export function ModelList({
             onMouseMove={() => setActive(index)}
             onClick={() => onSelect(entry)}
             className={cn(
-              "grid min-h-8 cursor-pointer grid-cols-[1rem_minmax(0,1fr)_auto_1rem] items-center gap-1.5 rounded-md px-1.5 text-[13px] leading-5",
+              "grid min-h-8 cursor-pointer grid-cols-[1rem_minmax(0,1fr)_auto_1rem] items-center gap-1.5 rounded-md px-1.5 text-sm leading-5",
               highlighted && "bg-accent dark:bg-accent/60"
             )}
           >
@@ -116,7 +116,7 @@ export function ModelList({
             >
               {modelDisplayName(entry.model)}
             </span>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xxs text-muted-foreground">
               {providerDisplayName(entry.provider)}
             </span>
             {selected && (
@@ -172,7 +172,7 @@ export function EffortSegments({
           Reasoning effort
         </span>
         {!supported && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xxs text-muted-foreground">
             Not supported
           </span>
         )}
@@ -182,7 +182,7 @@ export function EffortSegments({
         aria-labelledby={labelId}
         aria-disabled={!supported || undefined}
         onKeyDown={supported ? onKeyDown : undefined}
-        className="effort-btn-group w-0 min-w-full !overflow-x-auto"
+        className="effort-btn-group"
       >
         {options.map((effort, index) => {
           const checked = supported && value === effort;
@@ -198,10 +198,7 @@ export function EffortSegments({
               tabIndex={supported && index === current ? 0 : -1}
               disabled={!supported}
               onClick={() => onChange(effort)}
-              className={cn(
-                "effort-btn min-w-max !py-2",
-                checked && "effort-btn--active"
-              )}
+              className={cn("effort-btn", checked && "effort-btn--active")}
             >
               {effort}
             </button>
