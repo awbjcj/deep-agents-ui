@@ -33,8 +33,8 @@ test(
       window.switchThread = setThread;
       window.queueEvidence = setRequest;
       const consume = React.useCallback(() => setRequest(null), []);
-      return <main className="mx-auto max-w-3xl p-4"><ToolEvidenceCards items={items} onUseEvidence={(text) => setRequest({ text, threadId: thread })} /><ChatComposer assistant={{ assistant_id: 'test' }} isLoading={false} files={{}} sourceImageAttachments={{}} sendMessage={(text) => window.sent = text} stopStream={() => {}} ensureThreadId={async () => { setThread('created'); return 'created'; }} evidenceRequest={request} onEvidenceConsumed={consume} />
-        <ToolApprovalInterrupt actionRequest={{ name: 'update_ticket', args: { title: 'Original', count: 2, enabled: true, options: { status: 'open' } } }} onResume={(value) => window.submission = value} />
+      return <main className="mx-auto max-w-[960px] p-4"><ToolEvidenceCards items={items} onUseEvidence={(text) => setRequest({ text, threadId: thread })} /><ChatComposer assistant={{ assistant_id: 'test' }} isLoading={false} files={{}} sourceImageAttachments={{}} sendMessage={(text) => window.sent = text} stopStream={() => {}} ensureThreadId={async () => { setThread('created'); return 'created'; }} evidenceRequest={request} onEvidenceConsumed={consume} />
+        <ToolApprovalInterrupt actionRequest={{ name: 'update_ticket', args: { title: Array.from({ length: 8 }, (_, index) => 'Original line ' + index).join('\\n'), count: 2, enabled: true, options: { status: 'open' } } }} onResume={(value) => window.submission = value} />
       </main>;
     }
     createRoot(document.getElementById('root')).render(<Fixture />);
@@ -138,6 +138,68 @@ test(
         draft
       );
       await page.getByRole("button", { name: "Edit", exact: true }).click();
+      const title = page.getByLabel("title (string)");
+      const dimensions = (field) =>
+        field.evaluate((node) => ({
+          height: node.offsetHeight,
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight,
+        }));
+      const prefilled = await dimensions(title);
+      assert.equal(prefilled.scrollHeight, prefilled.clientHeight);
+
+      await title.fill("Short");
+      const short = await dimensions(title);
+      assert.ok(prefilled.height > short.height);
+
+      const wrappedDraft = "A draft that wraps as the editor narrows. ".repeat(
+        11
+      );
+      await title.fill(wrappedDraft);
+      const desktop = await dimensions(title);
+      assert.ok(desktop.height > short.height);
+      assert.equal(desktop.scrollHeight, desktop.clientHeight);
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.evaluate(() => document.documentElement.classList.add("dark"));
+      await page.waitForFunction(
+        ({ id, height }) => document.getElementById(id).offsetHeight > height,
+        { id: await title.getAttribute("id"), height: desktop.height }
+      );
+      const mobile = await dimensions(title);
+      assert.equal(mobile.scrollHeight, mobile.clientHeight);
+
+      const longDraft = "A long line in the edited argument.\n".repeat(100);
+      await title.fill(longDraft);
+      await title.press("End");
+      await title.press("X");
+      const capped = await dimensions(title);
+      assert.ok(capped.height <= 812 / 2);
+      assert.ok(capped.scrollHeight > capped.clientHeight);
+      assert.equal(await title.inputValue(), longDraft + "X");
+      assert.ok(await title.evaluate((node) => node.scrollTop > 0));
+      const preview = page.getByRole("region", { name: "Changes to title" });
+      const previewSize = await dimensions(preview);
+      assert.ok(previewSize.scrollHeight > previewSize.clientHeight);
+      await title.press("Tab");
+      assert.ok(
+        await preview.evaluate((node) => node === document.activeElement)
+      );
+      assert.ok(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth
+        )
+      );
+
+      await page.setViewportSize({ width: 812, height: 375 });
+      assert.ok((await dimensions(title)).height <= 375 / 2 + 1);
+      await title.fill("Short again");
+      assert.equal((await dimensions(title)).height, short.height);
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await page.evaluate(() =>
+        document.documentElement.classList.remove("dark")
+      );
+
       await page.getByLabel("count (number)").fill("bad");
       assert.equal(
         await page.getByRole("button", { name: "Save & approve" }).isDisabled(),
@@ -152,7 +214,7 @@ test(
         true
       );
       await page.getByLabel("options (object)").fill('{"status":"closed"}');
-      await page.getByLabel("title (string)").fill('{"literal":true}');
+      await title.fill('{"literal":true}');
       const evidenceDir = join(ROOT, "docs", "evidence", "tool-interactions");
       await mkdir(evidenceDir, { recursive: true });
       await page.screenshot({

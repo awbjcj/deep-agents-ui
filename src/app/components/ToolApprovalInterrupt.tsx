@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, useId } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -41,6 +49,53 @@ const DESCRIPTION_PROSE_OVERRIDES =
 
 const ARGS_PROSE_OVERRIDES =
   "text-xs [&_pre]:!my-0 [&_pre]:!rounded-md [&_pre]:!border-0";
+
+function resizeArgumentTextarea(textarea: HTMLTextAreaElement) {
+  const scrollTop = textarea.scrollTop;
+  textarea.style.height = "auto";
+  textarea.style.overflowY = "hidden";
+  const borderHeight = textarea.offsetHeight - textarea.clientHeight;
+  textarea.style.height = `${textarea.scrollHeight + borderHeight}px`;
+  textarea.style.overflowY = "";
+  textarea.scrollTop = scrollTop;
+}
+
+function ArgumentTextarea({
+  value,
+  ...props
+}: Omit<ComponentProps<typeof Textarea>, "ref">) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    if (ref.current) resizeArgumentTextarea(ref.current);
+  }, [value]);
+
+  useEffect(() => {
+    const textarea = ref.current;
+    if (!textarea) return;
+
+    let width = textarea.getBoundingClientRect().width;
+    const observer = new ResizeObserver(([entry]) => {
+      // Height changes also trigger the observer. Remeasure only when text can rewrap.
+      const nextWidth = entry.borderBoxSize[0].inlineSize;
+      if (nextWidth === width) return;
+      width = nextWidth;
+      resizeArgumentTextarea(textarea);
+    });
+    observer.observe(textarea, { box: "border-box" });
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Textarea
+      {...props}
+      ref={ref}
+      value={value}
+      rows={2}
+      className="max-h-[min(24rem,50dvh)] resize-none overflow-y-auto font-mono text-sm"
+    />
+  );
+}
 
 export function ToolApprovalInterrupt({
   actionRequest,
@@ -350,7 +405,7 @@ export function ToolApprovalInterrupt({
                         <option value="false">False</option>
                       </select>
                     ) : (
-                      <Textarea
+                      <ArgumentTextarea
                         id={id}
                         value={drafts[key] ?? ""}
                         onChange={(event) =>
@@ -363,8 +418,6 @@ export function ToolApprovalInterrupt({
                         aria-describedby={
                           fieldErrors[key] ? `${id}-error` : undefined
                         }
-                        className="font-mono text-xs"
-                        rows={typeof value === "object" ? 4 : 2}
                         disabled={isLoading}
                       />
                     )}
@@ -378,7 +431,12 @@ export function ToolApprovalInterrupt({
                       </p>
                     )}
                     {changed && (
-                      <div className="grid min-w-0 gap-2 text-xs sm:grid-cols-2">
+                      <div
+                        role="region"
+                        aria-label={`Changes to ${key}`}
+                        tabIndex={0}
+                        className="grid max-h-36 min-w-0 gap-2 overflow-y-auto rounded-sm text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-2"
+                      >
                         <div>
                           <p className="font-medium text-muted-foreground">
                             Before
