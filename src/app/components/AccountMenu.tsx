@@ -147,10 +147,7 @@ export function AccountMenu({
               event.preventDefault();
               items[next]?.focus();
             }}
-            className={cn(
-              "absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-md border border-border bg-card p-1 text-card-foreground shadow-lg",
-              "data-[state=open]:animate-in data-[state=closed]:animate-out"
-            )}
+            className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-md border border-border bg-card p-1 text-card-foreground shadow-lg"
           >
             <div className="border-b border-border px-3 py-2">
               <p className="truncate text-sm font-medium">{user.username}</p>
