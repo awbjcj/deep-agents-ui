@@ -75,7 +75,7 @@ export function responsesDetails(message: Message) {
         ? "The response reached its output limit. Increase the output limit or ask the agent to continue."
         : "The model returned an incomplete response."
       : metadata?.status === "failed"
-      ? "The model could not complete this response. Please retry."
+      ? "The model could not complete this response. You can retry it."
       : "";
   return {
     sources: sources.slice(0, 100),

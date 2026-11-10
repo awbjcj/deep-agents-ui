@@ -104,13 +104,16 @@ const AGENT_INFO: Record<string, AgentInfo> = {
   },
   "VSDA Teams Agent": {
     description:
-      "Reads and summarizes your Microsoft Teams chats, and sends messages once you approve them. It can also draft Adaptive Cards.",
+      "Reads and summarizes your Microsoft Teams chats and sends messages once you approve them. It can also set up group chats, react to messages, fix or remove messages you sent, and draft Adaptive Cards.",
     useCases: [
       "Catch me up on the last day of a group chat.",
       "Find out what the team decided about the release date.",
       "Send a status update to a teammate, or start a new chat with them.",
+      "Start a group chat for the release crew, or add a teammate to one.",
+      "Fix a typo in a message I sent, or delete it.",
       "Draft an Adaptive Card for a bot or workflow notification.",
     ],
+    note: "Chat changes need delegated Chat.ReadWrite (or the narrower scope listed for each tool) on your saved Microsoft Graph token and follow your approval mode.",
   },
   [OUTLOOK_ASSISTANT_ID]: {
     description:
@@ -327,7 +330,7 @@ export function ConfigDialog({
 
   const handleSave = () => {
     if (!assistantId) {
-      toast.error("Please select an assistant");
+      toast.error("Choose an assistant first");
       return;
     }
     const selectedGraph =
@@ -498,7 +501,7 @@ export function ConfigDialog({
                       disabled={!engine.ready}
                     >
                       {engineLabel(engine.id)}
-                      {!engine.ready ? " — unavailable" : ""}
+                      {!engine.ready ? " (unavailable)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

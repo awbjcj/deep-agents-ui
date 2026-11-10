@@ -163,7 +163,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Teams Agent",
     icon: "chat",
     headline: "What should we catch up on in Teams?",
-    lede: "Review messages and Adaptive Cards before the agent sends them.",
+    lede: "Catch up on chats. Messages, cards and chat changes wait for your review.",
     prompts: [
       {
         title: "Catch up on a chat",

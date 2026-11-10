@@ -714,7 +714,7 @@ export function CodeAnalysisSettings({
                         >
                           {engineName(engine)}
                           {readiness && !readiness.ready
-                            ? " — unavailable"
+                            ? " (unavailable)"
                             : ""}
                         </SelectItem>
                       );

@@ -277,7 +277,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       });
       setNewUsername("");
       setUsernameSaved(true);
-      toast.success("Username updated successfully");
+      toast.success("Username updated");
       if (usernameSavedTimeoutRef.current) {
         clearTimeout(usernameSavedTimeoutRef.current);
       }
@@ -310,7 +310,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       setProfileEmail(result.email ?? trimmedEmail);
       setNewEmail("");
       setEmailSaved(true);
-      toast.success("Email updated successfully");
+      toast.success("Email updated");
       if (emailSavedTimeoutRef.current) {
         clearTimeout(emailSavedTimeoutRef.current);
       }
@@ -357,7 +357,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordSaved(true);
-      toast.success("Password updated successfully");
+      toast.success("Password updated");
       if (passwordSavedTimeoutRef.current) {
         clearTimeout(passwordSavedTimeoutRef.current);
       }

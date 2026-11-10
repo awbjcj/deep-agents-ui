@@ -188,7 +188,7 @@ export function RegistrationSection() {
             <Input
               id="invite-note"
               type="text"
-              placeholder="e.g. Jane Doe — contractor"
+              placeholder="e.g. Jane Doe, contractor"
               value={note}
               maxLength={200}
               onChange={(e) => setNote(e.target.value)}

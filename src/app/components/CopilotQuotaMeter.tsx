@@ -119,7 +119,7 @@ export function CopilotQuotaMeter({
             )}
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {quota.exhausted
-                ? "Quota reached — Copilot code analysis is disabled until the account resets."
+                ? "Quota reached. Copilot code analysis is disabled until the account resets."
                 : quota.reset_date
                 ? `Resets ${new Date(quota.reset_date).toLocaleString()}.`
                 : "No reset date was reported by GitHub."}

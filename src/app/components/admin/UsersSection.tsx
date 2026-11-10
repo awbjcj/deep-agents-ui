@@ -162,7 +162,7 @@ export function UsersSection() {
     } catch {
       downloadTsv();
       toast.warning(
-        "Clipboard unavailable — temporary password downloaded instead"
+        "Clipboard unavailable, so the temporary password was downloaded instead"
       );
     }
   };

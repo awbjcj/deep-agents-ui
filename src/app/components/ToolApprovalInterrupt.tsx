@@ -365,7 +365,7 @@ export function ToolApprovalInterrupt({
               ref={rejectionNote}
               value={rejectionMessage}
               onChange={(e) => setRejectionMessage(e.target.value)}
-              placeholder="Optional note — the agent will see this explanation..."
+              placeholder="Optional note explaining why. The agent will see it."
               className="text-sm"
               rows={2}
               disabled={isLoading}

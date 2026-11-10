@@ -44,7 +44,7 @@ export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
     payloadField: "graph_api_token",
     previewField: "graph_api_token_preview",
     expiry:
-      "Expires about 6 hours after you sign in — refresh it when it lapses.",
+      "Expires about 6 hours after you sign in. Refresh it when it lapses.",
     url: () => "https://developer.microsoft.com/en-us/graph/graph-explorer",
     steps: [
       "Open Microsoft Graph Explorer (link below) and sign in with your Aptiv account.",
