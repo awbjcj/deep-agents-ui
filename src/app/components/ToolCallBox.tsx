@@ -26,7 +26,7 @@ import { StructuredToolResult } from "./StructuredToolResult";
 import { RunStatus } from "./RunStatus";
 import { scmToolMarkdown } from "@/lib/scm-tool-result";
 import { readableToolResult } from "@/lib/tool-result";
-import { ReadableToolResult } from "./ReadableToolResult";
+import { RawToolResult, ReadableToolResult } from "./ReadableToolResult";
 
 interface ToolCallBoxProps {
   onUseEvidence?: (text: string) => void;
@@ -167,11 +167,54 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           : null,
       [name, result, status, evidence.length, presentation, wikiPage]
     );
+    const hasExternalComponent =
+      !(actionRequest && onResume) && !!(uiComponent && stream && graphId);
     const hasContent =
-      !!actionRequest || result != null || Object.keys(args).length > 0;
+      hasExternalComponent ||
+      !!actionRequest ||
+      result != null ||
+      Object.keys(args).length > 0;
     const analysisJobId = useMemo(
       () => codeAnalysisJobId(name, result, args),
       [name, result, args]
+    );
+    const imageUrls = toolCall.imageUrls;
+
+    const resultView = (
+      <>
+        {evidence.length > 0 && (
+          <ToolEvidenceCards
+            key={toolCall.id}
+            items={evidence}
+            onUseEvidence={onUseEvidence}
+            disabled={isLoading}
+          />
+        )}
+        {wikiPage && (
+          <LlmWikiPagePreview
+            page={wikiPage}
+            files={files}
+          />
+        )}
+        {readableResult && (
+          <ReadableToolResult
+            result={readableResult}
+            files={files}
+          />
+        )}
+        {imageUrls?.map((url, index) => (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block w-fit text-sm text-primary underline"
+          >
+            Open image result
+            {imageUrls.length > 1 ? ` ${index + 1}` : ""}
+          </a>
+        ))}
+      </>
     );
 
     return (
@@ -189,7 +232,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           onClick={toggleExpanded}
           data-motion={pointerMotion ? "animate" : "instant"}
           className={cn(
-            "group/tool flex h-auto w-full items-center justify-between gap-3 whitespace-normal rounded-lg border-none px-2.5 py-2 text-left shadow-none outline-none hover:bg-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100 dark:hover:bg-transparent"
+            "group/tool flex h-auto min-h-touch w-full items-center justify-between gap-3 whitespace-normal rounded-lg border-none px-2.5 py-2 text-left shadow-none outline-none hover:bg-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100 dark:hover:bg-transparent"
           )}
           aria-expanded={isExpanded}
           aria-label={name}
@@ -261,7 +304,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 />
               </div>
             )}
-            {uiComponent && stream && graphId ? (
+            {hasExternalComponent ? (
               <div className="mt-4">
                 <LoadExternalComponent
                   key={uiComponent.id}
@@ -269,10 +312,12 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                   message={uiComponent}
                   namespace={graphId}
                   meta={meta}
+                  fallback={resultView}
                 />
+                {result != null && <RawToolResult result={result} />}
               </div>
             ) : actionRequest && onResume ? (
-              // Show tool approval UI when there's an action request but no GenUI
+              // Pending approval uses the same controls even if an artifact is present.
               <div className="mt-4">
                 <ToolApprovalInterrupt
                   actionRequest={actionRequest}
@@ -283,23 +328,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               </div>
             ) : (
               <>
-                {evidence.length > 0 && (
-                  <ToolEvidenceCards
-                    key={toolCall.id}
-                    items={evidence}
-                    onUseEvidence={onUseEvidence}
-                    disabled={isLoading}
-                  />
-                )}
-                {wikiPage && (
-                  <LlmWikiPagePreview
-                    page={wikiPage}
-                    files={files}
-                  />
-                )}
-                {readableResult && (
-                  <ReadableToolResult result={readableResult} />
-                )}
+                {resultView}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -312,17 +341,21 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                           className="rounded-sm border border-border"
                         >
                           <button
+                            type="button"
                             onClick={() => toggleArgExpanded(key)}
-                            className="flex w-full items-center justify-between bg-muted/30 p-2 text-left text-xs font-medium transition-colors hover:bg-muted/50"
+                            aria-expanded={!!expandedArgs[key]}
+                            className="flex min-h-touch w-full items-center justify-between bg-muted/30 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
                           >
                             <span className="font-mono">{key}</span>
                             {expandedArgs[key] ? (
                               <ChevronUp
+                                aria-hidden="true"
                                 size={12}
                                 className="text-muted-foreground"
                               />
                             ) : (
                               <ChevronDown
+                                aria-hidden="true"
                                 size={12}
                                 className="text-muted-foreground"
                               />
@@ -330,7 +363,12 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                           </button>
                           {expandedArgs[key] && (
                             <div className="border-t border-border bg-muted/20 p-2">
-                              <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs leading-6 text-foreground">
+                              <pre
+                                aria-label={`${key} argument value`}
+                                className="m-0 max-h-80 overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-sm font-mono text-xs leading-6 text-foreground [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                                role="region"
+                                tabIndex={0}
+                              >
                                 {typeof value === "string"
                                   ? value
                                   : JSON.stringify(value, null, 2)}
@@ -342,27 +380,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     </div>
                   </div>
                 )}
-                {result != null && (
-                  <div className="mt-4">
-                    <details
-                      open={
-                        !evidence.length &&
-                        !presentation &&
-                        !wikiPage &&
-                        !readableResult
-                      }
-                    >
-                      <summary className="mb-1 cursor-pointer text-xs font-semibold text-muted-foreground">
-                        Raw result
-                      </summary>
-                      <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs leading-7 text-foreground">
-                        {typeof result === "string"
-                          ? result
-                          : JSON.stringify(result, null, 2)}
-                      </pre>
-                    </details>
-                  </div>
-                )}
+                {result != null && <RawToolResult result={result} />}
               </>
             )}
           </div>

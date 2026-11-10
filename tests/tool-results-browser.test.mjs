@@ -30,8 +30,24 @@ test(
         contents: `
           import React from "react";
           import { createRoot } from "react-dom/client";
+          import { ChatMessage } from "./src/app/components/ChatMessage";
           import { ResponseDetails } from "./src/app/components/ResponseDetails";
           import { ToolCallBox } from "./src/app/components/ToolCallBox";
+          import { reconcileConversation } from "./src/app/hooks/internal/conversationProjection";
+          const artifactStream = { client: { "~ui": { getComponent: async () => "" } } };
+          const orphan = { type: "tool", id: "orphan", tool_call_id: "early", name: "lookup_record", content: JSON.stringify({ id: "early-record" }) };
+          const matchingCall = { type: "ai", id: "late-ai", content: "", tool_calls: [{ id: "early", name: "lookup_record", args: {} }] };
+          const subagentCall = { type: "ai", id: "task-ai", content: "", tool_calls: [{ id: "research", name: "task", args: { subagent_type: "Research worker", description: "Find a record" } }] };
+          const subagentResult = { type: "tool", id: "task-result", tool_call_id: "research", content: JSON.stringify({ id: "research-record", coverage: "complete" }) };
+          const oversizedResult = JSON.stringify({ id: "large-record", body: "x".repeat(50_000), tail: "end-of-large-result" });
+          const diagramPath = "/_artifacts/u/t/diagrams/sample/diagram.png";
+          const reportPath = "/_artifacts/u/t/generated/sample/report.json";
+          const artifactFiles = {
+            [diagramPath]: { content: ["iVBORw0KGgoAAAANSUhEUgAAAEAAAAAoCAYAAABOzvzpAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAE2SURBVGhD5ZI5DgIxEAT9EiICAt7Ca4j4OIJkkZEajZq9bffY3qASR101DuH+GDx5vt4unC7XL4EHqeFhpYH44QKwON4PEWBKPtJ1gDlx0G2AJXHQXYA1V7d0E2CrOOgiwF75SNMBUsRBswFSxUFzAXJc3dJMgNzioIkAJcRB1QFKXd1SZQCFOKgugFI+Uk0AtTioIoCHOHAN4HV1S+AHBSw+3M5uyAPUJB+RBWBxvPMgNZIAY+KAB6kpGmDq6hYepKZIgDXigAepyR5grTjgQWqyBdhydQsPUpMcYK844EFqkgKkykd4kJpdAXKIAx6kZnOAXOKAB6lZHSDn1S08SM1igFLigAepmQ1QWj7Cg9SMBlCIAx6k5i+AShzwIDW/AMqrW3iQmuAlDniQmu8P8BAHPEjNB49qD8G9VROZAAAAAElFTkSuQmCC"], filename: "diagram.png", encoding: "base64", mime_type: "image/png" },
+            [reportPath]: { content: ["eyJzdGF0dXMiOiJvayJ9"], filename: "report.json", encoding: "base64", mime_type: "application/json" }
+          };
+          const mediaCall = { type: "ai", id: "media-ai", content: "", tool_calls: [{ id: "media", name: "image_reader", args: {} }] };
+          const mediaResult = { type: "tool", id: "media-result", tool_call_id: "media", content: [{type: "image_url", image_url: {url: "https://example.com/plot.png"}}] };
           const presentation = { kind: "ui_presentation", version: 1, title: "Research findings", blocks: [
             { type: "markdown", text: "A structured research summary." },
             { type: "links", items: [{ label: "Structured source", url: "https://example.com/structured" }] },
@@ -62,8 +78,10 @@ test(
           function Fixture() {
             const [extra, setExtra] = React.useState(false);
             const [approval, setApproval] = React.useState(undefined);
+            const [callArrived, setCallArrived] = React.useState(false);
             window.addResponseSource = () => setExtra(true);
             window.requestApproval = () => setApproval({ name: "update_ticket", args: { title: "Reviewed" } });
+            window.attachToolCall = () => setCallArrived(true);
             const message = { type: "ai", content: [
               { type: "text", text: "Answer", annotations: [
                 { type: "url_citation", title: "Web search source", url: "https://example.com/web" },
@@ -83,7 +101,13 @@ test(
               <ToolCallBox toolCall={{ id: "validation", name: "validate_scm_access", args: {}, status: "completed", result: validation }} />
               <ToolCallBox toolCall={{ id: "metadata", name: "list_confluence_pages", args: {}, status: "completed", result: JSON.stringify({ results: [{ id: "exact/ID", title: "Architecture" }], pagination: { hasMore: null, nextStart: 25 }, coverage: "partial" }) }} />
               <ToolCallBox toolCall={{ id: "failure", name: "failed_lookup", args: {}, status: "error", result: JSON.stringify({ ok: false, error: { code: "credentials_invalid", message: "Access denied", retryable: false } }) }} />
-              <ToolCallBox toolCall={{ id: "approval", name: "update_ticket", args: { title: "Reviewed" }, status: "interrupted" }} actionRequest={approval} onResume={decision => window.decision = decision} />
+              <ToolCallBox toolCall={{ id: "oversized", name: "get_confluence_page_storage", args: {}, status: "completed", result: oversizedResult }} />
+              <ToolCallBox toolCall={{ id: "artifact", name: "external_result", args: {}, status: "completed", result: JSON.stringify({ id: "artifact-fallback" }) }} uiComponent={{ id: "ui", name: "example" }} stream={artifactStream} graphId="fixture" />
+              <ToolCallBox toolCall={{ id: "artifact-only", name: "artifact_only", args: {}, status: "completed" }} uiComponent={{ id: "ui-only", name: "example" }} stream={artifactStream} graphId="fixture" />
+              <ToolCallBox toolCall={{ id: "diagram", name: "render_diagram", args: {}, status: "completed", result: "Created conversation files:\\n![diagram.png](" + diagramPath + ")" }} files={artifactFiles} />
+              <ToolCallBox toolCall={{ id: "report", name: "publish_workspace_file", args: {}, status: "completed", result: "Created conversation files:\\n[report.json](" + reportPath + ")\\nBytes: 15; SHA-256: " + "a".repeat(64) }} files={artifactFiles} />
+              {reconcileConversation(null, [orphan, ...(callArrived ? [matchingCall] : []), subagentCall, subagentResult, mediaCall, mediaResult], false).map(row => <ChatMessage {...row} key={row.stableKey} files={{}} sourceImageAttachments={{}} />)}
+              <ToolCallBox toolCall={{ id: "approval", name: "update_ticket", args: { title: "Reviewed" }, status: "interrupted" }} actionRequest={approval} onResume={decision => window.decision = decision} uiComponent={{ id: "approval-artifact", name: "example" }} stream={artifactStream} graphId="fixture" />
               <ResponseDetails message={{ type: "ai", content: "No citations" }} />
             </main>;
           }
@@ -139,8 +163,12 @@ test(
         if (["error", "warning"].includes(message.type()))
           errors.push(message.text());
       });
-      for (const width of [320, 768, 1024, 1440]) {
-        await page.setViewportSize({ width, height: 940 });
+      for (const width of [320, 375, 768, 1024, 1440]) {
+        const height = width === 768 ? 432 : 940;
+        await page.emulateMedia({
+          reducedMotion: width === 375 ? "reduce" : "no-preference",
+        });
+        await page.setViewportSize({ width, height });
         await page.goto(`http://127.0.0.1:${server.address().port}`);
         assert.equal(await page.title(), "Tool results review");
         assert.equal(new URL(page.url()).hostname, "127.0.0.1");
@@ -243,6 +271,14 @@ test(
               await page.evaluate(() => window.draft),
               /Retrieved source excerpt/
             );
+            const argument = trigger
+              .locator("..")
+              .getByRole("button", { name: "query", exact: true });
+            assert.ok((await argument.boundingBox()).height >= 44);
+            await argument.focus();
+            await page.keyboard.press("Enter");
+            assert.equal(await argument.getAttribute("aria-expanded"), "true");
+            await trigger.focus();
           }
           if (name === "get_scm_revision" || name === "validate_scm_access") {
             const content = page.locator(
@@ -327,6 +363,171 @@ test(
             true
           );
         }
+
+        const large = page.getByRole("button", {
+          name: "get_confluence_page_storage",
+          exact: true,
+        });
+        await large.click();
+        const largeCard = large.locator("..");
+        await largeCard
+          .getByText("Preview is shortened.", { exact: false })
+          .waitFor();
+        const preview = largeCard.getByRole("region", {
+          name: "Tool result text",
+          exact: true,
+        });
+        assert.ok((await preview.boundingBox()).height <= 160);
+        const rawLarge = largeCard.locator("details");
+        const rawSummary = rawLarge.locator("summary");
+        assert.equal(await rawLarge.locator("pre").count(), 0);
+        assert.match(await largeCard.innerText(), /large-record/);
+        assert.doesNotMatch(await largeCard.innerText(), /end-of-large-result/);
+        assert.ok((await rawSummary.boundingBox()).height >= 44);
+        await large.focus();
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Tab");
+        assert.equal(
+          await rawSummary.evaluate((node) => document.activeElement === node),
+          true
+        );
+        assert.notEqual(
+          await rawSummary.evaluate((node) => getComputedStyle(node).boxShadow),
+          "none"
+        );
+        await page.keyboard.press("Enter");
+        await rawLarge
+          .getByText("end-of-large-result", { exact: false })
+          .waitFor();
+        const rawRegion = rawLarge.getByRole("region", {
+          name: "Raw tool result",
+        });
+        assert.equal(await rawRegion.getAttribute("tabindex"), "0");
+        const scrollMetrics = await rawRegion.evaluate((node) => ({
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight,
+        }));
+        assert.ok(scrollMetrics.clientHeight <= height / 2);
+        assert.ok(scrollMetrics.scrollHeight > scrollMetrics.clientHeight);
+        await rawRegion.focus();
+        await rawRegion.press("PageDown");
+        await page.waitForFunction(
+          (node) => node.scrollTop > 0,
+          await rawRegion.elementHandle()
+        );
+        if (width === 375)
+          assert.ok(
+            parseFloat(
+              await large.evaluate(
+                (node) => getComputedStyle(node).transitionDuration
+              )
+            ) <= 0.001
+          );
+        if (evidence && [375, 1024].includes(width))
+          await largeCard.screenshot({
+            path: join(evidence, `raw-tool-card-${width}.png`),
+          });
+        await large.click();
+
+        const external = page.getByRole("button", {
+          name: "external_result",
+          exact: true,
+        });
+        await external.click();
+        await external
+          .locator("..")
+          .getByText("artifact-fallback", { exact: true })
+          .waitFor();
+        await external.click();
+        assert.equal(
+          await page
+            .getByRole("button", { name: "artifact_only", exact: true })
+            .isEnabled(),
+          true
+        );
+
+        const early = page.getByRole("button", {
+          name: "lookup_record",
+          exact: true,
+        });
+        assert.equal(
+          await page.getByText("early-record", { exact: false }).count(),
+          0
+        );
+        await early.click();
+        await early
+          .locator("..")
+          .getByText("early-record", { exact: true })
+          .waitFor();
+        await page.evaluate(() => window.attachToolCall());
+        await page
+          .locator('button[aria-label="lookup_record"][aria-expanded="false"]')
+          .waitFor();
+        assert.equal(await early.count(), 1);
+
+        const task = page.getByRole("button", {
+          name: "Research worker",
+          exact: true,
+        });
+        if ((await task.getAttribute("aria-expanded")) === "false")
+          await task.click();
+        const taskOutput = page
+          .getByRole("region", { name: "Tool result" })
+          .getByText("research-record", { exact: true });
+        await taskOutput.waitFor();
+        await task.click();
+
+        const renderDiagram = page.getByRole("button", {
+          name: "render_diagram",
+          exact: true,
+        });
+        await renderDiagram.click();
+        const diagram = renderDiagram
+          .locator("..")
+          .getByRole("img", { name: "diagram.png" });
+        await diagram.waitFor();
+        assert.equal(
+          await diagram.evaluate(async (image) => {
+            await image.decode();
+            return image.naturalWidth;
+          }),
+          64
+        );
+        await renderDiagram.click();
+
+        const publish = page.getByRole("button", {
+          name: "publish_workspace_file",
+          exact: true,
+        });
+        await publish.click();
+        const [download] = await Promise.all([
+          page.waitForEvent("download"),
+          publish
+            .locator("..")
+            .getByRole("button", { name: "Download report.json" })
+            .click(),
+        ]);
+        assert.equal(download.suggestedFilename(), "report.json");
+        assert.equal(
+          await readFile(await download.path(), "utf8"),
+          '{"status":"ok"}'
+        );
+        await publish.click();
+
+        const readImage = page.getByRole("button", {
+          name: "image_reader",
+          exact: true,
+        });
+        await readImage.click();
+        const mediaCard = readImage.locator("..");
+        assert.equal(await mediaCard.getByRole("img").count(), 0);
+        assert.equal(
+          await mediaCard
+            .getByRole("link", { name: "Open image result" })
+            .getAttribute("href"),
+          "https://example.com/plot.png"
+        );
+        await readImage.click();
 
         await summary.click();
         await page.getByRole("button", { name: "present_result" }).click();
