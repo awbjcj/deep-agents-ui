@@ -72,7 +72,7 @@ export function ApprovalArgumentEditor({
   isLoading,
 }: ApprovalArgumentEditorProps) {
   return (
-    <div className="min-w-0 space-y-3 p-3 sm:p-4">
+    <div className="min-w-0 divide-y divide-border">
       {Object.entries(original).map(([key, value], index) => {
         const id = `${fieldPrefix}-${index}`;
         const changed =
@@ -81,14 +81,14 @@ export function ApprovalArgumentEditor({
         return (
           <div
             key={key}
-            className="space-y-2"
+            className="space-y-2 px-3 py-3"
           >
             <label
               htmlFor={id}
-              className="block break-words text-xs font-medium"
+              className="block break-words font-mono text-xs font-medium [overflow-wrap:anywhere]"
             >
               {key}{" "}
-              <span className="text-muted-foreground">
+              <span className="font-sans font-normal text-muted-foreground">
                 (
                 {value === null
                   ? "null"
@@ -104,7 +104,7 @@ export function ApprovalArgumentEditor({
                 value={drafts[key] ?? String(value)}
                 onChange={(event) => onDraftChange(key, event.target.value)}
                 disabled={isLoading}
-                className="rounded-md border border-border bg-background p-2 text-sm"
+                className="h-9 w-full min-w-32 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 <option value="true">True</option>
                 <option value="false">False</option>
@@ -123,7 +123,7 @@ export function ApprovalArgumentEditor({
               <p
                 id={`${id}-error`}
                 role="alert"
-                className="text-xs text-destructive"
+                className="text-xs text-error"
               >
                 {fieldErrors[key]}
               </p>
@@ -133,17 +133,19 @@ export function ApprovalArgumentEditor({
                 role="region"
                 aria-label={`Changes to ${key}`}
                 tabIndex={0}
-                className="grid max-h-36 min-w-0 gap-2 overflow-y-auto rounded-sm text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-2"
+                className="grid max-h-36 min-w-0 gap-2 overflow-y-auto overscroll-contain rounded-md text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-2"
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-muted-foreground">Before</p>
-                  <pre className="whitespace-pre-wrap break-all">
+                <div className="min-w-0 rounded-md border border-border bg-background p-2">
+                  <p className="mb-1 font-medium text-muted-foreground">
+                    Before
+                  </p>
+                  <pre className="m-0 whitespace-pre-wrap rounded-none border-0 bg-transparent p-0 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">
                     {JSON.stringify(value, null, 2)}
                   </pre>
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium">After</p>
-                  <pre className="whitespace-pre-wrap break-all">
+                <div className="min-w-0 rounded-md border border-success bg-success-primary p-2">
+                  <p className="mb-1 font-medium text-success">After</p>
+                  <pre className="m-0 whitespace-pre-wrap rounded-none border-0 bg-transparent p-0 font-mono text-xs text-foreground [overflow-wrap:anywhere]">
                     {JSON.stringify(editedArgs[key], null, 2)}
                   </pre>
                 </div>

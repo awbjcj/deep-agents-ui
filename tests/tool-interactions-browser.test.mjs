@@ -155,9 +155,9 @@ test(
           .inputValue(),
         draft
       );
-      const single = page
-        .locator("main > div")
-        .filter({ has: page.getByText("update_ticket", { exact: true }) });
+      const single = page.getByRole("article", {
+        name: "Approval for update_ticket",
+      });
       await single.getByRole("button", { name: "Edit", exact: true }).click();
       const title = page.getByLabel("title (string)");
       const dimensions = (field) =>

@@ -9,7 +9,6 @@ import {
   X,
   Pencil,
   ChevronDown,
-  ChevronUp,
   CheckCircle2,
   XCircle,
   PencilLine,
@@ -33,7 +32,12 @@ interface ToolApprovalInterruptProps {
   onDecisionChange?: (decision: HumanDecision) => void;
   currentDecision?: HumanDecision;
   isLoading?: boolean;
+  /** Rendered inside a batch review, which already frames and titles the group. */
+  embedded?: boolean;
 }
+
+const SECTION_LABEL =
+  "text-xxs font-semibold uppercase tracking-wide text-muted-foreground";
 
 const DESCRIPTION_PROSE_OVERRIDES =
   "text-sm leading-6 [&_p]:!mb-2 [&_p:last-child]:!mb-0 [&_ul]:!my-2 [&_ol]:!my-2 " +
@@ -47,6 +51,7 @@ export function ToolApprovalInterrupt({
   onDecisionChange,
   currentDecision,
   isLoading,
+  embedded = false,
 }: ToolApprovalInterruptProps) {
   const [rejectionMessage, setRejectionMessage] = useState("");
   const [mode, setMode] = useState<"review" | "edit" | "reject">("review");
@@ -110,13 +115,13 @@ export function ToolApprovalInterrupt({
       case "approve":
         return {
           tone: "success" as const,
-          icon: <CheckCircle2 size={14} />,
+          icon: CheckCircle2,
           label: "Marked for approval",
         };
       case "reject":
         return {
           tone: "danger" as const,
-          icon: <XCircle size={14} />,
+          icon: XCircle,
           label: currentDecision.message?.trim()
             ? "Marked for rejection · note attached"
             : "Marked for rejection",
@@ -124,7 +129,7 @@ export function ToolApprovalInterrupt({
       case "edit":
         return {
           tone: "neutral" as const,
-          icon: <PencilLine size={14} />,
+          icon: PencilLine,
           label: "Edited action queued",
         };
       default:
@@ -195,273 +200,275 @@ export function ToolApprovalInterrupt({
     setDrafts({});
   };
 
+  const showDecision = decisionBanner && !isEditing && !showRejectionInput;
+  const DecisionIcon = decisionBanner?.icon;
+
   return (
-    <div
+    <article
+      aria-label={`Approval for ${actionRequest.name}`}
       className={cn(
-        "relative w-full min-w-0 overflow-hidden rounded-xl border shadow-sm",
-        "border-warning bg-card text-foreground",
-        "dark:shadow-none"
+        "w-full min-w-0 rounded-xl border p-3 text-foreground sm:p-4",
+        embedded ? "border-border bg-background" : "border-warning bg-card"
       )}
     >
-      <div
-        aria-hidden
-        className={cn("absolute inset-y-0 left-0 w-1", "bg-warning-strong")}
-      />
-
-      <div className="relative p-3 pl-4 sm:p-5 sm:pl-6">
-        {/* Header */}
-        <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <header className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+          {!embedded && (
             <span
-              className={cn(
-                "inline-flex size-8 shrink-0 items-center justify-center rounded-full",
-                "ring-warning bg-warning-primary text-warning ring-1"
-              )}
+              aria-hidden="true"
+              className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-warning-primary text-warning"
             >
               <ShieldAlert
-                aria-hidden="true"
                 size={15}
                 strokeWidth={2.25}
               />
             </span>
-            <div className="flex flex-col leading-tight">
-              <span
-                className={cn(
-                  "text-[10px] font-semibold uppercase tracking-[0.18em]",
-                  "text-warning"
-                )}
-              >
+          )}
+          <div className="flex min-w-0 flex-col gap-0.5">
+            {!embedded && (
+              <span className="text-sm font-semibold leading-5">
                 Approval required
               </span>
-              <span className="text-xs text-muted-foreground">
-                Review the call below and choose how to proceed
-              </span>
-            </div>
-          </div>
-          <code
-            className={cn(
-              "min-w-0 max-w-full break-words rounded-md border border-border bg-muted/40 px-2 py-1",
-              "font-mono text-[11px] font-medium text-foreground shadow-sm"
             )}
-            title={actionRequest.name}
-          >
-            {actionRequest.name}
-          </code>
+            <code
+              className={cn(
+                "w-fit min-w-0 max-w-full break-words font-mono [overflow-wrap:anywhere]",
+                embedded
+                  ? "text-sm font-semibold text-foreground"
+                  : "text-xs text-muted-foreground"
+              )}
+            >
+              {actionRequest.name}
+            </code>
+          </div>
+        </div>
+        <div
+          role="status"
+          aria-atomic="true"
+          className="shrink-0"
+        >
+          {showDecision && DecisionIcon ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                decisionBanner.tone === "success" &&
+                  "border-success bg-success-primary text-success",
+                decisionBanner.tone === "danger" &&
+                  "border-error bg-error-primary text-error",
+                decisionBanner.tone === "neutral" &&
+                  "border-border bg-muted text-muted-foreground"
+              )}
+            >
+              <DecisionIcon
+                aria-hidden="true"
+                size={13}
+              />
+              {decisionBanner.label}
+            </span>
+          ) : null}
+        </div>
+      </header>
+
+      {actionRequest.description ? (
+        <div className="mb-3 break-words text-foreground">
+          <MarkdownContent
+            content={actionRequest.description}
+            className={DESCRIPTION_PROSE_OVERRIDES}
+          />
+        </div>
+      ) : null}
+
+      <section
+        ref={argumentSection}
+        className="min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
+      >
+        <header
+          className={cn(
+            "flex min-h-touch items-center justify-between gap-2 px-3",
+            (isEditing || (argFieldCount > 0 && argsExpanded)) &&
+              "border-b border-border"
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={SECTION_LABEL}>
+              {isEditing
+                ? "Edit arguments"
+                : currentDecision?.type === "edit"
+                ? "Edited arguments"
+                : "Arguments"}
+            </span>
+            <span className="font-mono text-xxs text-muted-foreground">
+              {argFieldCount} field{argFieldCount === 1 ? "" : "s"}
+            </span>
+          </div>
+          {!isEditing && argFieldCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setArgsExpanded((v) => !v)}
+              aria-expanded={argsExpanded}
+              aria-controls={argsId}
+              aria-label={argsExpanded ? "Hide arguments" : "Show arguments"}
+              className="-mr-1.5 inline-flex min-h-touch shrink-0 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+            >
+              {argsExpanded ? "Hide" : "Show"}
+              <ChevronDown
+                aria-hidden="true"
+                size={13}
+                className={cn(
+                  "transition-transform duration-150 motion-reduce:transition-none",
+                  argsExpanded && "rotate-180"
+                )}
+              />
+            </button>
+          )}
         </header>
 
-        {/* Markdown description */}
-        {actionRequest.description ? (
-          <div
-            className={cn(
-              "mb-4 break-words rounded-lg border border-border bg-muted/30 p-3 text-foreground sm:p-4"
-            )}
+        {isEditing ? (
+          <ApprovalArgumentEditor
+            original={actionRequest.args}
+            drafts={drafts}
+            editedArgs={editedArgs}
+            fieldErrors={fieldErrors}
+            fieldPrefix={fieldPrefix}
+            onDraftChange={(key, value) =>
+              setDrafts((previous) => ({ ...previous, [key]: value }))
+            }
+            isLoading={isLoading}
+          />
+        ) : argFieldCount > 0 ? (
+          <pre
+            id={argsId}
+            role="region"
+            aria-label="Action arguments"
+            tabIndex={0}
+            hidden={!argsExpanded}
+            className="m-0 max-h-64 overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-none border-0 bg-transparent p-3 font-mono text-xs leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <MarkdownContent
-              content={actionRequest.description}
-              className={DESCRIPTION_PROSE_OVERRIDES}
-            />
-          </div>
+            {argsAsJson}
+          </pre>
         ) : null}
+      </section>
 
-        {/* Decision chip */}
-        {decisionBanner && !isEditing && !showRejectionInput && (
-          <div
-            role="status"
-            className={cn(
-              "mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium",
-              decisionBanner.tone === "success" &&
-                "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
-              decisionBanner.tone === "danger" &&
-                "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300",
-              decisionBanner.tone === "neutral" &&
-                "bg-muted text-muted-foreground"
-            )}
+      {showRejectionInput && !isEditing && (
+        <div className="mt-3 space-y-1.5">
+          <label
+            htmlFor={noteId}
+            className="block text-xs font-medium text-foreground"
           >
-            {decisionBanner.icon}
-            <span>{decisionBanner.label}</span>
-          </div>
-        )}
-
-        {/* Arguments / Edit form */}
-        <section
-          ref={argumentSection}
-          className="min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30 text-foreground"
-        >
-          <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-1 sm:px-4">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {isEditing
-                  ? "Edit arguments"
-                  : currentDecision?.type === "edit"
-                  ? "Edited arguments"
-                  : "Arguments"}
-              </span>
-              <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
-                {argFieldCount} field{argFieldCount === 1 ? "" : "s"}
-              </span>
-            </div>
-            {!isEditing && argFieldCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setArgsExpanded((v) => !v)}
-                aria-expanded={argsExpanded}
-                aria-controls={argsId}
-                aria-label={argsExpanded ? "Hide arguments" : "Show arguments"}
-                className="inline-flex min-h-touch shrink-0 items-center gap-1 rounded px-1 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {argsExpanded ? "Hide" : "Show"}
-                {argsExpanded ? (
-                  <ChevronUp size={12} />
-                ) : (
-                  <ChevronDown size={12} />
-                )}
-              </button>
-            )}
-          </header>
-
-          {isEditing ? (
-            <ApprovalArgumentEditor
-              original={actionRequest.args}
-              drafts={drafts}
-              editedArgs={editedArgs}
-              fieldErrors={fieldErrors}
-              fieldPrefix={fieldPrefix}
-              onDraftChange={(key, value) =>
-                setDrafts((previous) => ({ ...previous, [key]: value }))
-              }
-              isLoading={isLoading}
-            />
-          ) : argFieldCount > 0 ? (
-            <pre
-              id={argsId}
-              role="region"
-              aria-label="Action arguments"
-              tabIndex={0}
-              hidden={!argsExpanded}
-              className="max-h-64 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            >
-              {argsAsJson}
-            </pre>
-          ) : null}
-        </section>
-
-        {/* Rejection note input */}
-        {showRejectionInput && !isEditing && (
-          <div
-            className={cn(
-              "mt-4 rounded-lg border p-3",
-              "border-red-200/70 bg-red-50/60",
-              "dark:border-red-500/20 dark:bg-red-500/5"
-            )}
+            Why are you rejecting this?{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </label>
+          <Textarea
+            id={noteId}
+            ref={rejectionNote}
+            value={rejectionMessage}
+            onChange={(e) => setRejectionMessage(e.target.value)}
+            aria-describedby={`${noteId}-hint`}
+            className="min-h-[4.5rem] text-sm focus-visible:ring-destructive/40"
+            rows={2}
+            disabled={isLoading}
+          />
+          <p
+            id={`${noteId}-hint`}
+            className="text-xs text-muted-foreground"
           >
-            <label
-              htmlFor={noteId}
-              className="mb-1.5 block text-xs font-medium text-red-700 dark:text-red-300"
-            >
-              Why are you rejecting this?
-            </label>
-            <Textarea
-              id={noteId}
-              ref={rejectionNote}
-              value={rejectionMessage}
-              onChange={(e) => setRejectionMessage(e.target.value)}
-              placeholder="Optional note explaining why. The agent will see it."
-              className="text-sm"
-              rows={2}
+            The agent receives this note with the rejection.
+          </p>
+        </div>
+      )}
+
+      <footer className="mt-3 flex flex-wrap items-center justify-end gap-2">
+        {isEditing ? (
+          <>
+            <Button
+              variant="outline"
+              size="default"
+              ref={cancelButton}
+              onClick={cancelEditing}
               disabled={isLoading}
-            />
-          </div>
-        )}
-
-        {/* Actions */}
-        <footer className="mt-4 flex flex-wrap items-center justify-end gap-2">
-          {isEditing ? (
-            <>
+            >
+              Cancel
+            </Button>
+            <Button
+              size="default"
+              className="max-sm:grow"
+              onClick={handleEdit}
+              disabled={isLoading || hasErrors}
+            >
+              <Check size={14} />
+              {isLoading
+                ? "Saving..."
+                : onDecisionChange
+                ? "Mark edited action"
+                : "Save & approve"}
+            </Button>
+          </>
+        ) : showRejectionInput ? (
+          <>
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => {
+                setMode("review");
+                setRejectionMessage("");
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="default"
+              className="max-sm:grow"
+              onClick={handleRejectConfirm}
+              disabled={isLoading}
+            >
+              {isLoading ? "Rejecting..." : "Confirm reject"}
+            </Button>
+          </>
+        ) : (
+          <>
+            {allowedDecisions.includes("reject") && (
               <Button
                 variant="outline"
                 size="default"
-                ref={cancelButton}
-                onClick={cancelEditing}
+                ref={rejectTrigger}
+                onClick={handleReject}
+                disabled={isLoading}
+                className="text-error hover:border-error hover:bg-error-primary hover:text-error"
+              >
+                <X size={14} />
+                Reject
+              </Button>
+            )}
+            {allowedDecisions.includes("edit") && (
+              <Button
+                variant="outline"
+                size="default"
+                ref={editTrigger}
+                onClick={startEditing}
                 disabled={isLoading}
               >
-                Cancel
+                <Pencil size={14} />
+                Edit
               </Button>
+            )}
+            {allowedDecisions.includes("approve") && (
               <Button
                 size="default"
-                onClick={handleEdit}
-                disabled={isLoading || hasErrors}
+                className="max-sm:grow"
+                onClick={handleApprove}
+                disabled={isLoading}
               >
                 <Check size={14} />
-                {isLoading
-                  ? "Saving..."
-                  : onDecisionChange
-                  ? "Mark edited action"
-                  : "Save & approve"}
+                {isLoading ? "Approving..." : "Approve"}
               </Button>
-            </>
-          ) : showRejectionInput ? (
-            <>
-              <Button
-                variant="outline"
-                size="default"
-                onClick={() => {
-                  setMode("review");
-                  setRejectionMessage("");
-                }}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                size="default"
-                onClick={handleRejectConfirm}
-                disabled={isLoading}
-              >
-                {isLoading ? "Rejecting..." : "Confirm reject"}
-              </Button>
-            </>
-          ) : (
-            <>
-              {allowedDecisions.includes("reject") && (
-                <Button
-                  variant="outline"
-                  size="default"
-                  ref={rejectTrigger}
-                  onClick={handleReject}
-                  disabled={isLoading}
-                  className="text-destructive hover:bg-destructive/10"
-                >
-                  <X size={14} />
-                  Reject
-                </Button>
-              )}
-              {allowedDecisions.includes("edit") && (
-                <Button
-                  variant="outline"
-                  size="default"
-                  ref={editTrigger}
-                  onClick={startEditing}
-                  disabled={isLoading}
-                >
-                  <Pencil size={14} />
-                  Edit
-                </Button>
-              )}
-              {allowedDecisions.includes("approve") && (
-                <Button
-                  size="default"
-                  onClick={handleApprove}
-                  disabled={isLoading}
-                >
-                  <Check size={14} />
-                  {isLoading ? "Approving..." : "Approve"}
-                </Button>
-              )}
-            </>
-          )}
-        </footer>
-      </div>
-    </div>
+            )}
+          </>
+        )}
+      </footer>
+    </article>
   );
 }

@@ -8,7 +8,7 @@ import React, {
   useRef,
   useId,
 } from "react";
-import { ChevronDown, ChevronUp, Wrench } from "lucide-react";
+import { ChevronDown, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
@@ -252,7 +252,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
             >
               <Wrench className="size-3.5" />
             </span>
-            <span className="min-w-0 break-words font-mono text-[13px] font-medium text-foreground [overflow-wrap:anywhere]">
+            <span className="min-w-0 break-words font-mono text-sm font-medium text-foreground [overflow-wrap:anywhere]">
               {name}
             </span>
           </div>
@@ -331,35 +331,32 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 {resultView}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
-                    <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <h4 className="mb-1.5 text-xxs font-semibold uppercase tracking-wide text-muted-foreground">
                       Arguments
                     </h4>
                     <div className="space-y-2">
                       {Object.entries(args).map(([key, value]) => (
                         <div
                           key={key}
-                          className="rounded-sm border border-border"
+                          className="overflow-hidden rounded-md border border-border"
                         >
                           <button
                             type="button"
                             onClick={() => toggleArgExpanded(key)}
                             aria-expanded={!!expandedArgs[key]}
-                            className="flex min-h-touch w-full items-center justify-between bg-muted/30 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
+                            className="flex min-h-touch w-full items-center justify-between gap-2 bg-muted/30 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
                           >
-                            <span className="font-mono">{key}</span>
-                            {expandedArgs[key] ? (
-                              <ChevronUp
-                                aria-hidden="true"
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                            ) : (
-                              <ChevronDown
-                                aria-hidden="true"
-                                size={12}
-                                className="text-muted-foreground"
-                              />
-                            )}
+                            <span className="min-w-0 break-words font-mono [overflow-wrap:anywhere]">
+                              {key}
+                            </span>
+                            <ChevronDown
+                              aria-hidden="true"
+                              size={13}
+                              className={cn(
+                                "shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none",
+                                expandedArgs[key] && "rotate-180"
+                              )}
+                            />
                           </button>
                           {expandedArgs[key] && (
                             <div className="border-t border-border bg-muted/20 p-2">
