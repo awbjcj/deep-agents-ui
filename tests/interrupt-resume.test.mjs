@@ -84,7 +84,6 @@ test("same-named rendered writes advance by ID with fresh controls and deny stal
   const h = approvalHarness(sameNamedWrites);
   const first = h.renderSelected();
   assert.equal(first.interrupt.id, "first-write");
-  assert.equal(first.panel.key, "first-write");
   assert.match(
     first.html,
     /Create the <strong>first<\/strong> reviewed ticket/
@@ -104,7 +103,6 @@ test("same-named rendered writes advance by ID with fresh controls and deny stal
   h.respondWith([sameNamedWrites[1]]);
   const second = h.renderSelected();
   assert.equal(second.interrupt.id, "second-write");
-  assert.equal(second.panel.key, "second-write");
   assert.notEqual(second.panel.key, first.panel.key);
   assert.match(
     second.html,
@@ -175,7 +173,13 @@ test("the selected multi-action search interrupt renders the real ordered batch 
   const rendered = h.renderSelected();
   assert.ok(isValidElement(rendered.panel));
   assert.equal(rendered.panel.type, BatchToolApprovalInterrupt);
-  assert.equal(rendered.panel.key, "search-batch");
+  h.respondWith([structuredClone(batchInterrupt)]);
+  assert.equal(h.renderSelected().panel.key, rendered.panel.key);
+  const updated = structuredClone(batchInterrupt);
+  updated.value.action_requests[0].args.jql = "project = NEW";
+  h.respondWith([updated]);
+  assert.notEqual(h.renderSelected().panel.key, rendered.panel.key);
+  h.respondWith([batchInterrupt]);
   assert.match(rendered.html, /Review pending actions/);
   assert.match(rendered.html, /0 of 2 reviewed/);
   assert.ok(

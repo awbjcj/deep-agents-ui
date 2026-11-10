@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
 import type {
@@ -27,16 +27,10 @@ export function BatchToolApprovalInterrupt({
   onResume,
   isLoading,
 }: BatchToolApprovalInterruptProps) {
-  const [decisions, setDecisions] = useState<Array<HumanDecision | null>>([]);
-
-  useEffect(() => {
-    setDecisions(actionRequests.map(() => null));
-  }, [actionRequests]);
-
-  const reviewedDecisions = useMemo(
-    () => decisions.filter(isHumanDecision),
-    [decisions]
+  const [decisions, setDecisions] = useState<Array<HumanDecision | null>>(() =>
+    actionRequests.map(() => null)
   );
+  const reviewedDecisions = decisions.filter(isHumanDecision);
   const reviewedCount = reviewedDecisions.length;
   const canSubmit =
     actionRequests.length > 0 && reviewedCount === actionRequests.length;
@@ -53,7 +47,7 @@ export function BatchToolApprovalInterrupt({
   );
 
   const handleSubmit = () => {
-    if (!canSubmit) {
+    if (!canSubmit || isLoading) {
       return;
     }
 
@@ -61,8 +55,8 @@ export function BatchToolApprovalInterrupt({
   };
 
   return (
-    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-warning bg-card p-5 text-foreground shadow-sm dark:shadow-none">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="mt-4 flex w-full min-w-0 flex-col gap-3 rounded-xl border border-warning bg-card p-2 text-foreground shadow-sm dark:shadow-none sm:gap-4 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <h3 className="text-sm font-semibold tracking-tight text-foreground">
           Review pending actions
         </h3>

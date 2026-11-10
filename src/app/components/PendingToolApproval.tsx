@@ -32,8 +32,13 @@ export function PendingToolApproval({
     return null;
   }
 
-  const interruptId = interrupt?.id;
   const actionRequests = value.action_requests;
+  // Keep review drafts across refreshed copies of the same pending interrupt.
+  const reviewKey = JSON.stringify([
+    interrupt?.id,
+    actionRequests,
+    value.review_configs,
+  ]);
   const reviewConfigsMap = new Map<string, ReviewConfig>(
     (Array.isArray(value.review_configs) ? value.review_configs : [])
       .map((rawConfig: RawReviewConfig) => {
@@ -57,7 +62,7 @@ export function PendingToolApproval({
   if (actionRequests.length > 1) {
     return (
       <BatchToolApprovalInterrupt
-        key={interruptId}
+        key={reviewKey}
         actionRequests={actionRequests}
         reviewConfigsMap={reviewConfigsMap}
         onResume={onResume}
@@ -73,7 +78,7 @@ export function PendingToolApproval({
 
   return (
     <div
-      key={interruptId}
+      key={reviewKey}
       className="mt-4 flex w-full flex-col gap-3"
     >
       <ToolApprovalInterrupt

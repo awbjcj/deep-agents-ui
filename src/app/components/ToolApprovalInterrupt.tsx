@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentProps,
-} from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -31,6 +23,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 
+import { ApprovalArgumentEditor } from "./ApprovalArgumentEditor";
 import { argumentDrafts, parseArgumentDrafts } from "@/lib/approval-fields";
 
 interface ToolApprovalInterruptProps {
@@ -47,56 +40,6 @@ const DESCRIPTION_PROSE_OVERRIDES =
   "[&_pre]:!my-2 [&_pre]:!rounded-md [&_h1]:!text-base [&_h2]:!text-sm [&_h3]:!text-sm " +
   "[&_h1]:!mt-0 [&_h2]:!mt-0 [&_h3]:!mt-0 [&_h1]:!mb-2 [&_h2]:!mb-2 [&_h3]:!mb-2";
 
-const ARGS_PROSE_OVERRIDES =
-  "text-xs [&_pre]:!my-0 [&_pre]:!rounded-md [&_pre]:!border-0";
-
-function resizeArgumentTextarea(textarea: HTMLTextAreaElement) {
-  const scrollTop = textarea.scrollTop;
-  textarea.style.height = "auto";
-  textarea.style.overflowY = "hidden";
-  const borderHeight = textarea.offsetHeight - textarea.clientHeight;
-  textarea.style.height = `${textarea.scrollHeight + borderHeight}px`;
-  textarea.style.overflowY = "";
-  textarea.scrollTop = scrollTop;
-}
-
-function ArgumentTextarea({
-  value,
-  ...props
-}: Omit<ComponentProps<typeof Textarea>, "ref">) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useLayoutEffect(() => {
-    if (ref.current) resizeArgumentTextarea(ref.current);
-  }, [value]);
-
-  useEffect(() => {
-    const textarea = ref.current;
-    if (!textarea) return;
-
-    let width = textarea.getBoundingClientRect().width;
-    const observer = new ResizeObserver(([entry]) => {
-      // Height changes also trigger the observer. Remeasure only when text can rewrap.
-      const nextWidth = entry.borderBoxSize[0].inlineSize;
-      if (nextWidth === width) return;
-      width = nextWidth;
-      resizeArgumentTextarea(textarea);
-    });
-    observer.observe(textarea, { box: "border-box" });
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <Textarea
-      {...props}
-      ref={ref}
-      value={value}
-      rows={2}
-      className="max-h-[min(24rem,50dvh)] resize-none overflow-y-auto font-mono text-sm"
-    />
-  );
-}
-
 export function ToolApprovalInterrupt({
   actionRequest,
   reviewConfig,
@@ -106,7 +49,15 @@ export function ToolApprovalInterrupt({
   isLoading,
 }: ToolApprovalInterruptProps) {
   const [rejectionMessage, setRejectionMessage] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
+  const [mode, setMode] = useState<"review" | "edit" | "reject">("review");
+  const isEditing = mode === "edit";
+  const showRejectionInput = mode === "reject";
+  const previousMode = useRef(mode);
+  const editTrigger = useRef<HTMLButtonElement>(null);
+  const rejectTrigger = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
+  const rejectionNote = useRef<HTMLTextAreaElement>(null);
+  const argumentSection = useRef<HTMLElement>(null);
   const fieldPrefix = useId();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const { args: editedArgs, errors: fieldErrors } = useMemo(
@@ -114,7 +65,6 @@ export function ToolApprovalInterrupt({
     [actionRequest.args, drafts]
   );
   const hasErrors = Object.keys(fieldErrors).length > 0;
-  const [showRejectionInput, setShowRejectionInput] = useState(false);
   const [argsExpanded, setArgsExpanded] = useState(true);
 
   const allowedDecisions = reviewConfig?.allowedDecisions ?? [
@@ -123,27 +73,33 @@ export function ToolApprovalInterrupt({
     "edit",
   ];
 
-  useEffect(() => {
-    if (currentDecision?.type === "reject") {
-      setRejectionMessage(currentDecision.message ?? "");
-      return;
+  useLayoutEffect(() => {
+    const from = previousMode.current;
+    if (mode === from) return;
+    previousMode.current = mode;
+    if (mode === "edit") {
+      const firstField = argumentSection.current?.querySelector<HTMLElement>(
+        "textarea:not(:disabled), select:not(:disabled)"
+      );
+      (firstField ?? cancelButton.current)?.focus();
+    } else if (mode === "reject") {
+      rejectionNote.current?.focus();
+    } else {
+      (from === "edit" ? editTrigger : rejectTrigger).current?.focus();
     }
+  }, [mode]);
 
-    if (currentDecision?.type === "edit") {
-      setDrafts(argumentDrafts(currentDecision.edited_action.args));
-    }
-  }, [currentDecision]);
-
-  const argFieldCount = useMemo(
-    () => Object.keys(actionRequest.args ?? {}).length,
-    [actionRequest.args]
+  const reviewArgs =
+    currentDecision?.type === "edit"
+      ? currentDecision.edited_action.args
+      : actionRequest.args;
+  const argFieldCount = Object.keys(reviewArgs).length;
+  const argsAsJson = useMemo(
+    () => JSON.stringify(reviewArgs, null, 2),
+    [reviewArgs]
   );
-
-  const argsAsMarkdown = useMemo(
-    () =>
-      "```json\n" + JSON.stringify(actionRequest.args ?? {}, null, 2) + "\n```",
-    [actionRequest.args]
-  );
+  const argsId = fieldPrefix + "-arguments";
+  const noteId = fieldPrefix + "-rejection";
 
   const decisionBanner = useMemo(() => {
     if (!currentDecision) {
@@ -187,18 +143,14 @@ export function ToolApprovalInterrupt({
   };
 
   const handleApprove = () => {
-    setShowRejectionInput(false);
-    setIsEditing(false);
     emitDecision({ type: "approve" });
   };
 
   const handleReject = () => {
-    if (showRejectionInput) {
-      handleRejectConfirm();
-    } else {
-      setIsEditing(false);
-      setShowRejectionInput(true);
-    }
+    setRejectionMessage(
+      currentDecision?.type === "reject" ? currentDecision.message ?? "" : ""
+    );
+    setMode("reject");
   };
 
   const handleRejectConfirm = () => {
@@ -206,7 +158,7 @@ export function ToolApprovalInterrupt({
       type: "reject",
       message: rejectionMessage.trim() || undefined,
     });
-    setShowRejectionInput(false);
+    setMode("review");
   };
 
   const handleEdit = () => {
@@ -223,12 +175,12 @@ export function ToolApprovalInterrupt({
           args: editedArgs,
         },
       });
-      setIsEditing(false);
+      setMode("review");
     }
   };
 
   const startEditing = () => {
-    setIsEditing(true);
+    setMode("edit");
     setDrafts(
       argumentDrafts(
         currentDecision?.type === "edit"
@@ -236,20 +188,19 @@ export function ToolApprovalInterrupt({
           : actionRequest.args
       )
     );
-    setShowRejectionInput(false);
   };
 
   const cancelEditing = () => {
-    setIsEditing(false);
+    setMode("review");
     setDrafts({});
   };
 
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-xl border shadow-sm transition-shadow",
+        "relative w-full min-w-0 overflow-hidden rounded-xl border shadow-sm",
         "border-warning bg-card text-foreground",
-        "hover:shadow-md dark:shadow-none"
+        "dark:shadow-none"
       )}
     >
       <div
@@ -257,23 +208,19 @@ export function ToolApprovalInterrupt({
         className={cn("absolute inset-y-0 left-0 w-1", "bg-warning-strong")}
       />
 
-      <div className="relative p-5 pl-6">
+      <div className="relative p-3 pl-4 sm:p-5 sm:pl-6">
         {/* Header */}
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span
               className={cn(
-                "relative inline-flex h-8 w-8 items-center justify-center rounded-full",
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-full",
                 "ring-warning bg-warning-primary text-warning ring-1"
               )}
             >
-              <span
-                aria-hidden
-                className="bg-warning-strong/25 absolute inset-0 animate-ping rounded-full opacity-60 motion-reduce:animate-none"
-              />
               <ShieldAlert
+                aria-hidden="true"
                 size={15}
-                className="relative"
                 strokeWidth={2.25}
               />
             </span>
@@ -293,7 +240,7 @@ export function ToolApprovalInterrupt({
           </div>
           <code
             className={cn(
-              "rounded-md border border-border bg-muted/40 px-2 py-1",
+              "min-w-0 max-w-full break-words rounded-md border border-border bg-muted/40 px-2 py-1",
               "font-mono text-[11px] font-medium text-foreground shadow-sm"
             )}
             title={actionRequest.name}
@@ -306,7 +253,7 @@ export function ToolApprovalInterrupt({
         {actionRequest.description ? (
           <div
             className={cn(
-              "mb-4 rounded-lg border border-border bg-muted/30 p-4 text-foreground"
+              "mb-4 break-words rounded-lg border border-border bg-muted/30 p-3 text-foreground sm:p-4"
             )}
           >
             <MarkdownContent
@@ -319,6 +266,7 @@ export function ToolApprovalInterrupt({
         {/* Decision chip */}
         {decisionBanner && !isEditing && !showRejectionInput && (
           <div
+            role="status"
             className={cn(
               "mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium",
               decisionBanner.tone === "success" &&
@@ -335,11 +283,18 @@ export function ToolApprovalInterrupt({
         )}
 
         {/* Arguments / Edit form */}
-        <section className="overflow-hidden rounded-lg border border-border bg-muted/30 text-foreground">
-          <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-4 py-2">
+        <section
+          ref={argumentSection}
+          className="min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30 text-foreground"
+        >
+          <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-1 sm:px-4">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {isEditing ? "Edit arguments" : "Arguments"}
+                {isEditing
+                  ? "Edit arguments"
+                  : currentDecision?.type === "edit"
+                  ? "Edited arguments"
+                  : "Arguments"}
               </span>
               <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
                 {argFieldCount} field{argFieldCount === 1 ? "" : "s"}
@@ -349,7 +304,10 @@ export function ToolApprovalInterrupt({
               <button
                 type="button"
                 onClick={() => setArgsExpanded((v) => !v)}
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                aria-expanded={argsExpanded}
+                aria-controls={argsId}
+                aria-label={argsExpanded ? "Hide arguments" : "Show arguments"}
+                className="inline-flex min-h-touch shrink-0 items-center gap-1 rounded px-1 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {argsExpanded ? "Hide" : "Show"}
                 {argsExpanded ? (
@@ -362,108 +320,28 @@ export function ToolApprovalInterrupt({
           </header>
 
           {isEditing ? (
-            <div className="space-y-3 p-4">
-              {Object.entries(actionRequest.args).map(([key, value], index) => {
-                const id = `${fieldPrefix}-${index}`;
-                const changed =
-                  !fieldErrors[key] &&
-                  JSON.stringify(value) !== JSON.stringify(editedArgs[key]);
-                return (
-                  <div
-                    key={key}
-                    className="space-y-2"
-                  >
-                    <label
-                      htmlFor={id}
-                      className="block text-xs font-medium"
-                    >
-                      {key}{" "}
-                      <span className="text-muted-foreground">
-                        (
-                        {value === null
-                          ? "null"
-                          : Array.isArray(value)
-                          ? "array"
-                          : typeof value}
-                        )
-                      </span>
-                    </label>
-                    {typeof value === "boolean" ? (
-                      <select
-                        id={id}
-                        value={drafts[key] ?? String(value)}
-                        onChange={(event) =>
-                          setDrafts((previous) => ({
-                            ...previous,
-                            [key]: event.target.value,
-                          }))
-                        }
-                        disabled={isLoading}
-                        className="rounded-md border border-border bg-background p-2 text-sm"
-                      >
-                        <option value="true">True</option>
-                        <option value="false">False</option>
-                      </select>
-                    ) : (
-                      <ArgumentTextarea
-                        id={id}
-                        value={drafts[key] ?? ""}
-                        onChange={(event) =>
-                          setDrafts((previous) => ({
-                            ...previous,
-                            [key]: event.target.value,
-                          }))
-                        }
-                        aria-invalid={!!fieldErrors[key]}
-                        aria-describedby={
-                          fieldErrors[key] ? `${id}-error` : undefined
-                        }
-                        disabled={isLoading}
-                      />
-                    )}
-                    {fieldErrors[key] && (
-                      <p
-                        id={`${id}-error`}
-                        role="alert"
-                        className="text-xs text-destructive"
-                      >
-                        {fieldErrors[key]}
-                      </p>
-                    )}
-                    {changed && (
-                      <div
-                        role="region"
-                        aria-label={`Changes to ${key}`}
-                        tabIndex={0}
-                        className="grid max-h-36 min-w-0 gap-2 overflow-y-auto rounded-sm text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-2"
-                      >
-                        <div>
-                          <p className="font-medium text-muted-foreground">
-                            Before
-                          </p>
-                          <pre className="whitespace-pre-wrap break-all">
-                            {JSON.stringify(value, null, 2)}
-                          </pre>
-                        </div>
-                        <div>
-                          <p className="font-medium">After</p>
-                          <pre className="whitespace-pre-wrap break-all">
-                            {JSON.stringify(editedArgs[key], null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : argsExpanded && argFieldCount > 0 ? (
-            <div className="px-2 py-1">
-              <MarkdownContent
-                content={argsAsMarkdown}
-                className={ARGS_PROSE_OVERRIDES}
-              />
-            </div>
+            <ApprovalArgumentEditor
+              original={actionRequest.args}
+              drafts={drafts}
+              editedArgs={editedArgs}
+              fieldErrors={fieldErrors}
+              fieldPrefix={fieldPrefix}
+              onDraftChange={(key, value) =>
+                setDrafts((previous) => ({ ...previous, [key]: value }))
+              }
+              isLoading={isLoading}
+            />
+          ) : argFieldCount > 0 ? (
+            <pre
+              id={argsId}
+              role="region"
+              aria-label="Action arguments"
+              tabIndex={0}
+              hidden={!argsExpanded}
+              className="max-h-64 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              {argsAsJson}
+            </pre>
           ) : null}
         </section>
 
@@ -476,10 +354,15 @@ export function ToolApprovalInterrupt({
               "dark:border-red-500/20 dark:bg-red-500/5"
             )}
           >
-            <label className="mb-1.5 block text-[11px] font-medium text-red-700 dark:text-red-300">
+            <label
+              htmlFor={noteId}
+              className="mb-1.5 block text-xs font-medium text-red-700 dark:text-red-300"
+            >
               Why are you rejecting this?
             </label>
             <Textarea
+              id={noteId}
+              ref={rejectionNote}
               value={rejectionMessage}
               onChange={(e) => setRejectionMessage(e.target.value)}
               placeholder="Optional note — the agent will see this explanation..."
@@ -496,17 +379,17 @@ export function ToolApprovalInterrupt({
             <>
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
+                ref={cancelButton}
                 onClick={cancelEditing}
                 disabled={isLoading}
               >
                 Cancel
               </Button>
               <Button
-                size="sm"
+                size="default"
                 onClick={handleEdit}
                 disabled={isLoading || hasErrors}
-                className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
               >
                 <Check size={14} />
                 {isLoading
@@ -520,9 +403,9 @@ export function ToolApprovalInterrupt({
             <>
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => {
-                  setShowRejectionInput(false);
+                  setMode("review");
                   setRejectionMessage("");
                 }}
                 disabled={isLoading}
@@ -531,7 +414,7 @@ export function ToolApprovalInterrupt({
               </Button>
               <Button
                 variant="destructive"
-                size="sm"
+                size="default"
                 onClick={handleRejectConfirm}
                 disabled={isLoading}
               >
@@ -543,7 +426,8 @@ export function ToolApprovalInterrupt({
               {allowedDecisions.includes("reject") && (
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="default"
+                  ref={rejectTrigger}
                   onClick={handleReject}
                   disabled={isLoading}
                   className="text-destructive hover:bg-destructive/10"
@@ -555,7 +439,8 @@ export function ToolApprovalInterrupt({
               {allowedDecisions.includes("edit") && (
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="default"
+                  ref={editTrigger}
                   onClick={startEditing}
                   disabled={isLoading}
                 >
@@ -565,13 +450,9 @@ export function ToolApprovalInterrupt({
               )}
               {allowedDecisions.includes("approve") && (
                 <Button
-                  size="sm"
+                  size="default"
                   onClick={handleApprove}
                   disabled={isLoading}
-                  className={cn(
-                    "bg-green-600 text-white hover:bg-green-700",
-                    "dark:bg-green-600 dark:hover:bg-green-700"
-                  )}
                 >
                   <Check size={14} />
                   {isLoading ? "Approving..." : "Approve"}

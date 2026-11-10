@@ -24,8 +24,22 @@ test(
     import { createRoot } from 'react-dom/client';
     import { ToolEvidenceCards } from './src/app/components/ToolEvidenceCards';
     import { ToolApprovalInterrupt } from './src/app/components/ToolApprovalInterrupt';
+    import { PendingToolApproval } from './src/app/components/PendingToolApproval';
     import { ChatComposer } from './src/app/components/ChatComposer';
     const items = [{ id: '1', title: 'Design notes', excerpt: 'A source excerpt', metadata: 'source_type: confluence', url: 'https://example.com/page' }, { id: '2', title: 'Ticket summary', excerpt: 'Another source', metadata: 'key: TEST-42' }];
+    const longTool = 'update_' + 'long_action_name_'.repeat(8);
+    function ReviewFixture() {
+      const [interruptId, setInterruptId] = React.useState('first');
+      const [, refresh] = React.useReducer((n) => n + 1, 0);
+      return <section aria-label="Batch fixture">
+        <button type="button" onClick={refresh}>Refresh approval</button>
+        <button type="button" onClick={() => setInterruptId('second')}>Replace approval</button>
+        <PendingToolApproval interrupt={{ id: interruptId, value: { action_requests: [
+          { name: longTool, args: { message: 'original' } },
+          { name: 'add_chat_member', args: { member: 'x'.repeat(2048) } },
+        ] } }} onResume={(value) => window.batchSubmission = value} />
+      </section>;
+    }
     function Fixture() {
       const [request, setRequest] = React.useState(null);
       const [thread, setThread] = React.useState('one');
@@ -35,6 +49,7 @@ test(
       const consume = React.useCallback(() => setRequest(null), []);
       return <main className="mx-auto max-w-[960px] p-4"><ToolEvidenceCards items={items} onUseEvidence={(text) => setRequest({ text, threadId: thread })} /><ChatComposer assistant={{ assistant_id: 'test' }} isLoading={false} files={{}} sourceImageAttachments={{}} sendMessage={(text) => window.sent = text} stopStream={() => {}} ensureThreadId={async () => { setThread('created'); return 'created'; }} evidenceRequest={request} onEvidenceConsumed={consume} />
         <ToolApprovalInterrupt actionRequest={{ name: 'update_ticket', args: { title: Array.from({ length: 8 }, (_, index) => 'Original line ' + index).join('\\n'), count: 2, enabled: true, options: { status: 'open' } } }} onResume={(value) => window.submission = value} />
+        <ReviewFixture />
       </main>;
     }
     createRoot(document.getElementById('root')).render(<Fixture />);
@@ -91,7 +106,10 @@ test(
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
     try {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 1000 },
@@ -137,7 +155,10 @@ test(
           .inputValue(),
         draft
       );
-      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      const single = page
+        .locator("main > div")
+        .filter({ has: page.getByText("update_ticket", { exact: true }) });
+      await single.getByRole("button", { name: "Edit", exact: true }).click();
       const title = page.getByLabel("title (string)");
       const dimensions = (field) =>
         field.evaluate((node) => ({
@@ -145,6 +166,10 @@ test(
           clientHeight: node.clientHeight,
           scrollHeight: node.scrollHeight,
         }));
+      assert.equal(
+        await title.evaluate((node) => node === document.activeElement),
+        true
+      );
       const prefilled = await dimensions(title);
       assert.equal(prefilled.scrollHeight, prefilled.clientHeight);
 
@@ -215,17 +240,7 @@ test(
       );
       await page.getByLabel("options (object)").fill('{"status":"closed"}');
       await title.fill('{"literal":true}');
-      const evidenceDir = join(ROOT, "docs", "evidence", "tool-interactions");
-      await mkdir(evidenceDir, { recursive: true });
-      await page.screenshot({
-        path: join(evidenceDir, "desktop.png"),
-        fullPage: true,
-      });
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.screenshot({
-        path: join(evidenceDir, "mobile.png"),
-        fullPage: true,
-      });
       assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth
@@ -263,6 +278,84 @@ test(
           .getByRole("textbox", { name: "Message", exact: true })
           .inputValue(),
         "New conversation with attachments"
+      );
+      const batch = page.getByRole("region", { name: "Batch fixture" });
+      const first = batch.getByRole("listitem").first();
+      const last = batch.getByRole("listitem").last();
+      const reject = last.getByRole("button", { name: "Reject", exact: true });
+      const args = last.getByRole("region", { name: "Action arguments" });
+      for (const width of [320, 768, 1024, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        assert.equal(
+          await batch.evaluate((node) => node.scrollWidth <= node.clientWidth),
+          true
+        );
+        assert.equal(
+          await args.evaluate((node) => node.scrollWidth <= node.clientWidth),
+          true
+        );
+      }
+      const evidence = process.env.TOOL_INTERACTIONS_EVIDENCE;
+      if (evidence) {
+        await mkdir(evidence, { recursive: true });
+        for (const width of [320, 1440]) {
+          await page.setViewportSize({ width, height: 900 });
+          await batch.getByRole("list").screenshot({
+            path: join(evidence, `approval-${width}.png`),
+          });
+        }
+      }
+      const disclosure = last.getByRole("button", { name: "Hide arguments" });
+      await disclosure.press("Enter");
+      assert.equal(
+        await last
+          .getByRole("button", { name: "Show arguments" })
+          .getAttribute("aria-expanded"),
+        "false"
+      );
+      assert.equal(await args.isVisible(), false);
+      await reject.press("Enter");
+      const note = last.getByRole("textbox", {
+        name: "Why are you rejecting this?",
+      });
+      assert.equal(
+        await note.evaluate((node) => node === document.activeElement),
+        true
+      );
+      await last.getByRole("button", { name: "Cancel" }).press("Enter");
+      assert.equal(
+        await reject.evaluate((node) => node === document.activeElement),
+        true
+      );
+
+      await first
+        .getByRole("button", { name: "Edit", exact: true })
+        .press("Enter");
+      await first
+        .getByRole("textbox", { name: "message (string)" })
+        .fill("updated");
+      await first.getByRole("button", { name: "Mark edited action" }).click();
+      assert.match(
+        await first
+          .getByRole("region", { name: "Action arguments" })
+          .textContent(),
+        /"updated"/
+      );
+      await batch.getByRole("button", { name: "Refresh approval" }).click();
+      await batch.getByText("1 of 2 reviewed").waitFor();
+      await last.getByRole("button", { name: "Approve", exact: true }).click();
+      await batch.getByRole("button", { name: "Continue" }).click();
+      assert.deepEqual(
+        await page.evaluate(() =>
+          window.batchSubmission.decisions.map(({ type }) => type)
+        ),
+        ["edit", "approve"]
+      );
+      await batch.getByRole("button", { name: "Replace approval" }).click();
+      await batch.getByText("0 of 2 reviewed").waitFor();
+      assert.equal(
+        await batch.getByRole("button", { name: "Continue" }).isDisabled(),
+        true
       );
       assert.deepEqual(errors, []);
     } finally {
