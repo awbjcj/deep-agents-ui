@@ -26,6 +26,7 @@ export type WelcomeIcon =
   | "reply"
   | "inbox"
   | "calendar"
+  | "schedule"
   | "file"
   | "download"
   | "library"
@@ -217,7 +218,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
         title: "Schedule a Teams meeting",
         prompt:
           "Schedule a Teams meeting about [topic] with [email addresses] on [date] from [start time] to [end time] in [time zone].",
-        icon: "calendar",
+        icon: "schedule",
       },
     ],
   },
