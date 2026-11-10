@@ -79,11 +79,42 @@ test("SCM Markdown, empty collections and large-result fallbacks remain distinct
       value,
     });
   assert.equal(readableToolResult("unknown_tool", null), null);
-  assert.equal(readableToolResult("unknown_tool", "x".repeat(50_001)), null);
+  const json = JSON.stringify({ id: "exact/ID", body: "x".repeat(50_000) });
+  const preview = readableToolResult("get_confluence_page_storage", json);
+  assert.equal(preview.kind, "preview");
+  assert.match(preview.text, /exact\/ID/);
+  assert.ok(preview.text.length < json.length);
+  assert.equal(preview.monospace, true);
+  const literal = readableToolResult("read_file", "{literal}\n".repeat(6_000));
+  assert.equal(literal.kind, "preview");
+  assert.ok(literal.text.startsWith("{literal}\n"));
+  assert.equal(literal.monospace, true);
   const malformed = '{"unfinished":';
   assert.deepEqual(readableToolResult("unknown_tool", malformed), {
     kind: "text",
     text: malformed,
     monospace: false,
   });
+});
+
+test("only generated conversation file links get an artifact Markdown view", () => {
+  const header = "Created conversation files:";
+  const diagram = "![design.png](/_artifacts/u/t/generated/design.png)";
+  const file = "[data.json](/_artifacts/u/t/generated/data.json)";
+  const checksum = `Bytes: 2; SHA-256: ${"a".repeat(64)}`;
+  for (const [name, lines] of [
+    ["render_diagram", [header, diagram]],
+    ["publish_workspace_file", [header, file, checksum]],
+  ]) {
+    assert.deepEqual(readableToolResult(name, lines.join("\n")), {
+      kind: "markdown",
+      text: lines.join("\n\n"),
+    });
+  }
+  const remote = `${header}\n![remote](https://example.com/pixel.png)`;
+  assert.equal(readableToolResult("render_diagram", remote).kind, "text");
+  assert.equal(
+    readableToolResult("read_file", `${header}\n${file}`).kind,
+    "text"
+  );
 });

@@ -1,4 +1,5 @@
 import { scmToolMarkdown } from "./scm-tool-result";
+import { FILE_PREVIEW_CHARACTERS } from "./file-preview";
 
 export type ResultValue =
   | null
@@ -11,6 +12,7 @@ export type ResultValue =
 export type ReadableToolResult =
   | { kind: "markdown"; text: string }
   | { kind: "text"; text: string; monospace: boolean }
+  | { kind: "preview"; text: string; monospace: boolean }
   | { kind: "data"; value: ResultValue };
 
 const LITERAL_TOOLS = new Set([
@@ -26,6 +28,25 @@ const LITERAL_TOOLS = new Set([
   "grep",
 ]);
 
+const ARTIFACT_LINK = /^!?\[(?:[^[\]\\]|\\.)+\]\(\/_artifacts\/[\w./%~-]+\)$/;
+const ARTIFACT_CHECKSUM = /^Bytes: \d+; SHA-256: [a-f0-9]{64}$/;
+
+/** Accept the file-producing tools' link protocol, including only local artifacts. */
+function artifactResultMarkdown(name: string, text: string): string | null {
+  if (name !== "render_diagram" && name !== "publish_workspace_file")
+    return null;
+  const [heading, ...lines] = text.trimEnd().split(/\r?\n/);
+  if (
+    heading !== "Created conversation files:" ||
+    !lines.some((line) => ARTIFACT_LINK.test(line)) ||
+    !lines.every(
+      (line) => ARTIFACT_LINK.test(line) || ARTIFACT_CHECKSUM.test(line)
+    )
+  )
+    return null;
+  return [heading, ...lines].join("\n\n");
+}
+
 /** Pick a readable display without reinterpreting source code, logs, or errors. */
 export function readableToolResult(
   name: string,
@@ -33,10 +54,21 @@ export function readableToolResult(
 ): ReadableToolResult | null {
   if (result == null) return null;
   const text = typeof result === "string" ? result : JSON.stringify(result);
-  if (!text || text.length > 50_000) return null;
-  if (LITERAL_TOOLS.has(name)) return { kind: "text", text, monospace: true };
-  const scm = scmToolMarkdown(name, result);
-  if (scm) return { kind: "markdown", text: scm };
+  if (!text) return null;
+  const literal = LITERAL_TOOLS.has(name);
+  if (text.length > FILE_PREVIEW_CHARACTERS) {
+    const excerpt = text.slice(0, 8_000).replace(/[\uD800-\uDBFF]$/, "");
+    const first = excerpt.trimStart()[0];
+    return {
+      kind: "preview",
+      text: excerpt,
+      monospace: literal || first === "{" || first === "[",
+    };
+  }
+  if (literal) return { kind: "text", text, monospace: true };
+  const markdown =
+    scmToolMarkdown(name, result) ?? artifactResultMarkdown(name, text);
+  if (markdown) return { kind: "markdown", text: markdown };
   try {
     const value: unknown =
       typeof result === "string" ? JSON.parse(result) : result;

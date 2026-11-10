@@ -5,6 +5,7 @@ export interface ToolCall {
   name: string;
   args: Record<string, unknown>;
   result?: string;
+  imageUrls?: readonly string[];
   status: "pending" | "completed" | "error" | "interrupted";
 }
 
