@@ -40,6 +40,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { RoleBadge } from "@/app/utils/roles";
 import { ModelSelector } from "./ModelSelector";
+import { downloadBlob } from "@/app/components/admin/primitives-utils";
 import {
   ALLOWED_EMAIL_ERROR_MESSAGE,
   isAllowedRegistrationEmail,
@@ -221,18 +222,11 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       }
 
       const content = `username\ttemporary_password\n${reset.username}\t${reset.temporary_password}\n`;
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `temp-password-${reset.username}.txt`;
-      try {
-        document.body.appendChild(link);
-        link.click();
-      } finally {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
+      downloadBlob(
+        content,
+        "text/plain;charset=utf-8",
+        `temp-password-${reset.username}.txt`
+      );
       toast.success(
         "Temporary password reset; downloaded a file containing the temporary password"
       );
@@ -251,20 +245,11 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       const rows = ["username\ttemporary_password"].concat(
         resets.map((reset) => `${reset.username}\t${reset.temporary_password}`)
       );
-      const blob = new Blob([rows.join("\n")], {
-        type: "text/tab-separated-values",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "temp-passwords.tsv";
-      try {
-        document.body.appendChild(link);
-        link.click();
-      } finally {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
+      downloadBlob(
+        rows.join("\n"),
+        "text/tab-separated-values",
+        "temp-passwords.tsv"
+      );
       toast.success(`Reset ${resets.length} password(s); file downloaded`);
     } catch (err) {
       toast.error(

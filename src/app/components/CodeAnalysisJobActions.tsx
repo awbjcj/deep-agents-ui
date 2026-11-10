@@ -11,6 +11,7 @@ import {
   reportFilename,
   shouldPoll,
 } from "@/lib/code-analysis";
+import { saveBlob } from "@/lib/file-downloads";
 
 type Action = "cancel" | "refresh" | "download" | "release";
 
@@ -39,16 +40,10 @@ export function CodeAnalysisJobActions({
   };
   const download = async () => {
     if (!job?.report_id) return;
-    const url = URL.createObjectURL(
-      await downloadAnalysisReport(job.report_id)
+    saveBlob(
+      await downloadAnalysisReport(job.report_id),
+      reportFilename(job.report_id)
     );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = reportFilename(job.report_id);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
   const stopping = job?.status === "cancel_requested";
   return (

@@ -942,8 +942,9 @@ export function useChat({
           values: { files: delta },
         });
       } catch (err) {
-        // Roll back to whatever was being shown before the user edit.
-        setOptimisticFiles(previous);
+        // Roll back to whatever was being shown before the user edit, unless
+        // the user has since switched threads (that thread owns the overlay).
+        if (threadIdRef.current === threadId) setOptimisticFiles(previous);
         throw err;
       }
     },

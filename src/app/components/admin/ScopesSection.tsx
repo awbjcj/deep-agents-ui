@@ -88,12 +88,14 @@ export function ScopesSection() {
     countRefreshRef.current = controller;
     try {
       const list = await apiListScopes();
+      // A newer fetch (or unmount) superseded this one; keep its result.
+      if (controller.signal.aborted) return;
       setScopes(list);
       void refreshMemberCounts(list, setScopes, controller.signal);
     } catch {
-      toast.error("Failed to load scopes");
+      if (!controller.signal.aborted) toast.error("Failed to load scopes");
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   }, []);
 

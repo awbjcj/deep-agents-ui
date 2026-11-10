@@ -74,9 +74,12 @@ export async function apiGetNewsletter(
   options: { includeRecipients?: boolean; signal?: AbortSignal } = {}
 ) {
   const query = options.includeRecipients ? "?include_recipients=true" : "";
-  const response = await apiFetch(`/admin/broadcasts/${id}${query}`, {
-    signal: options.signal,
-  });
+  const response = await apiFetch(
+    `/admin/broadcasts/${encodeURIComponent(id)}${query}`,
+    {
+      signal: options.signal,
+    }
+  );
   return newsletterJson<NewsletterDetail>(
     response,
     "Could not load newsletter"
@@ -98,10 +101,13 @@ export async function apiUpdateNewsletter(
   id: string,
   payload: NewsletterDraftInput
 ) {
-  const response = await apiFetch(`/admin/broadcasts/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
+  const response = await apiFetch(
+    `/admin/broadcasts/${encodeURIComponent(id)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }
+  );
   return newsletterJson<NewsletterPreview>(
     response,
     "Could not update newsletter"
@@ -109,16 +115,22 @@ export async function apiUpdateNewsletter(
 }
 
 export async function apiTestNewsletter(id: string) {
-  const response = await apiFetch(`/admin/broadcasts/${id}/test-send`, {
-    method: "POST",
-  });
+  const response = await apiFetch(
+    `/admin/broadcasts/${encodeURIComponent(id)}/test-send`,
+    {
+      method: "POST",
+    }
+  );
   return newsletterJson<{ sent: boolean }>(response, "Test email failed");
 }
 
 export async function apiSendNewsletter(id: string) {
-  const response = await apiFetch(`/admin/broadcasts/${id}/send`, {
-    method: "POST",
-  });
+  const response = await apiFetch(
+    `/admin/broadcasts/${encodeURIComponent(id)}/send`,
+    {
+      method: "POST",
+    }
+  );
   return newsletterJson<{
     id: string;
     status: string;
@@ -127,9 +139,12 @@ export async function apiSendNewsletter(id: string) {
 }
 
 export async function apiDeleteNewsletter(id: string) {
-  const response = await apiFetch(`/admin/broadcasts/${id}`, {
-    method: "DELETE",
-  });
+  const response = await apiFetch(
+    `/admin/broadcasts/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+    }
+  );
   return newsletterJson<{ deleted: boolean }>(
     response,
     "Could not delete draft"

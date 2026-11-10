@@ -134,15 +134,25 @@ export function NewsletterSection() {
 
   useEffect(() => {
     if (selected?.status !== "sending") return;
+    const controller = new AbortController();
+    const { signal } = controller;
     const interval = window.setInterval(() => {
-      void Promise.all([apiGetNewsletter(selected.id), apiListNewsletters()])
+      void Promise.all([
+        apiGetNewsletter(selected.id, { signal }),
+        apiListNewsletters(signal),
+      ])
         .then(([detail, list]) => {
+          // Selection changed or the section unmounted while polling.
+          if (signal.aborted) return;
           setSelected(detail);
           setNewsletters(list);
         })
         .catch(() => undefined);
     }, 3500);
-    return () => window.clearInterval(interval);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
   }, [selected?.id, selected?.status]);
 
   const stats = useMemo(() => {

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -47,22 +48,28 @@ export function ConnectivityProvider({ children }: { children: ReactNode }) {
   // run-mode change re-derives attachment availability without a round trip.
   const [proxyAttachmentsEnabled, setProxyAttachmentsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  // Only the latest request may commit, so a slow response for a previous
+  // session cannot overwrite the current account's connectivity.
+  const requestRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const request = ++requestRef.current;
     if (!user?.access_token) {
       setRunMode(null);
+      setIsLoading(false);
       return;
     }
     setIsLoading(true);
     try {
       const res = await apiGetUserConnectivity();
+      if (request !== requestRef.current) return;
       setRunMode(res.run_mode);
       setProxyAttachmentsEnabled(res.proxy_attachments_enabled ?? true);
     } catch {
       // Best effort: keep the previous value. Attachment gating fails open
       // (enabled) so a transient fetch error never strands the upload UI.
     } finally {
-      setIsLoading(false);
+      if (request === requestRef.current) setIsLoading(false);
     }
   }, [user?.access_token]);
 

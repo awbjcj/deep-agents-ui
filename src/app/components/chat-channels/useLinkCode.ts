@@ -33,17 +33,24 @@ export function useLinkCode(
     progress.current = onProgress;
   });
 
+  // Only the most recent issue() may install its code or error.
+  const issueRef = useRef(0);
+  useEffect(() => () => void ++issueRef.current, []);
+
   const issue = useCallback(async () => {
+    const request = ++issueRef.current;
     setPhase("issuing");
     setError("");
     try {
       const next = await chatChannelsAPI.createLinkCode(channel);
+      if (request !== issueRef.current) return;
       const received = Date.now();
       setCode(next);
       setTerm({ start: received, end: linkDeadline(next, received) });
       setNow(received);
       setPhase("waiting");
     } catch (cause) {
+      if (request !== issueRef.current) return;
       setError(
         cause instanceof Error ? cause.message : "Could not create a link code."
       );
