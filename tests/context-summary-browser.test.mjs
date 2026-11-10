@@ -41,12 +41,18 @@ test(
       import React from 'react';
       import { createRoot } from 'react-dom/client';
       import { ChatMessage } from './src/app/components/ChatMessage';
+      import { markStreamedContextSummary } from './src/lib/context-summary';
       const content = ${JSON.stringify(JSON.stringify(payload))};
+      const partial = markStreamedContextSummary(
+        {type: 'ai', content: content.slice(0, 38)},
+        {lc_source: 'summarization'}
+      );
       const props = { toolCalls: [], files: {}, sourceImageAttachments: {} };
       createRoot(document.getElementById('root')).render(<main className="mx-auto max-w-3xl p-4">
         <ChatMessage {...props} message={{type: 'human', content: 'Please find recent tickets.'}} />
         <ChatMessage {...props} message={{type: 'human', content, additional_kwargs: {lc_source: 'summarization'}}} />
-        <ChatMessage {...props} message={{type: 'ai', content: content.slice(0, content.indexOf('BMZ-23683') + 20)}} />
+        <ChatMessage {...props} message={partial} />
+        <ChatMessage {...props} message={{type: 'ai', content}} />
       </main>);
     `,
       },
@@ -99,6 +105,13 @@ test(
         });
         await headings.first().waitFor();
         assert.equal(await headings.count(), 2);
+        assert.equal(
+          await page
+            .getByText(JSON.stringify(payload), { exact: true })
+            .last()
+            .isVisible(),
+          true
+        );
         const goal = page.getByRole("region", { name: "Goal", exact: true });
         assert.equal(await goal.isVisible(), false);
         await page.screenshot({

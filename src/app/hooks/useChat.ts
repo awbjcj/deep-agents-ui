@@ -71,6 +71,7 @@ import {
   verificationIsLive,
   type LiveTaskVerification,
 } from "@/lib/task-outcome";
+import { markStreamedContextSummary } from "@/lib/context-summary";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -1133,16 +1134,20 @@ export function useChat({
   // every artifact in the thread.
   const isInterrupted = stream.interrupts.length > 0;
   const { messages: streamedMessages, getMessagesMetadata } = stream;
-  // Native grader tokens can stream into the root thread; they are private
-  // diagnostics, not part of the answer.
-  const visibleMessages = useMemo(
-    () =>
-      streamedMessages.filter(
-        (message, index) =>
-          !isTaskGraderMessage(getMessagesMetadata(message, index))
-      ),
-    [streamedMessages, getMessagesMetadata]
-  );
+  // Keep private grader diagnostics out of the transcript. Preserve the source
+  // of a live context handoff so its card can render before the JSON is complete.
+  const visibleMessages = useMemo(() => {
+    const visible: Message[] = [];
+    streamedMessages.forEach((message, index) => {
+      const metadata = getMessagesMetadata(message, index);
+      if (!isTaskGraderMessage(metadata)) {
+        visible.push(
+          markStreamedContextSummary(message, metadata?.streamMetadata)
+        );
+      }
+    });
+    return visible;
+  }, [streamedMessages, getMessagesMetadata]);
   const processedMessages = useProcessedMessages(
     visibleMessages,
     isInterrupted,
