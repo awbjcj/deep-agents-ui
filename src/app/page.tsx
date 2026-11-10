@@ -437,6 +437,10 @@ function HomePageInner({
       handleSaveConfig({ ...config, assistantId: DEFAULT_ASSISTANT_ID });
   }, [assistant, config, user, handleSaveConfig]);
 
+  const agentName = canonicalAssistantId(
+    assistant?.graph_id || assistant?.name || config.assistantId
+  );
+
   return (
     <>
       {/* Dialogs are lazily mounted on first open (so their chunks stay off the
@@ -557,11 +561,7 @@ function HomePageInner({
                     aria-hidden="true"
                   />
                   <span className="hidden max-w-[11rem] truncate font-medium xl:inline">
-                    {(
-                      assistant?.graph_id ||
-                      assistant?.name ||
-                      config.assistantId
-                    ).replace(/^VSDA /, "")}
+                    {agentName.replace(/^VSDA /, "")}
                   </span>
                   <ChevronDown
                     className="hidden h-3.5 w-3.5 text-muted-foreground xl:block"
@@ -569,9 +569,7 @@ function HomePageInner({
                   />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>
-                {assistant?.graph_id || assistant?.name || config.assistantId}
-              </TooltipContent>
+              <TooltipContent>{agentName}</TooltipContent>
             </Tooltip>
             <span
               ref={sidePanel.boundaryRef}

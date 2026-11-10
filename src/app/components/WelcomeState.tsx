@@ -4,6 +4,7 @@ import React from "react";
 import {
   ArrowRight,
   BookOpen,
+  CalendarDays,
   ScrollText,
   ClipboardCheck,
   CodeXml,
@@ -49,6 +50,7 @@ const ICONS: Record<WelcomeIcon, LucideIcon> = {
   mail: Mail,
   reply: Reply,
   inbox: Inbox,
+  calendar: CalendarDays,
   file: FileSearch,
   download: Download,
   library: Library,

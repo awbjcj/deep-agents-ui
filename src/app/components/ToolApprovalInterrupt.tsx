@@ -50,6 +50,13 @@ const DESCRIPTION_PROSE_OVERRIDES =
 const ARGS_PROSE_OVERRIDES =
   "text-xs [&_pre]:!my-0 [&_pre]:!rounded-md [&_pre]:!border-0";
 
+const OUTLOOK_ACTION_LABELS = new Map([
+  ["create_calendar_event", "Create Outlook event"],
+  ["update_calendar_event", "Update Outlook event"],
+  ["delete_calendar_event", "Remove Outlook event"],
+  ["cancel_calendar_event", "Cancel Outlook meeting"],
+]);
+
 function resizeArgumentTextarea(textarea: HTMLTextAreaElement) {
   const scrollTop = textarea.scrollTop;
   textarea.style.height = "auto";
@@ -298,7 +305,8 @@ export function ToolApprovalInterrupt({
             )}
             title={actionRequest.name}
           >
-            {actionRequest.name}
+            {OUTLOOK_ACTION_LABELS.get(actionRequest.name) ??
+              actionRequest.name}
           </code>
         </header>
 

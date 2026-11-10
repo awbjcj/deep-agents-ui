@@ -4,6 +4,7 @@ import {
   canonicalAssistantId,
   canonicalSystemAssistant,
   KNOWLEDGE_BASE_ASSISTANT_ID,
+  OUTLOOK_ASSISTANT_ID,
 } from "../src/lib/assistant-identity.ts";
 import { getConfig, saveAssistantId, saveConfig } from "../src/lib/config.ts";
 
@@ -58,6 +59,27 @@ test("legacy graph selections migrate without changing custom assistants", () =>
     KNOWLEDGE_BASE_ASSISTANT_ID
   );
   assert.equal(bookmark.searchParams.get("threadId"), "existing");
+});
+
+test("legacy Outlook system IDs migrate while user-created assistants keep their UUID", () => {
+  const oldId = "bd4c5e77-6744-4270-9183-885d536cf339";
+  const legacyName = "VSDA Email Agent";
+  const oldDefault = {
+    assistant_id: oldId,
+    graph_id: legacyName,
+    name: legacyName,
+    metadata: { created_by: "system" },
+  };
+  const custom = { ...oldDefault, name: "My calendar", metadata: {} };
+  assert.equal(canonicalAssistantId(legacyName), OUTLOOK_ASSISTANT_ID);
+  assert.equal(canonicalAssistantId(oldId), oldId);
+  assert.deepEqual(canonicalSystemAssistant(oldDefault), {
+    ...oldDefault,
+    assistant_id: OUTLOOK_ASSISTANT_ID,
+    graph_id: OUTLOOK_ASSISTANT_ID,
+    name: OUTLOOK_ASSISTANT_ID,
+  });
+  assert.equal(canonicalSystemAssistant(custom), custom);
 });
 
 test("stored configurations read and save the canonical knowledge base graph", () => {

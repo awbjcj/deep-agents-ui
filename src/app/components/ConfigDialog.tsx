@@ -5,6 +5,7 @@ import {
   canonicalAssistantId,
   canonicalSystemAssistant,
   KNOWLEDGE_BASE_ASSISTANT_ID,
+  OUTLOOK_ASSISTANT_ID,
 } from "@/lib/assistant-identity";
 import {
   allowedAssistantId,
@@ -111,14 +112,16 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Draft an Adaptive Card for a bot or workflow notification.",
     ],
   },
-  "VSDA Email Agent": {
+  [OUTLOOK_ASSISTANT_ID]: {
     description:
-      "Reads your Outlook mailbox and writes email for you. Drafts go to your Drafts folder after you review them, and nothing is sent until you approve it.",
+      "Works with your Outlook mailbox and calendar. It can summarize mail, draft replies, schedule appointments and Teams meetings, and update or cancel events.",
     useCases: [
       "Summarize what came into a folder since yesterday.",
       "Draft a reply to a specific message, or a follow-up to a stakeholder.",
-      "Send a saved draft, or a new message you have checked.",
+      "Check my calendar for tomorrow and find a specific meeting.",
+      "Schedule a Teams meeting or reschedule one I organized.",
     ],
+    note: "Calendar changes require delegated Calendars.ReadWrite permission on your saved Microsoft Graph token and follow your approval mode.",
   },
   "VSDA SharePoint Agent": {
     description:
@@ -349,7 +352,9 @@ export function ConfigDialog({
     const selected = assistants.find((a) => a.id === assistantId);
     toast.success(
       selected
-        ? `Configuration saved — using ${selected.graphId}`
+        ? `Configuration saved — using ${canonicalAssistantId(
+            selected.graphId
+          )}`
         : "Configuration saved"
     );
     onOpenChange(false);
@@ -416,7 +421,7 @@ export function ConfigDialog({
                       key={a.id}
                       value={a.id}
                     >
-                      {a.graphId}
+                      {canonicalAssistantId(a.graphId)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -426,7 +431,9 @@ export function ConfigDialog({
           {assistantId &&
             (() => {
               const selected = assistants.find((a) => a.id === assistantId);
-              const info = selected ? AGENT_INFO[selected.graphId] : undefined;
+              const info = selected
+                ? AGENT_INFO[canonicalAssistantId(selected.graphId)]
+                : undefined;
               if (!info) return null;
               return (
                 <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">

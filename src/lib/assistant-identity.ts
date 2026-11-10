@@ -1,11 +1,17 @@
 /** Canonical graph IDs, including migration of saved pre-rename selections. */
 export const KNOWLEDGE_BASE_ASSISTANT_ID = "VSDA Knowledge Base Agent";
+export const OUTLOOK_ASSISTANT_ID = "VSDA Outlook Agent";
 
-/** Preserve custom assistant UUIDs and migrate only the retired built-in graph. */
+/** Preserve custom assistant UUIDs and migrate saved built-in graph selections. */
 export function canonicalAssistantId(assistantId: string): string {
-  return assistantId === "VSDA Database Agent"
-    ? KNOWLEDGE_BASE_ASSISTANT_ID
-    : assistantId;
+  switch (assistantId) {
+    case "VSDA Database Agent":
+      return KNOWLEDGE_BASE_ASSISTANT_ID;
+    case "VSDA Email Agent":
+      return OUTLOOK_ASSISTANT_ID;
+    default:
+      return assistantId;
+  }
 }
 
 /** Keep built-in selections stable across default-assistant UUIDs and renames. */
