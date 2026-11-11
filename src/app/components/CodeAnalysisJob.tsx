@@ -43,7 +43,13 @@ const statuses: Record<string, string> = {
 };
 
 /** Keep the actual job state visible independently of raw tool details. */
-export function CodeAnalysisJob({ jobId }: { jobId: string }) {
+export function CodeAnalysisJob({
+  jobId,
+  allowRelease,
+}: {
+  jobId: string;
+  allowRelease?: boolean;
+}) {
   const { job, error, checkedAt, cancel, refresh } = useCodeAnalysisJob(jobId);
   const reportFile = useAnalysisReportFile(job);
   const [now, setNow] = useState(() => Date.now());
@@ -204,6 +210,7 @@ export function CodeAnalysisJob({ jobId }: { jobId: string }) {
           job={job}
           cancel={cancel}
           refresh={refresh}
+          allowRelease={allowRelease}
         />
         <span
           className="text-xs text-muted-foreground sm:ml-auto"

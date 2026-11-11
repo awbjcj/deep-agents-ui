@@ -16,7 +16,7 @@ import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { cn } from "@/lib/utils";
-import { canUseCodeAnalyzer } from "@/lib/agent-access";
+import { canUseCodeAnalyzer, CODE_ANALYZER_AGENT_ID } from "@/lib/agent-access";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { ChatComposer } from "@/app/components/ChatComposer";
@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { WelcomeState } from "./WelcomeState";
 import { TaskOutcomeStatus } from "./TaskOutcomeStatus";
 import { CodeAnalysisJobs } from "./CodeAnalysisJobs";
+import { RepositoryWorkspace } from "./RepositoryWorkspace";
 import {
   isLatestTaskOutcome,
   isTaskOutcomeNotice,
@@ -96,6 +97,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
   }) => {
     const { threadId } = useChatContext();
     const { user } = useAuth();
+    const showRepositoryWorkspace =
+      canUseCodeAnalyzer(user) &&
+      assistant?.graph_id === CODE_ANALYZER_AGENT_ID;
+    const [analysisRefresh, setAnalysisRefresh] = useState(0);
+    const [threadWithAnalysis, setThreadWithAnalysis] = useState<string | null>(
+      null
+    );
+    const refreshAnalysis = useCallback(
+      () => setAnalysisRefresh((revision) => revision + 1),
+      []
+    );
     const [evidenceRequest, setEvidenceRequest] = useState<{
       text: string;
       threadId: string | null;
@@ -197,13 +209,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       />
     );
     // Wait for the assistant so the welcome never flashes another agent's copy.
+    const analysisThreadId = threadId ?? createdThreadId ?? null;
     const showWelcome =
       assistant !== null &&
       !isThreadLoading &&
       !historyError &&
       !isLoading &&
       !interrupt &&
-      processedMessages.length === 0;
+      processedMessages.length === 0 &&
+      !(analysisThreadId && threadWithAnalysis === analysisThreadId);
 
     // Single-pass bucket instead of three .filter() calls per render.
     // ChatInterface re-renders on every stream token; the old form
@@ -328,13 +342,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   );
                 })}
                 {candidateIndex === -1 && outcomeStatus}
-                {canUseCodeAnalyzer(user) && (
-                  <CodeAnalysisJobs
-                    key={threadId ?? createdThreadId}
-                    threadId={threadId ?? createdThreadId ?? null}
-                    isLoading={isLoading}
-                  />
-                )}
                 <PendingToolApproval
                   key={interrupt?.id}
                   interrupt={interrupt}
@@ -350,6 +357,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   visuallyHidden={taskVerification?.checking}
                 />
               </>
+            )}
+            {canUseCodeAnalyzer(user) && (
+              <CodeAnalysisJobs
+                key={analysisThreadId}
+                threadId={analysisThreadId}
+                isLoading={isLoading}
+                refreshRevision={analysisRefresh}
+                allowRelease={!showRepositoryWorkspace}
+                onJobsVisible={setThreadWithAnalysis}
+              />
             )}
           </div>
         </div>
@@ -611,6 +628,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                     </div>
                   </>
                 )}
+              </div>
+            )}
+            {showRepositoryWorkspace && (
+              <div className="flex items-center border-b border-border px-2 sm:px-3">
+                <RepositoryWorkspace
+                  key={user?.user_id}
+                  accountId={user?.user_id ?? ""}
+                  threadId={analysisThreadId}
+                  ensureThreadId={ensureThreadId}
+                  chatBusy={isLoading || isThreadLoading || Boolean(interrupt)}
+                  onJobSubmitted={refreshAnalysis}
+                />
               </div>
             )}
             <ChatComposer

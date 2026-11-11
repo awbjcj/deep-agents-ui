@@ -19,10 +19,12 @@ export function CodeAnalysisJobActions({
   job,
   cancel,
   refresh,
+  allowRelease = true,
 }: {
   job: AnalysisJobView | null;
   cancel: () => Promise<void>;
   refresh: () => Promise<void>;
+  allowRelease?: boolean;
 }) {
   const [acting, setActing] = useState<Action | null>(null);
   const [released, setReleased] = useState(false);
@@ -100,7 +102,7 @@ export function CodeAnalysisJobActions({
           {stopping ? "Stopping…" : "Cancel"}
         </Button>
       )}
-      {job && !shouldPoll(job.status) && (
+      {allowRelease && job && !shouldPoll(job.status) && (
         <Button
           variant="ghost"
           size="sm"

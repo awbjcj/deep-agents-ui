@@ -366,6 +366,9 @@ export const analysisJobSchema = z.object({
   phase: z.string().default("queued"),
   progress: z.number().int().min(0).max(100).default(0),
   result: analysisResultSchema,
+  payload: z
+    .object({ target_handles: z.array(z.string().min(1)).max(20).optional() })
+    .optional(),
   report_id: z.string().nullable().optional().default(null),
   error_code: z.string().nullable().optional().default(null),
   error_message: z.string().nullable().optional().default(null),
