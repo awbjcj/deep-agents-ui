@@ -4,11 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import useSWR from "swr";
 import {
   apiAcknowledgeNotification,
   apiListNotifications,
@@ -34,6 +34,7 @@ export type StreamNotificationEvent = {
 
 interface NotificationsContextValue {
   notifications: UserNotification[];
+  refreshNotifications: () => void;
   acknowledge: (id: number) => Promise<void>;
   snooze: (id: number, hours?: number) => Promise<void>;
   /** Called by useChat when a `custom` stream event arrives. */
@@ -48,49 +49,50 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(
   null
 );
+const EMPTY_NOTIFICATIONS: UserNotification[] = [];
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [pendingTokenFocus, setPendingTokenFocus] = useState<string | null>(
     null
   );
-
-  // Load active notifications once the user is authenticated. We never poll;
-  // updates arrive via `ingestStreamEvent` from the live custom stream.
-  useEffect(() => {
-    if (!user?.access_token) {
-      setNotifications([]);
-      return;
+  const { data: notifications = EMPTY_NOTIFICATIONS, mutate } = useSWR(
+    user?.access_token ? ["user-notifications", user.user_id] : null,
+    apiListNotifications,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+      onError: (err) => console.warn("Failed to load notifications:", err),
     }
-    let cancelled = false;
-    apiListNotifications()
-      .then((items) => {
-        if (!cancelled) setNotifications(items);
-      })
-      .catch((err) =>
-        console.warn("Failed to load notifications on mount:", err)
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.access_token]);
+  );
 
-  const acknowledge = useCallback(async (id: number) => {
-    await apiAcknowledgeNotification(id);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  const refreshNotifications = useCallback(() => {
+    void mutate();
+  }, [mutate]);
 
-  const snooze = useCallback(async (id: number, hours = 1) => {
-    await apiSnoozeNotification(id, hours);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  const acknowledge = useCallback(
+    async (id: number) => {
+      await apiAcknowledgeNotification(id);
+      await mutate((prev) => prev?.filter((n) => n.id !== id), false);
+    },
+    [mutate]
+  );
 
-  const ingestStreamEvent = useCallback((event: StreamNotificationEvent) => {
-    if (event.scope !== "user" || event.notification_id == null) return;
-    setNotifications((prev) => {
+  const snooze = useCallback(
+    async (id: number, hours = 1) => {
+      await apiSnoozeNotification(id, hours);
+      await mutate((prev) => prev?.filter((n) => n.id !== id), false);
+    },
+    [mutate]
+  );
+
+  const ingestStreamEvent = useCallback(
+    (event: StreamNotificationEvent) => {
+      const id = event.notification_id;
+      if (event.scope !== "user" || id == null) return;
       const synthesized: UserNotification = {
-        id: event.notification_id!,
+        id,
         code: event.code,
         severity: event.severity,
         title: event.title,
@@ -101,24 +103,24 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
         snoozed_until: null,
       };
-      const idx = prev.findIndex((n) => n.id === event.notification_id);
-      if (idx === -1) return [synthesized, ...prev];
-      const next = [...prev];
-      next[idx] = synthesized;
-      return next;
-    });
-  }, []);
+      void mutate((prev = EMPTY_NOTIFICATIONS) => {
+        const idx = prev.findIndex((n) => n.id === id);
+        if (idx === -1) return [synthesized, ...prev];
+        const next = [...prev];
+        next[idx] = synthesized;
+        return next;
+      }, false);
+    },
+    [mutate]
+  );
 
   const applyClearedNotifications = useCallback(
     (cleared: UserNotification[]) => {
       if (!cleared.length) return;
       const clearedIds = new Set(cleared.map((c) => c.id));
-      const clearedCodes = new Set(cleared.map((c) => c.code));
-      setNotifications((prev) =>
-        prev.filter((n) => !clearedIds.has(n.id) && !clearedCodes.has(n.code))
-      );
+      void mutate((prev) => prev?.filter((n) => !clearedIds.has(n.id)), false);
     },
-    []
+    [mutate]
   );
 
   const requestTokenFocus = useCallback((service: string | null) => {
@@ -128,6 +130,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NotificationsContextValue>(
     () => ({
       notifications,
+      refreshNotifications,
       acknowledge,
       snooze,
       ingestStreamEvent,
@@ -137,6 +140,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }),
     [
       notifications,
+      refreshNotifications,
       acknowledge,
       snooze,
       ingestStreamEvent,

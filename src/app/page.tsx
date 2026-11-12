@@ -222,7 +222,8 @@ function HomePageInner({
       : null);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const isAdmin = user?.role === "admin";
-  const { pendingTokenFocus, requestTokenFocus } = useNotifications();
+  const { pendingTokenFocus, requestTokenFocus, refreshNotifications } =
+    useNotifications();
 
   // `mutateThreads` is swapped in by ThreadList after it mounts. Reading it
   // through a ref keeps `handleHistoryRevalidate` referentially stable, so
@@ -650,7 +651,10 @@ function HomePageInner({
             <Button
               variant="default"
               size="sm"
-              onClick={() => setThreadId(null)}
+              onClick={() => {
+                void setThreadId(null);
+                refreshNotifications();
+              }}
               disabled={!threadId}
               aria-label="New Thread"
               className="max-lg:px-2"

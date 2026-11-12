@@ -318,7 +318,7 @@ async function extractApiErrorMessage(
 // --- User Notifications ---
 
 export async function apiListNotifications(): Promise<UserNotification[]> {
-  const res = await apiFetch("/user/notifications");
+  const res = await apiFetch("/user/notifications", { cache: "no-store" });
   if (!res.ok) {
     throw new Error("Failed to fetch notifications");
   }
