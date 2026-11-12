@@ -153,12 +153,7 @@ export function TokenManagementSidebar({
       if (confluenceDirty) payload.confluence_api_token = confluenceToken;
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
-      // PUT /api/user/tokens returns `cleared_notifications` for any
-      // active token-expired banner that this update resolves. Drop those
-      // banners locally without a follow-up GET.
-      if (updated.cleared_notifications?.length) {
-        applyClearedNotifications(updated.cleared_notifications);
-      }
+      applyClearedNotifications(updated.cleared_notifications);
       setGraphToken("");
       setJiraToken("");
       setGraphDirty(false);

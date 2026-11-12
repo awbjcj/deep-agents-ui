@@ -6,7 +6,7 @@ import {
   staticServer,
   authenticatedPage,
   makePolicyFixture,
-} from "./tool-permissions-browser.test.mjs";
+} from "./tool-permissions-browser-fixture.mjs";
 import {
   KNOWLEDGE_BASE_ASSISTANT_ID,
   OUTLOOK_ASSISTANT_ID,

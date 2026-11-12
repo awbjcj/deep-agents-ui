@@ -39,8 +39,8 @@ interface NotificationsContextValue {
   snooze: (id: number, hours?: number) => Promise<void>;
   /** Called by useChat when a `custom` stream event arrives. */
   ingestStreamEvent: (event: StreamNotificationEvent) => void;
-  /** Called by TokenManagementSidebar after a successful token update. */
-  applyClearedNotifications: (cleared: UserNotification[]) => void;
+  /** Reconcile the banners after Token Management saves a credential. */
+  applyClearedNotifications: (cleared?: UserNotification[]) => void;
   /** Records a requested deep-link target ("graph", "jira", ...) for the sidebar. */
   pendingTokenFocus: string | null;
   requestTokenFocus: (service: string | null) => void;
@@ -60,8 +60,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     user?.access_token ? ["user-notifications", user.user_id] : null,
     apiListNotifications,
     {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
       shouldRetryOnError: false,
       onError: (err) => console.warn("Failed to load notifications:", err),
     }
@@ -89,38 +87,24 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const ingestStreamEvent = useCallback(
     (event: StreamNotificationEvent) => {
-      const id = event.notification_id;
-      if (event.scope !== "user" || id == null) return;
-      const synthesized: UserNotification = {
-        id,
-        code: event.code,
-        severity: event.severity,
-        title: event.title,
-        message: event.message,
-        action_label: event.action?.label ?? null,
-        action_target: event.action?.target ?? null,
-        action_params: event.action?.params ?? null,
-        created_at: new Date().toISOString(),
-        snoozed_until: null,
-      };
-      void mutate((prev = EMPTY_NOTIFICATIONS) => {
-        const idx = prev.findIndex((n) => n.id === id);
-        if (idx === -1) return [synthesized, ...prev];
-        const next = [...prev];
-        next[idx] = synthesized;
-        return next;
-      }, false);
+      // A buffered event may arrive after its row was cleared or snoozed.
+      if (event.scope === "user" && event.notification_id != null) {
+        refreshNotifications();
+      }
     },
-    [mutate]
+    [refreshNotifications]
   );
 
   const applyClearedNotifications = useCallback(
-    (cleared: UserNotification[]) => {
-      if (!cleared.length) return;
+    (cleared: UserNotification[] = EMPTY_NOTIFICATIONS) => {
+      if (!cleared.length) {
+        refreshNotifications();
+        return;
+      }
       const clearedIds = new Set(cleared.map((c) => c.id));
-      void mutate((prev) => prev?.filter((n) => !clearedIds.has(n.id)), false);
+      void mutate((prev) => prev?.filter((n) => !clearedIds.has(n.id)));
     },
-    [mutate]
+    [mutate, refreshNotifications]
   );
 
   const requestTokenFocus = useCallback((service: string | null) => {

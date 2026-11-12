@@ -1,4 +1,4 @@
-import { makePolicyFixture } from "./tool-permissions-browser.test.mjs";
+import { makePolicyFixture } from "./tool-permissions-browser-fixture.mjs";
 import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
 import { SOURCE_IMAGE_SOURCES } from "../src/lib/source-images.ts";
 

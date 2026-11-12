@@ -7,7 +7,7 @@ import {
   staticServer,
   authenticatedPage,
   makePolicyFixture,
-} from "./tool-permissions-browser.test.mjs";
+} from "./tool-permissions-browser-fixture.mjs";
 import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
 import { loadPlaywright } from "./browser-fixtures.mjs";
 
