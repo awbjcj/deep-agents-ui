@@ -1,12 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { base64ToBytes } from "@/lib/spreadsheet";
 import { UNAVAILABLE_PREVIEW_MESSAGE } from "./SpreadsheetView";
 
+const PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46, 0x2d]; // "%PDF-"
+
+/** Decoded bytes when the content is a PDF, otherwise null. */
+function pdfBytes(content: string): Uint8Array<ArrayBuffer> | null {
+  try {
+    const bytes = base64ToBytes(content);
+    return PDF_SIGNATURE.every((byte, index) => bytes[index] === byte)
+      ? bytes
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Show a base64 PDF with the browser's own viewer. The blob URL lives only
- * as long as this view and is revoked on unmount or when the content changes.
+ * Show a base64 PDF with the browser's own viewer. Content that is not a PDF
+ * never reaches a frame. The blob URL lives only as long as this view and is
+ * revoked on unmount or when the content changes.
  */
 export function PdfView({
   content,
@@ -15,27 +30,27 @@ export function PdfView({
   content: string;
   title?: string;
 }) {
-  const [state, setState] = useState<{
-    content: string;
-    url: string | null;
-  } | null>(null);
+  const bytes = useMemo(() => pdfBytes(content), [content]);
+  const [url, setUrl] = useState<{ bytes: Uint8Array; url: string } | null>(
+    null
+  );
 
   useEffect(() => {
-    let url: string | null = null;
-    try {
-      url = URL.createObjectURL(
-        new Blob([base64ToBytes(content)], { type: "application/pdf" })
-      );
-    } catch {
-      url = null;
-    }
-    setState({ content, url });
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [content]);
+    if (!bytes) return;
+    const objectUrl = URL.createObjectURL(
+      new Blob([bytes], { type: "application/pdf" })
+    );
+    setUrl({ bytes, url: objectUrl });
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [bytes]);
 
-  if (state?.content !== content)
+  if (!bytes)
+    return (
+      <p className="text-sm text-muted-foreground">
+        {UNAVAILABLE_PREVIEW_MESSAGE}
+      </p>
+    );
+  if (url?.bytes !== bytes)
     return (
       <p
         role="status"
@@ -44,17 +59,13 @@ export function PdfView({
         Loading PDF…
       </p>
     );
-  if (!state.url)
-    return (
-      <p className="text-sm text-muted-foreground">
-        {UNAVAILABLE_PREVIEW_MESSAGE}
-      </p>
-    );
+  // No `sandbox`: Chrome's PDF viewer refuses to load in sandboxed frames.
+  // The frame only ever holds a blob typed application/pdf whose bytes start
+  // with %PDF-, rendered by the browser's own sandboxed PDF viewer.
   return (
     <iframe
-      src={state.url}
+      src={url.url}
       title={title}
-      sandbox="allow-scripts allow-same-origin"
       className="h-full w-full rounded-md border border-border bg-background"
     />
   );

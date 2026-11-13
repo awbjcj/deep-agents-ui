@@ -231,18 +231,31 @@ test(
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "detached" });
 
-      // PDFs use a sandboxed blob frame that is revoked on close.
+      // PDFs use a typed blob frame that is revoked on close.
       await page
         .getByRole("button", { name: "Open spec.pdf", exact: true })
         .click();
       const frame = dialog.locator("iframe");
       await frame.waitFor();
-      assert.equal(
-        await frame.getAttribute("sandbox"),
-        "allow-scripts allow-same-origin"
-      );
+      // Chrome's PDF viewer refuses sandboxed frames.
+      assert.equal(await frame.getAttribute("sandbox"), null);
       const blobUrl = await frame.getAttribute("src");
       assert.match(blobUrl, /^blob:/);
+      // A blocked frame would navigate to chrome-error:// instead.
+      await page.waitForFunction(
+        (url) =>
+          [...document.querySelectorAll("iframe")].some((f) => f.src === url),
+        blobUrl
+      );
+      await new Promise((done) => setTimeout(done, 500));
+      assert.ok(
+        page.frames().some((frame) => frame.url() === blobUrl),
+        "the PDF frame loads its blob instead of an error page"
+      );
+      assert.equal(
+        page.frames().some((frame) => frame.url().startsWith("chrome-error:")),
+        false
+      );
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "detached" });
       assert.equal(

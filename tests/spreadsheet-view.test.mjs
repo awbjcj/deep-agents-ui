@@ -80,3 +80,17 @@ test("PDF previews mount a blob URL only in the browser", () => {
   assert.doesNotMatch(html, /<iframe/);
   assert.match(html, /Loading PDF/);
 });
+
+test("content that is not a PDF never reaches a frame", () => {
+  for (const content of [
+    Buffer.from("<html><script>alert(1)</script></html>").toString("base64"),
+    "not base64 at all!",
+    "",
+  ]) {
+    const html = renderToStaticMarkup(
+      React.createElement(PdfView, { content, title: "a.pdf" })
+    );
+    assert.doesNotMatch(html, /<iframe|Loading PDF/);
+    assert.match(html, /A preview is not available/);
+  }
+});
