@@ -172,9 +172,7 @@ export function EffortSegments({
           Reasoning effort
         </span>
         {!supported && (
-          <span className="text-xxs text-muted-foreground">
-            Not supported
-          </span>
+          <span className="text-xxs text-muted-foreground">Not supported</span>
         )}
       </div>
       <div

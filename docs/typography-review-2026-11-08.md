@@ -4,12 +4,12 @@ Reviewed typography changes from the recent settings update (`b305395`) and
 hierarchy cleanup (`67d3f93`), including both model controls, Workspace and Admin
 navigation, usage, connections, memory forms, account feedback, and shared actions.
 
-| Before | After | Why |
-| --- | --- | --- |
-| Effort labels used 12px, weight 700, and 0.14em tracking | Both surfaces use `--font-size-xxs`, weight 600, and 0.04em tracking | Keeps compact choices subordinate to field labels |
-| Effort buttons could wrap into multiple rows | A shared single row scrolls horizontally when necessary | Keeps labels intact and every option reachable |
-| Chat picker used separate fixed 11px and 13px sizes | Compact captions use `text-xxs`; model names use `text-sm` | Matches the existing control and caption scale |
-| Output-slider annotations increased from 10px to `text-xs` | Annotations use `text-xxs` | Gives adjacent values more room in narrow panels |
+| Before                                                        | After                                                                          | Why                                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Effort labels used 12px, weight 700, and 0.14em tracking      | Both surfaces use `--font-size-xxs`, weight 600, and 0.04em tracking           | Keeps compact choices subordinate to field labels                |
+| Effort buttons could wrap into multiple rows                  | A shared single row scrolls horizontally when necessary                        | Keeps labels intact and every option reachable                   |
+| Chat picker used separate fixed 11px and 13px sizes           | Compact captions use `text-xxs`; model names use `text-sm`                     | Matches the existing control and caption scale                   |
+| Output-slider annotations increased from 10px to `text-xs`    | Annotations use `text-xxs`                                                     | Gives adjacent values more room in narrow panels                 |
 | CSS and Tailwind defined separate size scales; `xs` disagreed | Tailwind reads the shared CSS size tokens, with distinct `xxs` and `xs` tokens | Keeps future size changes consistent across both styling systems |
 
 At the existing 15px root size, the compact, caption, control, and body steps

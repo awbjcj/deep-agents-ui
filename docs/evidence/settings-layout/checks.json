@@ -154,14 +154,6 @@
     "login-1440-dark",
     "forgot-password-1440-dark"
   ],
-  "widths": [
-    320,
-    390,
-    768,
-    1440
-  ],
-  "themes": [
-    "light",
-    "dark"
-  ]
+  "widths": [320, 390, 768, 1440],
+  "themes": ["light", "dark"]
 }
