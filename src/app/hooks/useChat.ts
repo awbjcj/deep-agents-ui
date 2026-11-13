@@ -50,6 +50,7 @@ import {
   type SourceImageRecord,
   type SourceImageRecordMap,
 } from "@/lib/source-images";
+import type { SourceAttachmentRecord } from "@/lib/artifact-links";
 import {
   EMPTY_PENDING_FILES,
   applyPendingDelta,
@@ -80,6 +81,11 @@ export type StateType = {
   todos: TodoItem[];
   files: Record<string, string>;
   source_image_attachments?: SourceImageRecordMap;
+  /** Saved source documents keyed by original path; null is a tombstone. */
+  source_attachment_records?: Record<
+    string,
+    SourceAttachmentRecord | null | undefined
+  >;
   email?: {
     id?: string;
     subject?: string;
@@ -105,6 +111,20 @@ const STREAM_MODES: StreamMode[] = [
 // Stable empty array so an absent `todos` channel doesn't hand consumers a new
 // reference (and a needless re-render) on every streamed token.
 const EMPTY_TODOS: TodoItem[] = [];
+const EMPTY_SOURCE_ATTACHMENT_RECORDS: Record<string, SourceAttachmentRecord> =
+  {};
+
+/** Drop tombstoned source-document records. */
+function liveSourceAttachmentRecords(
+  records: StateType["source_attachment_records"]
+): Record<string, SourceAttachmentRecord> {
+  if (!records) return EMPTY_SOURCE_ATTACHMENT_RECORDS;
+  const live: Record<string, SourceAttachmentRecord> = {};
+  for (const [path, record] of Object.entries(records)) {
+    if (record) live[path] = record;
+  }
+  return live;
+}
 
 export function useChat({
   activeAssistant,
@@ -756,6 +776,37 @@ export function useChat({
   );
   const sourceImageAttachmentsRef = useRef(sourceImageAttachments);
   sourceImageAttachmentsRef.current = sourceImageAttachments;
+
+  // Source-document provenance. A refresh outside the stream (uploads,
+  // deletes) overrides the stream value until the stream emits a new one.
+  const rawServerSourceAttachmentRecords =
+    stream.values.source_attachment_records;
+  const rawServerSourceAttachmentRecordsRef = useRef(
+    rawServerSourceAttachmentRecords
+  );
+  rawServerSourceAttachmentRecordsRef.current =
+    rawServerSourceAttachmentRecords;
+  const [
+    refreshedSourceAttachmentRecords,
+    setRefreshedSourceAttachmentRecords,
+  ] = useState<{
+    threadId: string;
+    base: StateType["source_attachment_records"];
+    records: Record<string, SourceAttachmentRecord>;
+  } | null>(null);
+  const sourceAttachmentRecords = useMemo(
+    () =>
+      refreshedSourceAttachmentRecords &&
+      refreshedSourceAttachmentRecords.threadId === threadId &&
+      refreshedSourceAttachmentRecords.base === rawServerSourceAttachmentRecords
+        ? refreshedSourceAttachmentRecords.records
+        : liveSourceAttachmentRecords(rawServerSourceAttachmentRecords),
+    [
+      refreshedSourceAttachmentRecords,
+      rawServerSourceAttachmentRecords,
+      threadId,
+    ]
+  );
   const sourceImageRemovalQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
@@ -878,6 +929,13 @@ export function useChat({
         sourceImageAttachmentsRef.current = refreshedRecords;
         setOptimisticFiles(refreshedFiles);
         setOptimisticSourceImageAttachments(refreshedRecords);
+        setRefreshedSourceAttachmentRecords({
+          threadId: deletionThreadId,
+          base: rawServerSourceAttachmentRecordsRef.current,
+          records: liveSourceAttachmentRecords(
+            refreshed.values.source_attachment_records
+          ),
+        });
       } catch {
         // The DELETE already succeeded. Keep the narrow optimistic state until
         // the next stream snapshot or thread hydration supplies fresh values.
@@ -981,6 +1039,13 @@ export function useChat({
         sourceImageAttachmentsRef.current = refreshedRecords;
         setOptimisticFiles(refreshedFiles);
         setOptimisticSourceImageAttachments(refreshedRecords);
+        setRefreshedSourceAttachmentRecords({
+          threadId: target,
+          base: rawServerSourceAttachmentRecordsRef.current,
+          records: liveSourceAttachmentRecords(
+            refreshed.values?.source_attachment_records
+          ),
+        });
       } catch {
         // The next stream snapshot or thread hydration supplies fresh files.
       }
@@ -1198,6 +1263,7 @@ export function useChat({
       files,
       pendingFilePaths,
       sourceImageAttachments,
+      sourceAttachmentRecords,
       email,
       ui,
       setFiles,
@@ -1232,6 +1298,7 @@ export function useChat({
       files,
       pendingFilePaths,
       sourceImageAttachments,
+      sourceAttachmentRecords,
       email,
       ui,
       setFiles,

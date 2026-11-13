@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { splitArtifactPaths } from "@/lib/artifact-links";
+import { attachmentDisplayName } from "@/lib/uploads";
 import type {
   ReadableToolResult as Result,
   ResultValue,
 } from "@/lib/tool-result";
 import { MarkdownContent } from "./MarkdownContent";
+import { useFileOpener } from "./FileOpener";
 
 const MAX_ITEMS = 50;
 const MAX_DEPTH = 6;
@@ -74,6 +77,46 @@ function DataValue({
   );
 }
 
+/**
+ * Literal tool text whose `/_artifacts/...` paths open the chat file viewer.
+ * The text itself, brackets and punctuation included, stays verbatim.
+ */
+function ArtifactText({
+  text,
+  files,
+}: {
+  text: string;
+  files?: Record<string, unknown>;
+}) {
+  const opener = useFileOpener();
+  const parts = useMemo(
+    () => (opener ? splitArtifactPaths(text) : null),
+    [opener, text]
+  );
+  if (!opener || !parts) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, index) =>
+        "path" in part && (!files || Object.hasOwn(files, part.path)) ? (
+          <button
+            key={index}
+            type="button"
+            title={`Open ${attachmentDisplayName(part.path)}`}
+            onClick={() => opener.open(part.path)}
+            className="inline text-left text-primary underline underline-offset-2 [font:inherit] [overflow-wrap:anywhere] hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {part.raw}
+          </button>
+        ) : (
+          <React.Fragment key={index}>
+            {"path" in part ? part.raw : part.text}
+          </React.Fragment>
+        )
+      )}
+    </>
+  );
+}
+
 /** Present tool text and structured metadata while retaining exact raw output. */
 export function ReadableToolResult({
   result,
@@ -111,11 +154,17 @@ export function ReadableToolResult({
           role="region"
           tabIndex={0}
         >
-          {result.text}
+          <ArtifactText
+            text={result.text}
+            files={files}
+          />
         </pre>
       ) : (
         <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-          {result.text}
+          <ArtifactText
+            text={result.text}
+            files={files}
+          />
         </div>
       )}
     </section>

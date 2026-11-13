@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { canUseCodeAnalyzer, CODE_ANALYZER_AGENT_ID } from "@/lib/agent-access";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
+import { FileOpenerProvider } from "@/app/components/FileOpener";
 import { ChatComposer } from "@/app/components/ChatComposer";
 import type { SkillAuthoringRequest } from "@/lib/skill-authoring-request";
 import { useReducedMotion } from "@/app/hooks/useReducedMotion";
@@ -162,6 +163,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       files,
       pendingFilePaths,
       sourceImageAttachments,
+      sourceAttachmentRecords,
       ui,
       setFiles,
       refreshFiles,
@@ -312,7 +314,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 onSelectPrompt={insertStarterPrompt}
               />
             ) : (
-              <>
+              <FileOpenerProvider
+                files={files}
+                sourceImageAttachments={sourceImageAttachments}
+                sourceAttachmentRecords={sourceAttachmentRecords}
+              >
                 {processedMessages.map((data, index) => {
                   if (isTaskOutcomeNotice(data.message, taskVerification))
                     return null;
@@ -356,7 +362,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   }
                   visuallyHidden={taskVerification?.checking}
                 />
-              </>
+              </FileOpenerProvider>
             )}
             {canUseCodeAnalyzer(user) && (
               <CodeAnalysisJobs

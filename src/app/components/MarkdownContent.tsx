@@ -11,17 +11,25 @@ import { cn } from "@/lib/utils";
 import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 import { remarkStreamingEmphasis } from "@/app/utils/streamingMarkdown";
 import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
-import { fileContentToText } from "@/lib/uploads";
+import { attachmentDisplayName, fileContentToText } from "@/lib/uploads";
 import { isPageRelativeImage } from "@/lib/image-src";
 import { splitFrontmatter, type Frontmatter } from "@/lib/frontmatter";
+import { contentByteSize, PREVIEW_MAX_BYTES } from "@/lib/file-kind";
+import { resolveConversationFile } from "@/lib/artifact-links";
+import type { FileItem } from "@/app/types/types";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
 import { ImagePreviewDialog } from "./ImagePreviewDialog";
+import { useFileOpener, type FileOpener } from "./FileOpener";
+import { SpreadsheetView } from "./SpreadsheetView";
 
 const MarkdownLinkContext = React.createContext(false);
 const MarkdownFilesContext = React.createContext<
   Record<string, unknown> | undefined
 >(undefined);
+const MarkdownModeContext = React.createContext<"assistant" | "document">(
+  "assistant"
+);
 
 const PROSE_CLASS =
   // Base prose typography with dark-mode-aware inversion. We override the
@@ -678,12 +686,141 @@ function ArtifactDownload({
   );
 }
 
+const ARTIFACT_BUTTON_CLASS =
+  "text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground";
+
+/**
+ * First sheet of a spreadsheet, 8 × 8, under its link. It parses only once
+ * scrolled near the viewport, so a long transcript never parses files the
+ * user does not see. Nothing renders on the server.
+ */
+function InlineSpreadsheetPreview({
+  file,
+  filename,
+  opener,
+}: {
+  file: FileItem;
+  filename: string;
+  opener: FileOpener;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || visible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible]);
+  return (
+    <span
+      ref={ref}
+      className={cn("not-prose block", visible && "my-2 space-y-1")}
+    >
+      {visible && (
+        <>
+          <SpreadsheetView
+            file={file}
+            compact
+          />
+          <button
+            type="button"
+            aria-label={`Open full ${filename}`}
+            onClick={() => opener.open(file.path)}
+            className={cn(ARTIFACT_BUTTON_CLASS, "text-xs")}
+          >
+            Open full
+          </button>
+        </>
+      )}
+    </span>
+  );
+}
+
+/** A conversation file link that opens the chat's file viewer. */
+function ArtifactOpen({
+  path,
+  value,
+  opener,
+  children,
+}: {
+  path: string;
+  value: unknown;
+  opener: FileOpener;
+  children: React.ReactNode;
+}) {
+  const mode = React.useContext(MarkdownModeContext);
+  // Streaming re-renders every link per token; resolve and size the file
+  // only when it changes.
+  const { file, filename, kind } = useMemo(
+    () =>
+      resolveConversationFile(
+        path,
+        value === undefined ? {} : { [path]: value },
+        {},
+        {}
+      ),
+    [path, value]
+  );
+  const isSpreadsheet = kind === "csv" || kind === "tsv" || kind === "xlsx";
+  const fitsPreview = useMemo(
+    () =>
+      file !== null &&
+      contentByteSize(file.content, file.encoding) <= PREVIEW_MAX_BYTES,
+    [file]
+  );
+  const available = file !== null;
+  const showSpreadsheet =
+    file !== null && mode !== "document" && isSpreadsheet && fitsPreview;
+  return (
+    <span>
+      <button
+        type="button"
+        disabled={!available}
+        aria-label={`Open ${filename}`}
+        className={ARTIFACT_BUTTON_CLASS}
+        onClick={() => opener.open(path)}
+      >
+        <MarkdownLinkContext.Provider value={true}>
+          {children}
+        </MarkdownLinkContext.Provider>
+      </button>
+      {!available && (
+        <span className="text-xs text-muted-foreground">
+          {" "}
+          (file unavailable)
+        </span>
+      )}
+      {showSpreadsheet && (
+        <InlineSpreadsheetPreview
+          file={file}
+          filename={filename}
+          opener={opener}
+        />
+      )}
+    </span>
+  );
+}
+
 // Keep renderer component identities stable when any conversation file changes.
 // Context updates their data without remounting images or closing open previews.
 const ARTIFACT_COMPONENTS: Components = {
   ...COMPONENTS,
   a: function MarkdownArtifactLink(props) {
     const files = React.useContext(MarkdownFilesContext);
+    const opener = useFileOpener();
     const path = artifactPath(props.href);
     if (!path)
       return React.createElement(
@@ -691,6 +828,16 @@ const ARTIFACT_COMPONENTS: Components = {
         props
       );
     const value = files && Object.hasOwn(files, path) ? files[path] : undefined;
+    if (opener)
+      return (
+        <ArtifactOpen
+          path={path}
+          value={value}
+          opener={opener}
+        >
+          {props.children}
+        </ArtifactOpen>
+      );
     return (
       <ArtifactDownload
         path={path}
@@ -702,6 +849,7 @@ const ARTIFACT_COMPONENTS: Components = {
   },
   img: function MarkdownArtifactImage(props) {
     const files = React.useContext(MarkdownFilesContext);
+    const opener = useFileOpener();
     const path = artifactPath(props.src);
     if (!path)
       return React.createElement(
@@ -715,6 +863,36 @@ const ARTIFACT_COMPONENTS: Components = {
       metadata.encoding === "base64" &&
       /^image\/(png|jpeg|gif|webp)$/.test(metadata.mimeType || "") &&
       content;
+    if (opener) {
+      const filename = metadata.filename || attachmentDisplayName(path);
+      // In chat a saved image is a bounded thumbnail that opens the viewer.
+      return canPreview ? (
+        <span className="not-prose my-2 block">
+          <button
+            type="button"
+            aria-label={`Open ${filename}`}
+            onClick={() => opener.open(path)}
+            className="inline-block max-w-full overflow-hidden rounded-md border border-border bg-muted/30 align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <img
+              src={`data:${metadata.mimeType};base64,${content}`}
+              alt={props.alt ?? ""}
+              loading="lazy"
+              decoding="async"
+              className="block h-auto max-h-[240px] w-auto max-w-full object-contain"
+            />
+          </button>
+        </span>
+      ) : (
+        <ArtifactOpen
+          path={path}
+          value={value}
+          opener={opener}
+        >
+          {props.alt || filename}
+        </ArtifactOpen>
+      );
+    }
     return (
       <span>
         {canPreview && (
@@ -805,18 +983,20 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         )}
         {frontmatter && <FrontmatterPanel frontmatter={frontmatter} />}
         <MarkdownFilesContext.Provider value={files}>
-          <ReactMarkdown
-            remarkPlugins={
-              isStreaming && mode !== "document"
-                ? STREAMING_REMARK_PLUGINS
-                : REMARK_PLUGINS
-            }
-            rehypePlugins={REHYPE_PLUGINS}
-            components={ARTIFACT_COMPONENTS}
-            urlTransform={urlTransform}
-          >
-            {normalizedContent}
-          </ReactMarkdown>
+          <MarkdownModeContext.Provider value={mode}>
+            <ReactMarkdown
+              remarkPlugins={
+                isStreaming && mode !== "document"
+                  ? STREAMING_REMARK_PLUGINS
+                  : REMARK_PLUGINS
+              }
+              rehypePlugins={REHYPE_PLUGINS}
+              components={ARTIFACT_COMPONENTS}
+              urlTransform={urlTransform}
+            >
+              {normalizedContent}
+            </ReactMarkdown>
+          </MarkdownModeContext.Provider>
         </MarkdownFilesContext.Provider>
       </div>
     );
