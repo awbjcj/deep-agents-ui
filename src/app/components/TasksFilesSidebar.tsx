@@ -9,7 +9,10 @@ import {
   imageMimeForPath,
 } from "@/lib/uploads";
 import { FileViewDialog } from "@/app/components/FileViewDialog";
-import { fileMetadata } from "@/lib/file-downloads";
+import {
+  resolveConversationFile,
+  type SourceAttachmentRecord,
+} from "@/lib/artifact-links";
 import { cn } from "@/lib/utils";
 import {
   safeSourcePageUrl,
@@ -18,12 +21,14 @@ import {
 } from "@/lib/source-images";
 
 const NO_PENDING_PATHS: ReadonlySet<string> = new Set();
+const NO_SOURCE_ATTACHMENT_RECORDS: Record<string, SourceAttachmentRecord> = {};
 
 export function FilesPopover({
   files,
   pendingFilePaths = NO_PENDING_PATHS,
   setFiles,
   sourceImageAttachments,
+  sourceAttachmentRecords = NO_SOURCE_ATTACHMENT_RECORDS,
   removeSourceImage,
   editDisabled,
 }: {
@@ -32,6 +37,8 @@ export function FilesPopover({
   pendingFilePaths?: ReadonlySet<string>;
   setFiles: (files: Record<string, string>) => Promise<void>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
+  /** Saved source documents keyed by original path, for "Open in" links. */
+  sourceAttachmentRecords?: Record<string, SourceAttachmentRecord>;
   removeSourceImage: (record: SourceImageRecord) => Promise<void>;
   editDisabled: boolean;
 }) {
@@ -46,21 +53,17 @@ export function FilesPopover({
       ),
     [sourceImageAttachments]
   );
-  const selectedContent =
-    selectedPath === null ? undefined : files[selectedPath];
-  const selectedSource =
-    selectedPath === null ? undefined : sourceByPath.get(selectedPath);
   const selectedFile = useMemo(
     () =>
-      selectedPath !== null && selectedContent != null
-        ? {
-            path: selectedPath,
-            content: fileContentToText(selectedContent),
-            ...fileMetadata(selectedContent),
-            sourceImage: selectedSource,
-          }
-        : null,
-    [selectedPath, selectedContent, selectedSource]
+      selectedPath === null
+        ? null
+        : resolveConversationFile(
+            selectedPath,
+            files,
+            sourceImageAttachments,
+            sourceAttachmentRecords
+          ).file,
+    [selectedPath, files, sourceImageAttachments, sourceAttachmentRecords]
   );
   const closeFile = useCallback(() => setSelectedPath(null), []);
 

@@ -119,12 +119,16 @@ test(
         import { FileOpenerProvider } from "./src/app/components/FileOpener";
         import { MarkdownContent } from "./src/app/components/MarkdownContent";
         import { ReadableToolResult } from "./src/app/components/ReadableToolResult";
+        import { FilesPopover } from "./src/app/components/TasksFilesSidebar";
         const fixture = ${JSON.stringify(fixture)};
         function Fixture() {
           return <FileOpenerProvider files={fixture.files} sourceImageAttachments={fixture.images} sourceAttachmentRecords={fixture.documents}>
             <main className="mx-auto max-w-3xl p-4">
               <MarkdownContent content={fixture.markdown} files={fixture.files} />
               <ReadableToolResult result={{ kind: "text", text: fixture.toolText, monospace: true }} files={fixture.files} />
+              <section aria-label="Files panel">
+                <FilesPopover files={fixture.files} setFiles={async () => {}} sourceImageAttachments={fixture.images} sourceAttachmentRecords={fixture.documents} removeSourceImage={async () => {}} editDisabled />
+              </section>
             </main>
             <Toaster />
           </FileOpenerProvider>;
@@ -299,6 +303,21 @@ test(
       assert.match(
         await page.getByLabel("Tool result text").innerText(),
         new RegExp(`- shot.png: <${PNG}> \\(source: confluence\\)`)
+      );
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "detached" });
+
+      // The Files panel shows the same source link for a document's
+      // readable copy.
+      await page.getByTitle(READABLE).click();
+      await dialog
+        .getByRole("heading", { name: "Report", exact: true })
+        .waitFor();
+      assert.equal(
+        await dialog
+          .getByRole("link", { name: "Open in Jira" })
+          .getAttribute("href"),
+        JIRA_URL
       );
       assert.deepEqual(errors, []);
     } finally {

@@ -624,6 +624,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                             pendingFilePaths={pendingFilePaths}
                             setFiles={setFiles}
                             sourceImageAttachments={sourceImageAttachments}
+                            sourceAttachmentRecords={sourceAttachmentRecords}
                             removeSourceImage={removeSourceImage}
                             editDisabled={
                               isLoading === true || interrupt !== undefined
