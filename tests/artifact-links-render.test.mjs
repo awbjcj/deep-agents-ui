@@ -68,7 +68,7 @@ test("with a file opener, artifact images are bounded thumbnails that open the v
     })
   );
   assert.match(html, /<button[^>]*aria-label="Open name.png"/);
-  assert.match(html, /max-h-\[240px\]/);
+  assert.match(html, /max-height:240px/);
   assert.match(html, /src="data:image\/png;base64,aW1hZ2U="/);
   assert.doesNotMatch(html, /Download|Expand/);
 });
@@ -115,4 +115,18 @@ test("literal tool results link artifact paths only inside a chat", () => {
   );
   assert.doesNotMatch(plain, /<button/);
   assert.match(plain, /&lt;\/_artifacts\/u\/t\/uploads\/abc__name.png&gt;/);
+});
+
+test("linked artifact images keep exactly one interactive target", () => {
+  for (const destination of [CSV, "https://example.com/report"]) {
+    const element = React.createElement(MarkdownContent, {
+      content: `[![Chart](${PNG})](${destination})`,
+      files,
+    });
+    for (const html of [withOpener(element), renderToStaticMarkup(element)]) {
+      assert.equal((html.match(/<(?:button|a) /g) || []).length, 1);
+      assert.match(html, /alt="Chart"/);
+      assert.doesNotMatch(html, /aria-label="Open name.png"/);
+    }
+  }
 });

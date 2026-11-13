@@ -48,6 +48,9 @@ test("the compact preview shows 8 by 8 cells of the first sheet without tabs", (
   // Compact previews sit inside paragraphs, so they avoid block elements.
   assert.doesNotMatch(html, /<(div|table|p)[ >]/);
   assert.match(html, /role="table"/);
+  assert.match(html, /8 of 20 rows/);
+  assert.match(html, /8 of 12 columns/);
+  assert.match(html, /tabindex="0"/);
 });
 
 test("base64 CSV originals decode as UTF-8 text", () => {
@@ -93,4 +96,20 @@ test("content that is not a PDF never reaches a frame", () => {
     assert.doesNotMatch(html, /<iframe|Loading PDF/);
     assert.match(html, /A preview is not available/);
   }
+});
+
+test("empty compact sheets explain their state", () => {
+  const html = render({
+    file: { path: "empty.csv", content: "" },
+    compact: true,
+  });
+  assert.match(html, /This sheet is empty/);
+  assert.doesNotMatch(html, /role="table"/);
+});
+
+test("unnamed columns have usable sort controls", () => {
+  const html = render({
+    file: { path: "blank-header.csv", content: ",value\na,1" },
+  });
+  assert.match(html, /Column 1/);
 });

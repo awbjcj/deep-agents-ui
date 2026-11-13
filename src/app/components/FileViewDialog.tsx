@@ -201,7 +201,7 @@ function FileViewDialogSession({
               : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
-        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
+        <div className="mb-4 flex shrink-0 flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
           <div className="flex min-w-0 items-center gap-2.5 pr-10 min-[520px]:pr-0">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
               {isImage ? (
@@ -274,7 +274,7 @@ function FileViewDialogSession({
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1 self-end min-[520px]:self-auto">
+          <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1 self-end min-[520px]:max-w-[60%] min-[520px]:self-auto">
             {!isEditingMode && (
               <>
                 {!isImage && !isBinary && (

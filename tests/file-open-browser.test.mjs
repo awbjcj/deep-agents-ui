@@ -11,6 +11,7 @@ const ORIGINAL = "/_artifacts/u/t/source-attachments/k1__report.xlsx";
 const READABLE = "/_artifacts/u/t/uploads/k1__report.md";
 const CSV = "/_artifacts/u/t/generated/scores.csv";
 const PDF = "/_artifacts/u/t/source-attachments/k3__spec.pdf";
+const BROKEN = "/_artifacts/u/t/uploads/broken.png";
 const PNG = "/_artifacts/u/t/uploads/k2__shot.png";
 const PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -64,6 +65,11 @@ test(
           encoding: "base64",
           mime_type: "application/pdf",
         },
+        [BROKEN]: {
+          content: "aW1hZ2U=",
+          encoding: "base64",
+          mime_type: "image/png",
+        },
         [PNG]: {
           content: PNG_BASE64,
           encoding: "base64",
@@ -106,6 +112,8 @@ test(
         `Scores: [scores.csv](${CSV})`,
         `Spec: [spec.pdf](${PDF})`,
         `![Screenshot](${PNG})`,
+        `[![Linked screenshot](${PNG})](https://example.com/report)`,
+        `![Missing chart](${BROKEN})`,
       ].join("\n\n"),
       toolText: `Saved images:\n- shot.png: <${PNG}> (source: confluence)`,
     };
@@ -153,6 +161,9 @@ test(
     } catch {
       /* The behavior tests also run before the first production build. */
     }
+    if (process.env.FILE_OPEN_CSS) {
+      css = await readFile(process.env.FILE_OPEN_CSS, "utf8");
+    }
     const server = createServer((request, response) => {
       if (request.url === "/app.js") {
         response.setHeader("Content-Type", "text/javascript");
@@ -177,6 +188,22 @@ test(
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(`http://127.0.0.1:${server.address().port}`);
       const dialog = page.getByRole("dialog");
+
+      // A linked image has one activation target; broken bytes stay visible
+      // as a useful failure state instead of an empty thumbnail.
+      assert.equal(await page.locator("a button, button button").count(), 0);
+      await page.getByText("Image failed to load", { exact: true }).waitFor();
+      await page
+        .getByRole("button", { name: "Open broken.png", exact: true })
+        .focus();
+      await page.keyboard.press("Enter");
+      await dialog.getByTestId("file-view-title").waitFor();
+      assert.equal(
+        await dialog.getByTestId("file-view-title").innerText(),
+        "broken.png"
+      );
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "detached" });
 
       // A saved source document opens in the viewer, not as a download.
       await page
@@ -319,6 +346,45 @@ test(
           .getAttribute("href"),
         JIRA_URL
       );
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "detached" });
+
+      // All text-file actions fit even when source links share the toolbar.
+      for (const width of [320, 768, 1024, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.getByTitle(READABLE).click();
+        await dialog
+          .getByRole("heading", { name: "Report", exact: true })
+          .waitFor();
+        await dialog.evaluate(async (el) => {
+          await Promise.all(
+            el.getAnimations().map((animation) => animation.finished)
+          );
+        });
+        const bounds = await dialog.boundingBox();
+        for (const action of await dialog.locator("button, a").all()) {
+          if (!(await action.isVisible())) continue;
+          const box = await action.boundingBox();
+          assert.ok(
+            box.x >= bounds.x &&
+              box.x + box.width <= bounds.x + bounds.width + 1,
+            `action ${await action.textContent()} ${JSON.stringify(
+              box
+            )} stays inside ${JSON.stringify(bounds)} at ${width}px`
+          );
+        }
+        assert.equal(
+          await dialog.evaluate((el) => el.scrollWidth > el.clientWidth),
+          false
+        );
+        if (process.env.FILE_OPEN_SCREENSHOT_DIR) {
+          await page.screenshot({
+            path: `${process.env.FILE_OPEN_SCREENSHOT_DIR}/content-${width}.png`,
+          });
+        }
+        await page.keyboard.press("Escape");
+        await dialog.waitFor({ state: "detached" });
+      }
       assert.deepEqual(errors, []);
     } finally {
       await browser.close();

@@ -225,8 +225,12 @@ function PlainCodeBlock({
 function MarkdownImage({
   src,
   alt,
+  compact = false,
   ...props
-}: React.ImgHTMLAttributes<HTMLImageElement> & { src: string }) {
+}: React.ImgHTMLAttributes<HTMLImageElement> & {
+  src: string;
+  compact?: boolean;
+}) {
   const imgRef = useRef<HTMLImageElement>(null);
   const insideLink = React.useContext(MarkdownLinkContext);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
@@ -264,7 +268,8 @@ function MarkdownImage({
   return (
     <span
       className={cn(
-        "not-prose relative my-4 block overflow-hidden rounded-md border",
+        "not-prose relative block overflow-hidden rounded-md border",
+        !compact && "my-4",
         isError
           ? "border-dashed border-border bg-muted/30"
           : "border-border bg-muted/30",
@@ -279,12 +284,12 @@ function MarkdownImage({
               // Never upscale past the image's own pixels: without this a
               // 10x10 icon would be stretched into a full-column square.
               maxWidth: `${size.w}px`,
-              maxHeight: "60vh",
+              maxHeight: compact ? "240px" : "60vh",
             }
           : // Reserved box before the natural size is known, so a loading
             // image has a stable footprint instead of being laid out at zero
             // height and reflowing the transcript when the bytes land.
-            { aspectRatio: "16 / 9", maxHeight: "22rem" }
+            { aspectRatio: "16 / 9", maxHeight: compact ? "240px" : "22rem" }
       }
     >
       {/* A failed image gets a labelled placeholder rather than disappearing:
@@ -850,6 +855,7 @@ const ARTIFACT_COMPONENTS: Components = {
   img: function MarkdownArtifactImage(props) {
     const files = React.useContext(MarkdownFilesContext);
     const opener = useFileOpener();
+    const insideLink = React.useContext(MarkdownLinkContext);
     const path = artifactPath(props.src);
     if (!path)
       return React.createElement(
@@ -863,26 +869,29 @@ const ARTIFACT_COMPONENTS: Components = {
       metadata.encoding === "base64" &&
       /^image\/(png|jpeg|gif|webp)$/.test(metadata.mimeType || "") &&
       content;
+    const filename = metadata.filename || attachmentDisplayName(path);
+    const thumbnail = canPreview ? (
+      <MarkdownLinkContext.Provider value={true}>
+        <MarkdownImage
+          src={`data:${metadata.mimeType};base64,${content}`}
+          alt={props.alt}
+          compact
+        />
+      </MarkdownLinkContext.Provider>
+    ) : null;
+    // The enclosing Markdown link owns activation. Nested buttons break
+    // keyboard navigation and can open two competing destinations.
+    if (insideLink) return thumbnail || <span>{props.alt || filename}</span>;
     if (opener) {
-      const filename = metadata.filename || attachmentDisplayName(path);
-      // In chat a saved image is a bounded thumbnail that opens the viewer.
-      return canPreview ? (
-        <span className="not-prose my-2 block">
-          <button
-            type="button"
-            aria-label={`Open ${filename}`}
-            onClick={() => opener.open(path)}
-            className="inline-block max-w-full overflow-hidden rounded-md border border-border bg-muted/30 align-top focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <img
-              src={`data:${metadata.mimeType};base64,${content}`}
-              alt={props.alt ?? ""}
-              loading="lazy"
-              decoding="async"
-              className="block h-auto max-h-[240px] w-auto max-w-full object-contain"
-            />
-          </button>
-        </span>
+      return thumbnail ? (
+        <button
+          type="button"
+          aria-label={`Open ${filename}`}
+          onClick={() => opener.open(path)}
+          className="not-prose my-2 block w-full max-w-full rounded-md text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {thumbnail}
+        </button>
       ) : (
         <ArtifactOpen
           path={path}
@@ -929,12 +938,17 @@ function FrontmatterPanel({ frontmatter }: { frontmatter: Frontmatter }) {
   return (
     <dl
       aria-label="Document metadata"
-      className={cn(frame, "grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1")}
+      className={cn(
+        frame,
+        "grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]"
+      )}
     >
       {frontmatter.entries.map(([key, value]) => (
         <React.Fragment key={key}>
-          <dt className="font-medium text-muted-foreground">{key}</dt>
-          <dd className="min-w-0 break-words">
+          <dt className="font-medium text-muted-foreground [overflow-wrap:anywhere]">
+            {key}
+          </dt>
+          <dd className="min-w-0 [overflow-wrap:anywhere]">
             {Array.isArray(value) ? (
               <span className="flex flex-wrap gap-1">
                 {value.map((item, index) => (

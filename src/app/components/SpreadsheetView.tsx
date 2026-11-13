@@ -93,6 +93,7 @@ export function SpreadsheetView({
 
   const [workbook, setWorkbook] = useState<{
     content: string;
+    caps: typeof FULL_CAPS;
     parsed: Parsed;
   } | null>(null);
   useEffect(() => {
@@ -105,7 +106,7 @@ export function SpreadsheetView({
         () => ({ error: true as const })
       )
       .then((parsed) => {
-        if (!cancelled) setWorkbook({ content, parsed });
+        if (!cancelled) setWorkbook({ content, caps, parsed });
       });
     return () => {
       cancelled = true;
@@ -114,7 +115,7 @@ export function SpreadsheetView({
 
   const parsed: Parsed =
     kind === "xlsx"
-      ? workbook?.content === content
+      ? workbook?.content === content && workbook.caps === caps
         ? workbook.parsed
         : null
       : delimited;
@@ -159,37 +160,56 @@ export function SpreadsheetView({
       </p>
     );
 
+  if (compact && sheet.rows.length === 0)
+    return (
+      <span className="text-xs text-muted-foreground">
+        This sheet is empty.
+      </span>
+    );
+
   if (compact)
     return (
-      <span className="not-prose block max-w-full overflow-x-auto rounded-md border border-border">
+      <span className="not-prose block max-w-full space-y-1">
         <span
-          role="table"
-          aria-label={`Preview of ${sheet.name}`}
-          className="table w-max min-w-full border-collapse text-xs leading-5"
+          role="region"
+          aria-label={`${sheet.name} preview table`}
+          tabIndex={0}
+          className="block max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
-          {sheet.rows.map((row, rowIndex) => (
-            <span
-              role="row"
-              key={rowIndex}
-              className={cn(
-                "table-row",
-                rowIndex === 0
-                  ? "bg-secondary font-semibold"
-                  : "even:bg-muted/30"
-              )}
-            >
-              {row.map((cell, columnIndex) => (
-                <span
-                  role={rowIndex === 0 ? "columnheader" : "cell"}
-                  key={columnIndex}
-                  className="table-cell max-w-[14rem] truncate border-b border-border px-2 py-1"
-                >
-                  {cell}
-                </span>
-              ))}
-            </span>
-          ))}
+          <span
+            role="table"
+            aria-label={`Preview of ${sheet.name}`}
+            className="table w-max min-w-full border-collapse text-xs leading-5"
+          >
+            {sheet.rows.map((row, rowIndex) => (
+              <span
+                role="row"
+                key={rowIndex}
+                className={cn(
+                  "table-row",
+                  rowIndex === 0
+                    ? "bg-secondary font-semibold"
+                    : "even:bg-muted/30"
+                )}
+              >
+                {row.map((cell, columnIndex) => (
+                  <span
+                    role={rowIndex === 0 ? "columnheader" : "cell"}
+                    key={columnIndex}
+                    className="table-cell max-w-[14rem] truncate border-b border-border px-2 py-1"
+                  >
+                    {cell}
+                  </span>
+                ))}
+              </span>
+            ))}
+          </span>
         </span>
+        {sheet.truncated && (
+          <span className="block text-xs text-muted-foreground">
+            {truncationNotice(sheet)}
+          </span>
+        )}
       </span>
     );
 
@@ -251,6 +271,7 @@ export function SpreadsheetView({
                   return (
                     <th
                       key={column}
+                      scope="col"
                       aria-sort={active ? sort.direction : "none"}
                       className="sticky top-0 z-10 border-b border-border bg-secondary px-0 py-0 text-left font-semibold"
                     >
@@ -259,7 +280,9 @@ export function SpreadsheetView({
                         onClick={() => toggleSort(column)}
                         className="flex w-full items-center gap-1 whitespace-pre-wrap px-3 py-2 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                       >
-                        {cell}
+                        <span className="max-w-[24rem] [overflow-wrap:anywhere]">
+                          {cell || `Column ${column + 1}`}
+                        </span>
                         {active &&
                           (sort.direction === "ascending" ? (
                             <ArrowUp
