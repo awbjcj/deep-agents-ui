@@ -115,6 +115,7 @@ export function resolveConversationFile(
   const sourceUrl = provenance
     ? safeSourcePageUrl(provenance.source_page_url)
     : null;
+  const label = sourceUrl && provenance ? sourceLabel(provenance.source) : null;
   const file: FileItem | null =
     value === undefined || value === null
       ? null
@@ -125,13 +126,13 @@ export function resolveConversationFile(
           mimeType,
           filename,
           sourceImage: image,
+          source: sourceUrl && label ? { url: sourceUrl, label } : undefined,
         };
   return {
     file,
     kind: fileViewKind(path, mimeType, metadata.encoding),
     filename,
     sourceUrl,
-    sourceLabel:
-      sourceUrl && provenance ? sourceLabel(provenance.source) : null,
+    sourceLabel: label,
   };
 }

@@ -22,6 +22,8 @@ export interface FileItem {
   path: string;
   content: string;
   sourceImage?: SourceImageRecord;
+  /** Safe link to the record the file came from, e.g. a Jira issue. */
+  source?: { url: string; label: string };
   encoding?: "utf-8" | "base64";
   mimeType?: string;
   filename?: string;

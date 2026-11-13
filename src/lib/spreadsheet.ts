@@ -103,7 +103,7 @@ export async function parseWorkbook(
 }
 
 /** Decode stored base64 file content. Whitespace is ignored. */
-export function base64ToBytes(content: string): Uint8Array {
+export function base64ToBytes(content: string): Uint8Array<ArrayBuffer> {
   const binary = atob(content.replace(/\s/g, ""));
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1)

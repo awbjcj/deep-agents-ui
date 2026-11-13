@@ -133,6 +133,10 @@ test("saved originals resolve with their kind, name and source link", () => {
   assert.equal(resolved.file.path, ORIGINAL);
   assert.equal(resolved.file.content, "UEsDBA==");
   assert.equal(resolved.file.encoding, "base64");
+  assert.deepEqual(resolved.file.source, {
+    url: "https://jira.example.com/browse/VSDA-1",
+    label: "Jira",
+  });
 });
 
 test("the readable copy inherits the original's source link", () => {
@@ -164,6 +168,7 @@ test("unsafe source URLs are dropped", () => {
   });
   assert.equal(resolved.sourceUrl, null);
   assert.equal(resolved.sourceLabel, null);
+  assert.equal(resolved.file.source, undefined);
 });
 
 test("files without provenance and missing files resolve without a source", () => {
