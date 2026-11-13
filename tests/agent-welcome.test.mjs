@@ -12,7 +12,7 @@ const GRAPHS = [
   "VSDA Task Agent",
   "VSDA Jira Agent",
   "VSDA Teams Agent",
-  "VSDA Email Agent",
+  "VSDA Outlook Agent",
   "VSDA SharePoint Agent",
   "VSDA Knowledge Base Agent",
   "VSDA Polarion Agent",
@@ -56,6 +56,12 @@ test("unknown and legacy agent IDs resolve to sensible welcome copy", () => {
   assert.equal(
     agentWelcome("VSDA Database Agent").name,
     "VSDA Knowledge Base Agent"
+  );
+  const outlook = agentWelcome("VSDA Email Agent");
+  assert.equal(outlook.name, "VSDA Outlook Agent");
+  assert(outlook.prompts.some(({ title }) => title === "Check your calendar"));
+  assert(
+    outlook.prompts.some(({ title }) => title === "Schedule a Teams meeting")
   );
 });
 

@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/auth";
+import { saveBlob } from "@/lib/file-downloads";
 
 export const ROLES: readonly Role[] = ["user", "developer", "admin"];
 
@@ -9,16 +10,5 @@ export type ActionIntent = "neutral" | "primary" | "renewal" | "destructive";
  * export without requiring a server-side artifact.
  */
 export function downloadBlob(content: string, type: string, filename: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  try {
-    document.body.appendChild(link);
-    link.click();
-  } finally {
-    link.remove();
-    URL.revokeObjectURL(url);
-  }
+  saveBlob(new Blob([content], { type }), filename);
 }

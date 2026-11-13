@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useId, useState } from "react";
+import { CheckCircle2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
+import { cn } from "@/lib/utils";
 import type {
   ActionRequest,
   HumanDecision,
@@ -27,16 +29,10 @@ export function BatchToolApprovalInterrupt({
   onResume,
   isLoading,
 }: BatchToolApprovalInterruptProps) {
-  const [decisions, setDecisions] = useState<Array<HumanDecision | null>>([]);
-
-  useEffect(() => {
-    setDecisions(actionRequests.map(() => null));
-  }, [actionRequests]);
-
-  const reviewedDecisions = useMemo(
-    () => decisions.filter(isHumanDecision),
-    [decisions]
+  const [decisions, setDecisions] = useState<Array<HumanDecision | null>>(() =>
+    actionRequests.map(() => null)
   );
+  const reviewedDecisions = decisions.filter(isHumanDecision);
   const reviewedCount = reviewedDecisions.length;
   const canSubmit =
     actionRequests.length > 0 && reviewedCount === actionRequests.length;
@@ -53,28 +49,65 @@ export function BatchToolApprovalInterrupt({
   );
 
   const handleSubmit = () => {
-    if (!canSubmit) {
+    if (!canSubmit || isLoading) {
       return;
     }
 
     onResume({ decisions: reviewedDecisions });
   };
 
+  const remaining = actionRequests.length - reviewedCount;
+  const hintId = useId();
+
   return (
-    <div className="mt-4 flex w-full flex-col gap-4 rounded-xl border border-warning bg-card p-5 text-foreground shadow-sm dark:shadow-none">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold tracking-tight text-foreground">
-          Review pending actions
-        </h3>
+    <section
+      aria-labelledby={`${hintId}-title`}
+      className="mt-4 flex w-full min-w-0 flex-col gap-3 rounded-xl border border-warning bg-card p-2 text-foreground sm:p-4"
+    >
+      <header className="flex flex-wrap items-start justify-between gap-2 px-1 pt-1 sm:px-0 sm:pt-0">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-warning-primary text-warning"
+          >
+            <ShieldAlert
+              size={15}
+              strokeWidth={2.25}
+            />
+          </span>
+          <div className="min-w-0">
+            <h3
+              id={`${hintId}-title`}
+              className="text-sm font-semibold leading-5 tracking-tight"
+            >
+              Review pending actions
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Choose a decision for each action, then continue.
+            </p>
+          </div>
+        </div>
         <span
           role="status"
-          className="inline-flex items-center rounded-full bg-warning-primary px-2.5 py-1 text-xs font-medium text-warning"
+          aria-atomic="true"
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums",
+            canSubmit
+              ? "border-success bg-success-primary text-success"
+              : "border-warning bg-warning-primary text-warning"
+          )}
         >
+          {canSubmit && (
+            <CheckCircle2
+              aria-hidden="true"
+              size={13}
+            />
+          )}
           {reviewedCount} of {actionRequests.length} reviewed
         </span>
-      </div>
+      </header>
 
-      <ol className="space-y-3">
+      <ol className="space-y-2">
         {actionRequests.map((actionRequest, index) => (
           <li key={`${actionRequest.name}-${index}`}>
             <ToolApprovalInterrupt
@@ -85,20 +118,30 @@ export function BatchToolApprovalInterrupt({
               }
               currentDecision={decisions[index] ?? undefined}
               isLoading={isLoading}
+              embedded
             />
           </li>
         ))}
       </ol>
 
-      <div className="flex justify-end">
+      <footer className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 px-1 pb-1 sm:px-0 sm:pb-0">
+        {!canSubmit && (
+          <p
+            id={`${hintId}-hint`}
+            className="text-xs text-muted-foreground"
+          >
+            {remaining} {remaining === 1 ? "action needs" : "actions need"} a
+            decision
+          </p>
+        )}
         <Button
-          size="sm"
           onClick={handleSubmit}
           disabled={isLoading || !canSubmit}
+          aria-describedby={canSubmit ? undefined : `${hintId}-hint`}
         >
           {isLoading ? "Continuing..." : "Continue"}
         </Button>
-      </div>
-    </div>
+      </footer>
+    </section>
   );
 }

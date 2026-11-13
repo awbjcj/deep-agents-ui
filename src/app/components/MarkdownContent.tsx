@@ -11,17 +11,25 @@ import { cn } from "@/lib/utils";
 import { normalizeAssistantMarkdown } from "@/app/utils/markdown";
 import { remarkStreamingEmphasis } from "@/app/utils/streamingMarkdown";
 import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
-import { fileContentToText } from "@/lib/uploads";
+import { attachmentDisplayName, fileContentToText } from "@/lib/uploads";
 import { isPageRelativeImage } from "@/lib/image-src";
 import { splitFrontmatter, type Frontmatter } from "@/lib/frontmatter";
+import { contentByteSize, PREVIEW_MAX_BYTES } from "@/lib/file-kind";
+import { resolveConversationFile } from "@/lib/artifact-links";
+import type { FileItem } from "@/app/types/types";
 
 import { ThemedSyntaxHighlighter as SyntaxHighlighter } from "./ThemedSyntaxHighlighter";
 import { ImagePreviewDialog } from "./ImagePreviewDialog";
+import { useFileOpener, type FileOpener } from "./FileOpener";
+import { SpreadsheetView } from "./SpreadsheetView";
 
 const MarkdownLinkContext = React.createContext(false);
 const MarkdownFilesContext = React.createContext<
   Record<string, unknown> | undefined
 >(undefined);
+const MarkdownModeContext = React.createContext<"assistant" | "document">(
+  "assistant"
+);
 
 const PROSE_CLASS =
   // Base prose typography with dark-mode-aware inversion. We override the
@@ -217,8 +225,12 @@ function PlainCodeBlock({
 function MarkdownImage({
   src,
   alt,
+  compact = false,
   ...props
-}: React.ImgHTMLAttributes<HTMLImageElement> & { src: string }) {
+}: React.ImgHTMLAttributes<HTMLImageElement> & {
+  src: string;
+  compact?: boolean;
+}) {
   const imgRef = useRef<HTMLImageElement>(null);
   const insideLink = React.useContext(MarkdownLinkContext);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
@@ -256,7 +268,8 @@ function MarkdownImage({
   return (
     <span
       className={cn(
-        "not-prose relative my-4 block overflow-hidden rounded-md border",
+        "not-prose relative block overflow-hidden rounded-md border",
+        !compact && "my-4",
         isError
           ? "border-dashed border-border bg-muted/30"
           : "border-border bg-muted/30",
@@ -271,12 +284,12 @@ function MarkdownImage({
               // Never upscale past the image's own pixels: without this a
               // 10x10 icon would be stretched into a full-column square.
               maxWidth: `${size.w}px`,
-              maxHeight: "60vh",
+              maxHeight: compact ? "240px" : "60vh",
             }
           : // Reserved box before the natural size is known, so a loading
             // image has a stable footprint instead of being laid out at zero
             // height and reflowing the transcript when the bytes land.
-            { aspectRatio: "16 / 9", maxHeight: "22rem" }
+            { aspectRatio: "16 / 9", maxHeight: compact ? "240px" : "22rem" }
       }
     >
       {/* A failed image gets a labelled placeholder rather than disappearing:
@@ -678,12 +691,141 @@ function ArtifactDownload({
   );
 }
 
+const ARTIFACT_BUTTON_CLASS =
+  "text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground";
+
+/**
+ * First sheet of a spreadsheet, 8 × 8, under its link. It parses only once
+ * scrolled near the viewport, so a long transcript never parses files the
+ * user does not see. Nothing renders on the server.
+ */
+function InlineSpreadsheetPreview({
+  file,
+  filename,
+  opener,
+}: {
+  file: FileItem;
+  filename: string;
+  opener: FileOpener;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || visible) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible]);
+  return (
+    <span
+      ref={ref}
+      className={cn("not-prose block", visible && "my-2 space-y-1")}
+    >
+      {visible && (
+        <>
+          <SpreadsheetView
+            file={file}
+            compact
+          />
+          <button
+            type="button"
+            aria-label={`Open full ${filename}`}
+            onClick={() => opener.open(file.path)}
+            className={cn(ARTIFACT_BUTTON_CLASS, "text-xs")}
+          >
+            Open full
+          </button>
+        </>
+      )}
+    </span>
+  );
+}
+
+/** A conversation file link that opens the chat's file viewer. */
+function ArtifactOpen({
+  path,
+  value,
+  opener,
+  children,
+}: {
+  path: string;
+  value: unknown;
+  opener: FileOpener;
+  children: React.ReactNode;
+}) {
+  const mode = React.useContext(MarkdownModeContext);
+  // Streaming re-renders every link per token; resolve and size the file
+  // only when it changes.
+  const { file, filename, kind } = useMemo(
+    () =>
+      resolveConversationFile(
+        path,
+        value === undefined ? {} : { [path]: value },
+        {},
+        {}
+      ),
+    [path, value]
+  );
+  const isSpreadsheet = kind === "csv" || kind === "tsv" || kind === "xlsx";
+  const fitsPreview = useMemo(
+    () =>
+      file !== null &&
+      contentByteSize(file.content, file.encoding) <= PREVIEW_MAX_BYTES,
+    [file]
+  );
+  const available = file !== null;
+  const showSpreadsheet =
+    file !== null && mode !== "document" && isSpreadsheet && fitsPreview;
+  return (
+    <span>
+      <button
+        type="button"
+        disabled={!available}
+        aria-label={`Open ${filename}`}
+        className={ARTIFACT_BUTTON_CLASS}
+        onClick={() => opener.open(path)}
+      >
+        <MarkdownLinkContext.Provider value={true}>
+          {children}
+        </MarkdownLinkContext.Provider>
+      </button>
+      {!available && (
+        <span className="text-xs text-muted-foreground">
+          {" "}
+          (file unavailable)
+        </span>
+      )}
+      {showSpreadsheet && (
+        <InlineSpreadsheetPreview
+          file={file}
+          filename={filename}
+          opener={opener}
+        />
+      )}
+    </span>
+  );
+}
+
 // Keep renderer component identities stable when any conversation file changes.
 // Context updates their data without remounting images or closing open previews.
 const ARTIFACT_COMPONENTS: Components = {
   ...COMPONENTS,
   a: function MarkdownArtifactLink(props) {
     const files = React.useContext(MarkdownFilesContext);
+    const opener = useFileOpener();
     const path = artifactPath(props.href);
     if (!path)
       return React.createElement(
@@ -691,6 +833,16 @@ const ARTIFACT_COMPONENTS: Components = {
         props
       );
     const value = files && Object.hasOwn(files, path) ? files[path] : undefined;
+    if (opener)
+      return (
+        <ArtifactOpen
+          path={path}
+          value={value}
+          opener={opener}
+        >
+          {props.children}
+        </ArtifactOpen>
+      );
     return (
       <ArtifactDownload
         path={path}
@@ -702,6 +854,8 @@ const ARTIFACT_COMPONENTS: Components = {
   },
   img: function MarkdownArtifactImage(props) {
     const files = React.useContext(MarkdownFilesContext);
+    const opener = useFileOpener();
+    const insideLink = React.useContext(MarkdownLinkContext);
     const path = artifactPath(props.src);
     if (!path)
       return React.createElement(
@@ -715,6 +869,39 @@ const ARTIFACT_COMPONENTS: Components = {
       metadata.encoding === "base64" &&
       /^image\/(png|jpeg|gif|webp)$/.test(metadata.mimeType || "") &&
       content;
+    const filename = metadata.filename || attachmentDisplayName(path);
+    const thumbnail = canPreview ? (
+      <MarkdownLinkContext.Provider value={true}>
+        <MarkdownImage
+          src={`data:${metadata.mimeType};base64,${content}`}
+          alt={props.alt}
+          compact
+        />
+      </MarkdownLinkContext.Provider>
+    ) : null;
+    // The enclosing Markdown link owns activation. Nested buttons break
+    // keyboard navigation and can open two competing destinations.
+    if (insideLink) return thumbnail || <span>{props.alt || filename}</span>;
+    if (opener) {
+      return thumbnail ? (
+        <button
+          type="button"
+          aria-label={`Open ${filename}`}
+          onClick={() => opener.open(path)}
+          className="not-prose my-2 block w-full max-w-full rounded-md text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {thumbnail}
+        </button>
+      ) : (
+        <ArtifactOpen
+          path={path}
+          value={value}
+          opener={opener}
+        >
+          {props.alt || filename}
+        </ArtifactOpen>
+      );
+    }
     return (
       <span>
         {canPreview && (
@@ -751,12 +938,17 @@ function FrontmatterPanel({ frontmatter }: { frontmatter: Frontmatter }) {
   return (
     <dl
       aria-label="Document metadata"
-      className={cn(frame, "grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1")}
+      className={cn(
+        frame,
+        "grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)]"
+      )}
     >
       {frontmatter.entries.map(([key, value]) => (
         <React.Fragment key={key}>
-          <dt className="font-medium text-muted-foreground">{key}</dt>
-          <dd className="min-w-0 break-words">
+          <dt className="font-medium text-muted-foreground [overflow-wrap:anywhere]">
+            {key}
+          </dt>
+          <dd className="min-w-0 [overflow-wrap:anywhere]">
             {Array.isArray(value) ? (
               <span className="flex flex-wrap gap-1">
                 {value.map((item, index) => (
@@ -805,18 +997,20 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
         )}
         {frontmatter && <FrontmatterPanel frontmatter={frontmatter} />}
         <MarkdownFilesContext.Provider value={files}>
-          <ReactMarkdown
-            remarkPlugins={
-              isStreaming && mode !== "document"
-                ? STREAMING_REMARK_PLUGINS
-                : REMARK_PLUGINS
-            }
-            rehypePlugins={REHYPE_PLUGINS}
-            components={ARTIFACT_COMPONENTS}
-            urlTransform={urlTransform}
-          >
-            {normalizedContent}
-          </ReactMarkdown>
+          <MarkdownModeContext.Provider value={mode}>
+            <ReactMarkdown
+              remarkPlugins={
+                isStreaming && mode !== "document"
+                  ? STREAMING_REMARK_PLUGINS
+                  : REMARK_PLUGINS
+              }
+              rehypePlugins={REHYPE_PLUGINS}
+              components={ARTIFACT_COMPONENTS}
+              urlTransform={urlTransform}
+            >
+              {normalizedContent}
+            </ReactMarkdown>
+          </MarkdownModeContext.Provider>
         </MarkdownFilesContext.Provider>
       </div>
     );

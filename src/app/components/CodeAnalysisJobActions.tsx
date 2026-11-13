@@ -11,6 +11,7 @@ import {
   reportFilename,
   shouldPoll,
 } from "@/lib/code-analysis";
+import { saveBlob } from "@/lib/file-downloads";
 
 type Action = "cancel" | "refresh" | "download" | "release";
 
@@ -18,10 +19,12 @@ export function CodeAnalysisJobActions({
   job,
   cancel,
   refresh,
+  allowRelease = true,
 }: {
   job: AnalysisJobView | null;
   cancel: () => Promise<void>;
   refresh: () => Promise<void>;
+  allowRelease?: boolean;
 }) {
   const [acting, setActing] = useState<Action | null>(null);
   const [released, setReleased] = useState(false);
@@ -39,16 +42,10 @@ export function CodeAnalysisJobActions({
   };
   const download = async () => {
     if (!job?.report_id) return;
-    const url = URL.createObjectURL(
-      await downloadAnalysisReport(job.report_id)
+    saveBlob(
+      await downloadAnalysisReport(job.report_id),
+      reportFilename(job.report_id)
     );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = reportFilename(job.report_id);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
   const stopping = job?.status === "cancel_requested";
   return (
@@ -105,7 +102,7 @@ export function CodeAnalysisJobActions({
           {stopping ? "Stopping…" : "Cancel"}
         </Button>
       )}
-      {job && !shouldPoll(job.status) && (
+      {allowRelease && job && !shouldPoll(job.status) && (
         <Button
           variant="ghost"
           size="sm"

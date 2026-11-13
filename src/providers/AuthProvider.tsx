@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -46,12 +47,21 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Login and registration responses carry only identity and role, so the
   // restricted-assistant flags arrive from a background profile refresh.
   const refreshProfile = useCallback((base: AuthUser) => {
     apiGetProfile()
       .then((profile) => {
+        if (!mountedRef.current) return;
         // Merge into the latest stored session so a concurrent token rotation
         // survives, and drop the result if another account signed in.
         const current = getAuthUser();

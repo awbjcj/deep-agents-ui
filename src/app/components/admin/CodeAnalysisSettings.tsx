@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -516,6 +518,7 @@ export function CodeAnalysisSettings({
     savedMatlabEnabled,
     copilotEnabled,
   ]);
+  useSettingsDraft(dirty || saving);
 
   const save = async () => {
     if (!limits || !engines || overrideIncomplete || !copilotValidation.success)
@@ -711,7 +714,7 @@ export function CodeAnalysisSettings({
                         >
                           {engineName(engine)}
                           {readiness && !readiness.ready
-                            ? " — unavailable"
+                            ? " (unavailable)"
                             : ""}
                         </SelectItem>
                       );

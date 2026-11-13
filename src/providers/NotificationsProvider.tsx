@@ -4,11 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import useSWR from "swr";
 import {
   apiAcknowledgeNotification,
   apiListNotifications,
@@ -34,12 +34,13 @@ export type StreamNotificationEvent = {
 
 interface NotificationsContextValue {
   notifications: UserNotification[];
+  refreshNotifications: () => void;
   acknowledge: (id: number) => Promise<void>;
   snooze: (id: number, hours?: number) => Promise<void>;
   /** Called by useChat when a `custom` stream event arrives. */
   ingestStreamEvent: (event: StreamNotificationEvent) => void;
-  /** Called by TokenManagementSidebar after a successful token update. */
-  applyClearedNotifications: (cleared: UserNotification[]) => void;
+  /** Reconcile the banners after Token Management saves a credential. */
+  applyClearedNotifications: (cleared?: UserNotification[]) => void;
   /** Records a requested deep-link target ("graph", "jira", ...) for the sidebar. */
   pendingTokenFocus: string | null;
   requestTokenFocus: (service: string | null) => void;
@@ -48,77 +49,62 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(
   null
 );
+const EMPTY_NOTIFICATIONS: UserNotification[] = [];
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [pendingTokenFocus, setPendingTokenFocus] = useState<string | null>(
     null
   );
-
-  // Load active notifications once the user is authenticated. We never poll;
-  // updates arrive via `ingestStreamEvent` from the live custom stream.
-  useEffect(() => {
-    if (!user?.access_token) {
-      setNotifications([]);
-      return;
+  const { data: notifications = EMPTY_NOTIFICATIONS, mutate } = useSWR(
+    user?.access_token ? ["user-notifications", user.user_id] : null,
+    apiListNotifications,
+    {
+      shouldRetryOnError: false,
+      onError: (err) => console.warn("Failed to load notifications:", err),
     }
-    let cancelled = false;
-    apiListNotifications()
-      .then((items) => {
-        if (!cancelled) setNotifications(items);
-      })
-      .catch((err) =>
-        console.warn("Failed to load notifications on mount:", err)
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.access_token]);
+  );
 
-  const acknowledge = useCallback(async (id: number) => {
-    await apiAcknowledgeNotification(id);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  const refreshNotifications = useCallback(() => {
+    void mutate();
+  }, [mutate]);
 
-  const snooze = useCallback(async (id: number, hours = 1) => {
-    await apiSnoozeNotification(id, hours);
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  const acknowledge = useCallback(
+    async (id: number) => {
+      await apiAcknowledgeNotification(id);
+      await mutate((prev) => prev?.filter((n) => n.id !== id), false);
+    },
+    [mutate]
+  );
 
-  const ingestStreamEvent = useCallback((event: StreamNotificationEvent) => {
-    if (event.scope !== "user" || event.notification_id == null) return;
-    setNotifications((prev) => {
-      const synthesized: UserNotification = {
-        id: event.notification_id!,
-        code: event.code,
-        severity: event.severity,
-        title: event.title,
-        message: event.message,
-        action_label: event.action?.label ?? null,
-        action_target: event.action?.target ?? null,
-        action_params: event.action?.params ?? null,
-        created_at: new Date().toISOString(),
-        snoozed_until: null,
-      };
-      const idx = prev.findIndex((n) => n.id === event.notification_id);
-      if (idx === -1) return [synthesized, ...prev];
-      const next = [...prev];
-      next[idx] = synthesized;
-      return next;
-    });
-  }, []);
+  const snooze = useCallback(
+    async (id: number, hours = 1) => {
+      await apiSnoozeNotification(id, hours);
+      await mutate((prev) => prev?.filter((n) => n.id !== id), false);
+    },
+    [mutate]
+  );
+
+  const ingestStreamEvent = useCallback(
+    (event: StreamNotificationEvent) => {
+      // A buffered event may arrive after its row was cleared or snoozed.
+      if (event.scope === "user" && event.notification_id != null) {
+        refreshNotifications();
+      }
+    },
+    [refreshNotifications]
+  );
 
   const applyClearedNotifications = useCallback(
-    (cleared: UserNotification[]) => {
-      if (!cleared.length) return;
+    (cleared: UserNotification[] = EMPTY_NOTIFICATIONS) => {
+      if (!cleared.length) {
+        refreshNotifications();
+        return;
+      }
       const clearedIds = new Set(cleared.map((c) => c.id));
-      const clearedCodes = new Set(cleared.map((c) => c.code));
-      setNotifications((prev) =>
-        prev.filter((n) => !clearedIds.has(n.id) && !clearedCodes.has(n.code))
-      );
+      void mutate((prev) => prev?.filter((n) => !clearedIds.has(n.id)));
     },
-    []
+    [mutate, refreshNotifications]
   );
 
   const requestTokenFocus = useCallback((service: string | null) => {
@@ -128,6 +114,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NotificationsContextValue>(
     () => ({
       notifications,
+      refreshNotifications,
       acknowledge,
       snooze,
       ingestStreamEvent,
@@ -137,6 +124,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }),
     [
       notifications,
+      refreshNotifications,
       acknowledge,
       snooze,
       ingestStreamEvent,

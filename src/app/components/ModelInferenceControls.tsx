@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { outputTokenStops } from "@/lib/model-controls";
 
-/** Effort choices wrap to fit the panel and expose the selected value. */
+/** Effort choices stay on one scrollable row and expose the selected value. */
 export function ReasoningEffortControl({
   options,
   value,
@@ -25,7 +25,7 @@ export function ReasoningEffortControl({
     <fieldset className="min-w-0 space-y-2">
       <legend className="flex w-full items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
         <span>Reasoning effort</span>
-        {!supported && <span className="text-[10px]">Not supported</span>}
+        {!supported && <span className="text-xs">Not supported</span>}
       </legend>
       <div className="effort-btn-group">
         {options.map((effort) => (
@@ -173,7 +173,7 @@ export function OutputTokenControl({
             </div>
             <div
               aria-hidden="true"
-              className="relative mx-[7px] mb-2 h-4 font-mono text-[10px] text-muted-foreground"
+              className="relative mx-[7px] mb-2 h-4 font-mono text-xxs text-muted-foreground"
             >
               {[512, 4096, 16384, 32768, 65536].map((stop, markIndex) => (
                 <span

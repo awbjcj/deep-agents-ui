@@ -127,3 +127,60 @@ test("edits derived from the displayed map never copy overlay entries to root", 
     "user content"
   );
 });
+
+const readablePath = "/_artifacts/alice/thread-1/uploads/x__spec.md";
+const documentRecord = {
+  source: "jira",
+  item_id: "VSDA-1",
+  attachment_id: "10001",
+  filename: "spec.pdf",
+  original_path: docPath,
+  readable_path: readablePath,
+  source_page_url: "https://jira.example.com/browse/VSDA-1",
+};
+
+test("subagent updates carry source-document records with tombstones", () => {
+  const delta = subagentFileDelta(
+    {
+      tools: {
+        files: { [docPath]: image, [readablePath]: "# Spec" },
+        source_attachment_records: { [docPath]: documentRecord },
+      },
+    },
+    ["tools:01abc"]
+  );
+  assert.deepEqual(delta.documents, { [docPath]: documentRecord });
+  const onlyRecords = subagentFileDelta(
+    { tools: { source_attachment_records: { [docPath]: null } } },
+    ["tools:01abc"]
+  );
+  assert.deepEqual(onlyRecords, {
+    files: {},
+    records: {},
+    documents: { [docPath]: null },
+  });
+
+  let pending = applyPendingDelta(EMPTY_PENDING_FILES, delta);
+  assert.deepEqual(pending.documents, { [docPath]: documentRecord });
+  assert.deepEqual(EMPTY_PENDING_FILES.documents, {});
+  pending = applyPendingDelta(pending, onlyRecords);
+  assert.deepEqual(pending.documents, {});
+});
+
+test("pending document records last while either of their files is pending", () => {
+  const pending = applyPendingDelta(EMPTY_PENDING_FILES, {
+    files: { [docPath]: image, [readablePath]: "# Spec" },
+    records: {},
+    documents: { [docPath]: documentRecord },
+  });
+  assert.equal(prunePendingFiles(pending, {}, false), pending);
+  const original = prunePendingFiles(pending, { [docPath]: image }, false);
+  assert.deepEqual(original.documents, { [docPath]: documentRecord });
+  const both = prunePendingFiles(
+    pending,
+    { [docPath]: image, [readablePath]: "# Spec" },
+    false
+  );
+  assert.deepEqual(both.documents, {});
+  assert.equal(prunePendingFiles(pending, {}, true), EMPTY_PENDING_FILES);
+});

@@ -438,8 +438,7 @@ export function ThreadList({
       }
     } catch (error) {
       toast.error("Failed to delete selected threads", {
-        description:
-          error instanceof Error ? error.message : "Please try again.",
+        description: error instanceof Error ? error.message : "Try again.",
       });
     } finally {
       setIsBatchDeleting(false);

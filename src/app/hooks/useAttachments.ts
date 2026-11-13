@@ -233,7 +233,8 @@ export function useAttachments({
 
   const addFiles = useCallback(
     (incoming: File[]) => {
-      const remaining = UPLOAD_MAX_PER_SEND - items.length;
+      // Read the ref, not render state, so two adds in one tick share the cap.
+      const remaining = UPLOAD_MAX_PER_SEND - itemsRef.current.length;
       if (remaining <= 0) {
         toast.warning(`Max ${UPLOAD_MAX_PER_SEND} attachments per message.`);
         return;
@@ -263,12 +264,14 @@ export function useAttachments({
 
       if (accepted.length === 0) return;
 
-      setItems((prev) => [...prev, ...accepted.map((a) => a.state)]);
+      const states = accepted.map((a) => a.state);
+      itemsRef.current = [...itemsRef.current, ...states];
+      setItems((prev) => [...prev, ...states]);
       accepted.forEach((a) => {
         void beginUpload({ localId: a.state.localId, file: a.file });
       });
     },
-    [beginUpload, items.length]
+    [beginUpload]
   );
 
   /**

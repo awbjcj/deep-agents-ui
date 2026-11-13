@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  MessageTupleManager,
+  toMessageDict,
+} from "@langchain/langgraph-sdk/ui";
 
 import { reconcileConversation } from "../src/app/hooks/internal/conversationProjection.ts";
 
@@ -142,6 +146,224 @@ test("provider JSON arguments are parsed and partial JSON stays renderable", () 
   }
 });
 
+test("Responses call blocks match results by call ID, including native output", () => {
+  const tuples = new MessageTupleManager();
+  const messages = [
+    {
+      type: "ai",
+      id: "ai",
+      content: [
+        {
+          type: "function_call",
+          id: "fc_1",
+          call_id: "call_1",
+          name: "lookup",
+          arguments: '{"key":"a"}',
+        },
+        {
+          type: "custom_tool_call",
+          id: "ct_1",
+          call_id: "call_2",
+          name: "expression",
+          input: "2+2",
+        },
+        {
+          type: "function_call",
+          id: "fc_3",
+          call_id: "call_3",
+          name: "raw_lookup",
+          arguments: '{"key":"b"}',
+        },
+        {
+          type: "tool_search_call",
+          id: "ts_1",
+          call_id: "search_1",
+          execution: "server",
+        },
+      ],
+      tool_calls: [{ id: "call_1", name: "lookup", args: { key: "a" } }],
+    },
+    {
+      type: "tool",
+      id: "result-1",
+      tool_call_id: "call_1",
+      content: [{ type: "json", json: { id: "a" } }],
+    },
+    {
+      type: "tool",
+      id: "result-2",
+      tool_call_id: "call_2",
+      content: [{ type: "custom_tool_call_output", output: "4" }],
+    },
+    {
+      type: "tool",
+      id: "result-3",
+      tool_call_id: "call_3",
+      content: [{ type: "json", json: null, data: "ignored" }],
+    },
+  ].map((message) => {
+    const id = tuples.add(message, {});
+    return toMessageDict(tuples.get(id).chunk);
+  });
+  const [bucket] = reconcileConversation(null, messages, false);
+  assert.equal(
+    reconcileConversation([bucket], frame(messages), false)[0],
+    bucket
+  );
+  assert.deepEqual(bucket.toolCalls, [
+    {
+      id: "call_1",
+      name: "lookup",
+      args: { key: "a" },
+      status: "completed",
+      result: '{"id":"a"}',
+    },
+    {
+      id: "call_2",
+      name: "expression",
+      args: { __arg1: "2+2" },
+      status: "completed",
+      result: "4",
+    },
+    {
+      id: "call_3",
+      name: "raw_lookup",
+      args: { key: "b" },
+      status: "completed",
+      result: "null",
+    },
+  ]);
+});
+
+test("legacy data and safe image links survive without exposing binary media", () => {
+  const result = {
+    type: "tool",
+    id: "result",
+    tool_call_id: "tc",
+    name: "read_file",
+    content: [
+      { id: "exact/ID", status: "ok" },
+      { type: "image_url", image_url: { url: "https://example.com/plot.png" } },
+      {
+        type: "image_url",
+        image_url: "https://user:pass@example.com/hidden.png",
+      },
+      { type: "image", base64: "raw-bytes" },
+    ],
+  };
+  const ai = {
+    type: "ai",
+    id: "ai",
+    content: "",
+    tool_calls: [{ id: "tc", name: "read_file", args: {} }],
+  };
+  const [row] = reconcileConversation(null, [ai, result], false);
+  assert.deepEqual(row.toolCalls[0].imageUrls, [
+    "https://example.com/plot.png",
+  ]);
+  assert.deepEqual(JSON.parse(row.toolCalls[0].result)[0], {
+    id: "exact/ID",
+    status: "ok",
+  });
+  assert.doesNotMatch(row.toolCalls[0].result, /raw-bytes|user:pass/);
+  const [updated] = reconcileConversation(
+    [row],
+    [ai, { ...result, content: "text only" }],
+    false
+  );
+  assert.equal(updated.toolCalls[0].imageUrls, undefined);
+});
+
+test("an early result is rendered once and attaches when its call arrives", () => {
+  const result = {
+    type: "tool",
+    id: "result",
+    tool_call_id: "tc",
+    name: "lookup",
+    status: "error",
+    content: "Unavailable",
+  };
+  const ai = {
+    type: "ai",
+    id: "ai",
+    content: "",
+    tool_calls: [{ id: "tc", name: "lookup", args: {} }],
+  };
+  const orphan = reconcileConversation(null, [result], false);
+  assert.deepEqual(
+    orphan.map((row) => row.toolCalls[0]),
+    [
+      {
+        id: "tc",
+        name: "lookup",
+        args: {},
+        status: "error",
+        result: "Unavailable",
+      },
+    ]
+  );
+  assert.equal(
+    reconcileConversation(orphan, frame([result]), false)[0],
+    orphan[0]
+  );
+  const attached = reconcileConversation(orphan, [result, ai], false);
+  assert.equal(attached.length, 1);
+  assert.equal(attached[0].message.id, "ai");
+  assert.deepEqual(attached[0].toolCalls[0], orphan[0].toolCalls[0]);
+});
+
+test("tool calls with reused IDs pair only within the same user turn", () => {
+  const human = (id) => ({ type: "human", id, content: "Lookup" });
+  const call = (id) => ({
+    type: "ai",
+    id,
+    content: "",
+    tool_calls: [{ id: "reused", name: "lookup", args: {} }],
+  });
+  const result = (id) => ({
+    type: "tool",
+    id,
+    tool_call_id: "reused",
+    name: "lookup",
+    content: id,
+  });
+  const runtime = (source) => ({
+    type: "human",
+    id: source,
+    additional_kwargs: { lc_source: source },
+    content: "Runtime message",
+  });
+  const rows = reconcileConversation(
+    null,
+    [
+      human("first"),
+      result("old-orphan"),
+      human("second"),
+      call("old-call"),
+      human("third"),
+      result("new-result"),
+      runtime("rubric_grader"),
+      runtime("summarization"),
+      call("new-call"),
+    ],
+    false
+  );
+  assert.deepEqual(
+    rows
+      .filter((row) => row.toolCalls.length)
+      .map((row) => [
+        row.message.id,
+        row.toolCalls[0].status,
+        row.toolCalls[0].result,
+      ]),
+    [
+      ["old-orphan", "completed", "old-orphan"],
+      ["old-call", "interrupted", undefined],
+      ["new-call", "completed", "new-result"],
+    ]
+  );
+});
+
 // Identity-independent view, for asserting values are correct regardless of refs.
 const strip = (projected) =>
   projected.map((b) => ({
@@ -155,6 +377,75 @@ const strip = (projected) =>
       result: tc.result,
     })),
   }));
+
+test("distinct early results with the same call ID survive and pair in order", () => {
+  const human = { type: "human", id: "request", content: "Look up both" };
+  const result = (id, content) => ({
+    type: "tool",
+    id,
+    name: "lookup",
+    tool_call_id: "shared",
+    content,
+  });
+  const call = (id) => ({
+    type: "ai",
+    id,
+    content: "",
+    tool_calls: [{ id: "shared", name: "lookup", args: {} }],
+  });
+  const first = result("result-a", "First result");
+  const second = result("result-b", "Second result");
+  const callA = call("call-a");
+  const callB = call("call-b");
+  const output = (messages) =>
+    reconcileConversation(null, [human, ...messages], false).flatMap((row) =>
+      row.toolCalls.map((tool) => [row.message.id, tool.result])
+    );
+
+  assert.deepEqual(output([first, second]), [
+    ["result-a", "First result"],
+    ["result-b", "Second result"],
+  ]);
+  for (const messages of [
+    [first, second, callA, callB],
+    [callA, first, second, callB],
+    [callA, callB, first, second],
+  ]) {
+    assert.deepEqual(output(messages), [
+      ["call-a", "First result"],
+      ["call-b", "Second result"],
+    ]);
+  }
+  assert.deepEqual(
+    output([
+      callA,
+      first,
+      callB,
+      { ...first, content: "Updated first" },
+      second,
+    ]),
+    [
+      ["call-a", "Updated first"],
+      ["call-b", "Second result"],
+    ]
+  );
+
+  const updateCall = {
+    ...callB,
+    tool_calls: [{ ...callB.tool_calls[0], name: "update_ticket" }],
+  };
+  const updateResult = { ...second, name: "update_ticket" };
+  for (const messages of [
+    [updateResult, first, callA, updateCall],
+    [callA, updateCall, updateResult, first],
+    [callA, updateResult, first, updateCall],
+  ]) {
+    assert.deepEqual(output(messages), [
+      ["call-a", "First result"],
+      ["call-b", "Second result"],
+    ]);
+  }
+});
 
 test("unchanged messages keep their bucket references across frames", () => {
   const human = { type: "human", id: "h1", content: "hi" };

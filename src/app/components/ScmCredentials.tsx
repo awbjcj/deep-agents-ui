@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useCallback, useEffect, useState } from "react";
 import { KeyRound, Loader2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +27,10 @@ export function ScmCredentials() {
   >({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  useSettingsDraft(
+    saving !== null ||
+      Object.values(values).some((value) => !!value.token || !!value.username)
+  );
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);

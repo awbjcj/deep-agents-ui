@@ -54,5 +54,6 @@ __pycache__/
 .superpowers/
 .claude/
 .playwright-mcp/
+.impeccable/
 .agents/
 .github/

@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-07",
+  "application": "deep-agents-ui",
+  "environment": "headless Chromium with isolated mock APIs",
+  "lint": "passed",
+  "build_and_typescript": "passed",
+  "standard_tests": { "passed": 453, "failed": 0, "skipped_opt_in": 80 },
+  "settings_browser": {
+    "passed": 7,
+    "failed": 0,
+    "skipped_imported_opt_in": 2,
+    "rendered_states": 152
+  },
+  "tool_policy_browser": { "passed": 9, "failed": 0 },
+  "panel_layout_browser": { "passed": 2, "failed": 0 },
+  "other_browser_suites": [
+    "model quick picker",
+    "composer layout",
+    "autosave recovery and motion",
+    "auth and workspace hierarchy"
+  ],
+  "responsive_widths": [320, 390, 768, 1440],
+  "themes": ["light", "dark"],
+  "text_enlargement": "200 percent reflow passed",
+  "source_detector": {
+    "warnings": 1,
+    "retained_semantic_use": "existing Markdown blockquote rail"
+  },
+  "limitations": [
+    "No live provider or delivery acceptance",
+    "No production deployment",
+    "No cross-browser or screen-reader audit"
+  ]
+}

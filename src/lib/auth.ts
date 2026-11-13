@@ -318,7 +318,7 @@ async function extractApiErrorMessage(
 // --- User Notifications ---
 
 export async function apiListNotifications(): Promise<UserNotification[]> {
-  const res = await apiFetch("/user/notifications");
+  const res = await apiFetch("/user/notifications", { cache: "no-store" });
   if (!res.ok) {
     throw new Error("Failed to fetch notifications");
   }
@@ -326,9 +326,12 @@ export async function apiListNotifications(): Promise<UserNotification[]> {
 }
 
 export async function apiAcknowledgeNotification(id: number): Promise<void> {
-  const res = await apiFetch(`/user/notifications/${id}/acknowledge`, {
-    method: "POST",
-  });
+  const res = await apiFetch(
+    `/user/notifications/${encodeURIComponent(id)}/acknowledge`,
+    {
+      method: "POST",
+    }
+  );
   if (!res.ok) {
     throw new Error("Failed to acknowledge notification");
   }
@@ -338,10 +341,13 @@ export async function apiSnoozeNotification(
   id: number,
   hours = 1
 ): Promise<void> {
-  const res = await apiFetch(`/user/notifications/${id}/snooze`, {
-    method: "POST",
-    body: JSON.stringify({ hours }),
-  });
+  const res = await apiFetch(
+    `/user/notifications/${encodeURIComponent(id)}/snooze`,
+    {
+      method: "POST",
+      body: JSON.stringify({ hours }),
+    }
+  );
   if (!res.ok) {
     throw new Error("Failed to snooze notification");
   }
@@ -401,10 +407,13 @@ export async function apiUpdateUserRole(
   userId: string,
   role: Role
 ): Promise<AdminUser> {
-  const res = await apiFetch(`/admin/users/${userId}/role`, {
-    method: "PUT",
-    body: JSON.stringify({ role }),
-  });
+  const res = await apiFetch(
+    `/admin/users/${encodeURIComponent(userId)}/role`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    }
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -491,7 +500,7 @@ export interface AllowedModelsResponse {
 }
 
 export async function apiGetTierModels(tier: Role): Promise<TierAllowlist> {
-  const res = await apiFetch(`/admin/tier-models/${tier}`);
+  const res = await apiFetch(`/admin/tier-models/${encodeURIComponent(tier)}`);
   if (!res.ok) {
     throw new Error("Failed to fetch tier models");
   }
@@ -510,7 +519,7 @@ export async function apiSetTierModels(
   tier: Role,
   models: TierModelEntry[]
 ): Promise<TierAllowlist> {
-  const res = await apiFetch(`/admin/tier-models/${tier}`, {
+  const res = await apiFetch(`/admin/tier-models/${encodeURIComponent(tier)}`, {
     method: "PUT",
     body: JSON.stringify({ models }),
   });
@@ -684,7 +693,9 @@ export async function apiSetUserModel(
 // --- Admin destructive ops ---
 
 export async function apiDeleteUser(userId: string): Promise<void> {
-  const res = await apiFetch(`/admin/users/${userId}`, { method: "DELETE" });
+  const res = await apiFetch(`/admin/users/${encodeURIComponent(userId)}`, {
+    method: "DELETE",
+  });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -700,9 +711,12 @@ export interface TempPassword {
 }
 
 export async function apiResetPassword(userId: string): Promise<TempPassword> {
-  const res = await apiFetch(`/admin/users/${userId}/reset-password`, {
-    method: "POST",
-  });
+  const res = await apiFetch(
+    `/admin/users/${encodeURIComponent(userId)}/reset-password`,
+    {
+      method: "POST",
+    }
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -751,9 +765,12 @@ export async function apiGetUserUsage(
   username: string,
   signal?: AbortSignal
 ): Promise<AdminUserUsage> {
-  const res = await apiFetch(`/admin/token-usage/users/${username}`, {
-    signal,
-  });
+  const res = await apiFetch(
+    `/admin/token-usage/users/${encodeURIComponent(username)}`,
+    {
+      signal,
+    }
+  );
   if (!res.ok) {
     throw new Error("Failed to fetch user usage");
   }
@@ -761,9 +778,12 @@ export async function apiGetUserUsage(
 }
 
 export async function apiResetUserUsage(username: string): Promise<void> {
-  const res = await apiFetch(`/admin/token-usage/users/${username}/reset`, {
-    method: "POST",
-  });
+  const res = await apiFetch(
+    `/admin/token-usage/users/${encodeURIComponent(username)}/reset`,
+    {
+      method: "POST",
+    }
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -854,9 +874,11 @@ export async function apiGetTierQuotaLimits(
   signal?: AbortSignal
 ): Promise<TierQuotaLimits> {
   const [tokenResponse, callResponse, costResponse] = await Promise.all([
-    apiFetch(`/admin/tier-token-limits/${tier}`, { signal }),
-    apiFetch(`/admin/tier-call-limits/${tier}`, { signal }),
-    apiFetch(`/admin/tier-cost-limits/${tier}`, { signal }),
+    apiFetch(`/admin/tier-token-limits/${encodeURIComponent(tier)}`, {
+      signal,
+    }),
+    apiFetch(`/admin/tier-call-limits/${encodeURIComponent(tier)}`, { signal }),
+    apiFetch(`/admin/tier-cost-limits/${encodeURIComponent(tier)}`, { signal }),
   ]);
   const [tokens, calls, cost] = await Promise.all([
     quotaResponse<CountLimitResponse>(
@@ -922,10 +944,13 @@ export async function apiSetTierQuotaLimits(
     return data.weekly_limit;
   };
   const putCost = async () => {
-    const response = await apiFetch(`/admin/tier-cost-limits/${tier}`, {
-      method: "PUT",
-      body: JSON.stringify({ weekly_limit_micros: limits.cost_limit_micros }),
-    });
+    const response = await apiFetch(
+      `/admin/tier-cost-limits/${encodeURIComponent(tier)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ weekly_limit_micros: limits.cost_limit_micros }),
+      }
+    );
     const data = await quotaResponse<CostLimitResponse>(
       response,
       `Failed to save ${tier} cost limit`
@@ -1068,10 +1093,15 @@ export async function apiUpdateScope(
     default_access?: ScopeDefaultAccess;
   }
 ): Promise<MemoryScope> {
-  const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  const res = await apiFetch(
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -1088,9 +1118,14 @@ export async function apiDeleteScope(
   scope_type: ScopeType,
   scope_id: string
 ): Promise<void> {
-  const res = await apiFetch(`/admin/scopes/${scope_type}/${scope_id}`, {
-    method: "DELETE",
-  });
+  const res = await apiFetch(
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}`,
+    {
+      method: "DELETE",
+    }
+  );
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(
@@ -1108,7 +1143,9 @@ export async function apiListScopeMembers(
   signal?: AbortSignal
 ): Promise<ScopeMember[]> {
   const res = await apiFetch(
-    `/admin/scopes/${scope_type}/${scope_id}/members`,
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}/members`,
     { signal }
   );
   if (!res.ok) throw new Error("Failed to load scope members");
@@ -1122,7 +1159,9 @@ export async function apiAddScopeMember(
   signal?: AbortSignal
 ): Promise<ScopeMember> {
   const res = await apiFetch(
-    `/admin/scopes/${scope_type}/${scope_id}/members`,
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}/members`,
     { method: "POST", body: JSON.stringify(payload), signal }
   );
   if (!res.ok) {
@@ -1144,7 +1183,9 @@ export async function apiUpdateScopeMember(
   access: ScopeAccess
 ): Promise<ScopeMember> {
   const res = await apiFetch(
-    `/admin/scopes/${scope_type}/${scope_id}/members/${username}`,
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}/members/${encodeURIComponent(username)}`,
     { method: "PATCH", body: JSON.stringify({ access }) }
   );
   if (!res.ok) {
@@ -1165,7 +1206,9 @@ export async function apiRemoveScopeMember(
   username: string
 ): Promise<void> {
   const res = await apiFetch(
-    `/admin/scopes/${scope_type}/${scope_id}/members/${username}`,
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}/members/${encodeURIComponent(username)}`,
     { method: "DELETE" }
   );
   if (!res.ok) {
@@ -1186,7 +1229,9 @@ export async function apiSetScopeMembers(
   signal?: AbortSignal
 ): Promise<void> {
   const res = await apiFetch(
-    `/admin/scopes/${scope_type}/${scope_id}/members`,
+    `/admin/scopes/${encodeURIComponent(scope_type)}/${encodeURIComponent(
+      scope_id
+    )}/members`,
     { method: "PUT", body: JSON.stringify({ members }), signal }
   );
   if (!res.ok) {
@@ -1289,7 +1334,9 @@ export async function updateTierSourceImagePolicy(
 export async function apiGetTierImageFetching(
   tier: Role
 ): Promise<TierImageFetchingStatus> {
-  const res = await apiFetch(`/admin/tier-image-fetching/${tier}`);
+  const res = await apiFetch(
+    `/admin/tier-image-fetching/${encodeURIComponent(tier)}`
+  );
   if (!res.ok) {
     throw new Error("Failed to fetch tier image fetching status");
   }
@@ -1300,10 +1347,13 @@ export async function apiSetTierImageFetching(
   tier: Role,
   enabled: boolean
 ): Promise<TierImageFetchingStatus> {
-  const res = await apiFetch(`/admin/tier-image-fetching/${tier}`, {
-    method: "PUT",
-    body: JSON.stringify({ enabled }),
-  });
+  const res = await apiFetch(
+    `/admin/tier-image-fetching/${encodeURIComponent(tier)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }
+  );
   if (!res.ok) {
     throw new Error("Failed to update tier image fetching");
   }
@@ -1391,9 +1441,12 @@ export async function apiCreateInvitationCode(payload: {
 }
 
 export async function apiRevokeInvitationCode(codeId: string): Promise<void> {
-  const res = await apiFetch(`/admin/invitation-codes/${codeId}`, {
-    method: "DELETE",
-  });
+  const res = await apiFetch(
+    `/admin/invitation-codes/${encodeURIComponent(codeId)}`,
+    {
+      method: "DELETE",
+    }
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(

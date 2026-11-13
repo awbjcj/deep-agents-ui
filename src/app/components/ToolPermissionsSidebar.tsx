@@ -1,5 +1,7 @@
 "use client";
 
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -132,6 +134,7 @@ export function ToolPermissionsSidebar() {
   const availableIds = (snapshot?.allowed_tool_ids ?? []).filter(
     (id) => !snapshot?.unavailable_tools?.[id]
   );
+  useSettingsDraft(dirty || saving);
   const canSave = canSaveToolPermissions({
     hasSnapshot: Boolean(snapshot && policyResolved),
     dirty,

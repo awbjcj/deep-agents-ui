@@ -146,9 +146,7 @@ export function TokenSetupWizard() {
     setIsSaving(true);
     try {
       const updated = await apiUpdateTokens(payload);
-      if (updated.cleared_notifications?.length) {
-        applyClearedNotifications(updated.cleared_notifications);
-      }
+      applyClearedNotifications(updated.cleared_notifications);
       toast.success(
         `Saved ${Object.keys(payload).length} token${
           Object.keys(payload).length === 1 ? "" : "s"

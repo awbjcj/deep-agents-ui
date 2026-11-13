@@ -22,3 +22,15 @@ Restore remain available for dense settings and skill editing. Each column
 scrolls within the application height, and resize handles have accessible names
 and keyboard support. Thread filters and management controls occupy a separate
 row so they fit throughout the allowed width range.
+
+Workspace and Admin share a settings shell. Compact panels show every destination
+in a grid; at 720px of panel width, navigation becomes a vertical rail. This
+threshold follows the measured panel width, so expanding or dragging a panel
+updates its layout without replacing the active form. Navigation uses manual
+keyboard activation to avoid loading sections while arrowing past them.
+
+Settings forms register unsaved state with an account-scoped boundary. Leaving a
+dirty section or closing/switching panels asks before discarding changes. Token
+values remain in form memory, and their Save/Discard footer stays outside the
+scrolling fields. See [the UI review](ui-layout-review-2026-11-07.md) for the full
+surface inventory and rendered regression coverage.

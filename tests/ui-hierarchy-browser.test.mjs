@@ -7,7 +7,7 @@ import {
   authenticatedPage,
   makePolicyFixture,
   staticServer,
-} from "./tool-permissions-browser.test.mjs";
+} from "./tool-permissions-browser-fixture.mjs";
 
 test(
   "auth and workspace layouts keep one title, direct actions, and usable notices",

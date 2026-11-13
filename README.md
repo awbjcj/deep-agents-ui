@@ -103,6 +103,23 @@ bookmarked selection of one falls back to VSDA Deep Agent. The server enforces
 the same rules and answers 403 for runs and `/api/code-analysis/*` or
 `/api/user/scm/*` requests from accounts without access.
 
+### Prepare multiple repositories in Code Analyzer
+
+Select **VSDA Code Analyzer Agent**, then open **Repository workspace** above
+the composer. Use the **Repositories** tab to build the source selection. Connect your Gerrit or Plastic server in **Workspace → Tokens**
+if needed. Browse repositories and refs, or enter a revision selector directly.
+Resolve and add up to 20 targets, including different revisions of the same
+repository. **Find dependencies** lists Gerrit submodules and supported Bazel
+externals; add any you want included in the checkout.
+
+**Prepare workspace** checks out the selected revisions together on the worker.
+Once it is ready, continue to **Analysis**, enter a question, and optionally select an engine, specify
+revision comparisons, or add a report checklist. Progress and reports appear
+in the conversation. You can reopen the workspace after refreshing the same
+browser tab. Source and question drafts also stay in place when you close the
+workspace or change its tab within the same conversation. If the worker expires
+or releases the checkout, prepare it again.
+
 ### Deployment profiles
 
 `next.config.ts` selects behavior by build mode:

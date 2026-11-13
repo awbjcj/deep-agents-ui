@@ -11,7 +11,8 @@ import {
 /** Discover durable jobs independently of the active agent and its tool views. */
 export function useCodeAnalysisJobs(
   threadId: string | null,
-  isLoading: boolean
+  isLoading: boolean,
+  refreshRevision = 0
 ) {
   const [state, setState] = useState<{
     threadId: string | null;
@@ -53,7 +54,7 @@ export function useCodeAnalysisJobs(
       controller.abort();
       clearTimeout(timer);
     };
-  }, [threadId, isLoading]);
+  }, [threadId, isLoading, refreshRevision]);
 
   return state.threadId === threadId ? state : { jobs: [], error: null };
 }

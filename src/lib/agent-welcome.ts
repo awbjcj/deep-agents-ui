@@ -7,6 +7,7 @@ import {
 import {
   canonicalAssistantId,
   KNOWLEDGE_BASE_ASSISTANT_ID,
+  OUTLOOK_ASSISTANT_ID,
 } from "@/lib/assistant-identity";
 
 /** Icon names resolved to Lucide components by `WelcomeState`. */
@@ -24,6 +25,8 @@ export type WelcomeIcon =
   | "mail"
   | "reply"
   | "inbox"
+  | "calendar"
+  | "schedule"
   | "file"
   | "download"
   | "library"
@@ -160,7 +163,7 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
     name: "VSDA Teams Agent",
     icon: "chat",
     headline: "What should we catch up on in Teams?",
-    lede: "Review messages and Adaptive Cards before the agent sends them.",
+    lede: "Catch up on chats. Messages, cards and chat changes wait for your review.",
     prompts: [
       {
         title: "Catch up on a chat",
@@ -188,11 +191,11 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
       },
     ],
   },
-  "VSDA Email Agent": {
-    name: "VSDA Email Agent",
+  [OUTLOOK_ASSISTANT_ID]: {
+    name: OUTLOOK_ASSISTANT_ID,
     icon: "mail",
-    headline: "What should we handle in your inbox?",
-    lede: "Review Outlook drafts before they’re saved or sent.",
+    headline: "What’s on your Outlook agenda?",
+    lede: "Catch up on email, find calendar events, and review drafts and meeting changes.",
     prompts: [
       {
         title: "Summarize new mail",
@@ -207,16 +210,15 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
         icon: "reply",
       },
       {
-        title: "Write a follow-up",
-        prompt:
-          "Draft a follow-up to [stakeholder] asking for an update on [topic] by [date].",
-        icon: "send",
+        title: "Check your calendar",
+        prompt: "What’s on my Outlook calendar for [date] in [time zone]?",
+        icon: "calendar",
       },
       {
-        title: "Find a message",
+        title: "Schedule a Teams meeting",
         prompt:
-          "Find the email thread about [topic] from last month and summarize what was agreed.",
-        icon: "search",
+          "Schedule a Teams meeting about [topic] with [email addresses] on [date] from [start time] to [end time] in [time zone].",
+        icon: "schedule",
       },
     ],
   },

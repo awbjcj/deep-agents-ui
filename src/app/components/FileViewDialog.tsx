@@ -25,11 +25,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { FileContentView } from "@/app/components/FileContentView";
 import { ImagePreview } from "@/app/components/ImagePreview";
+import { PdfView } from "@/app/components/PdfView";
+import { SpreadsheetView } from "@/app/components/SpreadsheetView";
 import type { FileItem } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { attachmentDisplayName, imageMimeForPath } from "@/lib/uploads";
 import { fileBlob, saveBlob } from "@/lib/file-downloads";
 import { safeSourcePageUrl, SOURCE_IMAGE_LABELS } from "@/lib/source-images";
+import {
+  contentByteSize,
+  fileViewKind,
+  PREVIEW_MAX_BYTES,
+} from "@/lib/file-kind";
 
 interface FileViewDialogProps {
   file: FileItem | null;
@@ -71,6 +78,22 @@ function FileViewDialogSession({
   );
   const isImage = imageMime !== null;
   const isBinary = file?.encoding === "base64";
+  const kind = fileViewKind(fileName, file?.mimeType, file?.encoding);
+  const isSpreadsheet = kind === "csv" || kind === "tsv" || kind === "xlsx";
+  const isPdf = kind === "pdf";
+  // Large spreadsheets and PDFs are not parsed in the tab; they download.
+  const isTooLarge = useMemo(
+    () =>
+      (isSpreadsheet || isPdf) &&
+      contentByteSize(displayedContent, file?.encoding) > PREVIEW_MAX_BYTES,
+    [isSpreadsheet, isPdf, displayedContent, file?.encoding]
+  );
+  const showViewer =
+    !isEditingMode &&
+    file !== null &&
+    Boolean(displayedContent) &&
+    (isSpreadsheet || isPdf) &&
+    !isTooLarge;
   const sourceImage = file?.sourceImage;
   const displayName =
     sourceImage?.filename ||
@@ -81,6 +104,10 @@ function FileViewDialogSession({
   const fullPath = file?.path && file.path !== displayName ? file.path : null;
   const sourcePageUrl = sourceImage
     ? safeSourcePageUrl(sourceImage.source_page_url)
+    : null;
+  // Files opened from chat carry their record's link for the header action.
+  const sourceLink = file?.source
+    ? { url: safeSourcePageUrl(file.source.url), label: file.source.label }
     : null;
 
   const handleCopy = useCallback(async () => {
@@ -162,7 +189,7 @@ function FileViewDialogSession({
       <DialogContent
         className={cn(
           "flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6",
-          isImage &&
+          (isImage || (isPdf && showViewer)) &&
             "h-[calc(100dvh-1.5rem)] max-w-none gap-3 transition-none sm:max-w-none"
         )}
       >
@@ -174,7 +201,7 @@ function FileViewDialogSession({
               : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
-        <div className="mb-4 flex flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
+        <div className="mb-4 flex shrink-0 flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
           <div className="flex min-w-0 items-center gap-2.5 pr-10 min-[520px]:pr-0">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
               {isImage ? (
@@ -228,7 +255,7 @@ function FileViewDialogSession({
                         Optimized for model
                       </span>
                     )}
-                    {sourcePageUrl && (
+                    {sourcePageUrl && !sourceLink?.url && (
                       <a
                         href={sourcePageUrl}
                         target="_blank"
@@ -247,7 +274,7 @@ function FileViewDialogSession({
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1 self-end min-[520px]:self-auto">
+          <div className="flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1 self-end min-[520px]:max-w-[60%] min-[520px]:self-auto">
             {!isEditingMode && (
               <>
                 {!isImage && !isBinary && (
@@ -277,6 +304,27 @@ function FileViewDialogSession({
                       className="mr-1"
                     />
                     Copy
+                  </Button>
+                )}
+                {sourceLink?.url && (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                  >
+                    <a
+                      href={sourceLink.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink
+                        size={16}
+                        className="mr-1"
+                        aria-hidden="true"
+                      />
+                      Open in {sourceLink.label}
+                    </a>
                   </Button>
                 )}
                 <Button
@@ -310,11 +358,29 @@ function FileViewDialogSession({
               src={`data:${imageMime};base64,${displayedContent}`}
               alt={displayName}
             />
+          ) : showViewer && file ? (
+            <div className="h-full min-h-0">
+              {isPdf ? (
+                <PdfView
+                  content={displayedContent}
+                  title={displayName}
+                />
+              ) : (
+                <SpreadsheetView
+                  file={{ ...file, path: fileName, content: displayedContent }}
+                />
+              )}
+            </div>
           ) : (
             <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20 [&_[data-slot=scroll-area-viewport]>div]:!block">
               <div className="p-4">
                 {displayedContent ? (
-                  isBinary ? (
+                  isTooLarge ? (
+                    <p className="text-sm text-muted-foreground">
+                      This file is larger than 10 MB, so it is not previewed.
+                      Download it to open it.
+                    </p>
+                  ) : isBinary ? (
                     <p className="text-sm text-muted-foreground">
                       This file is ready to download. A text preview is not
                       available.

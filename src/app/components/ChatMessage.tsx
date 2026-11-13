@@ -8,6 +8,8 @@ import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
+import { RawToolResult, ReadableToolResult } from "./ReadableToolResult";
+import { readableToolResult } from "@/lib/tool-result";
 import { SkillReferenceText } from "./skills/SkillReferenceText";
 import { parseSkillReferences } from "@/lib/skill-references";
 import { contextSummary } from "@/lib/context-summary";
@@ -66,6 +68,29 @@ interface ChatMessageProps {
   rubricCheckNumber?: number;
 }
 
+function SubAgentOutput({
+  result,
+  files,
+}: {
+  result: string;
+  files: Record<string, string>;
+}) {
+  const readable = useMemo(() => readableToolResult("task", result), [result]);
+  if (!readable || readable.kind === "text")
+    return (
+      <MarkdownContent
+        content={result}
+        files={files}
+      />
+    );
+  return (
+    <>
+      <ReadableToolResult result={readable} />
+      <RawToolResult result={result} />
+    </>
+  );
+}
+
 export const ChatMessage = React.memo<ChatMessageProps>(
   ({
     message,
@@ -88,7 +113,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     const isRubricRevision = isRubricRevisionMessage(message);
     const isTaskStatus = isTaskStatusMessage(message);
     const isUser = message.type === "human" && !isRubricRevision;
-    const messageContent = extractStringFromMessageContent(message);
+    const isToolResult = message.type === "tool";
+    const messageContent = isToolResult
+      ? ""
+      : extractStringFromMessageContent(message);
     const skillReferences = useMemo(
       () =>
         isUser
@@ -435,7 +463,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
             </div>
           )}
-          {!isUser && (
+          {!isUser && !isToolResult && (
             <ResponseDetails
               message={message}
               files={files}
@@ -504,8 +532,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                               Output
                             </h4>
-                            <MarkdownContent
-                              content={extractSubAgentContent(subAgent.output)}
+                            <SubAgentOutput
+                              result={extractSubAgentContent(subAgent.output)}
                               files={files}
                             />
                           </>

@@ -1,3 +1,7 @@
+import type { Message } from "@langchain/langgraph-sdk";
+
+const SUMMARY_SOURCE = "summarization";
+
 const FIELDS = [
   ["goal", "Goal"],
   ["constraints", "Constraints"],
@@ -14,27 +18,53 @@ export interface ContextSummary {
   sections: { label: string; items: string[] }[];
 }
 
+/** Identify a handoff tagged by the runtime, including saved summaries. */
+export function isContextSummaryMessage(message: {
+  type: string;
+  additional_kwargs?: Record<string, unknown>;
+}): boolean {
+  return message.additional_kwargs?.lc_source === SUMMARY_SOURCE;
+}
+
+/** Carry the runtime marker from the live stream into the message renderer. */
+export function markStreamedContextSummary(
+  message: Message,
+  metadata: Record<string, unknown> | undefined
+): Message {
+  if (
+    message.type !== "ai" ||
+    metadata?.lc_source !== SUMMARY_SOURCE ||
+    isContextSummaryMessage(message)
+  ) {
+    return message;
+  }
+  return {
+    ...message,
+    additional_kwargs: {
+      ...message.additional_kwargs,
+      lc_source: SUMMARY_SOURCE,
+    },
+  };
+}
+
 /** Recognize runtime handoffs without treating user-provided JSON as a summary. */
 export function contextSummary(
   message: { type: string; additional_kwargs?: Record<string, unknown> },
   content: string
 ): ContextSummary | null {
-  const marked = message.additional_kwargs?.lc_source === "summarization";
-  if (!marked && message.type !== "ai") return null;
+  if (!isContextSummaryMessage(message)) return null;
 
   let payload = content.trim();
-  if (marked) {
-    const opening = payload.indexOf("<summary>");
-    if (opening !== -1) {
-      payload = payload.slice(opening + "<summary>".length);
-      const closing = payload.lastIndexOf("</summary>");
-      if (closing !== -1) payload = payload.slice(0, closing);
-    } else {
-      payload = payload.replace(
-        /^Here is a summary of the conversation to date:\s*/,
-        ""
-      );
-    }
+  const opening = payload.indexOf("<summary>");
+  if (opening !== -1) {
+    payload = payload.slice(opening + "<summary>".length);
+    const closing = payload.lastIndexOf("</summary>");
+    if (closing !== -1) payload = payload.slice(0, closing);
+  } else {
+    payload = payload.replace(
+      /^Here is a summary of the conversation to date:\s*/,
+      ""
+    );
   }
   payload = payload.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/, "$1");
   try {
@@ -64,11 +94,5 @@ export function contextSummary(
     // Preserve incomplete streaming output as text; never invent missing data.
   }
 
-  const resemblesHandoff =
-    /^\{\s*"goal"\s*:\s*\[/.test(payload) &&
-    /"constraints"\s*:\s*\[/.test(payload) &&
-    /"decisions"\s*:\s*\[/.test(payload);
-  return marked || resemblesHandoff
-    ? { raw: content, incomplete: true, sections: [] }
-    : null;
+  return { raw: content, incomplete: true, sections: [] };
 }

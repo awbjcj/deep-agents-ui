@@ -5,6 +5,7 @@ import {
   canonicalAssistantId,
   canonicalSystemAssistant,
   KNOWLEDGE_BASE_ASSISTANT_ID,
+  OUTLOOK_ASSISTANT_ID,
 } from "@/lib/assistant-identity";
 import {
   allowedAssistantId,
@@ -18,6 +19,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -102,22 +104,27 @@ const AGENT_INFO: Record<string, AgentInfo> = {
   },
   "VSDA Teams Agent": {
     description:
-      "Reads and summarizes your Microsoft Teams chats, and sends messages once you approve them. It can also draft Adaptive Cards.",
+      "Reads and summarizes your Microsoft Teams chats and sends messages once you approve them. It can also set up group chats, react to messages, fix or remove messages you sent, and draft Adaptive Cards.",
     useCases: [
       "Catch me up on the last day of a group chat.",
       "Find out what the team decided about the release date.",
       "Send a status update to a teammate, or start a new chat with them.",
+      "Start a group chat for the release crew, or add a teammate to one.",
+      "Fix a typo in a message I sent, or delete it.",
       "Draft an Adaptive Card for a bot or workflow notification.",
     ],
+    note: "Chat changes need delegated Chat.ReadWrite (or the narrower scope listed for each tool) on your saved Microsoft Graph token and follow your approval mode.",
   },
-  "VSDA Email Agent": {
+  [OUTLOOK_ASSISTANT_ID]: {
     description:
-      "Reads your Outlook mailbox and writes email for you. Drafts go to your Drafts folder after you review them, and nothing is sent until you approve it.",
+      "Works with your Outlook mailbox and calendar. It can summarize mail, draft replies, schedule appointments and Teams meetings, and update or cancel events.",
     useCases: [
       "Summarize what came into a folder since yesterday.",
       "Draft a reply to a specific message, or a follow-up to a stakeholder.",
-      "Send a saved draft, or a new message you have checked.",
+      "Check my calendar for tomorrow and find a specific meeting.",
+      "Schedule a Teams meeting or reschedule one I organized.",
     ],
+    note: "Calendar changes require delegated Calendars.ReadWrite permission on your saved Microsoft Graph token and follow your approval mode.",
   },
   "VSDA SharePoint Agent": {
     description:
@@ -323,7 +330,7 @@ export function ConfigDialog({
 
   const handleSave = () => {
     if (!assistantId) {
-      toast.error("Please select an assistant");
+      toast.error("Choose an assistant first");
       return;
     }
     const selectedGraph =
@@ -348,7 +355,9 @@ export function ConfigDialog({
     const selected = assistants.find((a) => a.id === assistantId);
     toast.success(
       selected
-        ? `Configuration saved — using ${selected.graphId}`
+        ? `Configuration saved — using ${canonicalAssistantId(
+            selected.graphId
+          )}`
         : "Configuration saved"
     );
     onOpenChange(false);
@@ -381,12 +390,12 @@ export function ConfigDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent
-        aria-describedby={undefined}
-        className="flex max-h-[90dvh] flex-col sm:max-w-[525px]"
-      >
+      <DialogContent className="flex max-h-[90dvh] flex-col sm:max-w-[525px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>Choose an agent</DialogTitle>
+          <DialogDescription>
+            Choose the agent for your next conversation.
+          </DialogDescription>
         </DialogHeader>
         <div className="-mx-6 grid min-h-0 gap-4 overflow-y-auto px-6 py-1">
           <div className="grid gap-2">
@@ -415,7 +424,7 @@ export function ConfigDialog({
                       key={a.id}
                       value={a.id}
                     >
-                      {a.graphId}
+                      {canonicalAssistantId(a.graphId)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -425,7 +434,9 @@ export function ConfigDialog({
           {assistantId &&
             (() => {
               const selected = assistants.find((a) => a.id === assistantId);
-              const info = selected ? AGENT_INFO[selected.graphId] : undefined;
+              const info = selected
+                ? AGENT_INFO[canonicalAssistantId(selected.graphId)]
+                : undefined;
               if (!info) return null;
               return (
                 <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
@@ -453,7 +464,7 @@ export function ConfigDialog({
                     <p className="text-xs text-muted-foreground">{info.note}</p>
                   )}
                   {info.isSupervisor && (
-                    <p className="border-primary/40 rounded-md border-l-2 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                    <p className="rounded-md bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                       If the job only touches one system, pick that agent
                       directly. It will be faster and stay on topic. Keep a
                       supervisor for work that crosses systems or takes several
@@ -490,7 +501,7 @@ export function ConfigDialog({
                       disabled={!engine.ready}
                     >
                       {engineLabel(engine.id)}
-                      {!engine.ready ? " — unavailable" : ""}
+                      {!engine.ready ? " (unavailable)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>

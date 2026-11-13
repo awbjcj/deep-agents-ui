@@ -1,4 +1,5 @@
 import type { SourceImageRecord } from "@/lib/source-images";
+import type { SourceAttachmentRecord } from "@/lib/artifact-links";
 
 /**
  * Files a delegated subagent has saved but the root thread has not yet
@@ -15,16 +16,21 @@ import type { SourceImageRecord } from "@/lib/source-images";
 export interface PendingSubagentFiles {
   files: Record<string, unknown>;
   records: Record<string, SourceImageRecord>;
+  /** Source-document provenance keyed by original path. */
+  documents: Record<string, SourceAttachmentRecord>;
 }
 
 export const EMPTY_PENDING_FILES: PendingSubagentFiles = Object.freeze({
   files: Object.freeze({}) as Record<string, unknown>,
   records: Object.freeze({}) as Record<string, SourceImageRecord>,
+  documents: Object.freeze({}) as Record<string, SourceAttachmentRecord>,
 }) as PendingSubagentFiles;
 
 type Delta = {
   files: Record<string, unknown>;
   records: Record<string, SourceImageRecord | null>;
+  /** Present only when the update wrote `source_attachment_records`. */
+  documents?: Record<string, SourceAttachmentRecord | null>;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,7 +46,8 @@ export function isSubagentNamespace(namespace: string[] | undefined): boolean {
 }
 
 /**
- * Extract `files` and `source_image_attachments` writes from one namespaced
+ * Extract `files`, `source_image_attachments` and `source_attachment_records`
+ * writes from one namespaced
  * `updates` event. Root-namespace events return null: the root stream values
  * already carry those writes.
  */
@@ -66,6 +73,13 @@ export function subagentFileDelta(
         );
         found = true;
       }
+      if (isRecord(update.source_attachment_records)) {
+        delta.documents = Object.assign(
+          delta.documents ?? {},
+          update.source_attachment_records as NonNullable<Delta["documents"]>
+        );
+        found = true;
+      }
     }
   }
   return found ? delta : null;
@@ -78,6 +92,7 @@ export function applyPendingDelta(
 ): PendingSubagentFiles {
   const files = { ...pending.files };
   const records = { ...pending.records };
+  const documents = { ...pending.documents };
   for (const [path, value] of Object.entries(delta.files)) {
     if (value == null) delete files[path];
     else files[path] = value;
@@ -86,7 +101,11 @@ export function applyPendingDelta(
     if (record == null) delete records[id];
     else records[id] = record;
   }
-  return { files, records };
+  for (const [path, record] of Object.entries(delta.documents ?? {})) {
+    if (record == null) delete documents[path];
+    else documents[path] = record;
+  }
+  return { files, records, documents };
 }
 
 /**
@@ -101,7 +120,13 @@ export function prunePendingFiles(
 ): PendingSubagentFiles {
   const pendingPaths = Object.keys(pending.files);
   const recordIds = Object.keys(pending.records);
-  if (pendingPaths.length === 0 && recordIds.length === 0) return pending;
+  const documentPaths = Object.keys(pending.documents);
+  if (
+    pendingPaths.length === 0 &&
+    recordIds.length === 0 &&
+    documentPaths.length === 0
+  )
+    return pending;
   if (settled) return EMPTY_PENDING_FILES;
   const files: Record<string, unknown> = {};
   for (const path of pendingPaths) {
@@ -112,10 +137,18 @@ export function prunePendingFiles(
     const record = pending.records[id]!;
     if (record.artifact_path in files) records[id] = record;
   }
+  // A document record stays while either of its files is still pending.
+  const documents: Record<string, SourceAttachmentRecord> = {};
+  for (const path of documentPaths) {
+    const record = pending.documents[path]!;
+    if (record.original_path in files || record.readable_path in files)
+      documents[path] = record;
+  }
   const unchanged =
     Object.keys(files).length === pendingPaths.length &&
-    Object.keys(records).length === recordIds.length;
-  return unchanged ? pending : { files, records };
+    Object.keys(records).length === recordIds.length &&
+    Object.keys(documents).length === documentPaths.length;
+  return unchanged ? pending : { files, records, documents };
 }
 
 /** Root files win over overlay entries for the same path. */

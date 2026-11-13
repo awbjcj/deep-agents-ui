@@ -39,6 +39,8 @@ export function ChangeProfileDialog({
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [usernameSaveError, setUsernameSaveError] = useState("");
+  const [passwordSaveError, setPasswordSaveError] = useState("");
   const lastOpenRef = useRef(open);
 
   useEffect(() => {
@@ -50,6 +52,8 @@ export function ChangeProfileDialog({
       setShowCurrentPw(false);
       setShowNewPw(false);
       setShowConfirmPw(false);
+      setUsernameSaveError("");
+      setPasswordSaveError("");
     }
     lastOpenRef.current = open;
   }, [open]);
@@ -66,9 +70,28 @@ export function ChangeProfileDialog({
   const usernameDirty =
     !!trimmedUsername && trimmedUsername !== user?.username && !usernameError;
   const passwordDirty = !!currentPassword && !!newPassword && !!confirmPassword;
+  const passwordError =
+    newPassword && newPassword.length < 8 ? "Use at least 8 characters." : "";
+  const confirmationError =
+    confirmPassword && newPassword !== confirmPassword
+      ? "Passwords do not match."
+      : "";
+  const hasEdits =
+    !!newUsername || !!currentPassword || !!newPassword || !!confirmPassword;
+  const changeOpen = (next: boolean) => {
+    if (!next && (isSavingUsername || isSavingPassword)) return;
+    if (
+      !next &&
+      hasEdits &&
+      !window.confirm("Discard unsaved account changes?")
+    )
+      return;
+    onOpenChange(next);
+  };
 
   const saveUsername = async () => {
     if (!usernameDirty) return;
+    setUsernameSaveError("");
     setIsSavingUsername(true);
     try {
       const result = await apiUpdateProfile({ username: trimmedUsername });
@@ -76,8 +99,10 @@ export function ChangeProfileDialog({
       toast.success("Username updated");
       setNewUsername("");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update username"
+      setUsernameSaveError(
+        err instanceof Error
+          ? err.message
+          : "Could not update your username. Try again."
       );
     } finally {
       setIsSavingUsername(false);
@@ -86,12 +111,13 @@ export function ChangeProfileDialog({
 
   const savePassword = async () => {
     if (!passwordDirty) return;
+    setPasswordSaveError("");
     if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
+      document.getElementById("confirm-password")?.focus();
       return;
     }
     if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      document.getElementById("new-password")?.focus();
       return;
     }
     setIsSavingPassword(true);
@@ -106,8 +132,10 @@ export function ChangeProfileDialog({
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update password"
+      setPasswordSaveError(
+        err instanceof Error
+          ? err.message
+          : "Could not update your password. Try again."
       );
     } finally {
       setIsSavingPassword(false);
@@ -117,9 +145,9 @@ export function ChangeProfileDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={changeOpen}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Account</DialogTitle>
           <DialogDescription>Signed in as {user?.username}.</DialogDescription>
@@ -133,90 +161,155 @@ export function ChangeProfileDialog({
             value="username"
             className="space-y-3 pt-3"
           >
-            <Label htmlFor="newUsername">New username</Label>
-            <Input
-              id="newUsername"
-              type="text"
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
-              autoComplete="off"
-            />
-            {usernameError && (
-              <p className="text-xs text-destructive">{usernameError}</p>
-            )}
-            <Button
-              onClick={saveUsername}
-              disabled={isSavingUsername || !usernameDirty}
-              className="w-full"
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveUsername();
+              }}
             >
-              {isSavingUsername ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save username
-                </>
+              <Label htmlFor="newUsername">New username</Label>
+              <Input
+                id="newUsername"
+                type="text"
+                value={newUsername}
+                onChange={(e) => {
+                  setNewUsername(e.target.value);
+                  setUsernameSaveError("");
+                }}
+                autoComplete="username"
+                aria-invalid={!!usernameError}
+                aria-describedby={
+                  usernameError ? "username-error" : "username-hint"
+                }
+                disabled={isSavingUsername}
+                required
+              />
+              <p
+                id="username-hint"
+                className="text-xs leading-relaxed text-muted-foreground"
+              >
+                At least 3 characters. Use letters, digits, underscores,
+                hyphens, or dots.
+              </p>
+              {usernameError && (
+                <p
+                  id="username-error"
+                  className="text-xs text-destructive"
+                >
+                  {usernameError}
+                </p>
               )}
-            </Button>
+              {usernameSaveError && (
+                <p
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {usernameSaveError}
+                </p>
+              )}
+              <Button
+                type="submit"
+                disabled={isSavingUsername || !usernameDirty}
+                className="min-h-touch w-full"
+              >
+                {isSavingUsername ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save username
+                  </>
+                )}
+              </Button>
+            </form>
           </TabsContent>
           <TabsContent
             value="password"
             className="space-y-3 pt-3"
           >
-            <PasswordField
-              id="current-password"
-              label="Current password"
-              value={currentPassword}
-              onChange={setCurrentPassword}
-              show={showCurrentPw}
-              onToggle={() => setShowCurrentPw((value) => !value)}
-              autoComplete="current-password"
-            />
-            <PasswordField
-              id="new-password"
-              label="New password"
-              value={newPassword}
-              onChange={setNewPassword}
-              show={showNewPw}
-              onToggle={() => setShowNewPw((value) => !value)}
-              autoComplete="new-password"
-            />
-            <PasswordField
-              id="confirm-password"
-              label="Confirm new password"
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              show={showConfirmPw}
-              onToggle={() => setShowConfirmPw((value) => !value)}
-              autoComplete="new-password"
-            />
-            {newPassword &&
-              confirmPassword &&
-              newPassword !== confirmPassword && (
-                <p className="text-xs text-destructive">
-                  Passwords do not match
-                </p>
-              )}
-            <Button
-              onClick={savePassword}
-              disabled={isSavingPassword || !passwordDirty}
-              className="w-full"
+            <form
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void savePassword();
+              }}
             >
-              {isSavingPassword ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save password
-                </>
-              )}
-            </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Use at least 8 characters for your new password.
+              </p>
+              <fieldset
+                disabled={isSavingPassword}
+                className="min-w-0 space-y-3"
+              >
+                <PasswordField
+                  id="current-password"
+                  label="Current password"
+                  value={currentPassword}
+                  onChange={(value) => {
+                    setCurrentPassword(value);
+                    setPasswordSaveError("");
+                  }}
+                  show={showCurrentPw}
+                  onToggle={() => setShowCurrentPw((value) => !value)}
+                  autoComplete="current-password"
+                />
+                <PasswordField
+                  id="new-password"
+                  label="New password"
+                  value={newPassword}
+                  onChange={(value) => {
+                    setNewPassword(value);
+                    setPasswordSaveError("");
+                  }}
+                  error={passwordError}
+                  show={showNewPw}
+                  onToggle={() => setShowNewPw((value) => !value)}
+                  autoComplete="new-password"
+                />
+                <PasswordField
+                  id="confirm-password"
+                  label="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(value) => {
+                    setConfirmPassword(value);
+                    setPasswordSaveError("");
+                  }}
+                  error={confirmationError}
+                  show={showConfirmPw}
+                  onToggle={() => setShowConfirmPw((value) => !value)}
+                  autoComplete="new-password"
+                />
+                {passwordSaveError && (
+                  <p
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
+                    {passwordSaveError}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={isSavingPassword || !passwordDirty}
+                  className="min-h-touch w-full"
+                >
+                  {isSavingPassword ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save password
+                    </>
+                  )}
+                </Button>
+              </fieldset>
+            </form>
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -232,6 +325,7 @@ function PasswordField(props: {
   show: boolean;
   onToggle: () => void;
   autoComplete: string;
+  error?: string;
 }) {
   return (
     <div className="space-y-1.5">
@@ -243,12 +337,15 @@ function PasswordField(props: {
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
           autoComplete={props.autoComplete}
-          className="pr-10"
+          required
+          aria-invalid={!!props.error}
+          aria-describedby={props.error ? `${props.id}-error` : undefined}
+          className="pr-12"
         />
         <button
           type="button"
           onClick={props.onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          className="absolute right-0 top-1/2 flex size-touch -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label={props.show ? "Hide password" : "Show password"}
           aria-pressed={props.show}
         >
@@ -259,6 +356,14 @@ function PasswordField(props: {
           )}
         </button>
       </div>
+      {props.error && (
+        <p
+          id={`${props.id}-error`}
+          className="text-xs text-destructive"
+        >
+          {props.error}
+        </p>
+      )}
     </div>
   );
 }

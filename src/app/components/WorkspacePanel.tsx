@@ -1,19 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Bot,
   BookOpen,
   KeyRound,
-  Maximize2,
-  Minimize2,
   MessagesSquare,
   PlugZap,
   Wrench,
-  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PanelTabs } from "@/components/ui/panel-tabs";
 import { panelTabPanelProps } from "@/components/ui/panel-tabs-utils";
 import { ModelSidebar } from "@/app/components/ModelSidebar";
 import { TokenManagementSidebar } from "@/app/components/TokenManagementSidebar";
@@ -22,6 +17,10 @@ import { ToolPermissionsSidebar } from "@/app/components/ToolPermissionsSidebar"
 import { SkillsSidebar } from "@/app/components/SkillsSidebar";
 import { ChatChannelSettings } from "@/app/components/chat-channels/ChatChannelSettings";
 import { useAuth } from "@/providers/AuthProvider";
+import { readBrowserStorage, writeBrowserStorage } from "@/lib/browserStorage";
+import { SettingsPanel } from "./settings/SettingsPanel";
+import { SettingsDrafts } from "./settings/SettingsDrafts";
+import { useSettingsLeaveGuard } from "./settings/useSettingsDrafts";
 
 export type WorkspaceTab =
   | "models"
@@ -49,51 +48,88 @@ interface TabDef {
   id: WorkspaceTab;
   label: string;
   icon: typeof Bot;
+  description: string;
 }
 
 const TABS: TabDef[] = [
-  { id: "models", label: "Models", icon: Bot },
-  { id: "tools", label: "Tools", icon: Wrench },
-  { id: "skills", label: "Skills", icon: BookOpen },
-  { id: "tokens", label: "Tokens", icon: KeyRound },
-  { id: "bots", label: "Bots", icon: MessagesSquare },
-  { id: "connectivity", label: "Connections", icon: PlugZap },
+  {
+    id: "models",
+    label: "Models",
+    icon: Bot,
+    description:
+      "Choose how your conversations use models and review your usage.",
+  },
+  {
+    id: "tools",
+    label: "Tools",
+    icon: Wrench,
+    description:
+      "Choose the tools your agents can use within your access level.",
+  },
+  {
+    id: "skills",
+    label: "Skills",
+    icon: BookOpen,
+    description: "Create and manage reusable instructions for your agents.",
+  },
+  {
+    id: "tokens",
+    label: "Tokens",
+    icon: KeyRound,
+    description: "Manage your personal credentials for connected services.",
+  },
+  {
+    id: "bots",
+    label: "Bots",
+    icon: MessagesSquare,
+    description:
+      "Link a chat app to continue conversations outside the browser.",
+  },
+  {
+    id: "connectivity",
+    label: "Connections",
+    icon: PlugZap,
+    description:
+      "Choose your connection route and source attachment preferences.",
+  },
 ];
 
 const STORAGE_KEY = "vsda_workspace_tab";
 // The Bots tab replaced the Teams tab; keep a remembered "teams" selection.
 const LEGACY_TABS: Record<string, WorkspaceTab> = { teams: "bots" };
 
-export function WorkspacePanel({
+/** Account-scoped workspace forms share navigation and unsaved-change protection. */
+export function WorkspacePanel(props: WorkspacePanelProps) {
+  const { user } = useAuth();
+  return (
+    <SettingsDrafts
+      key={user?.user_id ?? "signed-out"}
+      onDirtyChange={props.onDirtyChange}
+    >
+      <WorkspacePanelContent {...props} />
+    </SettingsDrafts>
+  );
+}
+
+function WorkspacePanelContent({
   initialTab,
   initialTokenFocus,
   onTokenFocusConsumed,
   onClose,
   onCreateWithAgent,
-  onDirtyChange,
   expanded = false,
   onToggleExpanded,
   onEditingChange,
 }: WorkspacePanelProps) {
   const { user } = useAuth();
   const [teamsTokenFocus, setTeamsTokenFocus] = useState<string | null>(null);
-  const dirty = useRef<{ accountId: string | null; value: boolean }>({
-    accountId: null,
-    value: false,
-  });
-  const updateDirty = useCallback(
-    (value: boolean) => {
-      dirty.current = { accountId: user?.user_id ?? null, value };
-      onDirtyChange(value);
-    },
-    [onDirtyChange, user?.user_id]
-  );
+  const confirmLeave = useSettingsLeaveGuard();
   // Remember the last-opened tab across sessions so a user doing iterative
   // token edits → model tweaks doesn't have to re-find the tab each time.
   const [active, setActive] = useState<WorkspaceTab>(() => {
     if (initialTab) return initialTab;
     if (typeof window === "undefined") return "models";
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = readBrowserStorage(STORAGE_KEY);
     const stored = (raw && LEGACY_TABS[raw]) ?? (raw as WorkspaceTab | null);
     if (stored && TABS.some((t) => t.id === stored)) return stored;
     return "models";
@@ -101,16 +137,10 @@ export function WorkspacePanel({
   const changeTab = useCallback(
     (next: WorkspaceTab) => {
       if (active === next) return;
-      if (
-        dirty.current.accountId === user?.user_id &&
-        dirty.current.value &&
-        !window.confirm("Discard unsaved skill changes?")
-      )
-        return;
-      updateDirty(false);
+      if (!confirmLeave()) return;
       setActive(next);
     },
-    [active, updateDirty, user?.user_id]
+    [active, confirmLeave]
   );
 
   // If the parent escalates `initialTab` after mount (e.g. notification deep
@@ -124,67 +154,21 @@ export function WorkspacePanel({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, active);
+    writeBrowserStorage(STORAGE_KEY, active);
   }, [active]);
 
   return (
-    <div className="absolute inset-0 flex flex-col">
-      <header className="flex min-w-0 flex-shrink-0 flex-col border-b border-border bg-card/70 backdrop-blur-sm @container/panel">
-        <div className="flex min-h-12 items-center justify-between gap-2 px-4 py-1">
-          <h2 className="text-base font-semibold tracking-tight">Workspace</h2>
-          <div className="flex shrink-0 items-center gap-1">
-            {onToggleExpanded && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggleExpanded}
-                className="h-8 w-8"
-                aria-label={
-                  expanded
-                    ? "Restore workspace panel"
-                    : "Expand workspace panel"
-                }
-                aria-pressed={expanded}
-              >
-                {expanded ? (
-                  <Minimize2
-                    aria-hidden="true"
-                    className="h-4 w-4"
-                  />
-                ) : (
-                  <Maximize2
-                    aria-hidden="true"
-                    className="h-4 w-4"
-                  />
-                )}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-              aria-label="Close workspace panel"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        {/* Manual activation: each panel body runs its own fetches on mount,
-            so arrowing across the strip must not mount every section on the
-            way past. */}
-        <PanelTabs
-          tabs={TABS}
-          value={active}
-          onValueChange={changeTab}
-          idPrefix="workspace"
-          label="Workspace sections"
-          variant="underline"
-          activation="manual"
-          className="grid auto-cols-[minmax(max-content,1fr)] grid-flow-col items-stretch gap-1 overflow-x-auto px-2 [&_[role=tab]]:w-full [&_[role=tab]]:min-w-0 [&_[role=tab]]:gap-1.5 [&_[role=tab]]:px-2"
-        />
-      </header>
-
+    <SettingsPanel
+      title="Workspace"
+      tabs={TABS}
+      active={active}
+      onSelect={changeTab}
+      idPrefix="workspace"
+      navigationLabel="Workspace sections"
+      onClose={onClose}
+      expanded={expanded}
+      onToggleExpanded={onToggleExpanded}
+    >
       {/* Panel bodies. We mount only the active tab to avoid running fetches
           for sections the user hasn't opened. */}
       <div className="relative min-h-0 flex-1">
@@ -195,7 +179,6 @@ export function WorkspacePanel({
           >
             <SkillsSidebar
               onCreateWithAgent={onCreateWithAgent}
-              onDirtyChange={updateDirty}
               onEditingChange={onEditingChange}
             />
           </div>
@@ -254,6 +237,6 @@ export function WorkspacePanel({
           </div>
         )}
       </div>
-    </div>
+    </SettingsPanel>
   );
 }

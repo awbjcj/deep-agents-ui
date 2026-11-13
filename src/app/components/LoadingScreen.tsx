@@ -43,7 +43,7 @@ export function LoadingScreen({
         <button
           type="button"
           onClick={reloadBypassingCache}
-          className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          className="min-h-touch rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Reload app
         </button>

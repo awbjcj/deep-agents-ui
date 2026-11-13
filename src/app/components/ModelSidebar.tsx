@@ -1,6 +1,15 @@
 "use client";
 
 import {
+  SettingsLoading,
+  SettingsLoadError,
+} from "./settings/SettingsFeedback";
+
+import { navigateRadioGroup } from "@/lib/radio-navigation";
+
+import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
+
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -236,6 +245,8 @@ export function ModelSidebar() {
   const [serverCustom, setServerCustom] = useState(false);
   const [customManuallySelected, setCustomManuallySelected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingPreset, setPendingPreset] = useState<ModelPreset | null>(null);
   const [saved, setSaved] = useState(false);
@@ -249,6 +260,7 @@ export function ModelSidebar() {
   useEffect(() => {
     let mounted = true;
     const externalChangeSeq = externalChangeSeqRef.current;
+    setLoadFailed(false);
     setIsLoading(true);
 
     Promise.all([apiGetUserModel(), apiGetAllowedModels()])
@@ -268,7 +280,7 @@ export function ModelSidebar() {
         }
       })
       .catch(() => {
-        if (mounted) toast.error("Failed to load model settings");
+        if (mounted) setLoadFailed(true);
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -277,7 +289,7 @@ export function ModelSidebar() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [loadAttempt]);
 
   const currentModelEntry = useMemo(() => {
     if (!draft || !draft.provider || !draft.model) return null;
@@ -296,6 +308,7 @@ export function ModelSidebar() {
   const dirty =
     draft !== null && baseline !== null && !draftsEqual(draft, baseline);
   const isCustom = serverCustom || dirty || customManuallySelected;
+  useSettingsDraft(dirty || isSaving || pendingPreset !== null);
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
 
@@ -456,9 +469,7 @@ export function ModelSidebar() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Title bar is supplied by parent WorkspacePanel. The previous local
-          header duplicated the eyebrow + title that WorkspacePanel already
-          shows; we keep only the content. */}
+      {/* Navigation and section context are supplied by WorkspacePanel. */}
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-6 p-4">
           {usage && (
@@ -469,12 +480,12 @@ export function ModelSidebar() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <span
-                    className="aptiv-eyebrow"
+                    className="text-sm font-semibold text-foreground"
                     id="usage-section-heading"
                   >
                     Usage
                   </span>
-                  <span className="mt-0.5 block truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                     {resetLabel}
                   </span>
                 </div>
@@ -507,9 +518,12 @@ export function ModelSidebar() {
           )}
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
+            <SettingsLoading />
+          ) : loadFailed ? (
+            <SettingsLoadError
+              message="Could not load your model settings. Retry before making changes."
+              onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+            />
           ) : !draft || allowed.length === 0 ? (
             <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
               No models are available for your account.
@@ -525,6 +539,7 @@ export function ModelSidebar() {
                 </h3>
                 <div
                   role="radiogroup"
+                  onKeyDown={navigateRadioGroup}
                   aria-labelledby="model-preset-heading"
                   className="grid grid-cols-2 gap-2"
                 >
@@ -549,6 +564,7 @@ export function ModelSidebar() {
                         type="button"
                         role="radio"
                         aria-checked={active}
+                        tabIndex={active ? 0 : -1}
                         onClick={handleClick}
                         disabled={isSaving}
                         className={[
@@ -668,7 +684,19 @@ export function ModelSidebar() {
         </div>
       </ScrollArea>
       {!isLoading && draft && allowed.length > 0 && (
-        <div className="flex-shrink-0 border-t border-border bg-card/70 p-4 backdrop-blur-sm">
+        <div className="flex-shrink-0 border-t border-border bg-card p-4">
+          <p
+            role="status"
+            className="mb-3 text-xs text-muted-foreground"
+          >
+            {isSaving
+              ? "Saving model preferences…"
+              : dirty
+              ? "Changes save automatically. Use Save to retry immediately."
+              : saved
+              ? "Model preferences saved."
+              : "Model changes save automatically. Step limits use Save limit."}
+          </p>
           <Button
             onClick={() => handleSave()}
             disabled={isSaving || !dirty || !draft.provider || !draft.model}
