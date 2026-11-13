@@ -794,19 +794,24 @@ export function useChat({
     base: StateType["source_attachment_records"];
     records: Record<string, SourceAttachmentRecord>;
   } | null>(null);
-  const sourceAttachmentRecords = useMemo(
-    () =>
+  const sourceAttachmentRecords = useMemo(() => {
+    const root =
       refreshedSourceAttachmentRecords &&
       refreshedSourceAttachmentRecords.threadId === threadId &&
       refreshedSourceAttachmentRecords.base === rawServerSourceAttachmentRecords
         ? refreshedSourceAttachmentRecords.records
-        : liveSourceAttachmentRecords(rawServerSourceAttachmentRecords),
-    [
-      refreshedSourceAttachmentRecords,
-      rawServerSourceAttachmentRecords,
-      threadId,
-    ]
-  );
+        : liveSourceAttachmentRecords(rawServerSourceAttachmentRecords);
+    // Records a running subagent saved join like its pending image records;
+    // the root state wins for the same path.
+    return Object.keys(livePendingFiles.documents).length === 0
+      ? root
+      : { ...livePendingFiles.documents, ...root };
+  }, [
+    refreshedSourceAttachmentRecords,
+    rawServerSourceAttachmentRecords,
+    threadId,
+    livePendingFiles,
+  ]);
   const sourceImageRemovalQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
