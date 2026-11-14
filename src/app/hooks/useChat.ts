@@ -72,7 +72,12 @@ import {
   verificationIsLive,
   type LiveTaskVerification,
 } from "@/lib/task-outcome";
-import { markStreamedContextSummary } from "@/lib/context-summary";
+import {
+  contextUpdateEvent,
+  markStreamedContextSummary,
+  projectContextUpdates,
+  type LiveContextUpdate,
+} from "@/lib/context-summary";
 
 export type { ProcessedMessage } from "@/app/hooks/internal/conversationProjection";
 
@@ -181,6 +186,12 @@ export function useChat({
 
   const [liveVerification, setLiveVerification] =
     useState<LiveTaskVerification>(EMPTY_LIVE_VERIFICATION);
+  const [liveContextUpdate, setLiveContextUpdate] =
+    useState<LiveContextUpdate | null>(null);
+  const contextRecords = useRef({
+    threadId,
+    records: new Map<string, unknown>(),
+  });
   // Route `custom` stream events:
   //   - root `task_outcome` → refines `values.task_outcome` in place, within
   //     the checkpoint's execution, task revision and answer
@@ -204,6 +215,22 @@ export function useChat({
         typeof event === "object" && event !== null
           ? (event as Record<string, unknown>).type
           : undefined;
+      if (eventType === "context_update") {
+        const update = contextUpdateEvent(
+          event,
+          options?.namespace,
+          threadIdRef.current
+        );
+        if (update)
+          setLiveContextUpdate((previous) =>
+            previous?.threadId === update.threadId &&
+            previous.id === update.id &&
+            previous.status === "updating"
+              ? previous
+              : update
+          );
+        return;
+      }
       if (eventType === "task_outcome") {
         const outcome = taskOutcomeEvent(event, options?.namespace);
         if (outcome)
@@ -402,6 +429,17 @@ export function useChat({
   const stream = rawStream;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
+  useEffect(() => {
+    setLiveContextUpdate(null);
+  }, [threadId]);
+  useEffect(() => {
+    if (stream.isLoading && !stream.interrupts.length) return;
+    setLiveContextUpdate((previous) =>
+      previous?.status === "updating"
+        ? { ...previous, status: "interrupted" }
+        : previous
+    );
+  }, [stream.isLoading, stream.interrupts.length, liveContextUpdate?.status]);
   // Follow-up runs belong to the conversation even while the selected agent
   // hydrates or changes. The approval mode remains scoped to the agent below.
   const messageRunScope = JSON.stringify([deploymentUrl, userId, threadId]);
@@ -1205,9 +1243,12 @@ export function useChat({
   // every artifact in the thread.
   const isInterrupted = stream.interrupts.length > 0;
   const { messages: streamedMessages, getMessagesMetadata } = stream;
-  // Keep private grader diagnostics out of the transcript. Preserve the source
-  // of a live context handoff so its card can render before the JSON is complete.
+  // Checkpoint messages carry accepted handoffs. Auxiliary model drafts never
+  // become cards; a root progress event supplies the single live placeholder.
   const visibleMessages = useMemo(() => {
+    if (contextRecords.current.threadId !== threadId) {
+      contextRecords.current = { threadId, records: new Map() };
+    }
     const visible: Message[] = [];
     streamedMessages.forEach((message, index) => {
       const metadata = getMessagesMetadata(message, index);
@@ -1217,8 +1258,12 @@ export function useChat({
         );
       }
     });
-    return visible;
-  }, [streamedMessages, getMessagesMetadata]);
+    return projectContextUpdates(
+      visible,
+      liveContextUpdate?.threadId === threadId ? liveContextUpdate : null,
+      contextRecords.current.records
+    );
+  }, [streamedMessages, getMessagesMetadata, liveContextUpdate, threadId]);
   const processedMessages = useProcessedMessages(
     visibleMessages,
     isInterrupted,
