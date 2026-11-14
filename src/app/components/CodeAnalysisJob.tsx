@@ -50,6 +50,22 @@ export function CodeAnalysisJob({
   jobId: string;
   allowRelease?: boolean;
 }) {
+  return (
+    <AnalysisJobSession
+      key={jobId}
+      jobId={jobId}
+      allowRelease={allowRelease}
+    />
+  );
+}
+
+function AnalysisJobSession({
+  jobId,
+  allowRelease,
+}: {
+  jobId: string;
+  allowRelease?: boolean;
+}) {
   const { job, error, checkedAt, cancel, refresh } = useCodeAnalysisJob(jobId);
   const reportFile = useAnalysisReportFile(job);
   const [now, setNow] = useState(() => Date.now());

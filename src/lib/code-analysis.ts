@@ -606,7 +606,8 @@ export async function getRecentAnalysisJobs(
   const jobs = z.array(analysisJobSchema).max(5).parse(data);
   if (jobs.some((job) => job.thread_id !== threadId))
     throw new Error("Analysis jobs belong to a different conversation");
-  return jobs;
+  // Replayed list entries must never mount a second card, poller or report saver.
+  return [...new Map(jobs.map((job) => [job.job_id, job])).values()];
 }
 
 export async function getAnalysisJob(
@@ -650,16 +651,20 @@ function currentThreadId(): string {
 }
 
 /** Release the current conversation's workspace without exposing a handle in UI props. */
-export async function releaseCodeWorkspace(): Promise<void> {
+export async function releaseCodeWorkspace(
+  threadId = currentThreadId()
+): Promise<void> {
   const res = await apiFetch("/code-analysis/workspaces/release", {
     method: "POST",
-    body: JSON.stringify({ thread_id: currentThreadId() }),
+    body: JSON.stringify({ thread_id: threadId }),
   });
   if (!res.ok) await responseJson(res, "Failed to release code workspace");
 }
 
-export async function downloadAnalysisReport(reportId: string): Promise<Blob> {
-  const threadId = currentThreadId();
+export async function downloadAnalysisReport(
+  reportId: string,
+  threadId = currentThreadId()
+): Promise<Blob> {
   const res = await apiFetch(
     `/code-analysis/reports/${encodeURIComponent(
       reportId

@@ -43,7 +43,7 @@ export function CodeAnalysisJobActions({
   const download = async () => {
     if (!job?.report_id) return;
     saveBlob(
-      await downloadAnalysisReport(job.report_id),
+      await downloadAnalysisReport(job.report_id, job.thread_id),
       reportFilename(job.report_id)
     );
   };
@@ -109,7 +109,7 @@ export function CodeAnalysisJobActions({
           disabled={acting !== null || released}
           onClick={() =>
             void act("release", async () => {
-              await releaseCodeWorkspace();
+              await releaseCodeWorkspace(job.thread_id);
               setReleased(true);
               toast.success("Workspace released");
             })
