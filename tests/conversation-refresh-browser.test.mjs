@@ -94,7 +94,9 @@ test(
         "admin"
       );
       await page.getByText(messages[1].content, { exact: true }).waitFor();
-      await page.evaluate(() =>
+      // Seed the next document, so the current page cannot reconnect before
+      // the delayed-history reload begins.
+      await page.addInitScript(() =>
         sessionStorage.setItem("lg:stream:saved", "run")
       );
       historyReady = false;

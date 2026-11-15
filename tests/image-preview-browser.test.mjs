@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -15,10 +15,7 @@ test(
     const { chromium } = await loadPlaywright(
       process.env.IMAGE_PREVIEW_PLAYWRIGHT_MODULE
     );
-    const { default: postcss } = await import("postcss");
-    const { default: tailwindcss } = await import("tailwindcss");
-    const { default: loadConfig } = await import("tailwindcss/loadConfig.js");
-    const config = loadConfig(join(ROOT, "tailwind.config.mjs"));
+
     const bundle = await build({
       absWorkingDir: ROOT,
       stdin: {
@@ -71,13 +68,7 @@ test(
     });
     // Build the actual styles, including newly added classes, without requiring
     // a production build. Font assets are served from the project below.
-    const styles = await postcss([tailwindcss(config)]).process(
-      (await readFile(join(ROOT, "src/app/globals.css"), "utf8")).replace(
-        /@import "katex\/dist\/katex.min.css";/,
-        ""
-      ),
-      { from: join(ROOT, "src/app/globals.css") }
-    );
+    const styles = await compileBrowserStyles();
     const server = createServer(async (request, response) => {
       if (request.url === "/app.js") {
         response.setHeader("Content-Type", "text/javascript");

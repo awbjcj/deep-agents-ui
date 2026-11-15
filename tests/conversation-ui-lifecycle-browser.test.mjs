@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const EVIDENCE = "/tmp/conversation-ui-lifecycle";
+const EVIDENCE =
+  process.env.ANALYSIS_EVIDENCE_DIR ?? "/tmp/conversation-ui-lifecycle";
 
 test(
   "conversation UI reconciles late, repeated and removed jobs and clears scoped dialogs",
@@ -14,8 +15,7 @@ test(
   async () => {
     const { build } = await import("esbuild");
     const { chromium } = await loadPlaywright();
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
+
     const bundle = await build({
       absWorkingDir: ROOT,
       stdin: {
@@ -87,14 +87,7 @@ test(
       format: "esm",
       define: { "process.env.NODE_ENV": '"development"' },
     });
-    const source = (
-      await readFile(resolve(ROOT, "src/app/globals.css"), "utf8")
-    )
-      .replace(/^@import.*;$/gm, "")
-      .replace(/@font-face\s*\{[^}]*\}/g, "");
-    const { css } = await postcss([
-      tailwind({ config: resolve(ROOT, "tailwind.config.mjs") }),
-    ]).process(source, { from: undefined });
+    const { css } = await compileBrowserStyles({ omitFontFaces: true });
     const job = {
       job_id: "job-1",
       thread_id: "thread-1",

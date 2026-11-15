@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
+const EVIDENCE =
+  process.env.CONTEXT_SUMMARY_EVIDENCE ?? "/tmp/context-summary-evidence";
 test(
   "context attempts converge on one durable handoff on desktop and mobile",
   {
@@ -13,8 +15,7 @@ test(
   },
   async () => {
     const { build } = await import("esbuild");
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
+
     const { chromium } = await loadPlaywright(
       process.env.CHAT_PLAYWRIGHT_MODULE
     );
@@ -70,14 +71,7 @@ test(
       format: "esm",
       platform: "browser",
     });
-    const source = (
-      await readFile(resolve(ROOT, "src/app/globals.css"), "utf8")
-    )
-      .replace(/^@import.*;$/gm, "")
-      .replace(/@font-face\s*\{[^}]*\}/g, "");
-    const { css } = await postcss([
-      tailwind({ config: resolve(ROOT, "tailwind.config.mjs") }),
-    ]).process(source, { from: undefined });
+    const { css } = await compileBrowserStyles({ omitFontFaces: true });
     const server = createServer((req, res) => {
       res.setHeader(
         "Content-Type",
@@ -108,7 +102,7 @@ test(
       page.on("console", (message) => {
         if (message.type() === "error") errors.push(message.text());
       });
-      await mkdir("/tmp/context-summary-evidence", { recursive: true });
+      await mkdir(EVIDENCE, { recursive: true });
       for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 960 });
         await page.goto(`http://127.0.0.1:${server.address().port}`);
@@ -125,7 +119,7 @@ test(
           0
         );
         await page.screenshot({
-          path: `/tmp/context-summary-evidence/updating-${width}.png`,
+          path: `${EVIDENCE}/updating-${width}.png`,
         });
         await page.evaluate(() => window.contextFixture.commit());
         const headings = page.getByText("Agent context updated", {
@@ -137,7 +131,7 @@ test(
         const goal = page.getByRole("region", { name: "Goal", exact: true });
         assert.equal(await goal.isVisible(), false);
         await page.screenshot({
-          path: `/tmp/context-summary-evidence/collapsed-${width}.png`,
+          path: `${EVIDENCE}/collapsed-${width}.png`,
         });
         await headings.first().click();
         assert.equal(await goal.isVisible(), true);
@@ -164,7 +158,7 @@ test(
           true
         );
         await page.screenshot({
-          path: `/tmp/context-summary-evidence/expanded-${width}.png`,
+          path: `${EVIDENCE}/expanded-${width}.png`,
           fullPage: true,
         });
         await page.evaluate(() => window.contextFixture.replay());
@@ -181,7 +175,7 @@ test(
         assert.equal(await headings.count(), 0);
         assert.equal(await page.locator(".disclosure-card").count(), 1);
         await page.screenshot({
-          path: `/tmp/context-summary-evidence/interrupted-${width}.png`,
+          path: `${EVIDENCE}/interrupted-${width}.png`,
         });
       }
       assert.deepEqual(errors, []);

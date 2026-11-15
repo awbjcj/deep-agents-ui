@@ -255,12 +255,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
 
     React.useEffect(() => setMetaOpen(null), [threadId]);
     React.useEffect(() => {
-      if (
-        (metaOpen === "tasks" && !hasTasks) ||
-        (metaOpen === "files" && !hasFiles)
-      )
-        setMetaOpen(null);
-    }, [metaOpen, hasTasks, hasFiles]);
+      if (metaOpen === "tasks" && !hasTasks) setMetaOpen(null);
+      // Keep the Files selection through a temporarily empty optimistic
+      // deletion so a failed deletion restores the visible list.
+    }, [metaOpen, hasTasks]);
 
     // Build the message-id → ui[] index once per render instead of running
     // `ui?.filter(...)` inside every `processedMessages.map` iteration

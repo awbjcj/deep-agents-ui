@@ -625,14 +625,8 @@ test(
               ?.getBoundingClientRect()
               .toJSON(),
             textBounds: (() => {
-              const textNode = [...tab.childNodes].find(
-                (node) =>
-                  node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
-              );
-              if (!textNode) return null;
-              const range = document.createRange();
-              range.selectNode(textNode);
-              return range.getBoundingClientRect().toJSON();
+              const label = tab.querySelector('[data-slot="panel-tab-label"]');
+              return label?.getBoundingClientRect().toJSON() ?? null;
             })(),
           })),
         }));
@@ -1139,7 +1133,16 @@ test(
         .first();
       await filesTrigger.click();
       const fileCard = page.getByTitle(SOURCE_ARTIFACT_PATH);
-      await fileCard.waitFor();
+      await fileCard.waitFor({ timeout: 8_000 }).catch(async (error) => {
+        throw new Error(
+          JSON.stringify({
+            body: (await page.locator("body").innerText()).slice(-3000),
+            pageErrors,
+            requests: seenRequests.slice(-25),
+          }),
+          { cause: error }
+        );
+      });
       const deleteButton = page.getByRole("button", {
         name: "Delete diagram.png",
       });
@@ -1149,7 +1152,16 @@ test(
       await page
         .getByText("Thread has an active run", { exact: true })
         .waitFor();
-      await fileCard.waitFor();
+      await fileCard.waitFor({ timeout: 5_000 }).catch(async (error) => {
+        throw new Error(
+          JSON.stringify({
+            body: (await page.locator("body").innerText()).slice(-3000),
+            pageErrors,
+            requests: seenRequests.slice(-25),
+          }),
+          { cause: error }
+        );
+      });
 
       deleteMode = "error";
       await deleteButton.click();

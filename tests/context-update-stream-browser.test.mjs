@@ -8,6 +8,9 @@ import {
 } from "./tool-permissions-browser-fixture.mjs";
 import { loadPlaywright } from "./browser-fixtures.mjs";
 
+const EVIDENCE =
+  process.env.CONTEXT_SUMMARY_EVIDENCE ?? "/tmp/context-summary-evidence";
+
 test(
   "chat restores one accepted context card through stream replay and thread changes",
   { skip: process.env.CONTEXT_SUMMARY_BROWSER_TEST !== "1", timeout: 90000 },
@@ -122,8 +125,15 @@ test(
       const heading = page.getByText("Agent context updated", { exact: true });
       await heading.waitFor();
       assert.equal(await heading.count(), 1);
+      // Install the reconnect hint in the next document, not the live page.
+      await page.addInitScript(() => {
+        if (sessionStorage.getItem("fixture:replay-next") === "1") {
+          sessionStorage.removeItem("fixture:replay-next");
+          sessionStorage.setItem("lg:stream:saved", "replay");
+        }
+      });
       await page.evaluate(() =>
-        sessionStorage.setItem("lg:stream:saved", "replay")
+        sessionStorage.setItem("fixture:replay-next", "1")
       );
       await page.reload();
       await heading.waitFor();
@@ -139,9 +149,9 @@ test(
           exact: true,
         })
         .waitFor();
-      await mkdir("/tmp/context-summary-evidence", { recursive: true });
+      await mkdir(EVIDENCE, { recursive: true });
       await page.screenshot({
-        path: "/tmp/context-summary-evidence/chat-replayed.png",
+        path: `${EVIDENCE}/chat-replayed.png`,
         fullPage: true,
       });
       await page.evaluate(() =>

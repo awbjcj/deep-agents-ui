@@ -5,6 +5,7 @@ import test from "node:test";
 import { loadPlaywright } from "./browser-fixtures.mjs";
 import {
   OUT,
+  allToolIds,
   authenticatedPage,
   deferred,
   json,

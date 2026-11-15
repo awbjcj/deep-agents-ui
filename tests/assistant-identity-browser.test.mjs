@@ -87,7 +87,9 @@ test(
             exact: true,
           });
           await switcher
-            .getByText(KNOWLEDGE_BASE_ASSISTANT_ID, { exact: true })
+            .getByText(KNOWLEDGE_BASE_ASSISTANT_ID.replace(/^VSDA /, ""), {
+              exact: true,
+            })
             .waitFor();
           if (selection !== oldId) {
             await page.waitForURL(

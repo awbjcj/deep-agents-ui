@@ -32,6 +32,9 @@ test(
           name: "isolated-chat-state",
           setup(build) {
             // Keep the real files panel and controls; isolate network and stream services.
+            build.onLoad({ filter: /[\\/]AuthProvider\.tsx$/ }, () => ({
+              contents: "export const useAuth = () => ({ user: null });",
+            }));
             build.onLoad(
               { filter: /[\\/]providers[\\/]ChatProvider\.tsx$/ },
               () => ({
@@ -41,7 +44,21 @@ test(
                 const [files, updateFiles] = React.useState(Object.fromEntries(
                   Array.from({length: 12}, (_, i) => ["/reports/attachment-" + i + "-long-filename.md", "# Report " + i])
                 ));
-                const setFiles = async (next) => { window.saved = next; updateFiles(next); };
+                window.setFixtureFiles = updateFiles;
+                const setFiles = async (next) => {
+                  const previous = files;
+                  window.saved = next;
+                  updateFiles(next);
+                  if (window.failNextDelete) {
+                    window.failNextDelete = false;
+                    try {
+                      await new Promise((_, reject) => { window.rejectDelete = () => reject(new Error("Deletion rejected")); });
+                    } catch (error) {
+                      updateFiles(previous);
+                      throw error;
+                    }
+                  }
+                };
                 return { files, setFiles, sourceImageAttachments: {}, removeSourceImage: async () => {},
                   todos: [], processedMessages: [], ui: [], isLoading: false, isThreadLoading: false };
               }
@@ -303,6 +320,29 @@ test(
         assert.deepEqual(errors, []);
         await context.close();
       }
+
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 900 },
+      });
+      await page.goto(`http://127.0.0.1:${server.address().port}`);
+      await page.waitForFunction(
+        () => typeof window.setFixtureFiles === "function"
+      );
+      await page.evaluate(() => {
+        window.setFixtureFiles({ "/reports/only.md": "# Only file" });
+        window.failNextDelete = true;
+      });
+      await page.getByRole("button", { name: "Files 1" }).click();
+      await page.getByRole("button", { name: "Delete only.md" }).click();
+      await page.waitForFunction(
+        () => typeof window.rejectDelete === "function"
+      );
+      await page
+        .getByRole("button", { name: "Files 1" })
+        .waitFor({ state: "hidden" });
+      await page.evaluate(() => window.rejectDelete());
+      await page.getByTitle("/reports/only.md").waitFor({ timeout: 3_000 });
+      await page.close();
     } finally {
       await browser.close();
       await new Promise((done) => server.close(done));

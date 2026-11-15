@@ -8,6 +8,7 @@ const OUT = resolve(import.meta.dirname, "..", "out");
 
 export {
   OUT,
+  allToolIds,
   staticServer,
   authenticatedPage,
   makePolicyFixture,
