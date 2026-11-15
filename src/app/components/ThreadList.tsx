@@ -544,7 +544,7 @@ export function ThreadList({
             onToggle={handleToggleAllLoaded}
             showLabel
           />
-          <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
+          <span className="text-muted-foreground ml-auto text-xs font-medium tabular-nums">
             {selectedThreads.length} selected
           </span>
           <Button
@@ -679,11 +679,11 @@ export function ThreadList({
                                   }
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className="border-primary/40 focus-visible:border-primary h-auto w-full min-w-0 rounded-none border-0 border-b bg-transparent p-0 text-[13px] leading-tight font-semibold tracking-tight shadow-none focus-visible:ring-0"
+                                className="border-primary/40 focus-visible:border-primary h-auto w-full min-w-0 rounded-none border-0 border-b bg-transparent p-0 text-xs leading-tight font-semibold tracking-tight shadow-none focus-visible:ring-0"
                               />
                             ) : (
                               <h3
-                                className="min-w-0 text-[13px] leading-tight font-semibold tracking-tight wrap-anywhere wrap-break-word whitespace-normal"
+                                className="min-w-0 text-xs leading-tight font-semibold tracking-tight wrap-anywhere wrap-break-word whitespace-normal"
                                 title={thread.title}
                               >
                                 {thread.title}

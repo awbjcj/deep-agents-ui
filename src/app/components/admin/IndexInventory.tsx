@@ -347,7 +347,7 @@ export function IndexInventory({
           <div className="flex items-baseline justify-between gap-3">
             <label
               htmlFor="index-pattern"
-              className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase"
+              className="text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase"
             >
               Cluster pattern
             </label>
@@ -383,7 +383,7 @@ export function IndexInventory({
           <div className="flex min-w-0 flex-col gap-1.5">
             <label
               htmlFor="index-name-filter"
-              className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.12em] uppercase"
+              className="text-muted-foreground text-xs leading-none font-semibold tracking-[0.12em] uppercase"
             >
               Filter results
             </label>
@@ -420,7 +420,7 @@ export function IndexInventory({
           <div className="flex min-w-0 flex-col gap-1.5">
             <label
               htmlFor="index-sort"
-              className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.12em] uppercase"
+              className="text-muted-foreground text-xs leading-none font-semibold tracking-[0.12em] uppercase"
             >
               Sort by
             </label>
@@ -468,7 +468,7 @@ export function IndexInventory({
         <p
           role="status"
           aria-live="polite"
-          className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 text-[11px]"
+          className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 text-xs"
         >
           <span className="tabular-nums">
             Showing{" "}
@@ -621,7 +621,7 @@ export function IndexInventory({
         }
         details={
           deleteTarget && (
-            <p className="border-border/70 bg-muted/40 text-foreground break-anywhere rounded-md border px-2.5 py-2 font-mono text-[11px]">
+            <p className="border-border/70 bg-muted/40 text-foreground break-anywhere rounded-md border px-2.5 py-2 font-mono text-xs">
               {deleteTarget.name}
             </p>
           )
@@ -651,7 +651,7 @@ export function IndexInventory({
               {emptyTargets.map((name) => (
                 <li
                   key={name}
-                  className="text-foreground break-anywhere font-mono text-[11px]"
+                  className="text-foreground break-anywhere font-mono text-xs"
                 >
                   {name}
                 </li>
@@ -685,7 +685,7 @@ export function IndexInventory({
             {selectedVisible.map((index) => (
               <li
                 key={index.name}
-                className="text-foreground break-anywhere font-mono text-[11px]"
+                className="text-foreground break-anywhere font-mono text-xs"
               >
                 {index.name}
                 <span className="text-muted-foreground ml-2">

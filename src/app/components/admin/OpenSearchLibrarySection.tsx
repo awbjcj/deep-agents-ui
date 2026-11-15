@@ -212,7 +212,7 @@ export function OpenSearchLibrarySection() {
             key={label}
             className="bg-card/85 min-w-0 px-3 py-2.5"
           >
-            <dt className="text-muted-foreground flex items-center gap-1 text-[9px] font-semibold tracking-[0.13em] uppercase">
+            <dt className="text-muted-foreground flex items-center gap-1 text-xs font-semibold tracking-[0.13em] uppercase">
               <Icon
                 className="h-3 w-3"
                 aria-hidden="true"

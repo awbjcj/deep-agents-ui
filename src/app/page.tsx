@@ -548,7 +548,7 @@ function HomePageInner({
                 <span className="max-lg:hidden">Threads</span>
                 {interruptCount > 0 && (
                   <span
-                    className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                    className="ml-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold text-white"
                     style={{ background: "var(--aptiv-orange)" }}
                   >
                     {interruptCount}

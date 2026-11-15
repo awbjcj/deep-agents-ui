@@ -220,7 +220,7 @@ export function ToolPermissionsSidebar() {
                 Account permissions
               </h3>
               {snapshot ? (
-                <span className="border-border bg-muted/35 text-muted-foreground rounded-full border px-2 py-1 text-[10px] font-bold tracking-[0.14em] uppercase">
+                <span className="border-border bg-muted/35 text-muted-foreground rounded-full border px-2 py-1 text-xs font-bold tracking-[0.14em] uppercase">
                   {snapshot.tier} tier
                 </span>
               ) : null}

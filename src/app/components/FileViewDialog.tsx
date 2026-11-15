@@ -236,14 +236,14 @@ function FileViewDialogSession({
                 </span>
                 {fullPath && (
                   <span
-                    className="text-muted-foreground mt-0.5 block font-mono text-[11px] break-all"
+                    className="text-muted-foreground mt-0.5 block font-mono text-xs break-all"
                     data-testid="file-view-path"
                   >
                     {fullPath}
                   </span>
                 )}
                 {sourceImage && (
-                  <span className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                  <span className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="bg-primary/8 rounded-full px-1.5 py-0.5 font-semibold text-(--color-primary)">
                       {SOURCE_IMAGE_LABELS[sourceImage.source]} source image
                     </span>

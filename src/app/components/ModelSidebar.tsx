@@ -223,7 +223,7 @@ function UsageMeter({
         />
       </div>
       {!isUnlimited && pct >= 80 && (
-        <div className="mt-2 flex items-center justify-end text-[11px]">
+        <div className="mt-2 flex items-center justify-end text-xs">
           <span
             className={
               pct >= 100

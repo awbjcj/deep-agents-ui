@@ -74,12 +74,12 @@ export function LibraryShelfFileList({
             >
               {file.filename}
             </p>
-            <p className="text-muted-foreground mt-1 text-[10px]">
+            <p className="text-muted-foreground mt-1 text-xs">
               {formatBytes(file.byte_size)} · Uploaded by {file.uploaded_by} ·{" "}
               {new Date(file.uploaded_at).toLocaleString()}
             </p>
             {file.status === "pending" && (
-              <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px]">
+              <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                 <Loader2
                   className="h-3 w-3 animate-spin"
                   aria-hidden="true"
@@ -88,12 +88,12 @@ export function LibraryShelfFileList({
               </p>
             )}
             {file.status === "failed" && (
-              <p className="text-destructive mt-1 text-[10px] font-semibold">
+              <p className="text-destructive mt-1 text-xs font-semibold">
                 Conversion failed; not searchable
               </p>
             )}
             {file.warning && (
-              <p className="text-warning mt-1 text-[10px]">{file.warning}</p>
+              <p className="text-warning mt-1 text-xs">{file.warning}</p>
             )}
           </div>
           <Button

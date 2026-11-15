@@ -171,7 +171,7 @@ function IndexRowImpl({
               </button>
             </div>
 
-            <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+            <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               <LibraryStatus
                 label={index.health}
                 tone={indexTone(index.health)}
@@ -250,7 +250,7 @@ function IndexRowImpl({
               role="alert"
               className="flex flex-wrap items-center justify-between gap-2"
             >
-              <p className="text-destructive break-anywhere text-[11px]">
+              <p className="text-destructive break-anywhere text-xs">
                 {detailError}
               </p>
               <Button
@@ -272,7 +272,7 @@ function IndexRowImpl({
                   // let a long field name shove the type off the row.
                   <div
                     key={field}
-                    className="border-border/40 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 border-b py-1 text-[11px]"
+                    className="border-border/40 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 border-b py-1 text-xs"
                   >
                     <dt className="text-foreground break-anywhere font-mono">
                       {field}

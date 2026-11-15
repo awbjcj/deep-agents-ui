@@ -186,7 +186,7 @@ export function ToolPermissionList({
                   {selectedCount} of {tools.length} allowed
                 </span>
                 {groupChanged ? (
-                  <span className="text-foreground rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-1.5 py-0.5 text-[9px] font-semibold">
+                  <span className="text-foreground rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-1.5 py-0.5 text-xs font-semibold">
                     Draft changed
                   </span>
                 ) : null}

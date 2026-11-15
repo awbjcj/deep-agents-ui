@@ -334,7 +334,7 @@ export function ResponseJobs({
                 </p>
                 <span
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium",
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium",
                     job.status === "completed"
                       ? "border-border bg-muted/30 text-(--text-brand-secondary)"
                       : job.status === "failed" || job.status === "incomplete"
@@ -489,7 +489,7 @@ export function ResponseJobs({
             </div>
           ))}
         </div>
-        <p className="border-border bg-muted/20 text-muted-foreground shrink-0 border-t px-5 py-3 text-[11px] leading-relaxed">
+        <p className="border-border bg-muted/20 text-muted-foreground shrink-0 border-t px-5 py-3 text-xs leading-relaxed">
           Cancelling stops the model call. Deleting removes its stored response.
           Downloaded thread files remain available.
         </p>

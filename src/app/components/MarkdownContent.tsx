@@ -119,7 +119,7 @@ function safeImageSrc(value: unknown): string | undefined {
 
 const INLINE_CODE_CLASS =
   "rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono " +
-  "text-[0.9em] font-medium text-foreground wrap-anywhere";
+  "text-[0.95em] font-medium text-foreground wrap-anywhere";
 
 const CODE_BLOCK_STYLE: React.CSSProperties = {
   margin: 0,
@@ -541,7 +541,7 @@ const COMPONENTS: Components = {
             "[&_em]:text-current [&_em]:italic " +
             "[&_code]:border-border/60 [&_code]:rounded-sm [&_code]:border " +
             "[&_code]:bg-background [&_code]:px-1 [&_code]:py-0.5 " +
-            "[&_code]:font-mono [&_code]:text-[0.85em] [&_code]:font-medium " +
+            "[&_code]:font-mono [&_code]:text-[0.95em] [&_code]:font-medium " +
             "[&_a]:text-primary [&_a:hover]:underline"
           }
         >

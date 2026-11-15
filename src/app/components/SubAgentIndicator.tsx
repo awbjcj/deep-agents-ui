@@ -45,7 +45,7 @@ export const SubAgentIndicator = React.memo<SubAgentIndicatorProps>(
               <Bot className="size-4" />
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="text-muted-foreground text-[10px] leading-4 font-semibold tracking-[0.12em] uppercase">
+              <span className="text-muted-foreground text-xs leading-4 font-semibold tracking-[0.12em] uppercase">
                 Subagent
               </span>
               <span className="text-foreground min-w-0 font-sans text-sm leading-5 font-semibold wrap-anywhere wrap-break-word">

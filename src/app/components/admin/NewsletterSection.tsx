@@ -446,7 +446,7 @@ export function NewsletterSection() {
                     placeholder="A clear, useful subject line"
                     className="h-10"
                   />
-                  <p className="text-muted-foreground text-right text-[10px] tabular-nums">
+                  <p className="text-muted-foreground text-right text-xs tabular-nums">
                     {subject.length}/180
                   </p>
                 </div>
@@ -478,7 +478,7 @@ export function NewsletterSection() {
                     >
                       Message
                     </Label>
-                    <span className="text-muted-foreground text-[10px]">
+                    <span className="text-muted-foreground text-xs">
                       Markdown supported
                     </span>
                   </div>
@@ -487,9 +487,9 @@ export function NewsletterSection() {
                     value={body}
                     onChange={(event) => setBody(event.target.value)}
                     placeholder={"Hello team,\n\nShare your update…"}
-                    className="min-h-[260px] resize-y font-mono text-[13px] leading-relaxed"
+                    className="min-h-[260px] resize-y font-mono text-xs leading-relaxed"
                   />
-                  <p className="text-muted-foreground text-[10px] leading-relaxed">
+                  <p className="text-muted-foreground text-xs leading-relaxed">
                     Use <strong>**bold**</strong>, headings with{" "}
                     <strong>##</strong>, and lists with <strong>-</strong>. Raw
                     HTML is escaped for safety.
@@ -526,7 +526,7 @@ export function NewsletterSection() {
                       <p className="text-xs font-semibold">
                         {recipientCount ?? 0} recipients
                       </p>
-                      <p className="text-muted-foreground truncate text-[10px]">
+                      <p className="text-muted-foreground truncate text-xs">
                         {audienceLabel(targetTiers)}
                       </p>
                     </div>
@@ -613,7 +613,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
-      <p className="text-muted-foreground text-[9px] font-bold tracking-[0.16em] uppercase">
+      <p className="text-muted-foreground text-xs font-bold tracking-[0.16em] uppercase">
         {label}
       </p>
     </div>
@@ -635,7 +635,7 @@ function AudienceButton({
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[border-color,background-color,color,transform] duration-150 ease-out active:scale-[.97]",
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-[border-color,background-color,color,transform] duration-150 ease-out active:scale-[.97]",
         selected
           ? "border-primary/50 bg-primary/10 text-primary"
           : "border-border bg-card text-muted-foreground hover:text-foreground"
@@ -657,7 +657,7 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[9px] font-bold tracking-[0.12em] uppercase",
+        "rounded-full px-2 py-0.5 text-xs font-bold tracking-[0.12em] uppercase",
         styles
       )}
     >
@@ -733,7 +733,7 @@ function HistoryView({
               </span>
               <StatusBadge status={item.status} />
             </span>
-            <span className="text-muted-foreground mt-1 block text-[10px]">
+            <span className="text-muted-foreground mt-1 block text-xs">
               {formatDate(item.created_at)} · {item.total_recipients} recipients
             </span>
           </span>
@@ -779,7 +779,7 @@ function NewsletterDetailView({
         </div>
         <dl className="border-border mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs">
           <div>
-            <dt className="text-muted-foreground text-[10px] tracking-wider uppercase">
+            <dt className="text-muted-foreground text-xs tracking-wider uppercase">
               Audience
             </dt>
             <dd className="mt-1 font-semibold">
@@ -787,7 +787,7 @@ function NewsletterDetailView({
             </dd>
           </div>
           <div>
-            <dt className="text-muted-foreground text-[10px] tracking-wider uppercase">
+            <dt className="text-muted-foreground text-xs tracking-wider uppercase">
               Created
             </dt>
             <dd className="mt-1 font-semibold">
@@ -797,7 +797,7 @@ function NewsletterDetailView({
         </dl>
         {newsletter.status !== "draft" && (
           <div className="mt-4 space-y-2">
-            <div className="flex justify-between text-[10px]">
+            <div className="flex justify-between text-xs">
               <span className="font-semibold">Delivery progress</span>
               <span className="text-muted-foreground tabular-nums">
                 {progress}%
@@ -894,7 +894,7 @@ function DeliveryMetric({
       >
         {value}
       </p>
-      <p className="text-muted-foreground text-[9px] tracking-wider uppercase">
+      <p className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </p>
     </div>

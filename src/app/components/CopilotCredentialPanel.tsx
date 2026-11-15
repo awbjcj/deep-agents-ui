@@ -192,7 +192,7 @@ export function CopilotCredentialPanel() {
               Copilot analysis
             </h3>
             <p
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${
                 configured
                   ? "border-primary/25 bg-primary/10 text-primary"
                   : expired
@@ -252,7 +252,7 @@ export function CopilotCredentialPanel() {
           />
           <p
             id="copilot-host-help"
-            className="text-muted-foreground text-[11px] leading-relaxed"
+            className="text-muted-foreground text-xs leading-relaxed"
           >
             Use github.com or your exact company.ghe.com hostname.
             {status?.configured && ` Saved account: ${status.github_host}.`}
@@ -273,7 +273,7 @@ export function CopilotCredentialPanel() {
           />
           <p
             id="copilot-token-help"
-            className="text-muted-foreground text-[11px] leading-relaxed"
+            className="text-muted-foreground text-xs leading-relaxed"
           >
             Enter a fine-grained token with the Copilot Requests account
             permission and a Copilot license. Saved tokens are never shown.

@@ -34,6 +34,12 @@ export function ReasoningEffortControl({
             type="button"
             aria-pressed={supported && value === effort}
             disabled={!supported || disabled}
+            onFocus={(event) =>
+              event.currentTarget.scrollIntoView({
+                block: "nearest",
+                inline: "nearest",
+              })
+            }
             onClick={() => onChange(effort)}
             className={`effort-btn ${
               supported && value === effort ? "effort-btn--active" : ""
@@ -124,7 +130,7 @@ export function OutputTokenControl({
           </span>
         </span>
       </div>
-      <div className="settings-surface px-2 py-1">
+      <div className="settings-surface @container/cap px-2 py-1">
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -178,7 +184,11 @@ export function OutputTokenControl({
               {[512, 4096, 16384, 32768, 65536].map((stop, markIndex) => (
                 <span
                   key={stop}
-                  className="absolute"
+                  className={
+                    markIndex === 0 || markIndex === 4
+                      ? "absolute"
+                      : "absolute hidden @sm/cap:block"
+                  }
                   style={{
                     left: `${(stops.indexOf(stop) / lastIndex) * 100}%`,
                     transform:

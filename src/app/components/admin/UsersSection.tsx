@@ -290,7 +290,7 @@ export function UsersSection() {
                         {u.username}
                       </span>
                       {isSelf && (
-                        <span className="bg-muted text-muted-foreground rounded-sm px-1.5 py-px text-[9px] font-semibold tracking-wider uppercase">
+                        <span className="bg-muted text-muted-foreground rounded-sm px-1.5 py-px text-xs font-semibold tracking-wider uppercase">
                           You
                         </span>
                       )}
@@ -404,7 +404,7 @@ function UsageStrip({
 }) {
   const { primary } = splitUsageByEnforcement(usage, override);
   return (
-    <div className="text-muted-foreground mt-2 flex items-center gap-2 text-[11px]">
+    <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
       <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
         <div
           className={cn(

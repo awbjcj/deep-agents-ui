@@ -38,7 +38,7 @@ export function LibraryStatus({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-widest uppercase",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold tracking-widest uppercase",
         toneClasses[tone]
       )}
     >

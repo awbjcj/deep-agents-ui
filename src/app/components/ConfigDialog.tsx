@@ -524,7 +524,7 @@ export function ConfigDialog({
                       <li
                         key={engine.id}
                         title={detail}
-                        className={`flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                        className={`flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${
                           engine.ready
                             ? "border-success/35 bg-success-primary/60"
                             : "border-warning/35 bg-warning-primary/60"
@@ -550,7 +550,7 @@ export function ConfigDialog({
                 </ul>
               ) : null}
               <p
-                className="text-muted-foreground text-[11px] leading-relaxed"
+                className="text-muted-foreground text-xs leading-relaxed"
                 title={COPILOT_USAGE_EXPLANATION}
               >
                 Applies to new analyses only. Copilot usage is billed to your

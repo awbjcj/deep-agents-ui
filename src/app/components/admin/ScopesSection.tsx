@@ -331,7 +331,7 @@ export function ScopesSection() {
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: scopeTypeColor(type) }}
                   />
-                  <h4 className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase">
+                  <h4 className="text-muted-foreground text-xs font-bold tracking-[0.18em] uppercase">
                     {type}
                     <span className="text-muted-foreground/60 ml-1.5 font-mono tracking-normal normal-case tabular-nums">
                       {items.length}
@@ -775,7 +775,7 @@ function ScopeCard({
               </span>
             )}
           </div>
-          <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-[10px]">
+          <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
             <span className="font-semibold tracking-wider uppercase">
               {scope.member_count ?? 0} member
               {(scope.member_count ?? 0) === 1 ? "" : "s"}

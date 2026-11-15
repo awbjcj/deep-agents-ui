@@ -30,7 +30,7 @@ const DEFAULT_EFFORTS = ["low", "medium", "high"];
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="border-border bg-background text-foreground rounded border px-1 font-mono text-[10px] leading-4">
+    <kbd className="border-border bg-background text-foreground rounded border px-1 font-mono text-xs leading-4">
       {children}
     </kbd>
   );

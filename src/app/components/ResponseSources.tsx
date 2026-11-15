@@ -64,7 +64,7 @@ export function ResponseSources({ sources }: { sources: ResponseSource[] }) {
                     className="hover:border-primary/50 group border-border bg-background hover:bg-accent focus-visible:ring-ring flex h-full min-w-0 items-start gap-2 rounded-lg border p-3 transition-colors focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none"
                   >
                     <span
-                      className="text-muted-foreground mt-0.5 text-[10px] tabular-nums"
+                      className="text-muted-foreground mt-0.5 text-xs tabular-nums"
                       aria-hidden="true"
                     >
                       {index + 1}
@@ -73,7 +73,7 @@ export function ResponseSources({ sources }: { sources: ResponseSource[] }) {
                       <span className="block text-xs leading-relaxed font-medium wrap-anywhere">
                         {source.title}
                       </span>
-                      <span className="text-muted-foreground mt-1 block truncate text-[11px]">
+                      <span className="text-muted-foreground mt-1 block truncate text-xs">
                         {new URL(source.url).hostname}
                       </span>
                     </span>

@@ -173,7 +173,7 @@ export function RegistrationSection() {
       <section className="border-border/60 space-y-3 border-t pt-4">
         <div>
           <h4 className="text-sm font-semibold">Generate code</h4>
-          <p className="text-muted-foreground mt-0.5 text-[11px]">
+          <p className="text-muted-foreground mt-0.5 text-xs">
             Create a single-use invitation for one new user
           </p>
         </div>
@@ -181,7 +181,7 @@ export function RegistrationSection() {
           <div className="space-y-1.5">
             <Label
               htmlFor="invite-note"
-              className="text-[13px] font-medium"
+              className="text-xs font-medium"
             >
               Note (optional)
             </Label>
@@ -198,7 +198,7 @@ export function RegistrationSection() {
           <div className="space-y-1.5">
             <Label
               htmlFor="invite-expiry"
-              className="text-[13px] font-medium"
+              className="text-xs font-medium"
             >
               Expires after (days, optional)
             </Label>
@@ -258,7 +258,7 @@ export function RegistrationSection() {
       <section className="border-border/60 space-y-3 border-t pt-4">
         <div>
           <h4 className="text-sm font-semibold">Invitation codes</h4>
-          <p className="text-muted-foreground mt-0.5 text-[11px]">
+          <p className="text-muted-foreground mt-0.5 text-xs">
             Plaintext is only shown when a code is created
           </p>
         </div>
@@ -323,7 +323,7 @@ function InvitationStatusBadge({
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase",
+        "rounded-full px-2 py-0.5 text-xs font-semibold tracking-wider uppercase",
         styles[status]
       )}
     >

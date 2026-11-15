@@ -102,8 +102,8 @@ export const AttachmentChip = React.memo<Props>(
           <span
             className={
               item.phase === "error"
-                ? "text-destructive mt-1 block truncate text-[10px]"
-                : "text-muted-foreground mt-1 flex items-center gap-1 truncate text-[10px]"
+                ? "text-destructive mt-1 block truncate text-xs"
+                : "text-muted-foreground mt-1 flex items-center gap-1 truncate text-xs"
             }
             title={status}
           >

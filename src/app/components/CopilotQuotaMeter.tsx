@@ -42,7 +42,7 @@ export function CopilotQuotaMeter({
           >
             GitHub account quota
           </h4>
-          <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
             Premium interactions · separate from Deep Agents quotas
           </p>
         </div>
@@ -93,7 +93,7 @@ export function CopilotQuotaMeter({
                   ? "Unlimited"
                   : `${remaining.toFixed(1)}% remaining`}
               </p>
-              <p className="text-muted-foreground text-[11px] tabular-nums">
+              <p className="text-muted-foreground text-xs tabular-nums">
                 {quota.used_requests.toLocaleString()} used
                 {!quota.unlimited &&
                   ` of ${quota.entitlement_requests.toLocaleString()}`}
@@ -117,7 +117,7 @@ export function CopilotQuotaMeter({
                 />
               </div>
             )}
-            <p className="text-muted-foreground text-[11px] leading-relaxed">
+            <p className="text-muted-foreground text-xs leading-relaxed">
               {quota.exhausted
                 ? "Quota reached. Copilot code analysis is disabled until the account resets."
                 : quota.reset_date

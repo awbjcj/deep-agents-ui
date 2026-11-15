@@ -160,13 +160,13 @@ export function FilesPopover({
                     {label}
                   </span>
                   {sourceRecord && (
-                    <span className="bg-primary/8 rounded-full px-2 py-0.5 text-[9px] font-semibold text-(--color-primary)">
+                    <span className="bg-primary/8 rounded-full px-2 py-0.5 text-xs font-semibold text-(--color-primary)">
                       {SOURCE_IMAGE_LABELS[sourceRecord.source]} source image
                     </span>
                   )}
                   {pending && (
                     <span
-                      className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[9px] font-semibold"
+                      className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-semibold"
                       title="Saved by a running agent step; it joins the conversation when that step finishes."
                     >
                       Saving
@@ -178,7 +178,7 @@ export function FilesPopover({
                     href={sourcePageUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-muted-foreground hover:bg-card hover:text-foreground focus-visible:ring-ring mt-1 flex items-center justify-center gap-1 rounded-md py-1 text-[10px] focus-visible:ring-2 focus-visible:outline-none"
+                    className="text-muted-foreground hover:bg-card hover:text-foreground focus-visible:ring-ring mt-1 flex items-center justify-center gap-1 rounded-md py-1 text-xs focus-visible:ring-2 focus-visible:outline-none"
                     aria-label={`Open source page for ${label}`}
                   >
                     Open source

@@ -536,7 +536,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                               aria-hidden="true"
                             />
                             Files
-                            <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium">
+                            <span className="bg-primary text-primary-foreground inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-medium">
                               {fileKeysCount}
                             </span>
                           </button>
@@ -582,7 +582,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           aria-expanded={metaOpen === "files"}
                         >
                           Files
-                          <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium">
+                          <span className="bg-primary text-primary-foreground inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-medium">
                             {fileKeysCount}
                           </span>
                         </button>
@@ -613,7 +613,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                               key={status}
                               className="mb-4"
                             >
-                              <h3 className="text-tertiary mb-1 text-[10px] font-semibold tracking-wider uppercase">
+                              <h3 className="text-tertiary mb-1 text-xs font-semibold tracking-wider uppercase">
                                 {
                                   {
                                     pending: "Pending",

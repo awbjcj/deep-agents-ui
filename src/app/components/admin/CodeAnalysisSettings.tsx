@@ -266,7 +266,7 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
                 <p className="text-foreground text-xs font-semibold">
                   {engineName(engine.id)}
                 </p>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
+                <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                   {engine.ready
                     ? "Ready for new analyses"
                     : engine.blockers.length
@@ -286,7 +286,7 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
             </p>
             <span
               className={cn(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                "rounded-full border px-2 py-0.5 text-xs font-semibold",
                 matlab.ready
                   ? "border-success/35 text-success dark:text-emerald-300"
                   : "border-warning/35 text-warning dark:text-amber-300"
@@ -299,7 +299,7 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
                   : "Unavailable"}
             </span>
           </div>
-          <dl className="text-muted-foreground mt-2 grid gap-1 text-[11px] sm:grid-cols-2">
+          <dl className="text-muted-foreground mt-2 grid gap-1 text-xs sm:grid-cols-2">
             <div>
               <dt className="text-foreground inline font-medium">Runtime: </dt>
               <dd className="inline">
@@ -334,7 +334,7 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
             </div>
           </dl>
           {matlab.blockers.length ? (
-            <p className="text-warning mt-2 text-[11px] leading-relaxed dark:text-amber-300">
+            <p className="text-warning mt-2 text-xs leading-relaxed dark:text-amber-300">
               {matlab.blockers.join(" · ")}
             </p>
           ) : null}
@@ -366,7 +366,7 @@ function LimitInput({
         >
           {field.label}
         </Label>
-        <span className="text-muted-foreground text-[10px] tracking-[0.12em] uppercase">
+        <span className="text-muted-foreground text-xs tracking-[0.12em] uppercase">
           {field.unit}
         </span>
       </div>
@@ -383,7 +383,7 @@ function LimitInput({
       />
       <p
         id={descriptionId}
-        className="text-muted-foreground text-[11px] leading-relaxed"
+        className="text-muted-foreground text-xs leading-relaxed"
       >
         {error ?? field.description}
       </p>
@@ -721,7 +721,7 @@ export function CodeAnalysisSettings({
                     })}
                   </SelectContent>
                 </Select>
-                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                <p className="text-muted-foreground text-xs leading-relaxed">
                   Users can choose another ready engine for an individual
                   session.
                 </p>
@@ -844,7 +844,7 @@ export function CodeAnalysisSettings({
               <div className="border-border bg-background/70 flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5">
                 <Label
                   htmlFor="analysis-copilot-enabled"
-                  className="text-[11px] font-semibold"
+                  className="text-xs font-semibold"
                 >
                   Enabled
                 </Label>
@@ -1033,7 +1033,7 @@ export function CodeAnalysisSettings({
                   />
                   <p
                     id="analysis-matlab-dependency-servers-help"
-                    className="text-muted-foreground text-[11px] leading-relaxed"
+                    className="text-muted-foreground text-xs leading-relaxed"
                   >
                     {fieldErrors["matlab-dependency-servers"] ??
                       "Comma-separated IDs of enabled Gerrit or Plastic SCM servers allowed for runtime dependencies."}
@@ -1043,7 +1043,7 @@ export function CodeAnalysisSettings({
                   <p className="text-foreground text-xs font-semibold">
                     Concurrent MATLAB processes
                   </p>
-                  <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
+                  <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                     Fixed at one isolated process per worker to preserve session
                     boundaries.
                   </p>

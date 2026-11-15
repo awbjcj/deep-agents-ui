@@ -348,7 +348,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                         <span className="text-foreground/80 block truncate font-medium">
                           {attachment.name}
                         </span>
-                        <span className="mt-0.5 block text-[10px]">
+                        <span className="mt-0.5 block text-xs">
                           Source image unavailable
                         </span>
                       </span>
@@ -389,7 +389,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                       <span className="text-foreground block truncate text-xs font-medium">
                         {attachment.name}
                       </span>
-                      <span className="bg-primary/8 mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-(--color-primary)">
+                      <span className="bg-primary/8 mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-xs font-semibold text-(--color-primary)">
                         {SOURCE_IMAGE_LABELS[record.source]} source image
                       </span>
                       {sourceUrl && (
@@ -397,7 +397,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                           href={sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring mt-0.5 inline-flex items-center gap-1 text-[10px] focus-visible:ring-2 focus-visible:outline-none"
+                          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring mt-0.5 inline-flex items-center gap-1 text-xs focus-visible:ring-2 focus-visible:outline-none"
                         >
                           Open source
                           <ExternalLink

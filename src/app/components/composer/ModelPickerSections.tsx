@@ -195,6 +195,12 @@ export function EffortSegments({
               aria-checked={checked}
               tabIndex={supported && index === current ? 0 : -1}
               disabled={!supported}
+              onFocus={(event) =>
+                event.currentTarget.scrollIntoView({
+                  block: "nearest",
+                  inline: "nearest",
+                })
+              }
               onClick={() => onChange(effort)}
               className={cn("effort-btn", checked && "effort-btn--active")}
             >

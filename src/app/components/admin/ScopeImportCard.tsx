@@ -98,11 +98,11 @@ export function ScopeImportCard({
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold">{fileName}</p>
               {error ? (
-                <p className="text-destructive mt-1 text-[11px] leading-relaxed">
+                <p className="text-destructive mt-1 text-xs leading-relaxed">
                   {error}
                 </p>
               ) : (
-                <p className="text-muted-foreground mt-1 text-[11px]">
+                <p className="text-muted-foreground mt-1 text-xs">
                   {entries.length} scope{entries.length === 1 ? "" : "s"}
                   {memberCount > 0
                     ? ` and ${memberCount} explicit member grant${

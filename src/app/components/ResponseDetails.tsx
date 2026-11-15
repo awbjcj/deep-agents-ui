@@ -119,7 +119,7 @@ export function ResponseDetails({
                     </span>
                     <span
                       id={`${sourceListId}-file-${index}`}
-                      className="text-muted-foreground mt-1 block text-[11px] font-normal"
+                      className="text-muted-foreground mt-1 block text-xs font-normal"
                     >
                       {available
                         ? "Ready to download"

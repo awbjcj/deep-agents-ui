@@ -262,7 +262,7 @@ export function LibraryShelves({
         <p
           role="status"
           aria-live="polite"
-          className="text-muted-foreground px-0.5 text-[11px] tabular-nums"
+          className="text-muted-foreground px-0.5 text-xs tabular-nums"
         >
           Showing{" "}
           <strong className="text-foreground font-semibold">
@@ -365,7 +365,7 @@ export function LibraryShelves({
                       )}
                     </div>
                     {shelf.index_name !== shelf.shelf_id && (
-                      <p className="text-muted-foreground break-anywhere mt-0.5 font-mono text-[10px]">
+                      <p className="text-muted-foreground break-anywhere mt-0.5 font-mono text-xs">
                         {shelf.index_name}
                       </p>
                     )}
@@ -388,7 +388,7 @@ export function LibraryShelves({
                       key={label}
                       className="bg-card/80 px-2.5 py-2"
                     >
-                      <dt className="text-muted-foreground text-[9px] font-semibold tracking-[0.12em] uppercase">
+                      <dt className="text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase">
                         {label}
                       </dt>
                       <dd className="mt-0.5 font-mono text-xs font-semibold tabular-nums">
@@ -399,7 +399,7 @@ export function LibraryShelves({
                 </dl>
 
                 {findings.length > 0 && (
-                  <div className="border-warning/35 bg-warning-primary text-warning mt-2.5 rounded-md border px-2.5 py-2 text-[11px] dark:text-amber-200">
+                  <div className="border-warning/35 bg-warning-primary text-warning mt-2.5 rounded-md border px-2.5 py-2 text-xs dark:text-amber-200">
                     <span className="font-semibold">Drift:</span>{" "}
                     {findings.join(" · ")}
                   </div>
@@ -415,7 +415,7 @@ export function LibraryShelves({
                       className="text-status-orange h-3 w-3 shrink-0 animate-spin"
                       aria-hidden="true"
                     />
-                    <span className="text-[11px] font-medium tabular-nums">
+                    <span className="text-xs font-medium tabular-nums">
                       {describeJob(activeJob)}
                     </span>
                   </div>
@@ -484,7 +484,7 @@ export function LibraryShelves({
                   </Button>
                 </div>
                 {shelf.retention_enabled && (
-                  <p className="text-muted-foreground mt-2 flex items-center gap-1 text-[10px]">
+                  <p className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
                     <Clock3
                       className="h-3 w-3"
                       aria-hidden="true"

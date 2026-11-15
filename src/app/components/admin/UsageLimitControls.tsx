@@ -290,7 +290,7 @@ export function UsageLimitControls() {
         <div className="px-3 py-2.5">
           <div className="flex items-baseline justify-between gap-3">
             <p className="aptiv-eyebrow">Enforcement</p>
-            <p className="text-muted-foreground text-[10px]">
+            <p className="text-muted-foreground text-xs">
               Disabled caps keep their history
             </p>
           </div>
@@ -314,7 +314,7 @@ export function UsageLimitControls() {
                       <span className="text-foreground block text-xs font-semibold">
                         {option.label}
                       </span>
-                      <span className="text-muted-foreground block truncate text-[10px] font-normal">
+                      <span className="text-muted-foreground block truncate text-xs font-normal">
                         {option.description}
                       </span>
                     </Label>
@@ -346,7 +346,7 @@ export function UsageLimitControls() {
         <div className="px-3 py-2.5">
           <div className="flex items-baseline justify-between gap-3">
             <p className="aptiv-eyebrow">Tier defaults</p>
-            <p className="text-muted-foreground text-[10px]">0 = unlimited</p>
+            <p className="text-muted-foreground text-xs">0 = unlimited</p>
           </div>
 
           {!drafts || !limits ? (
@@ -361,7 +361,7 @@ export function UsageLimitControls() {
           ) : (
             <div className="border-border/70 bg-background/35 mt-2 overflow-x-auto rounded-md border">
               <div className="min-w-[480px]">
-                <div className="bg-muted/45 text-muted-foreground grid grid-cols-[76px_minmax(104px,1fr)_minmax(84px,0.75fr)_minmax(96px,0.85fr)_64px] items-center gap-2 px-2 py-1.5 text-[9px] font-semibold tracking-[0.12em] uppercase">
+                <div className="bg-muted/45 text-muted-foreground grid grid-cols-[76px_minmax(104px,1fr)_minmax(84px,0.75fr)_minmax(96px,0.85fr)_64px] items-center gap-2 px-2 py-1.5 text-xs font-semibold tracking-[0.12em] uppercase">
                   <span>Tier</span>
                   <span id="quota-column-tokens">Tokens</span>
                   <span id="quota-column-calls">Calls</span>
@@ -470,7 +470,7 @@ export function UsageLimitControls() {
                         <p
                           id={errorId}
                           role="alert"
-                          className="text-destructive px-2 pb-1.5 pl-[86px] text-[10px] leading-relaxed"
+                          className="text-destructive px-2 pb-1.5 pl-[86px] text-xs leading-relaxed"
                         >
                           {errors[role]}
                         </p>

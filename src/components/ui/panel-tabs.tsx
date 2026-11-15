@@ -214,7 +214,7 @@ export function PanelTabs<Id extends string>({
             {tab.count !== undefined ? (
               <span
                 className={cn(
-                  "min-w-[1.5ch] shrink-0 text-center font-mono text-[10px] tabular-nums",
+                  "min-w-[1.5ch] shrink-0 text-center font-mono text-xs tabular-nums",
                   isActive ? "text-foreground/70" : "text-muted-foreground"
                 )}
               >

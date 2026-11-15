@@ -128,7 +128,7 @@ export const ReferenceFileDialog = React.memo<Props>(
                             className={cn(
                               "text-muted-foreground mt-0.5 truncate text-xs",
                               entry.source
-                                ? "bg-primary/8 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-(--color-primary)"
+                                ? "bg-primary/8 inline-flex rounded-full px-1.5 py-0.5 text-xs font-semibold text-(--color-primary)"
                                 : "block"
                             )}
                           >
