@@ -101,11 +101,11 @@ export function WelcomeState({
       </span>
       <h2
         id="welcome-title"
-        className="mt-4 text-[1.5rem] leading-tight font-semibold tracking-[-0.025em] text-balance sm:mt-5 sm:text-[2rem]"
+        className="mt-4 text-2xl leading-tight font-semibold tracking-[-0.025em] text-balance sm:mt-5 sm:text-3xl"
       >
         {welcome.headline}
       </h2>
-      <p className="text-muted-foreground mt-2.5 max-w-136 text-sm leading-relaxed font-normal text-balance sm:mt-3 sm:text-[15px]">
+      <p className="text-muted-foreground mt-2.5 max-w-136 text-sm leading-relaxed font-normal text-balance sm:mt-3">
         {welcome.lede}
       </p>
 

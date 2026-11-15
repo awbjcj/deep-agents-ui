@@ -183,7 +183,7 @@ test(
           .boundingBox();
         assert.ok(
           Math.abs(sendBox.y + sendBox.height / 2 - centers[0]) < 2,
-          "Send stays on the controls row"
+          `Send stays on the controls row at ${width}px`
         );
         if (await shortcuts.isVisible()) {
           await shortcuts.click();

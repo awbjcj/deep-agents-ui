@@ -124,7 +124,7 @@ export const FileContentView = React.memo(function FileContentView({
             customStyle={{
               margin: 0,
               borderRadius: "0.5rem",
-              fontSize: "0.875rem",
+              fontSize: "var(--font-size-xs)",
               textShadow: "none",
             }}
             codeTagProps={{

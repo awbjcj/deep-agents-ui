@@ -1,55 +1,116 @@
 "use client";
 
-import { useEffect, useId, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { outputTokenStops } from "@/lib/model-controls";
+import { effortDisplayName } from "@/lib/model-names";
 
-/** Effort choices stay on one scrollable row and expose the selected value. */
+/** Discrete slider over the reasoning levels offered by the selected model. */
 export function ReasoningEffortControl({
   options,
   value,
+  recommended,
   supported,
-  disabled,
+  disabled = false,
   onChange,
 }: {
   options: string[];
   value: string | null;
+  recommended?: string | null;
   supported: boolean;
-  disabled: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }) {
+  const id = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const available = supported && options.length > 0;
+  const adjustable = available && options.length > 1;
+  const lastIndex = options.length - 1;
+  const savedIndex = options.indexOf(value ?? "");
+  const defaultIndex = Math.max(0, options.indexOf(recommended ?? "medium"));
+  const committedIndex = savedIndex >= 0 ? savedIndex : defaultIndex;
+  const index =
+    previewIndex !== null && previewIndex <= lastIndex
+      ? previewIndex
+      : committedIndex;
+  const effort = available
+    ? effortDisplayName(options[index])
+    : "Not supported";
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!adjustable || !input) return;
+    // Input events preview a drag. The native change event commits on release
+    // so autosave cannot lock the Workspace control mid-gesture.
+    const commit = () => {
+      const next = options[input.valueAsNumber];
+      setPreviewIndex(null);
+      if (next && next !== value) onChange(next);
+    };
+    input.addEventListener("change", commit);
+    return () => input.removeEventListener("change", commit);
+  }, [adjustable, onChange, options, value]);
+
   return (
-    <fieldset className="min-w-0 space-y-2">
-      <legend className="text-muted-foreground flex w-full items-center justify-between text-xs font-medium tracking-wider uppercase">
-        <span>Reasoning effort</span>
-        {!supported && <span className="text-xs">Not supported</span>}
-      </legend>
-      <div className="effort-btn-group">
-        {options.map((effort) => (
-          <button
-            key={effort}
-            type="button"
-            aria-pressed={supported && value === effort}
-            disabled={!supported || disabled}
-            onFocus={(event) =>
-              event.currentTarget.scrollIntoView({
-                block: "nearest",
-                inline: "nearest",
-              })
-            }
-            onClick={() => onChange(effort)}
-            className={`effort-btn ${
-              supported && value === effort ? "effort-btn--active" : ""
-            }`}
-          >
-            {effort}
-          </button>
-        ))}
+    <section className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <Label htmlFor={adjustable ? id : undefined}>Reasoning effort</Label>
+        <span
+          aria-hidden={adjustable || undefined}
+          className="bg-muted min-w-24 rounded-md px-2.5 py-1 text-center text-sm font-medium whitespace-nowrap"
+        >
+          {effort}
+        </span>
       </div>
-    </fieldset>
+      {adjustable && (
+        <>
+          <input
+            ref={inputRef}
+            id={id}
+            type="range"
+            min={0}
+            max={lastIndex}
+            step={1}
+            value={index}
+            disabled={disabled}
+            aria-valuetext={effort}
+            onInput={(event) =>
+              setPreviewIndex(event.currentTarget.valueAsNumber)
+            }
+            onPointerCancel={() => setPreviewIndex(null)}
+            onBlur={() => setPreviewIndex(null)}
+            className="aptiv-slider h-touch! block touch-pan-y"
+            style={
+              {
+                "--aptiv-slider-fill": `${(index / lastIndex) * 100}%`,
+              } as CSSProperties
+            }
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none -mt-[10px] flex justify-between px-[6px]"
+          >
+            {options.map((level, stop) => (
+              <span
+                key={level}
+                className={`h-1.5 w-[2px] rounded-full ${stop === index ? "bg-primary" : "bg-(--slider-track-border)"}`}
+              />
+            ))}
+          </div>
+          <div
+            aria-hidden="true"
+            className="text-muted-foreground mt-1 flex justify-between gap-2 text-xs whitespace-nowrap"
+          >
+            <span>{effortDisplayName(options[0])}</span>
+            <span>{effortDisplayName(options[lastIndex])}</span>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -122,12 +183,7 @@ export function OutputTokenControl({
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label
-          htmlFor={id}
-          className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
-        >
-          Output cap
-        </Label>
+        <Label htmlFor={value === 0 ? undefined : id}>Output cap</Label>
         <span className="border-border bg-muted/40 rounded-md border px-2.5 py-1 font-mono text-sm font-semibold tabular-nums">
           {value === 0 ? "Unlimited" : value.toLocaleString("en-US")}
           <span className="text-muted-foreground ml-1.5 text-xs font-normal">
@@ -135,99 +191,103 @@ export function OutputTokenControl({
           </span>
         </span>
       </div>
-      <div className="settings-surface @container/cap px-2 py-1">
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 transition-colors"
-            aria-label="Decrease output cap"
-            disabled={disabled || value === 0 || index <= 0}
-            onClick={() => selectIndex(index - 1)}
-          >
-            <Minus aria-hidden="true" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <input
-              id={id}
-              type="range"
-              className="aptiv-slider h-11!"
-              min={0}
-              max={lastIndex}
-              step={1}
-              value={Math.max(0, index)}
-              disabled={disabled || value === 0}
-              aria-valuetext={`${sliderValue.toLocaleString("en-US")} tokens`}
-              aria-describedby={`${id}-help`}
-              onChange={(event) => selectIndex(Number(event.target.value))}
-              style={
-                {
-                  "--aptiv-slider-fill": `${
-                    (Math.max(0, index) / lastIndex) * 100
-                  }%`,
-                } as CSSProperties
-              }
-            />
-            <div
-              aria-hidden="true"
-              className="-mt-1 flex justify-between px-[7px] pb-2"
+      {value !== 0 && (
+        <div className="settings-surface @container/cap px-2 py-1">
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-touch shrink-0 transition-colors"
+              aria-label="Decrease output cap"
+              disabled={disabled || index <= 0}
+              onClick={() => selectIndex(index - 1)}
             >
-              {stops.map((stop) => (
-                <span
-                  key={stop}
-                  className={`h-1 w-1 rounded-full ${
-                    stop === value ? "bg-primary" : "bg-muted-foreground/40"
-                  }`}
-                />
-              ))}
+              <Minus aria-hidden="true" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <input
+                id={id}
+                type="range"
+                className="aptiv-slider h-11!"
+                min={0}
+                max={lastIndex}
+                step={1}
+                value={Math.max(0, index)}
+                disabled={disabled}
+                aria-valuetext={`${sliderValue.toLocaleString("en-US")} tokens`}
+                aria-describedby={`${id}-help`}
+                onChange={(event) => selectIndex(Number(event.target.value))}
+                style={
+                  {
+                    "--aptiv-slider-fill": `${
+                      (Math.max(0, index) / lastIndex) * 100
+                    }%`,
+                  } as CSSProperties
+                }
+              />
+              <div
+                aria-hidden="true"
+                className="-mt-1 flex justify-between px-[7px] pb-2"
+              >
+                {stops.map((stop) => (
+                  <span
+                    key={stop}
+                    className={`h-1 w-1 rounded-full ${
+                      stop === value
+                        ? "bg-primary"
+                        : "bg-(--slider-track-border)"
+                    }`}
+                  />
+                ))}
+              </div>
+              <div
+                aria-hidden="true"
+                className="text-muted-foreground relative mx-[7px] mb-2 h-4 font-mono text-xs"
+              >
+                {[512, 4096, 16384, 32768, 65536].map((stop, markIndex) => (
+                  <span
+                    key={stop}
+                    className={
+                      markIndex === 0 || markIndex === 4
+                        ? "absolute"
+                        : "absolute hidden @sm/cap:block"
+                    }
+                    style={{
+                      left: `${(stops.indexOf(stop) / lastIndex) * 100}%`,
+                      transform:
+                        markIndex === 0
+                          ? undefined
+                          : markIndex === 4
+                            ? "translateX(-100%)"
+                            : "translateX(-50%)",
+                    }}
+                  >
+                    {stop === 512 ? "512" : `${stop / 1024}K`}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div
-              aria-hidden="true"
-              className="text-xxs text-muted-foreground relative mx-[7px] mb-2 h-4 font-mono"
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-touch shrink-0 transition-colors"
+              aria-label="Increase output cap"
+              disabled={disabled || index >= lastIndex}
+              onClick={() => selectIndex(index + 1)}
             >
-              {[512, 4096, 16384, 32768, 65536].map((stop, markIndex) => (
-                <span
-                  key={stop}
-                  className={
-                    markIndex === 0 || markIndex === 4
-                      ? "absolute"
-                      : "absolute hidden @sm/cap:block"
-                  }
-                  style={{
-                    left: `${(stops.indexOf(stop) / lastIndex) * 100}%`,
-                    transform:
-                      markIndex === 0
-                        ? undefined
-                        : markIndex === 4
-                          ? "translateX(-100%)"
-                          : "translateX(-50%)",
-                  }}
-                >
-                  {stop === 512 ? "512" : `${stop / 1024}K`}
-                </span>
-              ))}
-            </div>
+              <Plus aria-hidden="true" />
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 transition-colors"
-            aria-label="Increase output cap"
-            disabled={disabled || value === 0 || index >= lastIndex}
-            onClick={() => selectIndex(index + 1)}
-          >
-            <Plus aria-hidden="true" />
-          </Button>
         </div>
-      </div>
+      )}
       <p
         id={`${id}-help`}
         className="text-muted-foreground text-xs leading-relaxed"
       >
         {allowUnlimited
-          ? "Unlimited removes the app cap; provider defaults, model limits, and context still apply."
+          ? "Unlimited removes the app cap. Provider defaults, model limits, and context still apply."
           : "Choose an output cap for this model."}
       </p>
       {allowUnlimited && (
@@ -235,7 +295,6 @@ export function OutputTokenControl({
           type="button"
           variant="outline"
           disabled={disabled}
-          aria-pressed={value === 0}
           onClick={() => onChange(value === 0 ? recommended : 0)}
         >
           {value === 0 ? "Use a token cap" : "Unlimited output"}

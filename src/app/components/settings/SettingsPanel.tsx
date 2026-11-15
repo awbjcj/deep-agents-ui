@@ -114,7 +114,7 @@ export function SettingsPanel<Id extends string>({
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {section?.description && (
-            <div className="border-border/50 shrink-0 border-b [@media(max-height:540px)]:sr-only">
+            <div className="border-border/50 shrink-0 border-b @max-[18rem]/panel:sr-only [@media(max-height:540px)]:sr-only">
               <p className="text-muted-foreground mx-auto w-full max-w-3xl px-4 py-3 text-sm leading-relaxed @lg/panel:px-6">
                 {section.description}
               </p>

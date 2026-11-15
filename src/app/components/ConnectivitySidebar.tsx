@@ -500,10 +500,10 @@ export function ConnectivitySidebar() {
       </ScrollArea>
       {!isLoading && data && (
         <SettingsFooter>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <p
               role="status"
-              className="text-muted-foreground m-0 w-full text-xs leading-relaxed"
+              className="text-muted-foreground col-span-2 m-0 text-xs leading-relaxed"
             >
               Connection mode saves automatically. Save proxy URL changes below.
             </p>
@@ -511,12 +511,12 @@ export function ConnectivitySidebar() {
               type="button"
               onClick={handleSave}
               disabled={isSaving || !dirty}
-              className="min-h-touch flex-1"
+              className="min-h-touch h-auto min-w-0 whitespace-normal"
             >
               {isSaving ? (
                 <>
                   <Loader2
-                    className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
                     aria-hidden="true"
                   />
                   Saving…
@@ -524,14 +524,14 @@ export function ConnectivitySidebar() {
               ) : saved && !dirty ? (
                 <>
                   <CheckCircle
-                    className="mr-2 h-4 w-4"
+                    className="h-4 w-4"
                     aria-hidden="true"
                   />
                   Saved
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="h-4 w-4" />
                   Save connectivity
                 </>
               )}
@@ -542,7 +542,7 @@ export function ConnectivitySidebar() {
               variant="ghost"
               onClick={handleReset}
               disabled={isSaving}
-              className="text-muted-foreground hover:text-foreground min-h-touch flex-1 gap-1.5 text-xs"
+              className="text-muted-foreground hover:text-foreground min-h-touch h-auto min-w-0 whitespace-normal"
             >
               <RotateCcw className="h-3 w-3" />
               Reset defaults

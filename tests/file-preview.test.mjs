@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
 import postcss from "postcss";
@@ -17,7 +18,7 @@ test("custom typography retains the default Markdown prose styles", async () => 
   const source =
     '@import "tailwindcss"; @config "../../tailwind.config.mjs"; @source inline("prose prose-playground");';
   const { css } = await postcss([tailwind()]).process(source, {
-    from: new URL("../src/app/globals.css", import.meta.url).pathname,
+    from: fileURLToPath(new URL("../src/app/globals.css", import.meta.url)),
   });
   assert.match(css, /\.prose\s*\{/);
   assert.match(css, /\.prose-playground\s/);

@@ -16,16 +16,14 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { formatTokenCap, requiresThinking } from "@/lib/model-controls";
-import { modelDisplayName } from "@/lib/model-names";
+import { effortDisplayName, modelDisplayName } from "@/lib/model-names";
 import { useModelSelection } from "@/app/hooks/useModelSelection";
-import { TaskBudgetControl } from "@/app/components/ModelInferenceControls";
-import { COMPOSER_TRIGGER, TRIGGER_TONE } from "../ComposerMenuOption";
 import {
-  EffortSegments,
-  ModelList,
-  OutputStepper,
-  ThinkingRow,
-} from "./ModelPickerSections";
+  ReasoningEffortControl,
+  TaskBudgetControl,
+} from "@/app/components/ModelInferenceControls";
+import { COMPOSER_TRIGGER, TRIGGER_TONE } from "../ComposerMenuOption";
+import { ModelList, OutputStepper, ThinkingRow } from "./ModelPickerSections";
 
 const DEFAULT_EFFORTS = ["low", "medium", "high"];
 
@@ -57,7 +55,8 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
     : null;
   const effortSupported = !!entry?.supports_effort;
   const thinkingRequired = requiresThinking(entry, draft?.effort ?? null);
-  const effortLabel = effortSupported && draft?.effort ? draft.effort : null;
+  const effortLabel =
+    effortSupported && draft?.effort ? effortDisplayName(draft.effort) : null;
   const capLabel = draft ? formatTokenCap(draft.max_tokens) : null;
   const modelName = draft?.model ? modelDisplayName(draft.model) : null;
 
@@ -143,50 +142,50 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
         side="top"
         align="start"
         collisionPadding={8}
-        className="w-88 max-w-[calc(100vw-1rem)] rounded-xl p-0"
+        className="w-88 max-w-[calc(100vw-1rem)] animate-none! rounded-xl p-0"
         onOpenAutoFocus={(event) => {
           if (!listRef.current) return;
           event.preventDefault();
           listRef.current.focus({ preventScroll: true });
         }}
       >
-        <div className="flex items-center justify-between gap-3 px-3 pt-3 pb-1.5">
-          <div className="min-w-0">
+        <div className="px-3 pt-3 pb-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-x-2">
             <div className="text-sm leading-5 font-medium">Select model</div>
-            <div className="text-muted-foreground text-xs leading-4">
-              Applies to your next message
-            </div>
+            <span
+              role="status"
+              className="text-muted-foreground ml-auto flex min-h-5 min-w-20 items-center justify-end gap-1 text-xs whitespace-nowrap"
+            >
+              {saving ? (
+                <>
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-3 w-3 motion-safe:animate-spin"
+                  />
+                  Saving…
+                </>
+              ) : edited && saveFailed ? (
+                <>
+                  <AlertCircle
+                    aria-hidden="true"
+                    className="text-destructive h-3 w-3"
+                  />
+                  Not saved
+                </>
+              ) : edited ? (
+                <>
+                  <Check
+                    aria-hidden="true"
+                    className="h-3 w-3 text-(--color-success)"
+                  />
+                  Saved
+                </>
+              ) : null}
+            </span>
           </div>
-          <span
-            role="status"
-            className="text-xxs text-muted-foreground flex shrink-0 items-center gap-1"
-          >
-            {saving ? (
-              <>
-                <Loader2
-                  aria-hidden="true"
-                  className="h-3 w-3 motion-safe:animate-spin"
-                />
-                Saving…
-              </>
-            ) : edited && saveFailed ? (
-              <>
-                <AlertCircle
-                  aria-hidden="true"
-                  className="text-destructive h-3 w-3"
-                />
-                Not saved
-              </>
-            ) : edited ? (
-              <>
-                <Check
-                  aria-hidden="true"
-                  className="h-3 w-3 text-(--color-success)"
-                />
-                Saved
-              </>
-            ) : null}
-          </span>
+          <div className="text-muted-foreground text-xs">
+            Applies to your next message
+          </div>
         </div>
 
         {!draft ? (
@@ -237,11 +236,12 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
               />
             </div>
             <div className="border-border space-y-3 border-t px-3 py-3">
-              <EffortSegments
+              <ReasoningEffortControl
                 options={
                   entry?.efforts.length ? entry.efforts : DEFAULT_EFFORTS
                 }
                 value={draft.effort}
+                recommended={entry?.recommended_effort}
                 supported={effortSupported}
                 onChange={edit((effort: string) =>
                   selection.update({ effort })
@@ -290,19 +290,15 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
           </>
         )}
 
-        <div className="border-border bg-muted/40 text-xxs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 rounded-b-xl border-t px-3 py-2">
+        <div className="border-border bg-muted/40 text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 rounded-b-xl border-t px-3 py-2 text-xs [@media(pointer:coarse)]:hidden">
           <span className="inline-flex items-center gap-1">
             <Kbd>↑↓</Kbd> model
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Kbd>←→</Kbd> effort
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Kbd>Tab</Kbd> next
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Kbd>Esc</Kbd> close
-          </span>
+          {effortSupported && (
+            <span className="inline-flex items-center gap-1">
+              <Kbd>←→</Kbd> effort
+            </span>
+          )}
           <span className="ml-auto">Presets in Workspace › Models</span>
         </div>
       </PopoverContent>

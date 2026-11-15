@@ -3,7 +3,10 @@ import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
 import { SOURCE_IMAGE_SOURCES } from "../src/lib/source-images.ts";
 
 /** Mock-only account data for the real exported settings and chat surfaces. */
-export function settingsReviewFixture() {
+export function settingsReviewFixture({
+  efforts = ["low", "medium", "high"],
+  modelCount = 1,
+} = {}) {
   const fallback = makePolicyFixture();
   const selected = {
     provider: "openai",
@@ -12,15 +15,14 @@ export function settingsReviewFixture() {
     thinking: null,
     max_tokens: 8192,
   };
-  const models = [
-    {
-      ...selected,
-      supports_effort: true,
-      efforts: ["low", "medium", "high"],
-      supports_thinking: false,
-      thinking_required: false,
-    },
-  ];
+  const models = Array.from({ length: modelCount }, (_, index) => ({
+    ...selected,
+    model: index === 0 ? selected.model : `review-model-${index + 1}`,
+    supports_effort: true,
+    efforts,
+    supports_thinking: false,
+    thinking_required: false,
+  }));
   let model = { ...selected, preset: "balanced", effective: selected };
   let connection = {
     run_mode: "gateway",

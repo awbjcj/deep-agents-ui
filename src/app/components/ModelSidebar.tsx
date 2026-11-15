@@ -476,7 +476,7 @@ export function ModelSidebar() {
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Navigation and section context are supplied by WorkspacePanel. */}
-      <ScrollArea className="h-0 flex-1">
+      <ScrollArea className="h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
         <SettingsContent>
           {usage && (
             <section
@@ -618,12 +618,7 @@ export function ModelSidebar() {
                 <RunLimitSettings />
               </div>
               <section className="space-y-2">
-                <Label
-                  htmlFor="model-select"
-                  className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
-                >
-                  Model
-                </Label>
+                <Label htmlFor="model-select">Model</Label>
                 <Select
                   value={modelKey(draft.provider, draft.model)}
                   onValueChange={handleModelChange}
@@ -658,6 +653,7 @@ export function ModelSidebar() {
               <ReasoningEffortControl
                 options={effortOptions}
                 value={draft.effort}
+                recommended={currentModelEntry?.recommended_effort}
                 supported={!!currentModelEntry?.supports_effort}
                 disabled={isSaving}
                 onChange={(effort) => updateDraft({ effort })}
@@ -716,7 +712,7 @@ export function ModelSidebar() {
         <SettingsFooter>
           <p
             role="status"
-            className="text-muted-foreground m-0 text-xs"
+            className="text-muted-foreground m-0 text-xs @max-[18rem]/panel:sr-only"
           >
             {isSaving
               ? "Saving model preferences…"
@@ -729,7 +725,7 @@ export function ModelSidebar() {
           <Button
             onClick={() => handleSave()}
             disabled={isSaving || !dirty || !draft.provider || !draft.model}
-            className="min-h-touch w-full"
+            className="min-h-touch h-auto w-full whitespace-normal"
           >
             {isSaving ? (
               <>

@@ -519,7 +519,7 @@ function HomePageInner({
                 alt="Aptiv"
                 width={76}
                 height={22}
-                className="h-5 w-auto shrink-0"
+                className="h-[20px] w-auto shrink-0"
               />
               <span
                 className="bg-border h-5 w-px max-lg:hidden"

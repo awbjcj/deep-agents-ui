@@ -16,7 +16,7 @@ export function ResponseSources({ sources }: { sources: ResponseSource[] }) {
       className="min-w-0 overflow-hidden"
     >
       <details className="group open:bg-accent rounded-lg">
-        <summary className="text-foreground hover:bg-accent focus-visible:ring-ring flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+        <summary className="text-foreground hover:bg-accent focus-visible:ring-ring flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
           <Globe2
             className="text-muted-foreground h-4 w-4 shrink-0"
             aria-hidden="true"
