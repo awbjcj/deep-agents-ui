@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
+
 import {
   SettingsLoading,
   SettingsLoadError,
@@ -184,7 +186,7 @@ function UsageMeter({
         dimension
       )}`;
   return (
-    <div className="aptiv-glass-soft rounded-lg p-3 shadow-sm">
+    <div className="settings-surface p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Gauge className="h-4 w-4 shrink-0 text-(--color-primary)" />
@@ -471,7 +473,7 @@ export function ModelSidebar() {
     <div className="absolute inset-0 flex flex-col">
       {/* Navigation and section context are supplied by WorkspacePanel. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-6 p-4">
+        <SettingsContent>
           {usage && (
             <section
               className="space-y-2.5"
@@ -568,25 +570,19 @@ export function ModelSidebar() {
                         onClick={handleClick}
                         disabled={isSaving}
                         className={[
-                          "aptiv-glass-soft group relative flex min-h-11 items-center gap-2 rounded-md py-2 pr-5 pl-2.5 text-left transition-colors duration-150",
-                          "focus-visible:ring-2 focus-visible:ring-(--aptiv-orange)/40 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent focus-visible:outline-none",
+                          "group min-h-touch relative flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-left text-sm transition-colors duration-150",
+                          "focus-visible:ring-primary/40 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent focus-visible:outline-none",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
-                            ? "border-(--aptiv-orange)/55! bg-(--aptiv-orange)/10! shadow-[0_2px_10px_-4px_color-mix(in_srgb,var(--aptiv-orange)_30%,transparent)]"
-                            : "hover:border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)]! hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted/40 hover:bg-muted/70",
                         ].join(" ")}
                       >
-                        {active && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-(--aptiv-orange) shadow-[0_0_0_3px_color-mix(in_srgb,var(--aptiv-orange)_25%,transparent)]"
-                          />
-                        )}
                         <span
                           className={[
                             "inline-flex h-4 w-4 items-center justify-center transition-colors",
                             active
-                              ? "text-(--aptiv-orange)"
+                              ? "text-primary"
                               : "text-(--color-text-tertiary) group-hover:text-(--color-primary)",
                           ].join(" ")}
                         >
@@ -599,9 +595,15 @@ export function ModelSidebar() {
                             <Icon className="h-3.5 w-3.5" />
                           )}
                         </span>
-                        <span className="text-foreground min-w-0 text-xs leading-tight font-semibold wrap-break-word">
+                        <span className="text-foreground min-w-0 flex-1 text-sm leading-tight font-medium wrap-break-word">
                           {option.label}
                         </span>
+                        {active && (
+                          <CheckCircle
+                            className="text-primary size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                        )}
                       </button>
                     );
                   })}
@@ -625,7 +627,7 @@ export function ModelSidebar() {
                 >
                   <SelectTrigger
                     id="model-select"
-                    className="aptiv-glass-soft h-11 rounded-lg"
+                    className="h-11 rounded-lg"
                   >
                     <SelectValue placeholder="Choose a model" />
                   </SelectTrigger>
@@ -681,13 +683,13 @@ export function ModelSidebar() {
               />
             </>
           )}
-        </div>
+        </SettingsContent>
       </ScrollArea>
       {!isLoading && draft && allowed.length > 0 && (
-        <div className="border-border bg-card shrink-0 border-t p-4">
+        <SettingsFooter>
           <p
             role="status"
-            className="text-muted-foreground mb-3 text-xs"
+            className="text-muted-foreground m-0 text-xs"
           >
             {isSaving
               ? "Saving model preferences…"
@@ -700,7 +702,7 @@ export function ModelSidebar() {
           <Button
             onClick={() => handleSave()}
             disabled={isSaving || !dirty || !draft.provider || !draft.model}
-            className="w-full"
+            className="min-h-touch w-full"
           >
             {isSaving ? (
               <>
@@ -719,7 +721,7 @@ export function ModelSidebar() {
               </>
             )}
           </Button>
-        </div>
+        </SettingsFooter>
       )}
     </div>
   );

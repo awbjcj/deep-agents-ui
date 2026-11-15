@@ -337,7 +337,7 @@ export function NewsletterSection() {
   return (
     <div className="space-y-5">
       <section
-        className="aptiv-glass-soft grid grid-cols-3 gap-2 rounded-lg p-3 shadow-sm"
+        className="settings-surface grid grid-cols-3 gap-2 p-3"
         aria-label="Newsletter status summary"
       >
         <Metric
@@ -405,7 +405,7 @@ export function NewsletterSection() {
             </div>
           )}
 
-          <div className="aptiv-glass-soft overflow-hidden rounded-xl shadow-sm">
+          <div className="settings-surface overflow-hidden">
             <PanelTabs
               tabs={[
                 { id: "write" as const, label: "Write", icon: Pencil },
@@ -768,7 +768,7 @@ function NewsletterDetailView({
         <ArrowLeft className="h-3.5 w-3.5" />
         All newsletters
       </button>
-      <div className="aptiv-glass-soft rounded-xl p-4 shadow-sm">
+      <div className="settings-surface p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-lg leading-tight font-semibold tracking-tight wrap-break-word">

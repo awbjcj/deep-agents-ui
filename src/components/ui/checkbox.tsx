@@ -16,12 +16,12 @@ function Checkbox({ className, ...props }: CheckboxProps) {
       <input
         data-slot="checkbox"
         type="checkbox"
-        className="peer border-muted-foreground/70 bg-background absolute inset-0 size-5 cursor-pointer appearance-none rounded-[5px] border-2 shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-(--aptiv-orange) checked:bg-(--aptiv-orange) checked:bg-none focus-visible:ring-2 focus-visible:ring-(--aptiv-orange)/45 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+        className="peer border-muted-foreground/70 bg-background checked:border-primary checked:bg-primary focus-visible:ring-primary/40 absolute inset-0 size-5 cursor-pointer appearance-none rounded-[5px] border-2 transition-[border-color,background-color,box-shadow] duration-150 checked:bg-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
         {...props}
       />
       <Check
         data-slot="checkbox-indicator"
-        className="pointer-events-none absolute inset-0 z-10 m-auto size-3.5 text-white opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
+        className="text-primary-foreground pointer-events-none absolute inset-0 z-10 m-auto size-3.5 opacity-0 transition-opacity duration-150 peer-checked:opacity-100 motion-reduce:transition-none"
         strokeWidth={3}
         aria-hidden="true"
       />

@@ -38,6 +38,7 @@ import { usePanelLayout } from "@/app/hooks/usePanelLayout";
 import { loginUrlForConversation } from "@/app/utils/navigationRecovery";
 import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
 import { cn } from "@/lib/utils";
+import { HeaderButton } from "@/app/components/HeaderButton";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
@@ -490,6 +491,14 @@ function HomePageInner({
       <Suspense fallback={null}>
         <TokenSetupWizard />
       </Suspense>
+      {!overlayPanel && (
+        <a
+          href="#conversation"
+          className="bg-card text-primary focus:ring-ring sr-only z-90 rounded-lg px-4 py-3 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:ring-2 focus:outline-none"
+        >
+          Skip to conversation
+        </a>
+      )}
       <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
         <header className="border-border bg-card/70 sticky top-0 z-40 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-4 border-b px-6 py-2 backdrop-blur-sm max-[430px]:flex-col max-[430px]:items-stretch max-sm:gap-2 max-sm:px-3">
@@ -516,14 +525,13 @@ function HomePageInner({
                 className="bg-border h-5 w-px max-lg:hidden"
                 aria-hidden="true"
               />
-              <h1 className="sr-only min-w-0 text-sm font-semibold tracking-tight wrap-break-word max-[430px]:not-sr-only lg:not-sr-only">
+              <h1 className="sr-only min-w-0 text-sm font-semibold tracking-tight wrap-break-word max-[430px]:not-sr-only xl:not-sr-only">
                 VSDA Deep Agent
               </h1>
             </div>
             {!sidebar && (
-              <Button
+              <HeaderButton
                 variant="ghost"
-                size="sm"
                 aria-label="Threads"
                 onClick={() => {
                   if (compactLayout) {
@@ -534,10 +542,10 @@ function HomePageInner({
                   }
                   void setSidebar("1");
                 }}
-                className="border-border bg-card text-foreground hover:bg-accent h-9 rounded-md border px-3 hover:border-[hsl(var(--primary)/0.4)] max-sm:px-2"
+                className="max-lg:size-touch max-lg:p-0"
               >
                 <MessagesSquare className="h-4 w-4" />
-                <span className="max-sm:hidden">Threads</span>
+                <span className="max-lg:hidden">Threads</span>
                 {interruptCount > 0 && (
                   <span
                     className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
@@ -546,35 +554,34 @@ function HomePageInner({
                     {interruptCount}
                   </span>
                 )}
-              </Button>
+              </HeaderButton>
             )}
           </div>
 
           <div
             ref={sidePanel.headerActionsRef}
-            className="flex min-w-0 flex-wrap items-center gap-1.5 max-[430px]:ml-0 max-[430px]:justify-between max-sm:ml-auto max-sm:gap-1"
+            className="flex min-w-0 flex-wrap items-center gap-2 max-[430px]:ml-0 max-[430px]:justify-between max-sm:ml-auto max-sm:gap-1"
           >
-            <Button
+            <HeaderButton
               variant="ghost"
-              size="sm"
               aria-label="Scheduled tasks"
               onClick={() => {
                 if (!allowSettingsLeave()) return;
                 router.push("/tasks");
               }}
-              className="border-border bg-card h-9 rounded-md border px-3 max-sm:px-2"
+              className="max-lg:size-touch max-lg:p-0"
             >
               <CalendarClock className="h-4 w-4" />
-              <span className="max-sm:hidden">Tasks</span>
-            </Button>
+              <span className="max-lg:hidden">Tasks</span>
+            </HeaderButton>
             {/* Keep the agent picker reachable when the toolbar becomes compact. */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <HeaderButton
                   type="button"
                   onClick={() => setConfigDialogOpen(true)}
                   aria-label="Switch agent"
-                  className="border-border bg-card text-foreground hover:bg-accent focus-visible:ring-ring inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  className="max-xl:size-touch max-xl:p-0"
                 >
                   <Bot
                     className="h-4 w-4"
@@ -587,7 +594,7 @@ function HomePageInner({
                     className="text-muted-foreground hidden h-3.5 w-3.5 xl:block"
                     aria-hidden="true"
                   />
-                </button>
+                </HeaderButton>
               </TooltipTrigger>
               <TooltipContent>{agentName}</TooltipContent>
             </Tooltip>
@@ -597,12 +604,10 @@ function HomePageInner({
               className="bg-border mx-1 hidden h-6 w-px md:block"
             />
             <span className="max-sm:hidden">
-              <ThemeToggle />
+              <ThemeToggle variant="icon" />
             </span>
-            <span className="bg-border mx-0.5 hidden h-5 w-px md:block" />
-            <Button
+            <HeaderButton
               variant="ghost"
-              size="sm"
               onClick={() => {
                 if (!allowSettingsLeave()) return;
                 setExpandedPanel(null);
@@ -616,19 +621,19 @@ function HomePageInner({
               aria-pressed={workspaceOpen}
               className={
                 workspaceOpen
-                  ? "bg-primary/10 text-primary hover:bg-primary/15 h-9 rounded-md border border-[hsl(var(--primary)/0.4)] px-3 max-sm:px-2"
-                  : "border-border bg-card text-foreground hover:bg-accent h-9 rounded-md border px-3 hover:border-[hsl(var(--primary)/0.4)] max-sm:px-2"
+                  ? "bg-primary/10 text-primary hover:bg-primary/15 max-lg:size-touch max-lg:p-0"
+                  : "max-lg:size-touch max-lg:p-0"
               }
             >
               <LayoutPanelLeft className="h-4 w-4" />
-              <span className="max-sm:hidden">Workspace</span>
-            </Button>
+              <span className="max-lg:hidden">Workspace</span>
+            </HeaderButton>
             {isAdmin && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <HeaderButton
                     variant="ghost"
-                    size="icon"
+                    iconOnly
                     onClick={() => {
                       if (!allowSettingsLeave()) return;
                       setExpandedPanel(null);
@@ -643,48 +648,48 @@ function HomePageInner({
                     aria-pressed={adminOpen}
                     className={
                       adminOpen
-                        ? "rounded-md border border-(--aptiv-orange)/50 bg-(--aptiv-orange)/10 text-(--aptiv-orange) hover:bg-(--aptiv-orange)/15"
-                        : "border-border bg-card text-foreground rounded-md border hover:border-(--aptiv-orange)/50 hover:text-(--aptiv-orange)"
+                        ? "bg-primary/10 text-primary hover:bg-primary/15"
+                        : "text-muted-foreground hover:text-foreground"
                     }
                   >
                     <Shield className="h-4 w-4" />
-                  </Button>
+                  </HeaderButton>
                 </TooltipTrigger>
                 <TooltipContent>Admin console</TooltipContent>
               </Tooltip>
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
+                <HeaderButton
                   variant="ghost"
-                  size="icon"
+                  iconOnly
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="border-border bg-card text-foreground hover:text-primary h-9 rounded-md border hover:border-[hsl(var(--primary)/0.4)] max-sm:hidden"
+                  className="text-muted-foreground hover:text-foreground max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
-                </Button>
+                </HeaderButton>
               </TooltipTrigger>
               <TooltipContent>Account settings</TooltipContent>
             </Tooltip>
-            <Button
+            <HeaderButton
               variant="default"
-              size="sm"
               onClick={() => {
                 void setThreadId(null);
                 refreshNotifications();
               }}
               disabled={!threadId}
               aria-label="New Thread"
-              className="h-9 max-lg:px-2"
+              className="max-lg:size-touch max-lg:p-0"
             >
               <SquarePen
                 className="h-4 w-4"
                 aria-hidden="true"
               />
               <span className="max-lg:hidden">New Thread</span>
-            </Button>
+            </HeaderButton>
             <AccountMenu
+              toolbar
               onOpenSettings={() => setAccountDialogOpen(true)}
               onBeforeSignOut={allowSettingsLeave}
             />
@@ -693,6 +698,7 @@ function HomePageInner({
 
         <div
           ref={sidePanel.containerRef}
+          role="main"
           className="relative min-h-0 flex-1 overflow-hidden"
         >
           <ResizablePanelGroup

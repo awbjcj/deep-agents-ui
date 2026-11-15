@@ -34,11 +34,21 @@ export function SettingsPanel<Id extends string>({
   const [wide, setWide] = useState(false);
   useEffect(() => {
     if (!panel.current) return;
+    const shortViewport = window.matchMedia("(max-height: 540px)");
+    let width = panel.current.getBoundingClientRect().width;
+    const updateLayout = () =>
+      setWide(width >= 720 || (width >= 560 && shortViewport.matches));
     const observer = new ResizeObserver(([entry]) => {
-      setWide(entry.contentRect.width >= 720);
+      width = entry.contentRect.width;
+      updateLayout();
     });
+    updateLayout();
     observer.observe(panel.current);
-    return () => observer.disconnect();
+    shortViewport.addEventListener("change", updateLayout);
+    return () => {
+      observer.disconnect();
+      shortViewport.removeEventListener("change", updateLayout);
+    };
   }, []);
   const section = tabs.find((tab) => tab.id === active);
 
@@ -87,7 +97,7 @@ export function SettingsPanel<Id extends string>({
             "bg-card shrink-0",
             wide
               ? "border-border w-52 overflow-y-auto border-r py-3"
-              : "border-border border-b px-1"
+              : "border-border/50 border-b px-1 py-2"
           )}
         >
           <PanelTabs
@@ -96,6 +106,7 @@ export function SettingsPanel<Id extends string>({
             onValueChange={onSelect}
             idPrefix={idPrefix}
             label={navigationLabel}
+            variant="soft"
             activation="manual"
             layout={wide ? "rail" : "two-row"}
             columns={tabs.length > 6 ? 4 : 3}
@@ -103,9 +114,11 @@ export function SettingsPanel<Id extends string>({
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {section?.description && (
-            <p className="border-border/60 text-muted-foreground shrink-0 border-b px-4 py-3 text-xs leading-relaxed">
-              {section.description}
-            </p>
+            <div className="border-border/50 shrink-0 border-b [@media(max-height:540px)]:sr-only">
+              <p className="text-muted-foreground mx-auto w-full max-w-3xl px-4 py-3 text-sm leading-relaxed @lg/panel:px-6">
+                {section.description}
+              </p>
+            </div>
           )}
           <div className="relative flex min-h-0 flex-1 flex-col">
             {children}

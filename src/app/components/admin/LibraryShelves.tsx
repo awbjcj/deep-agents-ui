@@ -333,7 +333,7 @@ export function LibraryShelves({
             return (
               <article
                 key={shelf.shelf_id}
-                className="aptiv-glass-soft border-border/70 rounded-lg border p-3"
+                className="settings-surface p-3"
               >
                 <header className="flex items-start gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-(--aptiv-glass-border) bg-(--aptiv-glass-bg) text-(--aptiv-orange)">

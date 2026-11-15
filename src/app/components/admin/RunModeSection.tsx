@@ -92,7 +92,7 @@ export function RunModeSection() {
           onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
         />
       ) : (
-        <div className="aptiv-glass-soft space-y-4 rounded-lg p-4 shadow-sm">
+        <div className="settings-surface space-y-4 p-4">
           <ConnectivityModeSelector
             value={pending}
             label="Modes"

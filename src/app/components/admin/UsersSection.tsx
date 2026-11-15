@@ -270,7 +270,7 @@ export function UsersSection() {
             return (
               <article
                 key={u.user_id}
-                className="aptiv-glass-soft hover:bg-muted/50 rounded-lg p-2.5 shadow-sm transition-[background-color,border-color] duration-150"
+                className="settings-surface hover:bg-muted/50 p-2.5 transition-[background-color,border-color] duration-150"
               >
                 <header className="flex items-center gap-2">
                   <div

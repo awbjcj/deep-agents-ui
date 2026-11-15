@@ -80,8 +80,10 @@ export function DisclosureCard({
     </>
   );
   const frame = cn(
-    "disclosure-card my-4 w-full min-w-0 overflow-hidden rounded-xl border bg-card text-sm text-foreground",
-    tone === "warning" ? "border-warning" : "border-border",
+    "disclosure-card my-4 w-full min-w-0 overflow-hidden rounded-xl border border-transparent bg-muted/35 text-sm text-foreground",
+    tone === "warning"
+      ? "border-warning/50 bg-warning-primary"
+      : "border-transparent",
     className
   );
   const live = announcement !== undefined && (

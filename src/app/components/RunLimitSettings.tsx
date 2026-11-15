@@ -59,7 +59,7 @@ export function RunLimitSettings() {
           onChange={(event) => setValue(event.target.value)}
           aria-describedby="run-step-limit-help run-step-limit-range"
           aria-invalid={!valid}
-          className="aptiv-glass-soft h-11 flex-1 font-mono tabular-nums"
+          className="h-11 flex-1 font-mono tabular-nums"
         />
         <Button
           variant="outline"

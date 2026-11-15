@@ -116,7 +116,7 @@ export function EmbeddingProviderSection() {
           onRetry={retry}
         />
       ) : connectivity ? (
-        <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+        <div className="settings-surface overflow-hidden">
           <div
             className="grid grid-cols-2 gap-2 p-3"
             aria-label="Embedding API"
@@ -256,7 +256,7 @@ export function AttachmentPolicySection() {
           onRetry={retry}
         />
       ) : connectivity ? (
-        <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+        <div className="settings-surface overflow-hidden">
           <div className="flex items-start gap-3 p-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-(--color-primary)/10 text-(--color-primary)">
               <Paperclip

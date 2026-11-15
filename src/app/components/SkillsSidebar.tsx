@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent } from "./settings/SettingsLayout";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useEffect, useRef } from "react";
@@ -85,9 +87,9 @@ function AccountSkills({
   return (
     <div
       ref={scrollArea}
-      className="@container absolute inset-0 flex scroll-pb-28 flex-col overflow-y-auto overscroll-contain p-4"
+      className="@container absolute inset-0 flex scroll-pb-28 flex-col overflow-y-auto overscroll-contain"
     >
-      <div className="flex min-h-full min-w-0 flex-1 flex-col gap-4">
+      <SettingsContent className="flex min-h-full flex-1 flex-col gap-4 space-y-0">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           {mode !== "catalog" ? (
             <Button
@@ -307,7 +309,7 @@ function AccountSkills({
             </Button>
           ) : null}
         </div>
-      </div>
+      </SettingsContent>
       <SkillImportDialog
         key={`${accountId}:${skills.importSession}`}
         open={skills.importOpen}

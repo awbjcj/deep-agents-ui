@@ -92,7 +92,7 @@ function IndexRowImpl({
 
   return (
     <article
-      className="aptiv-glass-soft border-border/70 overflow-hidden rounded-lg border"
+      className="settings-surface overflow-hidden"
       style={{
         contentVisibility: "auto",
         containIntrinsicSize: ROW_INTRINSIC_HEIGHT,

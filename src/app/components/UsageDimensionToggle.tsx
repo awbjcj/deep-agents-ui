@@ -28,7 +28,7 @@ export function UsageDimensionToggle({
       role="group"
       aria-label="Usage meter dimension"
       className={cn(
-        "border-border/80 bg-muted/40 inline-grid min-h-10 grid-cols-3 items-center gap-0.5 rounded-md border p-0.5",
+        "bg-muted/50 inline-grid min-h-10 grid-cols-3 items-center gap-1 rounded-lg p-1",
         className
       )}
     >
@@ -42,9 +42,9 @@ export function UsageDimensionToggle({
             aria-pressed={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "focus-visible:ring-primary/35 min-h-9 rounded-[5px] px-2.5 text-xs font-medium transition-[background-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:ring-2 focus-visible:transition-none focus-visible:outline-none active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
+              "focus-visible:ring-primary/35 min-h-9 rounded-md px-2.5 text-xs font-medium transition-[background-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:ring-2 focus-visible:transition-none focus-visible:outline-none active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
               active
-                ? "bg-primary text-(--text-button-primary) shadow-xs"
+                ? "bg-card text-foreground shadow-none"
                 : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
             )}
           >

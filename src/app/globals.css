@@ -148,6 +148,7 @@
     --color-primary-dark: #1c3c3c;
     --color-primary-hover: #255555;
     --color-accent: #f84018;
+    --color-accent-text: #c93512;
     --color-user-message: #2f6868;
     --color-user-message-bg: #e6f0ef;
     --color-avatar-bg: #d4e4e2;
@@ -401,7 +402,8 @@
     --muted-foreground: 40 6% 28%;
     --accent: 180 39% 94%;
     --accent-foreground: 180 39% 20%;
-    --destructive: 10 94% 54%;
+    /* Destructive text needs more contrast than the decorative brand orange. */
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
     --border: 40 10% 88%;
     --input: 40 10% 88%;
@@ -434,6 +436,7 @@
     --color-primary-dark: #2f6868;
     --color-primary-hover: #4db4ae;
     --color-accent: #f84018;
+    --color-accent-text: #f84018;
     --color-user-message: #3fa09a;
     --color-user-message-bg: #17302e;
     --color-avatar-bg: #1f3f3c;
@@ -615,8 +618,8 @@
     --muted-foreground: 40 6% 72%;
     --accent: 177 43% 15%;
     --accent-foreground: 177 43% 70%;
-    --destructive: 0 70% 58%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 85% 70%;
+    --destructive-foreground: 0 0% 4%;
     --border: 0 0% 16%;
     --input: 0 0% 16%;
     --ring: 177 43% 44%;
@@ -958,11 +961,11 @@
 
 .aptiv-eyebrow {
   font-family: var(--font-family-heading);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--aptiv-orange);
+  color: var(--color-accent-text);
 }
 
 .aptiv-rule {
@@ -1009,7 +1012,7 @@
 }
 
 .starter-card {
-  transition-property: border-color, background-color, box-shadow, transform;
+  transition-property: background-color, transform;
   transition-duration: 150ms;
   transition-timing-function: var(--ease-out);
 }
@@ -1026,10 +1029,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .starter-card:hover {
-    border-color: hsl(var(--primary) / 0.45);
-    background-color: hsl(var(--card));
-    box-shadow: 0 8px 24px -16px
-      color-mix(in srgb, var(--color-primary) 60%, transparent);
+    background-color: hsl(var(--primary) / 0.06);
   }
 }
 
@@ -1997,34 +1997,40 @@
   backdrop-filter: blur(8px) saturate(130%);
 }
 
+/* Flat section groups separate content by tone, without outlining every control. */
+@layer components {
+  .settings-surface {
+    border: 0;
+    border-radius: var(--radius-lg);
+    background-color: hsl(var(--card));
+    box-shadow: none;
+  }
+}
+
 /* ─── Aptiv effort button group ────────────────────────────────────── */
 .effort-btn-group {
   display: flex;
   flex-wrap: nowrap;
   width: 0;
   min-width: 100%;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-md);
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
   overflow-x: auto;
-  border: 1px solid var(--aptiv-glass-border);
-  background-color: var(--aptiv-glass-bg);
-  -webkit-backdrop-filter: blur(8px) saturate(130%);
-  backdrop-filter: blur(8px) saturate(130%);
-  box-shadow: var(--aptiv-glass-shadow);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 .effort-btn {
   position: relative;
   flex: 1 0 auto;
   min-width: max-content;
-  min-height: 2.25rem;
-  padding: 9px 6px;
+  min-height: 44px;
+  padding: 8px;
   font-family: var(--font-family-base);
   font-size: var(--font-size-xxs);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--color-text-tertiary);
   background: transparent;
   border: none;
@@ -2045,11 +2051,9 @@
 }
 
 .effort-btn--active {
-  color: var(--text-button-primary);
-  background: var(--color-primary);
-  box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+  font-weight: 600;
 }
 
 .effort-btn:disabled {

@@ -73,7 +73,7 @@ export function ScheduledTasks({
             </h1>
             <div className="flex flex-wrap items-center gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 className="size-11 shrink-0"
                 aria-label="Refresh tasks"
                 aria-busy={refreshing}
@@ -152,13 +152,18 @@ export function ScheduledTasks({
           </div>
         )}
         {data?.items.length === 0 && (
-          <div className="border-border text-muted-foreground flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
+          <div className="text-muted-foreground bg-card flex flex-col items-center gap-3 rounded-xl px-6 py-12 text-center">
             <CalendarClock
               className="h-7 w-7"
               aria-hidden="true"
             />
             <p className="text-sm font-medium">
               {offset ? "No tasks on this page" : "No scheduled tasks yet"}
+            </p>
+            <p className="m-0 max-w-sm text-sm leading-relaxed">
+              {offset
+                ? "Go back to the previous page to see your tasks."
+                : "Choose New task to schedule an agent, set a time, and select where the results go."}
             </p>
           </div>
         )}

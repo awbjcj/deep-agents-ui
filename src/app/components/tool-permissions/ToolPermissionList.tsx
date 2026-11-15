@@ -59,7 +59,7 @@ export function ToolPermissionList({
             selectedIds.includes(tool.id) !== savedSelectedIds.includes(tool.id)
         );
         const rows = (
-          <div className="border-border/80 bg-card/65 overflow-hidden rounded-lg border shadow-sm">
+          <div className="bg-card overflow-hidden rounded-xl">
             {tools.map((tool, index) => {
               const checked = selectedIds.includes(tool.id);
               const allowed = allowedIds.includes(tool.id);
@@ -86,7 +86,7 @@ export function ToolPermissionList({
                   className={cn(
                     "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 px-3 py-3",
                     index > 0 && "border-border/60 border-t",
-                    !allowed && !checked && "bg-muted/25 opacity-70"
+                    !allowed && !checked && "bg-muted/25"
                   )}
                 >
                   <Checkbox
@@ -117,11 +117,11 @@ export function ToolPermissionList({
                         </span>
                       </label>
                       {unavailableReason ? (
-                        <span className="text-muted-foreground shrink-0 text-[10px] font-semibold">
+                        <span className="text-muted-foreground shrink-0 text-xs font-semibold">
                           Unavailable
                         </span>
                       ) : checked && !allowed ? (
-                        <span className="border-destructive/35 bg-destructive/10 text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold">
+                        <span className="border-destructive/35 bg-destructive/10 text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold">
                           <Ban
                             className="text-destructive h-3 w-3"
                             aria-hidden="true"
@@ -129,22 +129,22 @@ export function ToolPermissionList({
                           Blocked by administrator
                         </span>
                       ) : pendingSelection ? (
-                        <span className="text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-2 py-0.5 text-[10px] font-semibold">
+                        <span className="text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-2 py-0.5 text-xs font-semibold">
                           Pending save
                         </span>
                       ) : pendingRemoval ? (
-                        <span className="text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-2 py-0.5 text-[10px] font-semibold">
+                        <span className="text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-2 py-0.5 text-xs font-semibold">
                           Pending removal
                         </span>
                       ) : effective && selectedStatusLabel ? (
-                        <span className="shrink-0 text-[10px] font-semibold text-(--aptiv-orange)">
+                        <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">
                           {selectedStatusLabel}
                         </span>
                       ) : null}
                     </div>
                     <div
                       id={`${controlId}-description`}
-                      className="text-muted-foreground mt-1 space-y-1 text-[11px] leading-relaxed"
+                      className="text-muted-foreground mt-1 space-y-1 text-xs leading-relaxed"
                     >
                       <p>{tool.description}</p>
                       {unavailableReason ? (
@@ -173,7 +173,7 @@ export function ToolPermissionList({
           return (
             <details
               key={group}
-              className="aptiv-glass-soft group overflow-hidden rounded-lg shadow-sm"
+              className="settings-surface group overflow-hidden"
             >
               <summary className="hover:bg-muted/35 focus-visible:ring-primary/40 flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset motion-reduce:transition-none [&::-webkit-details-marker]:hidden">
                 <span
@@ -182,7 +182,7 @@ export function ToolPermissionList({
                 >
                   {group}
                 </span>
-                <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
                   {selectedCount} of {tools.length} allowed
                 </span>
                 {groupChanged ? (
@@ -213,7 +213,7 @@ export function ToolPermissionList({
           >
             <h4
               id={groupId}
-              className="text-muted-foreground text-[10px] font-bold tracking-[0.18em] uppercase"
+              className="text-muted-foreground text-xs font-bold tracking-[0.18em] uppercase"
             >
               {group}
             </h4>

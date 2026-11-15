@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent } from "./settings/SettingsLayout";
+
 import { useState, type ComponentType } from "react";
 import {
   Activity,
@@ -152,12 +154,12 @@ function AdminPanelContent({
       {/* Only the active section is mounted, so an unopened section never
           issues its requests. */}
       <ScrollArea className="h-0 flex-1">
-        <div
+        <SettingsContent
           {...panelTabPanelProps("admin", active)}
-          className="mx-auto w-full max-w-4xl space-y-6 p-4 focus-visible:outline-none sm:p-6"
+          className="focus-visible:outline-none"
         >
           <ActiveSection />
-        </div>
+        </SettingsContent>
       </ScrollArea>
     </SettingsPanel>
   );

@@ -17,16 +17,20 @@ export function RoleBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] uppercase",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
         className
       )}
       style={{
-        color,
+        color: "var(--color-text-secondary)",
         borderColor: `color-mix(in srgb, ${color} 40%, transparent)`,
         background: `color-mix(in srgb, ${color} 12%, transparent)`,
       }}
     >
-      <Icon className="h-3 w-3" />
+      <Icon
+        className="size-3.5"
+        style={{ color }}
+        aria-hidden="true"
+      />
       {role}
     </span>
   );

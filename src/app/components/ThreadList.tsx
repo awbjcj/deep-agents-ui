@@ -583,7 +583,7 @@ export function ThreadList({
                   className="mb-5 first:mt-1"
                 >
                   <div className="mb-1 flex items-center gap-2 px-3">
-                    <h4 className="text-muted-foreground/55 m-0 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                    <h4 className="text-muted-foreground m-0 text-xs font-semibold tracking-[0.14em] uppercase">
                       {GROUP_LABELS[group]}
                     </h4>
                     <div
@@ -690,12 +690,12 @@ export function ThreadList({
                               </h3>
                             )}
                           </div>
-                          <span className="text-muted-foreground/60 pt-px text-[10px] font-medium tabular-nums">
+                          <span className="text-muted-foreground pt-px text-xs font-medium tabular-nums">
                             {formatTime(thread.updatedAt)}
                           </span>
 
                           {/* Meta row — description + status + actions */}
-                          <p className="text-muted-foreground/75 min-w-0 text-[11px] leading-snug wrap-anywhere wrap-break-word whitespace-normal">
+                          <p className="text-muted-foreground min-w-0 text-xs leading-snug wrap-anywhere wrap-break-word whitespace-normal">
                             {thread.description || (
                               <span className="italic opacity-60">
                                 No response yet

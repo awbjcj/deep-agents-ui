@@ -149,7 +149,7 @@ export function TiersSection() {
                 >
                   {tier}
                 </Label>
-                <span className="text-muted-foreground/60 font-mono text-xs tabular-nums">
+                <span className="text-muted-foreground font-mono text-xs tabular-nums">
                   {tiers[tier].length} model
                   {tiers[tier].length === 1 ? "" : "s"}
                 </span>

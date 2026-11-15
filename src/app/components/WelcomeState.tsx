@@ -117,7 +117,7 @@ export function WelcomeState({
               key={title}
               type="button"
               onClick={() => onSelectPrompt(prompt)}
-              className="starter-card group/starter border-border bg-card/80 focus-visible:ring-ring flex min-w-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left shadow-sm focus-visible:ring-2 focus-visible:outline-none sm:p-3"
+              className="starter-card group/starter bg-card/70 focus-visible:ring-ring flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left focus-visible:ring-2 focus-visible:outline-none sm:p-3"
             >
               <span
                 className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-(--color-primary)"
@@ -125,7 +125,7 @@ export function WelcomeState({
               >
                 <Icon size={16} />
               </span>
-              <span className="text-foreground min-w-0 flex-1 text-sm font-semibold wrap-break-word">
+              <span className="text-foreground min-w-0 flex-1 text-sm font-medium wrap-anywhere">
                 {title}
               </span>
               <ArrowRight

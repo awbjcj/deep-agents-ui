@@ -136,7 +136,7 @@ export function SkillCatalog({
           Loading skills…
         </p>
       ) : unavailable ? null : matches.length ? (
-        <ul className="bg-card m-0 list-none divide-y overflow-hidden rounded-xl border p-0">
+        <ul className="bg-card m-0 list-none divide-y overflow-hidden rounded-xl p-0">
           {matches.map((entry) => (
             <li key={`${entry.origin}:${entry.id}`}>
               <button
@@ -148,7 +148,7 @@ export function SkillCatalog({
                   selectedKey === `${entry.origin}:${entry.id}` && "bg-accent"
                 )}
               >
-                <span className="bg-background text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg border">
+                <span className="bg-background text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
                   {entry.origin === "personal" ? (
                     <LockKeyhole
                       aria-hidden="true"
@@ -163,7 +163,7 @@ export function SkillCatalog({
                 </span>
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="text-sm font-medium break-all">
+                    <span className="text-sm font-medium wrap-anywhere">
                       {entry.name}
                     </span>
                     <span className="text-muted-foreground text-xs">

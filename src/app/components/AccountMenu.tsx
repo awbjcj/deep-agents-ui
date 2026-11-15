@@ -13,9 +13,11 @@ import { useTheme } from "@/providers/ThemeProvider";
 export function AccountMenu({
   onOpenSettings,
   onBeforeSignOut,
+  toolbar = false,
 }: {
   onOpenSettings?: () => void;
   onBeforeSignOut?: () => boolean;
+  toolbar?: boolean;
 }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -76,7 +78,7 @@ export function AccountMenu({
         <Button
           ref={triggerRef}
           id={`${id}-trigger`}
-          variant="outline"
+          variant={toolbar ? "ghost" : "outline"}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => {
             lastItem.current = false;
@@ -95,6 +97,8 @@ export function AccountMenu({
           aria-label={`Account menu for ${user.username}`}
           className={cn(
             "min-h-touch gap-2 pr-3 pl-2 transition-colors",
+            toolbar &&
+              "h-touch min-w-touch max-sm:size-touch rounded-lg border-0 bg-transparent px-2 shadow-none max-sm:gap-0 max-sm:p-0",
             open && "bg-accent text-accent-foreground ring-border ring-1"
           )}
         >
@@ -107,6 +111,7 @@ export function AccountMenu({
           <ChevronDown
             className={cn(
               "text-muted-foreground h-4 w-4 transition-transform",
+              toolbar && "max-sm:hidden",
               open && "rotate-180"
             )}
             aria-hidden="true"

@@ -140,7 +140,7 @@ function BatchCard({
       : "healthy";
 
   return (
-    <article className="aptiv-glass-soft rounded-lg border border-(--aptiv-glass-border) p-3">
+    <article className="settings-surface p-3">
       <header className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">
           {operationLabel(
@@ -353,7 +353,7 @@ export function LibraryBatch({
   return (
     <div className="space-y-4">
       <section
-        className="aptiv-glass-soft rounded-lg border border-(--aptiv-glass-border) p-3"
+        className="settings-surface p-3"
         aria-label="Batch operation"
       >
         <div className="flex flex-wrap items-end gap-2">
@@ -461,7 +461,7 @@ export function LibraryBatch({
 
       {targets ? (
         <section
-          className="aptiv-glass-soft rounded-lg border border-(--aptiv-glass-border) p-3"
+          className="settings-surface p-3"
           aria-label="Batch targets"
         >
           <header className="flex flex-wrap items-center gap-2">

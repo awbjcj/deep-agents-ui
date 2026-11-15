@@ -8,7 +8,8 @@ import headlessui from "@headlessui/tailwindcss";
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: ["class", '[data-joy-color-scheme="dark"]'],
+  // ThemeProvider and the first-paint script both toggle the root .dark class.
+  darkMode: "class",
   theme: {
     extend: {
       spacing: {

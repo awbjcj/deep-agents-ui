@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 import { SettingsLoading } from "@/app/components/settings/SettingsFeedback";
 
@@ -195,7 +197,7 @@ export function TokenManagementSidebar({
     <div className="absolute inset-0 flex flex-col">
       {/* Title bar is supplied by parent WorkspacePanel. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-5 p-4">
+        <SettingsContent>
           {isLoading ? (
             <SettingsLoading />
           ) : loadError ? (
@@ -321,13 +323,13 @@ export function TokenManagementSidebar({
               )}
             </>
           )}
-        </div>
+        </SettingsContent>
       </ScrollArea>
       {!isLoading && !loadError && (
-        <footer className="border-border bg-card shrink-0 border-t p-4">
+        <SettingsFooter>
           <p
             role="status"
-            className="text-muted-foreground mb-3 text-xs"
+            className="text-muted-foreground m-0 text-xs"
           >
             {isSaving
               ? "Saving tokens…"
@@ -367,7 +369,7 @@ export function TokenManagementSidebar({
               {isSaving ? "Saving…" : "Save tokens"}
             </Button>
           </div>
-        </footer>
+        </SettingsFooter>
       )}
     </div>
   );
@@ -435,7 +437,7 @@ function TokenField({
           aria-label={`${show ? "Hide" : "Show"} ${guide.label}`}
           aria-controls={id}
           onClick={() => setShow((visible) => !visible)}
-          className="absolute inset-y-0 right-0"
+          className="absolute top-1/2 right-0 size-10 -translate-y-1/2"
         >
           {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
         </Button>

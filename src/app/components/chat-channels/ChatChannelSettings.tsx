@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent } from "../settings/SettingsLayout";
+
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -130,7 +132,7 @@ export function ChatChannelSettings({
   return (
     <div className="absolute inset-0 flex flex-col">
       <ScrollArea className="h-0 flex-1">
-        <div className="text-foreground @container/bots mx-auto max-w-2xl space-y-5 p-4">
+        <SettingsContent className="text-foreground @container/bots">
           <div className="flex items-center gap-3">
             <p className="text-muted-foreground min-w-0 flex-1 text-sm leading-relaxed">
               Switching apps moves your conversation to the new app.
@@ -277,7 +279,7 @@ export function ChatChannelSettings({
               />
             </div>
           )}
-        </div>
+        </SettingsContent>
       </ScrollArea>
       <UnlinkDialog
         meta={unlinking ? CHANNEL_META[unlinking] : null}

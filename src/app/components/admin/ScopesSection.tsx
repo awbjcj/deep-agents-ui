@@ -292,7 +292,7 @@ export function ScopesSection() {
         </Button>
       </div>
 
-      <div className="aptiv-glass-soft space-y-2 rounded-lg p-3">
+      <div className="settings-surface space-y-2 p-3">
         <p className="text-muted-foreground text-xs leading-relaxed">
           Role access grants read to users and write to developers/admins.
           Existing custom write grants are preserved, and future users inherit
@@ -434,7 +434,7 @@ function CreateScopeCard({
   };
 
   return (
-    <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
+    <div className="settings-surface space-y-3 p-4">
       <h4 className="text-sm font-semibold">New scope</h4>
       <div className="grid grid-cols-[110px_1fr] gap-2">
         <div className="space-y-1.5">

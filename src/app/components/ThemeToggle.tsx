@@ -1,5 +1,6 @@
 "use client";
 
+import { HeaderButton } from "./HeaderButton";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/providers/ThemeProvider";
 import { cn } from "@/lib/utils";
@@ -7,11 +8,15 @@ import { useState, useSyncExternalStore } from "react";
 
 interface ThemeToggleProps {
   className?: string;
+  variant?: "switch" | "icon";
 }
 
 const noopSubscribe = () => () => {};
 
-export function ThemeToggle({ className }: ThemeToggleProps) {
+export function ThemeToggle({
+  className,
+  variant = "switch",
+}: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   // The server renders the light state; the pre-hydration script may already
   // have applied dark. Visuals follow the `.dark` class via CSS, and the label
@@ -24,6 +29,27 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   const isDark = hydrated && theme === "dark";
   const [pointerMotion, setPointerMotion] = useState(false);
   const label = isDark ? "Switch to day mode" : "Switch to night mode";
+
+  if (variant === "icon") {
+    return (
+      <HeaderButton
+        iconOnly
+        onClick={toggleTheme}
+        aria-label={label}
+        title={label}
+        className={className}
+      >
+        <Sun
+          aria-hidden="true"
+          className="text-muted-foreground in-[.dark]:hidden"
+        />
+        <Moon
+          aria-hidden="true"
+          className="text-muted-foreground hidden in-[.dark]:block"
+        />
+      </HeaderButton>
+    );
+  }
 
   return (
     <button

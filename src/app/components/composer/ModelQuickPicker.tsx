@@ -136,6 +136,7 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
         </button>
       </PopoverTrigger>
       <PopoverContent
+        aria-label="Model selection"
         side="top"
         align="start"
         collisionPadding={8}

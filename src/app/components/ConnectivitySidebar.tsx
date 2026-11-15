@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -306,7 +308,7 @@ export function ConnectivitySidebar() {
           only owns its content. Keeping the close button out avoids a
           double X next to the parent's. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-5 p-4">
+        <SettingsContent>
           {isLoading ? (
             <ConnectivityLoadingState />
           ) : !data ? (
@@ -318,7 +320,7 @@ export function ConnectivitySidebar() {
             <>
               <h3 className="text-sm font-semibold tracking-tight">Run mode</h3>
 
-              <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
+              <div className="settings-surface space-y-3 p-4">
                 <ConnectivityModeSelector
                   value={pendingMode}
                   onValueChange={selectMode}
@@ -370,7 +372,7 @@ export function ConnectivitySidebar() {
 
               {imageFetchingLoaded && (
                 <div className="border-border/40 space-y-3 border-t pt-4">
-                  <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+                  <div className="settings-surface overflow-hidden">
                     <div className="flex items-start gap-3 p-3.5">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-(--color-primary)/10 text-(--color-primary)">
                         <ImageIcon
@@ -494,14 +496,14 @@ export function ConnectivitySidebar() {
               )}
             </>
           )}
-        </div>
+        </SettingsContent>
       </ScrollArea>
       {!isLoading && data && (
-        <div className="border-border bg-card shrink-0 border-t p-4">
-          <div className="flex flex-col gap-2">
+        <SettingsFooter>
+          <div className="flex flex-wrap items-center gap-2">
             <p
               role="status"
-              className="text-muted-foreground text-xs leading-relaxed"
+              className="text-muted-foreground m-0 w-full text-xs leading-relaxed"
             >
               Connection mode saves automatically. Save proxy URL changes below.
             </p>
@@ -509,7 +511,7 @@ export function ConnectivitySidebar() {
               type="button"
               onClick={handleSave}
               disabled={isSaving || !dirty}
-              className="h-10 w-full"
+              className="min-h-touch flex-1"
             >
               {isSaving ? (
                 <>
@@ -540,13 +542,13 @@ export function ConnectivitySidebar() {
               variant="ghost"
               onClick={handleReset}
               disabled={isSaving}
-              className="text-muted-foreground hover:text-foreground h-10 w-full gap-1.5 text-xs"
+              className="text-muted-foreground hover:text-foreground min-h-touch flex-1 gap-1.5 text-xs"
             >
               <RotateCcw className="h-3 w-3" />
-              Reset to system defaults
+              Reset defaults
             </Button>
           </div>
-        </div>
+        </SettingsFooter>
       )}
     </div>
   );

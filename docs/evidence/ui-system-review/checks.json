@@ -1,0 +1,285 @@
+{
+  "mockApi": true,
+  "checks": [
+    {
+      "name": "right-panel-models-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tools-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-skills-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tokens-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-bots-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-connections-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-people-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-models-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-tools-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-runtime-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-memories-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-search-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-sources-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-newsletters-375-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-models-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tools-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-skills-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tokens-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-bots-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-connections-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-people-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-models-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-tools-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-runtime-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-memories-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-search-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-sources-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-newsletters-375-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-models-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tools-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-skills-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tokens-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-bots-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-connections-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-people-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-models-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-tools-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-runtime-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-memories-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-search-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-sources-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-newsletters-1440-light",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-models-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tools-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-skills-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-tokens-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-bots-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "right-panel-connections-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-people-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-models-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-tools-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-runtime-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-memories-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-search-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-sources-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    },
+    {
+      "name": "admin-panel-newsletters-1440-dark",
+      "axeViolations": 0,
+      "violations": []
+    }
+  ]
+}

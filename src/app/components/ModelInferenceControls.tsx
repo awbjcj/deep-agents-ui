@@ -61,7 +61,7 @@ export function AdaptiveThinkingControl({
 }) {
   const id = useId();
   return (
-    <section className="aptiv-glass-soft flex items-center justify-between gap-4 rounded-lg p-3">
+    <section className="settings-surface flex items-center justify-between gap-4 p-3">
       <div className="min-w-0 space-y-1">
         <Label
           htmlFor={id}
@@ -124,7 +124,7 @@ export function OutputTokenControl({
           </span>
         </span>
       </div>
-      <div className="aptiv-glass-soft rounded-lg px-2 py-1">
+      <div className="settings-surface px-2 py-1">
         <div className="flex items-center gap-2">
           <Button
             type="button"
