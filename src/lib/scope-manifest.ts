@@ -1,4 +1,5 @@
 import { load } from "js-yaml";
+import { YAML_COMPAT_SCHEMA } from "./yaml";
 
 import type {
   Role,
@@ -112,7 +113,7 @@ function membersAt(value: unknown, path: string): ScopeManifestMember[] {
 export function parseScopeManifest(source: string): ScopeManifestEntry[] {
   let parsed: unknown;
   try {
-    parsed = load(source);
+    parsed = load(source, { schema: YAML_COMPAT_SCHEMA });
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid YAML";
     throw new Error(`Could not parse config file: ${message}`, {

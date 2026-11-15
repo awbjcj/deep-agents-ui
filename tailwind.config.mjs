@@ -1,6 +1,5 @@
 import { blackA, green, mauve, slate, violet } from "@radix-ui/colors";
 import plugin from "tailwindcss/plugin";
-import containerQueries from "@tailwindcss/container-queries";
 import typography from "@tailwindcss/typography";
 import forms from "@tailwindcss/forms";
 import tailwindcssAnimate from "tailwindcss-animate";
@@ -369,7 +368,6 @@ export default {
     },
   },
   plugins: [
-    containerQueries,
     typography,
     forms,
     tailwindcssAnimate,

@@ -84,28 +84,28 @@ function TargetRow({
         disabled={blocked}
         onClick={onToggle}
         className={cn(
-          "flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-[background-color,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
+          "focus-visible:ring-primary/30 flex w-full items-start gap-2.5 rounded-md px-2 py-1.5 text-left text-sm transition-[background-color,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:ring-2 focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
           blocked
             ? "cursor-not-allowed opacity-55"
-            : "hover:bg-[var(--aptiv-glass-bg)]"
+            : "hover:bg-(--aptiv-glass-bg)"
         )}
       >
         {checked ? (
           <CheckSquare
-            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--aptiv-turquoise)]"
+            className="mt-0.5 h-4 w-4 shrink-0 text-(--aptiv-turquoise)"
             aria-hidden="true"
           />
         ) : (
           <Square
-            className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+            className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0"
             aria-hidden="true"
           />
         )}
         <span className="min-w-0 flex-1">
-          <span className="block font-mono text-xs break-anywhere">
+          <span className="break-anywhere block font-mono text-xs">
             {target.shelf_id}
           </span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">
+          <span className="text-muted-foreground mt-0.5 block text-xs">
             {blocked
               ? target.has_active_job
                 ? "A job is already running for this shelf"
@@ -136,11 +136,11 @@ function BatchCard({
   const outcomeTone = running
     ? "active"
     : batch.failed_jobs || batch.interrupted_jobs || batch.cancelled_jobs
-    ? "warning"
-    : "healthy";
+      ? "warning"
+      : "healthy";
 
   return (
-    <article className="aptiv-glass-soft rounded-lg border border-[var(--aptiv-glass-border)] p-3">
+    <article className="aptiv-glass-soft rounded-lg border border-(--aptiv-glass-border) p-3">
       <header className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">
           {operationLabel(
@@ -152,7 +152,7 @@ function BatchCard({
           label={running ? "In progress" : batch.status}
           tone={outcomeTone}
         />
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {progress.finished} of {progress.total} shelves
         </span>
         <span className="ml-auto flex items-center gap-2">
@@ -188,7 +188,7 @@ function BatchCard({
       {/* Transform-based progress keeps the transition on the compositor and
           avoids relayout on every poll update. */}
       <div
-        className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--aptiv-glass-bg)]"
+        className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-(--aptiv-glass-bg)"
         role="progressbar"
         aria-valuenow={progress.percent}
         aria-valuemin={0}
@@ -196,13 +196,13 @@ function BatchCard({
         aria-label="Batch progress"
       >
         <div
-          className="h-full origin-left rounded-full bg-[var(--aptiv-turquoise)] transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+          className="h-full origin-left rounded-full bg-(--aptiv-turquoise) transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
           style={{ transform: `scaleX(${progress.percent / 100})` }}
         />
       </div>
 
       <p
-        className="mt-2 text-xs text-muted-foreground"
+        className="text-muted-foreground mt-2 text-xs"
         aria-live="polite"
       >
         {describeBatch(batch)}
@@ -226,13 +226,13 @@ function BatchCard({
               key={job.job_id}
               className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5 text-xs sm:grid-cols-[minmax(0,1fr)_auto_12rem]"
             >
-              <span className="min-w-0 flex-1 font-mono break-anywhere">
+              <span className="break-anywhere min-w-0 flex-1 font-mono">
                 {job.shelf_id}
               </span>
-              <span className="shrink-0 text-muted-foreground">
+              <span className="text-muted-foreground shrink-0">
                 {jobStatusLabel(job)}
               </span>
-              <span className="col-span-2 min-w-0 truncate text-muted-foreground sm:col-span-1 sm:text-right">
+              <span className="text-muted-foreground col-span-2 min-w-0 truncate sm:col-span-1 sm:text-right">
                 {describeJob(job)}
               </span>
             </li>
@@ -277,8 +277,8 @@ export function LibraryBatch({
         scopeKind === "all"
           ? { scopeAll: true }
           : scopeKind === "index"
-          ? { scopeIndex: scopeValue.trim() || "vsda_*" }
-          : { scopeSource: scopeValue.trim() }
+            ? { scopeIndex: scopeValue.trim() || "vsda_*" }
+            : { scopeSource: scopeValue.trim() }
       );
       setTargets(result.targets);
       setSelected(defaultSelection(result.targets, operation));
@@ -353,7 +353,7 @@ export function LibraryBatch({
   return (
     <div className="space-y-4">
       <section
-        className="aptiv-glass-soft rounded-lg border border-[var(--aptiv-glass-border)] p-3"
+        className="aptiv-glass-soft rounded-lg border border-(--aptiv-glass-border) p-3"
         aria-label="Batch operation"
       >
         <div className="flex flex-wrap items-end gap-2">
@@ -461,12 +461,12 @@ export function LibraryBatch({
 
       {targets ? (
         <section
-          className="aptiv-glass-soft rounded-lg border border-[var(--aptiv-glass-border)] p-3"
+          className="aptiv-glass-soft rounded-lg border border-(--aptiv-glass-border) p-3"
           aria-label="Batch targets"
         >
           <header className="flex flex-wrap items-center gap-2">
             <ListChecks
-              className="h-4 w-4 text-muted-foreground"
+              className="text-muted-foreground h-4 w-4"
               aria-hidden="true"
             />
             <span className="text-sm font-medium">
@@ -566,12 +566,12 @@ export function LibraryBatch({
         }
         isPending={isSubmitting}
         details={
-          <ul className="max-h-40 overflow-y-auto rounded-md border border-[var(--aptiv-glass-border)] p-2 text-xs">
+          <ul className="max-h-40 overflow-y-auto rounded-md border border-(--aptiv-glass-border) p-2 text-xs">
             {[...reconcileSelection(selected, targets ?? [], operation)].map(
               (shelfId) => (
                 <li
                   key={shelfId}
-                  className="font-mono break-anywhere"
+                  className="break-anywhere font-mono"
                 >
                   {shelfId}
                 </li>

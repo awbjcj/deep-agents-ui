@@ -101,15 +101,15 @@ export function WelcomeState({
       </span>
       <h2
         id="welcome-title"
-        className="mt-4 text-balance text-[1.5rem] font-semibold leading-tight tracking-[-0.025em] sm:mt-5 sm:text-[2rem]"
+        className="mt-4 text-[1.5rem] leading-tight font-semibold tracking-[-0.025em] text-balance sm:mt-5 sm:text-[2rem]"
       >
         {welcome.headline}
       </h2>
-      <p className="mt-2.5 max-w-[34rem] text-balance text-sm font-normal leading-relaxed text-muted-foreground sm:mt-3 sm:text-[15px]">
+      <p className="text-muted-foreground mt-2.5 max-w-136 text-sm leading-relaxed font-normal text-balance sm:mt-3 sm:text-[15px]">
         {welcome.lede}
       </p>
 
-      <div className="mt-5 grid w-full max-w-[40rem] gap-2 text-left sm:mt-7 sm:grid-cols-2 sm:gap-3">
+      <div className="mt-5 grid w-full max-w-160 gap-2 text-left sm:mt-7 sm:grid-cols-2 sm:gap-3">
         {welcome.prompts.map(({ title, prompt, icon }) => {
           const Icon = ICONS[icon];
           return (
@@ -117,21 +117,21 @@ export function WelcomeState({
               key={title}
               type="button"
               onClick={() => onSelectPrompt(prompt)}
-              className="starter-card group/starter flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card/80 px-3 py-2.5 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-3"
+              className="starter-card group/starter border-border bg-card/80 focus-visible:ring-ring flex min-w-0 items-center gap-3 rounded-xl border px-3 py-2.5 text-left shadow-sm focus-visible:ring-2 focus-visible:outline-none sm:p-3"
             >
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[var(--color-primary)]"
+                className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-(--color-primary)"
                 aria-hidden="true"
               >
                 <Icon size={16} />
               </span>
-              <span className="min-w-0 flex-1 break-words text-sm font-semibold text-foreground">
+              <span className="text-foreground min-w-0 flex-1 text-sm font-semibold wrap-break-word">
                 {title}
               </span>
               <ArrowRight
                 size={15}
                 aria-hidden="true"
-                className="shrink-0 text-muted-foreground transition-colors duration-150 group-hover/starter:text-[var(--color-primary)]"
+                className="text-muted-foreground shrink-0 transition-colors duration-150 group-hover/starter:text-(--color-primary)"
               />
             </button>
           );

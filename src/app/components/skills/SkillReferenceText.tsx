@@ -48,7 +48,7 @@ export function SkillReferenceText({
                     title: `File: ${span.reference.path}`,
                   })}
               className={cn(
-                "rounded-sm bg-primary/15 underline decoration-primary/40 underline-offset-4",
+                "bg-primary/15 decoration-primary/40 rounded-sm underline underline-offset-4",
                 decorationOnly ? "text-transparent" : "text-foreground"
               )}
             >

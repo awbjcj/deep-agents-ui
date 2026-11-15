@@ -26,21 +26,21 @@ export function SuggestionPanel({
   return (
     <section
       aria-label={label}
-      className="absolute bottom-full left-2 right-2 z-[80] mb-2 flex flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg"
+      className="border-border bg-popover text-popover-foreground absolute right-2 bottom-full left-2 z-80 mb-2 flex flex-col overflow-hidden rounded-xl border shadow-lg"
       style={{ maxHeight }}
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+      <div className="border-border text-muted-foreground flex shrink-0 items-center gap-2 border-b px-3 py-2 text-xs">
         <Search
           aria-hidden="true"
           className="size-3.5"
         />
         <span
           id={`${listId}-title`}
-          className="min-w-0 flex-1 font-medium text-foreground"
+          className="text-foreground min-w-0 flex-1 font-medium"
         >
           {title}
         </span>
-        <kbd className="rounded border border-border px-1">Esc</kbd>
+        <kbd className="border-border rounded border px-1">Esc</kbd>
       </div>
       <div
         role="status"
@@ -57,7 +57,7 @@ export function SuggestionPanel({
       >
         {children}
       </div>
-      <div className="shrink-0 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+      <div className="border-border text-muted-foreground shrink-0 border-t px-3 py-2 text-xs">
         ↑ ↓ Navigate <span className="mx-2">·</span> Enter or Tab Select
       </div>
     </section>
@@ -100,23 +100,23 @@ export function SuggestionOption({
       }}
       onClick={onChoose}
       className={cn(
-        "h-auto min-h-16 w-full justify-start gap-3 whitespace-normal rounded-lg px-3 py-2 text-left font-normal transition-none hover:bg-transparent hover:text-inherit active:bg-accent dark:hover:bg-transparent",
+        "active:bg-accent h-auto min-h-16 w-full justify-start gap-3 rounded-lg px-3 py-2 text-left font-normal whitespace-normal transition-none hover:bg-transparent hover:text-inherit dark:hover:bg-transparent",
         active &&
-          "bg-accent text-accent-foreground ring-1 ring-inset ring-border hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent"
+          "bg-accent text-accent-foreground ring-border hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent ring-1 ring-inset"
       )}
     >
       {icon}
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline gap-x-2">
-          <span className="min-w-0 max-w-full font-medium [overflow-wrap:anywhere]">
+          <span className="max-w-full min-w-0 font-medium wrap-anywhere">
             {name}
           </span>
-          <span className="text-xs text-muted-foreground">{meta}</span>
+          <span className="text-muted-foreground text-xs">{meta}</span>
         </span>
         {description && (
           <span
             title={description}
-            className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]"
+            className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed wrap-anywhere"
           >
             {description}
           </span>
@@ -132,5 +132,5 @@ export function SuggestionOption({
 
 /** Non-selectable message rendered inside a picker (empty, limit, error). */
 export function SuggestionMessage({ children }: { children: ReactNode }) {
-  return <div className="p-3 text-sm text-muted-foreground">{children}</div>;
+  return <div className="text-muted-foreground p-3 text-sm">{children}</div>;
 }

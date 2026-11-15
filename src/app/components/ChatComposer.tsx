@@ -295,10 +295,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
     const fileUnavailableReason = !attachmentsEnabled
       ? "Attachments have been disabled by an administrator."
       : isLoading
-      ? "Files can be referenced after the current response finishes."
-      : submitDisabled
-      ? "Files can be referenced once the conversation is ready."
-      : null;
+        ? "Files can be referenced after the current response finishes."
+        : submitDisabled
+          ? "Files can be referenced once the conversation is ready."
+          : null;
 
     // `@file` mentions stay highlighted only while their file is attached.
     const attachedPaths = useMemo(
@@ -308,10 +308,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             item.phase === "reference"
               ? [item.path]
               : item.phase === "ready"
-              ? [item.meta.artifact_path, item.meta.state_files_key].filter(
-                  (path): path is string => !!path
-                )
-              : []
+                ? [item.meta.artifact_path, item.meta.state_files_key].filter(
+                    (path): path is string => !!path
+                  )
+                : []
           )
         ),
       [attachments]
@@ -511,13 +511,13 @@ export const ChatComposer = React.memo<ChatComposerProps>(
             accepted = await sendMessage(
               text,
               additionalKwargs,
-              isLoading || hasQueue ? override ?? delivery : undefined
+              isLoading || hasQueue ? (override ?? delivery) : undefined
             );
           } else {
             accepted = await sendMessage(
               [{ type: "text", text: messageText || " " }, ...imageBlocks],
               additionalKwargs,
-              isLoading || hasQueue ? override ?? delivery : undefined
+              isLoading || hasQueue ? (override ?? delivery) : undefined
             );
           }
           if (accepted !== false) {
@@ -588,7 +588,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           aria-label="Message composer"
           className={cn(
             "relative flex min-w-0 flex-col rounded-2xl",
-            isDragging && "bg-primary/5 ring-2 ring-primary/40"
+            isDragging && "bg-primary/5 ring-primary/40 ring-2"
           )}
           onDragOver={(e) => {
             if (attachmentsDisabled) return;
@@ -609,7 +609,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
           {matchingPendingSkill && (
             <div
               role="status"
-              className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm"
+              className="border-border flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm"
             >
               <p className="min-w-0 flex-1">
                 Keep your message and append the skill authoring request?
@@ -709,8 +709,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                     !assistant
                       ? "Select an agent to choose an approval mode."
                       : !threadId
-                      ? "Start a conversation to choose an approval mode."
-                      : "Loading conversation…"
+                        ? "Start a conversation to choose an approval mode."
+                        : "Loading conversation…"
                   }
                 />
               )}
@@ -724,7 +724,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
               {serverQueuedCount > 0 && !messageQueue?.items.length ? (
                 <span
                   role="status"
-                  className="whitespace-nowrap text-xs text-muted-foreground"
+                  className="text-muted-foreground text-xs whitespace-nowrap"
                 >
                   {serverQueuedCount} queued
                 </span>
@@ -745,7 +745,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                       title="Stop the response and pause queued messages"
                       onClick={stopStream}
                       disabled={isStopping}
-                      className="h-9 w-9 rounded-lg text-muted-foreground transition-none"
+                      className="text-muted-foreground h-9 w-9 rounded-lg transition-none"
                     >
                       <Square
                         size={14}
@@ -770,8 +770,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                       ? "Queue message"
                       : "Steer now"
                     : isLoading
-                    ? "Stop"
-                    : "Send message"
+                      ? "Stop"
+                      : "Send message"
                 }
                 title={
                   showDelivery
@@ -783,7 +783,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                 className={cn(
                   "h-9 w-9 shrink-0 rounded-lg font-medium transition-none active:translate-y-0 active:scale-[0.97] motion-reduce:transform-none",
                   !isLoading &&
-                    "bg-[var(--color-primary)] text-white shadow-sm hover:bg-[var(--color-primary-hover)] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+                    "disabled:bg-muted disabled:text-muted-foreground bg-(--color-primary) text-white shadow-sm hover:bg-(--color-primary-hover) disabled:shadow-none"
                 )}
                 disabled={
                   isStopping || ((!isLoading || showDelivery) && sendDisabled)
@@ -795,8 +795,8 @@ export const ChatComposer = React.memo<ChatComposerProps>(
                       {submitting
                         ? "Sending…"
                         : delivery === "queue"
-                        ? "Queue"
-                        : "Steer"}
+                          ? "Queue"
+                          : "Steer"}
                     </span>
                     {delivery === "queue" ? (
                       <ListPlus

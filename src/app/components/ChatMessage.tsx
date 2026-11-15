@@ -261,7 +261,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       >
         <div
           className={cn(
-            "min-w-0 max-w-full",
+            "max-w-full min-w-0",
             isUser && !summary ? "max-w-[76%]" : "w-full"
           )}
         >
@@ -293,7 +293,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   return (
                     <span
                       key={`img-${idx}`}
-                      className="inline-flex overflow-hidden rounded-xl border border-border bg-muted shadow-sm"
+                      className="border-border bg-muted inline-flex overflow-hidden rounded-xl border shadow-sm"
                     >
                       {thumbnail}
                     </span>
@@ -305,7 +305,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     type="button"
                     onClick={() => setViewedAttachment(asFile)}
                     aria-label={`View ${label} full size`}
-                    className="hover:border-primary/50 group relative inline-flex overflow-hidden rounded-xl border border-border bg-muted shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 motion-reduce:transition-none"
+                    className="hover:border-primary/50 group border-border bg-muted focus-visible:ring-primary/50 relative inline-flex overflow-hidden rounded-xl border shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none"
                   >
                     {thumbnail}
                     <span
@@ -336,16 +336,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   return (
                     <span
                       key={ref.attachment_id}
-                      className="inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-dashed border-border/80 bg-card/55 px-3 py-2.5 text-xs text-muted-foreground"
+                      className="border-border/80 bg-card/55 text-muted-foreground inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-dashed px-3 py-2.5 text-xs"
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/70">
+                      <span className="bg-muted/70 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
                         <ImageOff
                           className="h-4 w-4"
                           aria-hidden="true"
                         />
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate font-medium text-foreground/80">
+                        <span className="text-foreground/80 block truncate font-medium">
                           {attachment.name}
                         </span>
                         <span className="mt-0.5 block text-[10px]">
@@ -359,7 +359,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 return (
                   <span
                     key={ref.attachment_id}
-                    className="inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border border-border/75 bg-card p-2.5 shadow-sm"
+                    className="border-border/75 bg-card inline-flex max-w-[280px] items-center gap-2.5 rounded-xl border p-2.5 shadow-sm"
                   >
                     <button
                       type="button"
@@ -371,7 +371,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                         })
                       }
                       aria-label={`View ${attachment.name} full size`}
-                      className="group/preview relative shrink-0 overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      className="group/preview focus-visible:ring-primary/50 relative shrink-0 overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:outline-none"
                     >
                       <img
                         src={`data:${mime};base64,${fileContent}`}
@@ -386,10 +386,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                       </span>
                     </button>
                     <span className="min-w-0">
-                      <span className="block truncate text-xs font-medium text-foreground">
+                      <span className="text-foreground block truncate text-xs font-medium">
                         {attachment.name}
                       </span>
-                      <span className="bg-primary/8 mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]">
+                      <span className="bg-primary/8 mt-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-(--color-primary)">
                         {SOURCE_IMAGE_LABELS[record.source]} source image
                       </span>
                       {sourceUrl && (
@@ -397,7 +397,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                           href={sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring mt-0.5 inline-flex items-center gap-1 text-[10px] focus-visible:ring-2 focus-visible:outline-none"
                         >
                           Open source
                           <ExternalLink
@@ -414,9 +414,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 <span
                   key={`doc-${idx}`}
                   title={doc.path}
-                  className="inline-flex max-w-[220px] items-center gap-2 rounded-lg border border-border/80 bg-card px-3 py-2 text-xs shadow-sm"
+                  className="border-border/80 bg-card inline-flex max-w-[220px] items-center gap-2 rounded-lg border px-3 py-2 text-xs shadow-sm"
                 >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-[var(--color-primary)]">
+                  <span className="bg-primary/10 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-(--color-primary)">
                     <FileText className="h-3.5 w-3.5" />
                   </span>
                   <span className="truncate font-medium">{doc.name}</span>
@@ -435,10 +435,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
-                  "mt-4 min-w-0 max-w-full break-words text-base leading-[165%]",
+                  "mt-4 max-w-full min-w-0 text-base leading-[165%] wrap-break-word",
                   isUser
-                    ? "rounded-2xl rounded-br-sm border border-border/60 px-4 py-3 text-foreground shadow-sm"
-                    : "font-normal text-foreground"
+                    ? "border-border/60 text-foreground rounded-2xl rounded-br-sm border px-4 py-3 shadow-sm"
+                    : "text-foreground font-normal"
                 )}
                 style={
                   isUser
@@ -447,7 +447,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 }
               >
                 {isUser ? (
-                  <p className="m-0 whitespace-pre-wrap break-words text-base leading-relaxed">
+                  <p className="m-0 text-base leading-relaxed wrap-break-word whitespace-pre-wrap">
                     <SkillReferenceText
                       text={messageContent}
                       references={skillReferences}
@@ -509,7 +509,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               {subAgents.map((subAgent) => (
                 <div
                   key={subAgent.id}
-                  className="flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card/80 shadow-xs"
+                  className="border-border bg-card/80 flex w-full flex-col overflow-hidden rounded-xl border shadow-xs"
                 >
                   <SubAgentIndicator
                     subAgent={subAgent}
@@ -518,8 +518,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   />
                   {isSubAgentExpanded(subAgent.id) && (
                     <div className="w-full max-w-full">
-                      <div className="border-t border-border/70 bg-muted/30 p-4">
-                        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div className="border-border/70 bg-muted/30 border-t p-4">
+                        <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
                           Input
                         </h4>
                         <div className="mb-4">
@@ -529,7 +529,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                         </div>
                         {subAgent.output && (
                           <>
-                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
                               Output
                             </h4>
                             <SubAgentOutput

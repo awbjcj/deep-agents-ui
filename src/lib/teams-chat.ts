@@ -31,7 +31,10 @@ const chatPageSchema = z.object({
 export type TeamsBinding = z.infer<typeof bindingSchema>;
 
 export class TeamsChatError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
     super(message);
     this.name = "TeamsChatError";
   }

@@ -142,8 +142,8 @@ export function RegistrationSection() {
         isLoadingSettings
           ? "Loading policy"
           : requireCode
-          ? "Invitation required"
-          : "Open registration"
+            ? "Invitation required"
+            : "Open registration"
       } · ${
         codes.filter((code) => code.status === "active").length
       } active code${
@@ -154,10 +154,10 @@ export function RegistrationSection() {
       {isLoadingSettings ? (
         <LoadingRow />
       ) : (
-        <div className="flex items-center justify-between rounded-lg border border-border/70 bg-card/60 p-3">
+        <div className="border-border/70 bg-card/60 flex items-center justify-between rounded-lg border p-3">
           <div className="pr-4">
             <p className="text-sm font-semibold">Require invitation code</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               When on, users must enter a valid one-time code to register.
             </p>
           </div>
@@ -170,14 +170,14 @@ export function RegistrationSection() {
         </div>
       )}
 
-      <section className="space-y-3 border-t border-border/60 pt-4">
+      <section className="border-border/60 space-y-3 border-t pt-4">
         <div>
           <h4 className="text-sm font-semibold">Generate code</h4>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="text-muted-foreground mt-0.5 text-[11px]">
             Create a single-use invitation for one new user
           </p>
         </div>
-        <div className="space-y-3 rounded-lg border border-border/70 bg-card/60 p-3">
+        <div className="border-border/70 bg-card/60 space-y-3 rounded-lg border p-3">
           <div className="space-y-1.5">
             <Label
               htmlFor="invite-note"
@@ -232,12 +232,12 @@ export function RegistrationSection() {
           </Button>
 
           {lastCreated && (
-            <div className="border-[var(--aptiv-orange)]/40 bg-[var(--aptiv-orange)]/10 rounded-md border p-3">
-              <p className="text-xs font-semibold text-foreground">
+            <div className="rounded-md border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 p-3">
+              <p className="text-foreground text-xs font-semibold">
                 New code — copy it now, it won&apos;t be shown again
               </p>
               <div className="mt-2 flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-background/70 px-2 py-1.5 font-mono text-sm">
+                <code className="bg-background/70 flex-1 truncate rounded px-2 py-1.5 font-mono text-sm">
                   {lastCreated.code}
                 </code>
                 <Button
@@ -255,10 +255,10 @@ export function RegistrationSection() {
         </div>
       </section>
 
-      <section className="space-y-3 border-t border-border/60 pt-4">
+      <section className="border-border/60 space-y-3 border-t pt-4">
         <div>
           <h4 className="text-sm font-semibold">Invitation codes</h4>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="text-muted-foreground mt-0.5 text-[11px]">
             Plaintext is only shown when a code is created
           </p>
         </div>
@@ -271,7 +271,7 @@ export function RegistrationSection() {
             {codes.map((code) => (
               <div
                 key={code.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-border/40 px-3 py-2"
+                className="border-border/40 flex items-center justify-between gap-3 rounded-md border px-3 py-2"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export function RegistrationSection() {
                     </code>
                     <InvitationStatusBadge status={code.status} />
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  <p className="text-muted-foreground mt-0.5 truncate text-xs">
                     {code.note ? `${code.note} · ` : ""}
                     by {code.created_by}
                     {code.expires_at
@@ -294,7 +294,7 @@ export function RegistrationSection() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 flex-shrink-0 text-destructive"
+                    className="text-destructive h-8 w-8 shrink-0"
                     onClick={() => handleRevoke(code.id)}
                     aria-label="Revoke invitation code"
                   >
@@ -323,7 +323,7 @@ function InvitationStatusBadge({
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+        "rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase",
         styles[status]
       )}
     >

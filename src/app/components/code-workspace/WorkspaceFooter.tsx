@@ -28,11 +28,11 @@ export function WorkspaceFooter({
     if (confirmRelease) keepButton.current?.focus();
   }, [confirmRelease]);
   return (
-    <footer className="shrink-0 space-y-3 border-t border-border bg-card px-4 py-3 sm:px-6">
+    <footer className="border-border bg-card shrink-0 space-y-3 border-t px-4 py-3 sm:px-6">
       {error && (
         <p
           role="alert"
-          className="text-sm text-destructive [overflow-wrap:anywhere]"
+          className="text-destructive text-sm wrap-anywhere"
         >
           {error}
         </p>
@@ -40,7 +40,7 @@ export function WorkspaceFooter({
       {notice && (
         <p
           role="status"
-          className="text-xs text-muted-foreground [overflow-wrap:anywhere]"
+          className="text-muted-foreground text-xs wrap-anywhere"
         >
           {notice}
         </p>
@@ -76,10 +76,10 @@ export function WorkspaceFooter({
         </div>
       ) : (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground min-w-0 text-xs leading-relaxed">
             {summary}
           </p>
-          <div className="flex min-w-0 flex-wrap gap-2 sm:shrink-0 sm:justify-end [&_button]:h-auto [&_button]:min-w-0 [&_button]:flex-1 [&_button]:basis-24 [&_button]:whitespace-normal [&_button]:py-2 sm:[&_button]:flex-none sm:[&_button]:basis-auto">
+          <div className="flex min-w-0 flex-wrap gap-2 sm:shrink-0 sm:justify-end [&_button]:h-auto [&_button]:min-w-0 [&_button]:flex-1 [&_button]:basis-24 [&_button]:py-2 [&_button]:whitespace-normal sm:[&_button]:flex-none sm:[&_button]:basis-auto">
             <DialogClose asChild>
               <Button
                 type="button"

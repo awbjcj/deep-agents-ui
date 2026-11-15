@@ -11,7 +11,7 @@ import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
  * hook. The returned shape plugs directly into useStream's `thread` option.
  */
 export function useRecoverableThread<
-  StateType extends Record<string, unknown>
+  StateType extends Record<string, unknown>,
 >({
   client,
   threadId,

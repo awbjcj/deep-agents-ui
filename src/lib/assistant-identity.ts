@@ -21,7 +21,7 @@ export function canonicalSystemAssistant<
     graph_id: string;
     name?: string;
     metadata?: Record<string, unknown> | null;
-  }
+  },
 >(assistant: T): T {
   if (assistant.metadata?.created_by !== "system") return assistant;
   const graphId = canonicalAssistantId(assistant.graph_id);

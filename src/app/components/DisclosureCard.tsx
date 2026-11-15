@@ -3,18 +3,14 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export type DisclosureTone =
-  | "neutral"
-  | "progress"
-  | "success"
-  | "warning"
-  | "info";
+  "neutral" | "progress" | "success" | "warning" | "info";
 
 const CHIP: Record<DisclosureTone, string> = {
   neutral: "bg-muted text-muted-foreground",
-  progress: "bg-primary/10 text-[var(--color-primary)]",
+  progress: "bg-primary/10 text-(--color-primary)",
   success: "bg-success-primary text-success",
   warning: "bg-warning-primary text-warning",
-  info: "bg-primary/10 text-[var(--color-primary)]",
+  info: "bg-primary/10 text-(--color-primary)",
 };
 
 const focusRing =
@@ -67,17 +63,17 @@ export function DisclosureCard({
         {icon}
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="break-words font-medium leading-5 text-foreground [overflow-wrap:anywhere]">
+        <span className="text-foreground leading-5 font-medium wrap-anywhere wrap-break-word">
           {title}
         </span>
         {description && (
-          <span className="mt-0.5 text-pretty break-words text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]">
+          <span className="text-muted-foreground mt-0.5 text-xs leading-5 text-pretty wrap-anywhere wrap-break-word">
             {description}
           </span>
         )}
       </span>
       {meta && (
-        <span className="shrink-0 self-center whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+        <span className="text-muted-foreground shrink-0 self-center text-xs whitespace-nowrap tabular-nums">
           {meta}
         </span>
       )}
@@ -123,16 +119,16 @@ export function DisclosureCard({
         <summary
           className={cn(
             focusRing,
-            "flex cursor-pointer list-none items-start gap-3 px-4 py-3 transition-colors duration-150 [transition-timing-function:var(--ease-out)] motion-reduce:transition-none [&::-webkit-details-marker]:hidden [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/40"
+            "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/40 flex cursor-pointer list-none items-start gap-3 px-4 py-3 transition-colors duration-150 [transition-timing-function:var(--ease-out)] motion-reduce:transition-none [&::-webkit-details-marker]:hidden"
           )}
         >
           {header}
           <ChevronRight
             aria-hidden="true"
-            className="mt-1.5 h-4 w-4 shrink-0 text-muted-foreground group-open/disclosure:rotate-90"
+            className="text-muted-foreground mt-1.5 h-4 w-4 shrink-0 group-open/disclosure:rotate-90"
           />
         </summary>
-        <div className="space-y-4 border-t border-border px-4 py-4">
+        <div className="border-border space-y-4 border-t px-4 py-4">
           {children}
         </div>
       </details>
@@ -152,11 +148,11 @@ export function RawSourceDisclosure({
   content: string;
 }) {
   return (
-    <details className="border-t border-border pt-3">
-      <summary className={`${nestedSummary} text-xs text-muted-foreground`}>
+    <details className="border-border border-t pt-3">
+      <summary className={`${nestedSummary} text-muted-foreground text-xs`}>
         {label}
       </summary>
-      <pre className="mt-3 max-h-80 overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-md bg-muted/40 p-3 text-xs [overflow-wrap:anywhere]">
+      <pre className="bg-muted/40 mt-3 max-h-80 overflow-auto overscroll-contain rounded-md p-3 text-xs wrap-anywhere wrap-break-word whitespace-pre-wrap">
         {content}
       </pre>
     </details>
@@ -175,7 +171,7 @@ export function ClampedEntry({
 }) {
   if (text.length <= limit) return <>{text}</>;
   return (
-    <details className="rounded-md bg-muted/40 px-3 py-2">
+    <details className="bg-muted/40 rounded-md px-3 py-2">
       <summary className={`${nestedSummary} text-muted-foreground`}>
         {text.slice(0, preview)}…
         <span className="sr-only"> Expand full entry</span>

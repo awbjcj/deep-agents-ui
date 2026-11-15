@@ -46,37 +46,40 @@
 ### Colors
 
 **Primary Palette:**
-| Name | Hex | Usage |
-|---|---|---|
-| Aptiv Orange | `#F84018` | Accent/highlight only — sparingly. Never as background. |
-| Black | `#000000` | Primary background, heavy type |
-| Light Slate Blue | `#B7D1CF` | Precision accent, subtle backgrounds at 25% tint |
+
+| Name             | Hex       | Usage                                                   |
+| ---------------- | --------- | ------------------------------------------------------- |
+| Aptiv Orange     | `#F84018` | Accent/highlight only — sparingly. Never as background. |
+| Black            | `#000000` | Primary background, heavy type                          |
+| Light Slate Blue | `#B7D1CF` | Precision accent, subtle backgrounds at 25% tint        |
 
 **Secondary Palette:**
-| Name | Hex |
-|---|---|
-| Dark Turquoise | `#006B63` |
-| Night | `#383942` |
+
+| Name            | Hex       |
+| --------------- | --------- |
+| Dark Turquoise  | `#006B63` |
+| Night           | `#383942` |
 | Dark Slate Blue | `#4E7C88` |
-| Light Gray | `#E5E1DA` |
-| Dark Gray | `#929D96` |
-| Kiwi | `#D9F28B` |
-| Sky | `#3BC6EB` |
-| Turquoise | `#00AC9E` |
-| Sun | `#FFA211` |
-| Burnt Red | `#CF3335` |
-| True Blue | `#6579E2` |
-| Pink | `#E21957` |
+| Light Gray      | `#E5E1DA` |
+| Dark Gray       | `#929D96` |
+| Kiwi            | `#D9F28B` |
+| Sky             | `#3BC6EB` |
+| Turquoise       | `#00AC9E` |
+| Sun             | `#FFA211` |
+| Burnt Red       | `#CF3335` |
+| True Blue       | `#6579E2` |
+| Pink            | `#E21957` |
 
 **App-specific (VSDA Deep Agent):**
-| Name | Hex | Usage |
-|---|---|---|
-| App Primary | `#2F6868` | Buttons, active states |
-| App Primary Dark | `#1c3c3c` | Header backgrounds, hover states |
-| Background (light) | `#f9f9f9` | App background |
-| Background (dark) | `#0f0f0f` | Dark mode background |
-| Surface (dark) | `#1a1a1a` | Dark mode cards/panels |
-| Border (dark) | `#2d2d2d` | Dark mode borders |
+
+| Name               | Hex       | Usage                            |
+| ------------------ | --------- | -------------------------------- |
+| App Primary        | `#2F6868` | Buttons, active states           |
+| App Primary Dark   | `#1c3c3c` | Header backgrounds, hover states |
+| Background (light) | `#f9f9f9` | App background                   |
+| Background (dark)  | `#0f0f0f` | Dark mode background             |
+| Surface (dark)     | `#1a1a1a` | Dark mode cards/panels           |
+| Border (dark)      | `#2d2d2d` | Dark mode borders                |
 
 ### Typography
 
@@ -86,15 +89,16 @@
 - _Note: Arial is a system font and needs no web import. For Google Fonts substitution, use `Barlow` (geometric, similar feel)._
 
 **Type Scale:**
-| Level | Size | Weight | Notes |
-|---|---|---|---|
-| Display (slides) | 48–72px | 700 | ALL CAPS, headline slides |
-| H1 | 30px (1.875rem) | 600 | |
-| H2 | 24px (1.5rem) | 600 | |
-| H3 | 20px (1.25rem) | 600 | |
-| Body | 16px | 400 | |
-| Small | 14px | 400 | Labels, captions |
-| XSmall | 12px | 400 | Footnotes |
+
+| Level            | Size            | Weight | Notes                     |
+| ---------------- | --------------- | ------ | ------------------------- |
+| Display (slides) | 48–72px         | 700    | ALL CAPS, headline slides |
+| H1               | 30px (1.875rem) | 600    |                           |
+| H2               | 24px (1.5rem)   | 600    |                           |
+| H3               | 20px (1.25rem)  | 600    |                           |
+| Body             | 16px            | 400    |                           |
+| Small            | 14px            | 400    | Labels, captions          |
+| XSmall           | 12px            | 400    | Footnotes                 |
 
 ### Backgrounds
 

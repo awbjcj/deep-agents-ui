@@ -3,11 +3,7 @@ import { AlertCircle, CheckCircle2, CircleDashed, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type LibraryStatusTone =
-  | "healthy"
-  | "warning"
-  | "critical"
-  | "neutral"
-  | "active";
+  "healthy" | "warning" | "critical" | "neutral" | "active";
 
 const toneClasses: Record<LibraryStatusTone, string> = {
   healthy:
@@ -20,8 +16,7 @@ const toneClasses: Record<LibraryStatusTone, string> = {
   // neither good nor bad, only temporary. It sits beside the health badge
   // rather than replacing it, so an operator does not lose sight of a shelf's
   // drift or legacy status while a job runs.
-  active:
-    "border-status-orange/40 bg-[var(--aptiv-glass-bg)] text-status-orange",
+  active: "border-status-orange/40 bg-(--aptiv-glass-bg) text-status-orange",
 };
 
 const toneIcons: Record<LibraryStatusTone, typeof AlertCircle> = {
@@ -43,7 +38,7 @@ export function LibraryStatus({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-widest uppercase",
         toneClasses[tone]
       )}
     >

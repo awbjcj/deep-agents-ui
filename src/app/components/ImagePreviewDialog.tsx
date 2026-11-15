@@ -22,7 +22,7 @@ export function ImagePreviewDialog({
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="flex h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-none flex-col gap-3 p-3 transition-none sm:max-w-none sm:p-4">
+      <DialogContent className="flex h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-none min-w-0 flex-col gap-3 p-3 transition-none sm:max-w-none sm:p-4">
         <DialogTitle className="truncate pr-10 text-base">
           {alt || "Image preview"}
         </DialogTitle>

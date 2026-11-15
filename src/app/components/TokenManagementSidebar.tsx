@@ -201,7 +201,7 @@ export function TokenManagementSidebar({
           ) : loadError ? (
             <div
               role="alert"
-              className="space-y-3 rounded-lg border border-border p-4 text-sm"
+              className="border-border space-y-3 rounded-lg border p-4 text-sm"
             >
               <p>
                 Could not load your token settings. Your saved credentials have
@@ -216,7 +216,7 @@ export function TokenManagementSidebar({
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-border bg-card p-3">
+              <div className="border-border bg-card flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border p-3">
                 <Button
                   size="sm"
                   variant="outline"
@@ -232,7 +232,7 @@ export function TokenManagementSidebar({
                   Guided setup
                 </Button>
                 {tokenMeta && missingCount > 0 && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     {missingCount}{" "}
                     {missingCount === 1 ? "service needs" : "services need"} a
                     token
@@ -324,16 +324,16 @@ export function TokenManagementSidebar({
         </div>
       </ScrollArea>
       {!isLoading && !loadError && (
-        <footer className="shrink-0 border-t border-border bg-card p-4">
+        <footer className="border-border bg-card shrink-0 border-t p-4">
           <p
             role="status"
-            className="mb-3 text-xs text-muted-foreground"
+            className="text-muted-foreground mb-3 text-xs"
           >
             {isSaving
               ? "Saving tokens…"
               : dirty
-              ? "Unsaved token changes"
-              : "Only edited tokens are saved."}
+                ? "Unsaved token changes"
+                : "Only edited tokens are saved."}
           </p>
           <div className="flex items-center gap-2">
             {dirty && (
@@ -393,7 +393,7 @@ function TokenField({
   const [show, setShow] = useState(false);
   const id = `${guide.key}Token`;
   return (
-    <section className="space-y-2 border-t border-border pt-4">
+    <section className="border-border space-y-2 border-t pt-4">
       <Label
         htmlFor={id}
         className="text-sm font-medium"
@@ -401,9 +401,9 @@ function TokenField({
         {guide.label}
       </Label>
       {(preview || hasUpdatedAt(updatedAt)) && (
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
           {preview && (
-            <code className="break-all rounded bg-muted px-1.5 py-0.5 text-foreground">
+            <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
               {preview}
             </code>
           )}

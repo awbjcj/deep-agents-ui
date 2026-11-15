@@ -201,7 +201,7 @@ export function TokenSetupWizard() {
                 className={
                   i <= step
                     ? "h-1 flex-1 rounded-full"
-                    : "h-1 flex-1 rounded-full bg-muted"
+                    : "bg-muted h-1 flex-1 rounded-full"
                 }
                 style={
                   i <= step ? { background: "var(--aptiv-orange)" } : undefined
@@ -240,7 +240,7 @@ export function TokenSetupWizard() {
               <button
                 type="button"
                 onClick={() => setShowValue((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
                 aria-label={showValue ? "Hide token" : "Show token"}
               >
                 {showValue ? (
@@ -250,7 +250,7 @@ export function TokenSetupWizard() {
                 )}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Tokens are saved when you finish.
             </p>
           </div>
@@ -262,7 +262,7 @@ export function TokenSetupWizard() {
             size="sm"
             onClick={handleClose}
             disabled={isSaving}
-            className="h-8 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:mr-auto"
+            className="text-muted-foreground hover:text-foreground h-8 px-3 text-xs font-semibold sm:mr-auto"
           >
             Set up later
           </Button>

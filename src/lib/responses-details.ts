@@ -64,19 +64,17 @@ export function responsesDetails(message: Message) {
     }
   }
   const metadata = message.response_metadata as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const details = metadata?.incomplete_details as
-    | { reason?: string }
-    | undefined;
+    { reason?: string } | undefined;
   const notice =
     metadata?.status === "incomplete"
       ? details?.reason === "max_output_tokens"
         ? "The response reached its output limit. Increase the output limit or ask the agent to continue."
         : "The model returned an incomplete response."
       : metadata?.status === "failed"
-      ? "The model could not complete this response. You can retry it."
-      : "";
+        ? "The model could not complete this response. You can retry it."
+        : "";
   return {
     sources: sources.slice(0, 100),
     refusals,

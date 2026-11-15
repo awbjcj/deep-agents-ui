@@ -99,23 +99,23 @@ export const ChannelDetail = forwardRef<HTMLHeadingElement, ChannelDetailProps>(
     return (
       <section
         aria-labelledby={titleId}
-        className="overflow-hidden rounded-xl border border-border bg-card motion-safe:duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1"
+        className="border-border bg-card motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 overflow-hidden rounded-xl border motion-safe:duration-300"
       >
-        <div className="flex items-start gap-3 border-b border-border p-4">
+        <div className="border-border flex items-start gap-3 border-b p-4">
           <AppTile icon={meta.icon} />
           <div className="min-w-0 flex-1">
             <h3
               ref={headingRef}
               id={titleId}
               tabIndex={-1}
-              className="text-base font-semibold leading-tight focus:outline-none"
+              className="text-base leading-tight font-semibold focus:outline-none"
             >
               {meta.place}
             </h3>
           </div>
         </div>
         <div className="space-y-4 p-4">
-          <p className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground flex gap-2 text-sm leading-relaxed">
             <ListChecks
               aria-hidden="true"
               className="mt-0.5 size-4 shrink-0"
@@ -135,15 +135,15 @@ function Unavailable({ channel }: { channel: ChatChannel }) {
   // Only administrators receive the blocking setting names.
   const operator = channel.missing_settings.length > 0;
   return (
-    <div className="space-y-3 rounded-lg border border-dashed border-border p-4 text-sm">
+    <div className="border-border space-y-3 rounded-lg border border-dashed p-4 text-sm">
       <p className="flex items-center gap-2 font-semibold">
         <CircleSlash
           aria-hidden="true"
-          className="size-4 text-muted-foreground"
+          className="text-muted-foreground size-4"
         />
         {meta.label} is not set up on this server
       </p>
-      <p className="leading-relaxed text-muted-foreground">
+      <p className="text-muted-foreground leading-relaxed">
         {operator
           ? `Set these server settings and restart the backend. Users can then link ${meta.short} here.`
           : "Ask an administrator to enable it. Once it is available, you can link it here in under a minute."}
@@ -155,7 +155,7 @@ function Unavailable({ channel }: { channel: ChatChannel }) {
             {channel.missing_settings.map((name) => (
               <li
                 key={name}
-                className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs"
+                className="border-border bg-muted rounded border px-1.5 py-0.5 font-mono text-xs"
               >
                 {name}
               </li>
@@ -188,13 +188,13 @@ function SelfChatOption({
   return (
     <details
       open={mustReconnect || undefined}
-      className="group border-t border-border text-sm"
+      className="group border-border border-t text-sm"
     >
-      <summary className="cursor-pointer px-4 py-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+      <summary className="focus-visible:outline-ring cursor-pointer px-4 py-3 font-medium focus-visible:outline focus-visible:outline-2">
         Prefer your Teams self-chat?
       </summary>
       <div className="space-y-4 px-4 pb-4">
-        <p className="leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground leading-relaxed">
           Use your private chat with yourself instead of a bot. It needs your
           Microsoft Graph token, uses <code className="font-mono">/agent</code>{" "}
           text commands, and opens reviews in the web conversation.

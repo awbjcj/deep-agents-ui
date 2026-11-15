@@ -208,7 +208,7 @@ export function LibraryShelves({
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+      <div className="border-border/70 bg-muted/20 rounded-lg border p-3">
         <div className="flex min-w-0 flex-col gap-1.5">
           <label
             htmlFor="shelf-filter"
@@ -218,7 +218,7 @@ export function LibraryShelves({
           </label>
           <div className="relative min-w-0">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2"
               aria-hidden="true"
             />
             <Input
@@ -227,7 +227,7 @@ export function LibraryShelves({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => event.key === "Escape" && setQuery("")}
-              className="h-9 pl-9 pr-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
+              className="h-9 pr-9 pl-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
               placeholder="Search shelves, indices, or sources…"
               spellCheck={false}
               disabled={shelves.length === 0}
@@ -237,7 +237,7 @@ export function LibraryShelves({
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear shelf filter"
-                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95"
+                className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-primary/30 absolute top-1/2 right-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:outline-none active:scale-95"
               >
                 <X
                   className="h-3.5 w-3.5"
@@ -252,9 +252,9 @@ export function LibraryShelves({
       {error && (
         <div
           role="alert"
-          className="rounded-md border border-destructive/25 bg-destructive/5 p-3"
+          className="border-destructive/25 bg-destructive/5 rounded-md border p-3"
         >
-          <p className="text-xs font-medium text-destructive">{error}</p>
+          <p className="text-destructive text-xs font-medium">{error}</p>
         </div>
       )}
 
@@ -262,10 +262,10 @@ export function LibraryShelves({
         <p
           role="status"
           aria-live="polite"
-          className="px-0.5 text-[11px] tabular-nums text-muted-foreground"
+          className="text-muted-foreground px-0.5 text-[11px] tabular-nums"
         >
           Showing{" "}
-          <strong className="font-semibold text-foreground">
+          <strong className="text-foreground font-semibold">
             {visibleShelves.length.toLocaleString()}
           </strong>{" "}
           of {shelves.length.toLocaleString()}
@@ -286,18 +286,18 @@ export function LibraryShelves({
           ))}
         </div>
       ) : shelves.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-muted/25 px-4 py-8 text-center">
-          <BookOpen className="mx-auto h-5 w-5 text-muted-foreground" />
+        <div className="border-border bg-muted/25 rounded-lg border border-dashed px-4 py-8 text-center">
+          <BookOpen className="text-muted-foreground mx-auto h-5 w-5" />
           <p className="mt-2 text-sm font-semibold">No shelf manifests found</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-xs">
             Add manifests to the configured library manifest directory.
           </p>
         </div>
       ) : visibleShelves.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-muted/25 px-4 py-8 text-center">
-          <Search className="mx-auto h-5 w-5 text-muted-foreground" />
+        <div className="border-border bg-muted/25 rounded-lg border border-dashed px-4 py-8 text-center">
+          <Search className="text-muted-foreground mx-auto h-5 w-5" />
           <p className="mt-2 text-sm font-semibold">No matching shelves</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-xs">
             Try a shelf ID, index name, source type, or description.
           </p>
         </div>
@@ -333,10 +333,10 @@ export function LibraryShelves({
             return (
               <article
                 key={shelf.shelf_id}
-                className="aptiv-glass-soft rounded-lg border border-border/70 p-3"
+                className="aptiv-glass-soft border-border/70 rounded-lg border p-3"
               >
                 <header className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--aptiv-orange)]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-(--aptiv-glass-border) bg-(--aptiv-glass-bg) text-(--aptiv-orange)">
                     <BookOpen
                       className="h-4 w-4"
                       aria-hidden="true"
@@ -347,7 +347,7 @@ export function LibraryShelves({
                         characters, and sharing a row with the badges pushed
                         them out of sight below the fold of the card header. */}
                     <h5
-                      className="text-sm font-semibold leading-snug tracking-tight break-anywhere"
+                      className="break-anywhere text-sm leading-snug font-semibold tracking-tight"
                       title={shelf.shelf_id}
                     >
                       {shelf.shelf_id}
@@ -365,19 +365,19 @@ export function LibraryShelves({
                       )}
                     </div>
                     {shelf.index_name !== shelf.shelf_id && (
-                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground break-anywhere">
+                      <p className="text-muted-foreground break-anywhere mt-0.5 font-mono text-[10px]">
                         {shelf.index_name}
                       </p>
                     )}
                     {shelf.description && (
-                      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
                         {shelf.description}
                       </p>
                     )}
                   </div>
                 </header>
 
-                <dl className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border/70 bg-border/70 sm:grid-cols-4">
+                <dl className="border-border/70 bg-border/70 mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-md border sm:grid-cols-4">
                   {[
                     ["Live", audit?.live_chunks ?? 0],
                     ["Sources", audit?.distinct_source_ids ?? 0],
@@ -388,7 +388,7 @@ export function LibraryShelves({
                       key={label}
                       className="bg-card/80 px-2.5 py-2"
                     >
-                      <dt className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <dt className="text-muted-foreground text-[9px] font-semibold tracking-[0.12em] uppercase">
                         {label}
                       </dt>
                       <dd className="mt-0.5 font-mono text-xs font-semibold tabular-nums">
@@ -399,7 +399,7 @@ export function LibraryShelves({
                 </dl>
 
                 {findings.length > 0 && (
-                  <div className="border-warning/35 mt-2.5 rounded-md border bg-warning-primary px-2.5 py-2 text-[11px] text-warning dark:text-amber-200">
+                  <div className="border-warning/35 bg-warning-primary text-warning mt-2.5 rounded-md border px-2.5 py-2 text-[11px] dark:text-amber-200">
                     <span className="font-semibold">Drift:</span>{" "}
                     {findings.join(" · ")}
                   </div>
@@ -409,10 +409,10 @@ export function LibraryShelves({
                   <div
                     role="status"
                     aria-live="polite"
-                    className="border-status-orange/35 mt-2.5 flex items-center gap-2 rounded-md border bg-[var(--aptiv-glass-bg)] px-2.5 py-2 duration-200 animate-in fade-in slide-in-from-top-1"
+                    className="border-status-orange/35 animate-in fade-in slide-in-from-top-1 mt-2.5 flex items-center gap-2 rounded-md border bg-(--aptiv-glass-bg) px-2.5 py-2 duration-200"
                   >
                     <Loader2
-                      className="h-3 w-3 flex-shrink-0 animate-spin text-status-orange"
+                      className="text-status-orange h-3 w-3 shrink-0 animate-spin"
                       aria-hidden="true"
                     />
                     <span className="text-[11px] font-medium tabular-nums">
@@ -421,7 +421,7 @@ export function LibraryShelves({
                   </div>
                 )}
 
-                <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2.5">
+                <div className="border-border/60 mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
                   {shelf.supports_files && (
                     <LibraryShelfFilesDialog
                       shelfId={shelf.shelf_id}
@@ -473,7 +473,7 @@ export function LibraryShelves({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
                     onClick={() =>
                       setConfirmOperation({ kind: "rebuild", shelf })
                     }
@@ -484,7 +484,7 @@ export function LibraryShelves({
                   </Button>
                 </div>
                 {shelf.retention_enabled && (
-                  <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <p className="text-muted-foreground mt-2 flex items-center gap-1 text-[10px]">
                     <Clock3
                       className="h-3 w-3"
                       aria-hidden="true"
@@ -506,8 +506,8 @@ export function LibraryShelves({
           confirmOperation?.kind === "rebuild"
             ? "Rebuild this shelf?"
             : confirmOperation?.kind === "prune"
-            ? "Apply retention policy?"
-            : "Run a full sync?"
+              ? "Apply retention policy?"
+              : "Run a full sync?"
         }
         description={
           confirmOperation
@@ -521,8 +521,8 @@ export function LibraryShelves({
           confirmOperation?.kind === "rebuild"
             ? "Rebuild shelf"
             : confirmOperation?.kind === "prune"
-            ? "Tombstone expired"
-            : "Run full sync"
+              ? "Tombstone expired"
+              : "Run full sync"
         }
         isPending={
           confirmOperation !== null &&

@@ -71,7 +71,7 @@ export function AccountMenu({
     <>
       <div
         ref={menuRef}
-        className="relative z-[70]"
+        className="relative z-70"
       >
         <Button
           ref={triggerRef}
@@ -94,19 +94,19 @@ export function AccountMenu({
           aria-controls={open ? `${id}-menu` : undefined}
           aria-label={`Account menu for ${user.username}`}
           className={cn(
-            "min-h-touch gap-2 pl-2 pr-3 transition-colors",
-            open && "bg-accent text-accent-foreground ring-1 ring-border"
+            "min-h-touch gap-2 pr-3 pl-2 transition-colors",
+            open && "bg-accent text-accent-foreground ring-border ring-1"
           )}
         >
           <span
             aria-hidden="true"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+            className="bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold"
           >
             {initial}
           </span>
           <ChevronDown
             className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform",
+              "text-muted-foreground h-4 w-4 transition-transform",
               open && "rotate-180"
             )}
             aria-hidden="true"
@@ -147,9 +147,9 @@ export function AccountMenu({
               event.preventDefault();
               items[next]?.focus();
             }}
-            className="absolute right-0 top-full z-[80] mt-2 w-56 overflow-hidden rounded-md border border-border bg-card p-1 text-card-foreground shadow-lg"
+            className="border-border bg-card text-card-foreground absolute top-full right-0 z-80 mt-2 w-56 overflow-hidden rounded-md border p-1 shadow-lg"
           >
-            <div className="border-b border-border px-3 py-2">
+            <div className="border-border border-b px-3 py-2">
               <p className="truncate text-sm font-medium">{user.username}</p>
               <RoleBadge
                 role={user.role}
@@ -164,7 +164,7 @@ export function AccountMenu({
                   close();
                   onOpenSettings();
                 }}
-                className="flex min-h-touch w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                className="min-h-touch hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none"
               >
                 <UserCog
                   className="size-4"
@@ -180,7 +180,7 @@ export function AccountMenu({
                 toggleTheme();
                 close();
               }}
-              className="flex min-h-touch w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+              className="min-h-touch hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none"
             >
               {theme === "dark" ? (
                 <Sun
@@ -200,7 +200,7 @@ export function AccountMenu({
               role="menuitem"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={signOut}
-              className="flex min-h-touch w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm text-destructive outline-none hover:bg-destructive/10 focus-visible:bg-destructive/10"
+              className="min-h-touch text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none"
             >
               <LogOut className="h-4 w-4" />
               Sign out

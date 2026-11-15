@@ -73,13 +73,13 @@ export function RubricCriteriaList({
               <X className="h-3 w-3" />
             )}
           </span>
-          <div className="min-w-0 flex-1 whitespace-pre-wrap break-words leading-5 [overflow-wrap:anywhere]">
+          <div className="min-w-0 flex-1 leading-5 wrap-anywhere wrap-break-word whitespace-pre-wrap">
             <span className="sr-only">
               {criterion.passed ? "Met: " : "Needs work: "}
             </span>
             <ClampedEntry text={criterion.name} />
             {criterion.gap && (
-              <div className="mt-0.5 text-xs leading-5 text-muted-foreground">
+              <div className="text-muted-foreground mt-0.5 text-xs leading-5">
                 <ClampedEntry text={criterion.gap} />
               </div>
             )}
@@ -95,7 +95,7 @@ function CheckEntry({ check }: { check: RubricCheck }) {
   return (
     <li className="min-w-0 space-y-2">
       <p className="flex items-baseline justify-between gap-3 text-xs">
-        <span className="font-medium tabular-nums text-foreground">
+        <span className="text-foreground font-medium tabular-nums">
           Check {check.iteration + 1}
         </span>
         <span className="text-muted-foreground">
@@ -106,13 +106,13 @@ function CheckEntry({ check }: { check: RubricCheck }) {
         </span>
       </p>
       {check.unverified && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           The checker couldn’t account for every requirement, so passing items
           below are unconfirmed.
         </p>
       )}
       {check.explanation && (
-        <div className="whitespace-pre-wrap break-words text-muted-foreground [overflow-wrap:anywhere]">
+        <div className="text-muted-foreground wrap-anywhere wrap-break-word whitespace-pre-wrap">
           <ClampedEntry text={check.explanation} />
         </div>
       )}
@@ -155,7 +155,7 @@ export function TaskOutcomeStatus({
       {finished > 0 && (
         <ol
           aria-label="Completion checks"
-          className="mb-0 list-none space-y-4 pl-0 [&>li+li]:border-t [&>li+li]:border-border [&>li+li]:pt-4"
+          className="[&>li+li]:border-border mb-0 list-none space-y-4 pl-0 [&>li+li]:border-t [&>li+li]:pt-4"
         >
           {checks.map((check) => (
             <CheckEntry
@@ -199,7 +199,7 @@ export function RubricRevisionCard({
       meta={open > 0 ? `${open} open` : undefined}
     >
       {revision.feedback && (
-        <div className="whitespace-pre-wrap break-words text-muted-foreground [overflow-wrap:anywhere]">
+        <div className="text-muted-foreground wrap-anywhere wrap-break-word whitespace-pre-wrap">
           <ClampedEntry text={revision.feedback} />
         </div>
       )}
@@ -208,7 +208,7 @@ export function RubricRevisionCard({
           aria-label="Needs work"
           className="min-w-0"
         >
-          <h3 className="mb-2 font-sans text-sm font-medium leading-5 tracking-normal">
+          <h3 className="mb-2 font-sans text-sm leading-5 font-medium tracking-normal">
             Needs work
           </h3>
           <RubricCriteriaList
@@ -222,7 +222,7 @@ export function RubricRevisionCard({
           aria-label="Already met"
           className="min-w-0"
         >
-          <h3 className="mb-2 font-sans text-sm font-medium leading-5 tracking-normal">
+          <h3 className="mb-2 font-sans text-sm leading-5 font-medium tracking-normal">
             Already met
           </h3>
           <RubricCriteriaList

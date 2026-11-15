@@ -50,16 +50,16 @@ export function ScheduledTasks({
     else newTask.current?.focus();
   }
   const currentTask = panel?.task
-    ? data?.items.find((item) => item.id === panel.task?.id) ?? panel.task
+    ? (data?.items.find((item) => item.id === panel.task?.id) ?? panel.task)
     : null;
 
   return (
-    <main className="min-h-dvh bg-background text-foreground [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none">
-      <header className="border-b border-border">
-        <div className="mx-auto max-w-5xl px-4 pb-5 pt-2 sm:px-8 sm:pb-6">
+    <main className="bg-background text-foreground min-h-dvh [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none">
+      <header className="border-border border-b">
+        <div className="mx-auto max-w-5xl px-4 pt-2 pb-5 sm:px-8 sm:pb-6">
           <Link
             href="/"
-            className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            className="text-muted-foreground focus-visible:outline-ring inline-flex min-h-11 items-center gap-2 text-sm focus-visible:outline focus-visible:outline-2"
           >
             <ArrowLeft
               className="h-4 w-4"
@@ -105,17 +105,17 @@ export function ScheduledTasks({
         {data?.scheduler_enabled === false && (
           <p
             role="status"
-            className="rounded-md border border-border bg-muted p-4 text-sm"
+            className="border-border bg-muted rounded-md border p-4 text-sm"
           >
             The scheduler is disabled by an administrator. Tasks are saved, but
             executions will wait until it is enabled.
           </p>
         )}
         {(loadError || error) && (
-          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+          <div className="border-destructive/30 bg-destructive/5 rounded-md border p-4">
             <p
               role="alert"
-              className="text-sm text-[var(--text-error)]"
+              className="text-sm text-(--text-error)"
             >
               {error || loadError.message}
             </p>
@@ -132,7 +132,7 @@ export function ScheduledTasks({
         )}
         <p
           role="status"
-          className={notice ? "text-sm text-muted-foreground" : "sr-only"}
+          className={notice ? "text-muted-foreground text-sm" : "sr-only"}
         >
           {notice}
         </p>
@@ -146,13 +146,13 @@ export function ScheduledTasks({
             {[0, 1, 2].map((key) => (
               <div
                 key={key}
-                className="h-24 rounded-md bg-muted/50"
+                className="bg-muted/50 h-24 rounded-md"
               />
             ))}
           </div>
         )}
         {data?.items.length === 0 && (
-          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-12 text-center text-muted-foreground">
+          <div className="border-border text-muted-foreground flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
             <CalendarClock
               className="h-7 w-7"
               aria-hidden="true"
@@ -163,7 +163,7 @@ export function ScheduledTasks({
           </div>
         )}
         {!!data?.items.length && (
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div className="border-border overflow-hidden rounded-lg border">
             {data.items.map((item) => (
               <TaskRow
                 key={item.id}
@@ -192,7 +192,7 @@ export function ScheduledTasks({
             >
               Previous tasks
             </Button>
-            <span className="text-sm tabular-nums text-muted-foreground">
+            <span className="text-muted-foreground text-sm tabular-nums">
               Page {Math.floor(offset / 20) + 1}
             </span>
             <Button

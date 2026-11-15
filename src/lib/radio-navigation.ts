@@ -28,8 +28,8 @@ export function navigateRadioGroup(event: KeyboardEvent<HTMLElement>) {
     event.key === "Home"
       ? 0
       : event.key === "End"
-      ? choices.length - 1
-      : (current + step + choices.length) % choices.length;
+        ? choices.length - 1
+        : (current + step + choices.length) % choices.length;
   event.preventDefault();
   choices[next].focus();
   choices[next].click();

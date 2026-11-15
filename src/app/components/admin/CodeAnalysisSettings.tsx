@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   Cpu,
   Gauge,
-  Github,
+  GitFork,
   HardDrive,
   Layers3,
   Loader2,
@@ -228,7 +228,7 @@ function engineName(engine: AnalysisEngine): string {
 function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
   if (!catalog) {
     return (
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="text-muted-foreground text-xs leading-relaxed">
         Live engine readiness is unavailable. Saved policy can still be edited.
       </p>
     );
@@ -263,15 +263,15 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
                 aria-hidden="true"
               />
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground">
+                <p className="text-foreground text-xs font-semibold">
                   {engineName(engine.id)}
                 </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
                   {engine.ready
                     ? "Ready for new analyses"
                     : engine.blockers.length
-                    ? engine.blockers.map(analysisBlockerMessage).join(" ")
-                    : "Unavailable"}
+                      ? engine.blockers.map(analysisBlockerMessage).join(" ")
+                      : "Unavailable"}
                 </p>
               </div>
             </div>
@@ -279,9 +279,9 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
         })}
       </div>
       {matlab ? (
-        <div className="rounded-md border border-border/70 bg-background/40 px-3 py-2.5">
+        <div className="border-border/70 bg-background/40 rounded-md border px-3 py-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-foreground">
+            <p className="text-foreground text-xs font-semibold">
               MATLAB capability
             </p>
             <span
@@ -295,19 +295,19 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
               {matlab.ready
                 ? "Verified"
                 : matlab.configured
-                ? "Partial"
-                : "Unavailable"}
+                  ? "Partial"
+                  : "Unavailable"}
             </span>
           </div>
-          <dl className="mt-2 grid gap-1 text-[11px] text-muted-foreground sm:grid-cols-2">
+          <dl className="text-muted-foreground mt-2 grid gap-1 text-[11px] sm:grid-cols-2">
             <div>
-              <dt className="inline font-medium text-foreground">Runtime: </dt>
+              <dt className="text-foreground inline font-medium">Runtime: </dt>
               <dd className="inline">
                 {matlab.runtime_ready ? "ready" : "blocked"}
               </dd>
             </div>
             <div>
-              <dt className="inline font-medium text-foreground">
+              <dt className="text-foreground inline font-medium">
                 Schemas and skills:{" "}
               </dt>
               <dd className="inline">
@@ -317,13 +317,13 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
               </dd>
             </div>
             <div>
-              <dt className="inline font-medium text-foreground">Broker: </dt>
+              <dt className="text-foreground inline font-medium">Broker: </dt>
               <dd className="inline">
                 {matlab.broker_ready ? "ready" : "unavailable"}
               </dd>
             </div>
             <div>
-              <dt className="inline font-medium text-foreground">
+              <dt className="text-foreground inline font-medium">
                 Last verified:{" "}
               </dt>
               <dd className="inline">
@@ -334,7 +334,7 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
             </div>
           </dl>
           {matlab.blockers.length ? (
-            <p className="mt-2 text-[11px] leading-relaxed text-warning dark:text-amber-300">
+            <p className="text-warning mt-2 text-[11px] leading-relaxed dark:text-amber-300">
               {matlab.blockers.join(" · ")}
             </p>
           ) : null}
@@ -366,7 +366,7 @@ function LimitInput({
         >
           {field.label}
         </Label>
-        <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-muted-foreground text-[10px] tracking-[0.12em] uppercase">
           {field.unit}
         </span>
       </div>
@@ -383,7 +383,7 @@ function LimitInput({
       />
       <p
         id={descriptionId}
-        className="text-[11px] leading-relaxed text-muted-foreground"
+        className="text-muted-foreground text-[11px] leading-relaxed"
       >
         {error ?? field.description}
       </p>
@@ -563,14 +563,14 @@ export function CodeAnalysisSettings({
             section === "limits"
               ? group
               : section === "native_limits"
-              ? group === "max_tokens"
-                ? "native-tokens"
-                : "native-tools"
-              : section === "matlab" && group === "limits"
-              ? `matlab-${name}`
-              : section === "matlab" && group === "dependency_server_ids"
-              ? "matlab-dependency-servers"
-              : issue.path.join("-");
+                ? group === "max_tokens"
+                  ? "native-tokens"
+                  : "native-tools"
+                : section === "matlab" && group === "limits"
+                  ? `matlab-${name}`
+                  : section === "matlab" && group === "dependency_server_ids"
+                    ? "matlab-dependency-servers"
+                    : issue.path.join("-");
           errors[key] ??= issue.message;
         }
         setFieldErrors(errors);
@@ -633,7 +633,7 @@ export function CodeAnalysisSettings({
 
       {loading ? (
         <div
-          className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-10 text-sm text-muted-foreground"
+          className="border-border bg-card text-muted-foreground flex items-center justify-center gap-2 rounded-lg border py-10 text-sm"
           role="status"
         >
           <Loader2
@@ -644,17 +644,17 @@ export function CodeAnalysisSettings({
         </div>
       ) : loadError || !limits || !engines ? (
         <div
-          className="rounded-lg border border-destructive/35 bg-destructive/5 p-4"
+          className="border-destructive/35 bg-destructive/5 rounded-lg border p-4"
           role="alert"
         >
           <div className="flex items-start gap-3">
             <AlertCircle
-              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+              className="text-destructive mt-0.5 h-4 w-4 shrink-0"
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">Settings unavailable</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                 {loadError ?? "The settings response was incomplete."}
               </p>
             </div>
@@ -673,15 +673,15 @@ export function CodeAnalysisSettings({
           className="space-y-4"
           disabled={saving}
         >
-          <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-            <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
+          <section className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
+            <header className="border-border/70 bg-muted/25 flex items-start gap-3 border-b px-4 py-3.5">
               <Bot
-                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                className="text-primary mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden="true"
               />
               <div>
                 <h4 className="text-sm font-semibold">Analysis engine</h4>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                   Set the default path for new analyses and confirm live
                   readiness.
                 </p>
@@ -721,7 +721,7 @@ export function CodeAnalysisSettings({
                     })}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
                   Users can choose another ready engine for an individual
                   session.
                 </p>
@@ -730,15 +730,15 @@ export function CodeAnalysisSettings({
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-            <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
+          <section className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
+            <header className="border-border/70 bg-muted/25 flex items-start gap-3 border-b px-4 py-3.5">
               <Cpu
-                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                className="text-primary mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden="true"
               />
               <div>
                 <h4 className="text-sm font-semibold">Native model policy</h4>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                   Bound native Deep Agent work and optionally enforce an
                   approved model.
                 </p>
@@ -822,11 +822,11 @@ export function CodeAnalysisSettings({
 
           <section
             aria-labelledby="copilot-policy-title"
-            className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+            className="border-border bg-card overflow-hidden rounded-lg border shadow-sm"
           >
-            <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
-              <Github
-                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+            <header className="border-border/70 bg-muted/25 flex items-start gap-3 border-b px-4 py-3.5">
+              <GitFork
+                className="text-primary mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">
@@ -836,12 +836,12 @@ export function CodeAnalysisSettings({
                 >
                   Copilot analysis policy
                 </h4>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                   Govern account eligibility, approved models, and per-analysis
                   safety limits.
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-background/70 px-2.5 py-1.5">
+              <div className="border-border bg-background/70 flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5">
                 <Label
                   htmlFor="analysis-copilot-enabled"
                   className="text-[11px] font-semibold"
@@ -856,7 +856,7 @@ export function CodeAnalysisSettings({
               </div>
             </header>
             <div className="space-y-4 p-4">
-              <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+              <div className="border-border/70 bg-muted/20 text-muted-foreground rounded-md border px-3 py-2.5 text-xs leading-relaxed">
                 {COPILOT_USAGE_EXPLANATION}
               </div>
               <div className="space-y-1.5">
@@ -876,7 +876,7 @@ export function CodeAnalysisSettings({
                 />
                 <p
                   id="analysis-copilot-hosts-help"
-                  className="text-xs text-muted-foreground"
+                  className="text-muted-foreground text-xs"
                 >
                   Comma-separated exact hostnames, such as github.com,
                   company.ghe.com. Each host also needs worker verification.
@@ -898,7 +898,7 @@ export function CodeAnalysisSettings({
                       }))
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     Enter exact model IDs, separated by commas.
                   </p>
                 </div>
@@ -968,10 +968,10 @@ export function CodeAnalysisSettings({
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-            <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
+          <section className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
+            <header className="border-border/70 bg-muted/25 flex items-start gap-3 border-b px-4 py-3.5">
               <Layers3
-                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                className="text-primary mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">
@@ -980,7 +980,7 @@ export function CodeAnalysisSettings({
                     <h4 className="text-sm font-semibold">
                       MATLAB and Simulink
                     </h4>
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                       Enable isolated native model inspection and bound
                       dependency materialization.
                     </p>
@@ -1033,17 +1033,17 @@ export function CodeAnalysisSettings({
                   />
                   <p
                     id="analysis-matlab-dependency-servers-help"
-                    className="text-[11px] leading-relaxed text-muted-foreground"
+                    className="text-muted-foreground text-[11px] leading-relaxed"
                   >
                     {fieldErrors["matlab-dependency-servers"] ??
                       "Comma-separated IDs of enabled Gerrit or Plastic SCM servers allowed for runtime dependencies."}
                   </p>
                 </div>
-                <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2.5 sm:col-span-2">
-                  <p className="text-xs font-semibold text-foreground">
+                <div className="border-border/70 bg-muted/20 rounded-md border px-3 py-2.5 sm:col-span-2">
+                  <p className="text-foreground text-xs font-semibold">
                     Concurrent MATLAB processes
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-[11px] leading-relaxed">
                     Fixed at one isolated process per worker to preserve session
                     boundaries.
                   </p>
@@ -1071,16 +1071,16 @@ export function CodeAnalysisSettings({
             return (
               <section
                 key={group.title}
-                className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+                className="border-border bg-card overflow-hidden rounded-lg border shadow-sm"
               >
-                <header className="flex items-start gap-3 border-b border-border/70 bg-muted/25 px-4 py-3.5">
+                <header className="border-border/70 bg-muted/25 flex items-start gap-3 border-b px-4 py-3.5">
                   <Icon
-                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                    className="text-primary mt-0.5 h-4 w-4 shrink-0"
                     aria-hidden="true"
                   />
                   <div>
                     <h4 className="text-sm font-semibold">{group.title}</h4>
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
                       {group.description}
                     </p>
                   </div>
@@ -1105,9 +1105,9 @@ export function CodeAnalysisSettings({
             );
           })}
 
-          <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/85">
+          <div className="border-border bg-background/95 supports-backdrop-filter:bg-background/85 sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 shadow-lg backdrop-blur">
             <p
-              className="text-xs text-muted-foreground"
+              className="text-muted-foreground text-xs"
               aria-live="polite"
             >
               {dirty ? "Unsaved changes" : "All settings are up to date"}

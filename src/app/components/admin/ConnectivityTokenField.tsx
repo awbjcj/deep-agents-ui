@@ -26,12 +26,12 @@ export function ConnectivityTokenField({
   const status = resetting
     ? "Override will be cleared on save"
     : draft
-    ? "New token · not saved"
-    : info?.overridden
-    ? "Token override configured"
-    : info?.configured
-    ? "Using environment token"
-    : "No token configured";
+      ? "New token · not saved"
+      : info?.overridden
+        ? "Token override configured"
+        : info?.configured
+          ? "Using environment token"
+          : "No token configured";
 
   return (
     <div
@@ -40,10 +40,10 @@ export function ConnectivityTokenField({
     >
       <Label
         htmlFor={id}
-        className="block text-xs font-medium leading-5 text-foreground"
+        className="text-foreground block text-xs leading-5 font-medium"
       >
         Token{" "}
-        <span className="font-normal text-muted-foreground">(optional)</span>
+        <span className="text-muted-foreground font-normal">(optional)</span>
       </Label>
       <div className="flex items-center gap-2">
         <Input
@@ -65,14 +65,14 @@ export function ConnectivityTokenField({
           disabled={disabled || (!info?.overridden && draft === undefined)}
           onClick={() => onChange(resetting ? undefined : "")}
           aria-label={`${resetting ? "Undo reset" : "Reset"} ${label}`}
-          className="h-10 text-xxs"
+          className="text-xxs h-10"
         >
           {resetting ? "Undo" : "Reset"}
         </Button>
       </div>
       <p
         id={`${id}-status`}
-        className="text-xxs leading-relaxed text-muted-foreground"
+        className="text-xxs text-muted-foreground leading-relaxed"
         role="status"
       >
         {status}

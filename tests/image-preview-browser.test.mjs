@@ -72,9 +72,10 @@ test(
     // Build the actual styles, including newly added classes, without requiring
     // a production build. Font assets are served from the project below.
     const styles = await postcss([tailwindcss(config)]).process(
-      (
-        await readFile(join(ROOT, "src/app/globals.css"), "utf8")
-      ).replace(/@import "katex\/dist\/katex.min.css";/, ""),
+      (await readFile(join(ROOT, "src/app/globals.css"), "utf8")).replace(
+        /@import "katex\/dist\/katex.min.css";/,
+        ""
+      ),
       { from: join(ROOT, "src/app/globals.css") }
     );
     const server = createServer(async (request, response) => {

@@ -162,7 +162,7 @@ export function AuthStatus({ message, tone = "error" }: AuthStatusProps) {
         className="auth-icon"
         aria-hidden="true"
       />
-      <span className="min-w-0 [overflow-wrap:anywhere]">{message}</span>
+      <span className="min-w-0 wrap-anywhere">{message}</span>
     </div>
   );
 }

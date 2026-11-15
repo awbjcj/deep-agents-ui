@@ -342,12 +342,12 @@ export function IndexInventory({
       {/* The cluster pattern changes the server-side inventory; the filter and
           sort only shape the current result set. Separate rows make that scope
           difference legible without presenting two competing search boxes. */}
-      <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+      <div className="border-border/70 bg-muted/20 space-y-3 rounded-lg border p-3">
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between gap-3">
             <label
               htmlFor="index-pattern"
-              className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+              className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase"
             >
               Cluster pattern
             </label>
@@ -357,7 +357,7 @@ export function IndexInventory({
             className="flex min-w-0 gap-2"
           >
             <div className="relative min-w-0 flex-1">
-              <Database className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Database className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
               <Input
                 id="index-pattern"
                 value={patternDraft}
@@ -379,16 +379,16 @@ export function IndexInventory({
           </form>
         </div>
 
-        <div className="grid items-end gap-2 border-t border-border/60 pt-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+        <div className="border-border/60 grid items-end gap-2 border-t pt-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
           <div className="flex min-w-0 flex-col gap-1.5">
             <label
               htmlFor="index-name-filter"
-              className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-muted-foreground"
+              className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.12em] uppercase"
             >
               Filter results
             </label>
             <div className="relative min-w-0">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
               <Input
                 id="index-name-filter"
                 type="search"
@@ -396,7 +396,7 @@ export function IndexInventory({
                 onChange={(event) => setQuery(event.target.value)}
                 // The custom clear button below would otherwise sit next to
                 // WebKit's built-in one.
-                className="h-9 pl-9 pr-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
+                className="h-9 pr-9 pl-9 text-xs [&::-webkit-search-cancel-button]:appearance-none"
                 onKeyDown={(event) => event.key === "Escape" && setQuery("")}
                 placeholder="Search index names…"
                 spellCheck={false}
@@ -407,7 +407,7 @@ export function IndexInventory({
                   type="button"
                   onClick={() => setQuery("")}
                   aria-label="Clear filter"
-                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95"
+                  className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-primary/30 absolute top-1/2 right-2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:outline-none active:scale-95"
                 >
                   <X
                     className="h-3.5 w-3.5"
@@ -420,7 +420,7 @@ export function IndexInventory({
           <div className="flex min-w-0 flex-col gap-1.5">
             <label
               htmlFor="index-sort"
-              className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-muted-foreground"
+              className="text-muted-foreground text-[10px] leading-none font-semibold tracking-[0.12em] uppercase"
             >
               Sort by
             </label>
@@ -434,7 +434,7 @@ export function IndexInventory({
                 aria-label="Sort indices"
               >
                 <SlidersHorizontal
-                  className="h-3.5 w-3.5 text-muted-foreground"
+                  className="text-muted-foreground h-3.5 w-3.5"
                   aria-hidden="true"
                 />
                 <SelectValue />
@@ -458,9 +458,9 @@ export function IndexInventory({
       {error && (
         <div
           role="alert"
-          className="rounded-md border border-destructive/25 bg-destructive/5 p-3"
+          className="border-destructive/25 bg-destructive/5 rounded-md border p-3"
         >
-          <p className="text-xs font-medium text-destructive">{error}</p>
+          <p className="text-destructive text-xs font-medium">{error}</p>
         </div>
       )}
 
@@ -468,11 +468,11 @@ export function IndexInventory({
         <p
           role="status"
           aria-live="polite"
-          className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 text-[11px] text-muted-foreground"
+          className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 text-[11px]"
         >
           <span className="tabular-nums">
             Showing{" "}
-            <strong className="font-semibold text-foreground">
+            <strong className="text-foreground font-semibold">
               {visible.length.toLocaleString()}
             </strong>{" "}
             of {indices.length.toLocaleString()}
@@ -500,26 +500,26 @@ export function IndexInventory({
           ))}
         </div>
       ) : indices.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-muted/25 px-4 py-8 text-center">
+        <div className="border-border bg-muted/25 rounded-lg border border-dashed px-4 py-8 text-center">
           <Database
-            className="mx-auto h-5 w-5 text-muted-foreground"
+            className="text-muted-foreground mx-auto h-5 w-5"
             aria-hidden="true"
           />
           <p className="mt-2 text-sm font-semibold">No matching indices</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-xs">
             Change the managed-index pattern or rebuild a library shelf.
           </p>
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border bg-muted/25 px-4 py-8 text-center">
+        <div className="border-border bg-muted/25 rounded-lg border border-dashed px-4 py-8 text-center">
           <Search
-            className="mx-auto h-5 w-5 text-muted-foreground"
+            className="text-muted-foreground mx-auto h-5 w-5"
             aria-hidden="true"
           />
           <p className="mt-2 text-sm font-semibold">
             No index name contains that text
           </p>
-          <p className="mt-1 text-xs text-muted-foreground break-anywhere">
+          <p className="text-muted-foreground break-anywhere mt-1 text-xs">
             {indices.length.toLocaleString()} indices match{" "}
             <span className="font-mono">{pattern}</span>, none match your
             filter.
@@ -544,7 +544,7 @@ export function IndexInventory({
         >
           {selectedVisible.length ? (
             <div
-              className="border-[var(--aptiv-turquoise)]/40 sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border bg-[var(--aptiv-glass-bg)] px-3 py-2 backdrop-blur"
+              className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-(--aptiv-turquoise)/40 bg-(--aptiv-glass-bg) px-3 py-2 backdrop-blur"
               role="toolbar"
               aria-label="Selected index actions"
             >
@@ -621,7 +621,7 @@ export function IndexInventory({
         }
         details={
           deleteTarget && (
-            <p className="rounded-md border border-border/70 bg-muted/40 px-2.5 py-2 font-mono text-[11px] text-foreground break-anywhere">
+            <p className="border-border/70 bg-muted/40 text-foreground break-anywhere rounded-md border px-2.5 py-2 font-mono text-[11px]">
               {deleteTarget.name}
             </p>
           )
@@ -647,11 +647,11 @@ export function IndexInventory({
           // Joining these into the description produced an unreadable wall of
           // text once a cluster had more than a handful of empty indices.
           emptyTargets && (
-            <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-border/70 bg-muted/40 px-2.5 py-2">
+            <ul className="border-border/70 bg-muted/40 max-h-44 space-y-0.5 overflow-y-auto rounded-md border px-2.5 py-2">
               {emptyTargets.map((name) => (
                 <li
                   key={name}
-                  className="font-mono text-[11px] text-foreground break-anywhere"
+                  className="text-foreground break-anywhere font-mono text-[11px]"
                 >
                   {name}
                 </li>
@@ -681,14 +681,14 @@ export function IndexInventory({
             : "Each index is refreshed so recently written documents become searchable immediately."
         }
         details={
-          <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-border/70 bg-muted/40 px-2.5 py-2">
+          <ul className="border-border/70 bg-muted/40 max-h-44 space-y-0.5 overflow-y-auto rounded-md border px-2.5 py-2">
             {selectedVisible.map((index) => (
               <li
                 key={index.name}
-                className="font-mono text-[11px] text-foreground break-anywhere"
+                className="text-foreground break-anywhere font-mono text-[11px]"
               >
                 {index.name}
-                <span className="ml-2 text-muted-foreground">
+                <span className="text-muted-foreground ml-2">
                   {index.doc_count.toLocaleString()} docs
                 </span>
               </li>

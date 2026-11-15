@@ -145,11 +145,11 @@ export function TiersSection() {
               <div className="flex items-baseline justify-between">
                 <Label
                   htmlFor={`tier-${tier}`}
-                  className="text-sm font-medium capitalize text-foreground"
+                  className="text-foreground text-sm font-medium capitalize"
                 >
                   {tier}
                 </Label>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground/60">
+                <span className="text-muted-foreground/60 font-mono text-xs tabular-nums">
                   {tiers[tier].length} model
                   {tiers[tier].length === 1 ? "" : "s"}
                 </span>
@@ -174,7 +174,7 @@ export function TiersSection() {
               {errors[tier] && (
                 <p
                   id={`tier-${tier}-error`}
-                  className="text-xs text-destructive"
+                  className="text-destructive text-xs"
                 >
                   {errors[tier]}
                 </p>

@@ -26,7 +26,7 @@ export function LibraryShelfFileList({
     return (
       <div
         role="alert"
-        className="rounded-md border border-destructive/25 bg-destructive/5 p-3 text-xs text-destructive"
+        className="border-destructive/25 bg-destructive/5 text-destructive rounded-md border p-3 text-xs"
       >
         {error}
       </div>
@@ -36,7 +36,7 @@ export function LibraryShelfFileList({
     return (
       <div
         aria-busy="true"
-        className="flex items-center justify-center gap-2 py-10 text-xs text-muted-foreground"
+        className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-xs"
       >
         <Loader2 className="h-4 w-4 animate-spin" /> Loading shelf files
       </div>
@@ -44,10 +44,10 @@ export function LibraryShelfFileList({
   }
   if (files.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
-        <FileText className="mx-auto h-5 w-5 text-muted-foreground" />
+      <div className="border-border bg-muted/20 rounded-lg border border-dashed px-4 py-8 text-center">
+        <FileText className="text-muted-foreground mx-auto h-5 w-5" />
         <p className="mt-2 text-sm font-semibold">No files on this shelf</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-xs">
           Upload one or more documents to make them searchable.
         </p>
       </div>
@@ -61,10 +61,10 @@ export function LibraryShelfFileList({
       {files.map((file) => (
         <li
           key={file.file_id}
-          className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/15 p-3"
+          className="border-border/70 bg-muted/15 flex items-start gap-3 rounded-lg border p-3"
         >
           <FileText
-            className="mt-0.5 h-4 w-4 flex-none text-[var(--aptiv-orange)]"
+            className="mt-0.5 h-4 w-4 flex-none text-(--aptiv-orange)"
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
@@ -74,12 +74,12 @@ export function LibraryShelfFileList({
             >
               {file.filename}
             </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-[10px]">
               {formatBytes(file.byte_size)} · Uploaded by {file.uploaded_by} ·{" "}
               {new Date(file.uploaded_at).toLocaleString()}
             </p>
             {file.status === "pending" && (
-              <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+              <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px]">
                 <Loader2
                   className="h-3 w-3 animate-spin"
                   aria-hidden="true"
@@ -88,19 +88,19 @@ export function LibraryShelfFileList({
               </p>
             )}
             {file.status === "failed" && (
-              <p className="mt-1 text-[10px] font-semibold text-destructive">
+              <p className="text-destructive mt-1 text-[10px] font-semibold">
                 Conversion failed; not searchable
               </p>
             )}
             {file.warning && (
-              <p className="mt-1 text-[10px] text-warning">{file.warning}</p>
+              <p className="text-warning mt-1 text-[10px]">{file.warning}</p>
             )}
           </div>
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            className="h-7 w-7 flex-none text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive h-7 w-7 flex-none"
             aria-label={`Delete ${file.filename}`}
             disabled={mutationsDisabled}
             onClick={() => onDelete(file)}

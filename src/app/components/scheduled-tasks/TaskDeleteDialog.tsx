@@ -46,8 +46,8 @@ export function TaskDeleteDialog({
     >
       <DialogContent
         showCloseButton={false}
-        className="!animate-none [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none"
-        overlayClassName="!animate-none"
+        className="animate-none! [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none"
+        overlayClassName="animate-none!"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           returnFocus();
@@ -55,7 +55,7 @@ export function TaskDeleteDialog({
       >
         <DialogHeader>
           <DialogTitle>Delete scheduled task?</DialogTitle>
-          <DialogDescription className="break-words">
+          <DialogDescription className="wrap-break-word">
             “{task.name}” will be removed from your task list. Its future runs
             will stop.
           </DialogDescription>
@@ -63,7 +63,7 @@ export function TaskDeleteDialog({
         {error && (
           <p
             role="alert"
-            className="text-sm text-[var(--text-error)]"
+            className="text-sm text-(--text-error)"
           >
             {error}
           </p>
@@ -78,7 +78,7 @@ export function TaskDeleteDialog({
             Keep task
           </Button>
           <Button
-            className="min-h-11 text-[var(--text-error)]"
+            className="min-h-11 text-(--text-error)"
             variant="outline"
             disabled={busy}
             onClick={() => void remove()}

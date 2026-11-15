@@ -31,8 +31,8 @@ export function restoreQueuedMessages(
   const saved = Array.isArray(stored)
     ? stored
     : isRecord(stored)
-    ? stored.items
-    : [];
+      ? stored.items
+      : [];
   const items: QueuedMessage[] = [];
   const ids = new Set<string>();
   for (const item of Array.isArray(saved) ? saved : []) {

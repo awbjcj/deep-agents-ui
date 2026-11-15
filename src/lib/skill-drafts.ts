@@ -1,4 +1,11 @@
-import { load } from "js-yaml";
+import {
+  EVENT_ID,
+  SCALAR_STYLE,
+  getScalarValue,
+  load,
+  parseEvents,
+} from "js-yaml";
+import { YAML_COMPAT_SCHEMA } from "./yaml";
 import {
   SkillsApiError,
   type PersonalSkill,
@@ -117,7 +124,7 @@ export function readSkillFrontmatter(
       "SKILL.md must begin with bounded YAML frontmatter and a closing delimiter."
     );
   }
-  const metadata: unknown = load(match[1]);
+  const metadata: unknown = load(match[1], { schema: YAML_COMPAT_SCHEMA });
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
     throw new Error("Skill frontmatter must be a mapping.");
   // Bound traversal and reject shared objects that indicate metadata aliases.
@@ -136,72 +143,69 @@ export function readSkillFrontmatter(
   return { metadata: metadata as Record<string, unknown>, body: match[2] };
 }
 
-interface YamlSourceNode {
-  start: number;
-  end: number;
-  kind: string | null;
-  result: unknown;
-  children: YamlSourceNode[];
-}
-
 /** Rename the root scalar in place so YAML dialects and tags never get normalized. */
 function renameSkillSource(content: string, name: string): string {
   const start = content.indexOf("\n") + 1;
   const source = /^---\r?\n([\s\S]*?)^---(?:\r?\n|$)/m.exec(content)![1];
-  const roots: YamlSourceNode[] = [];
-  const stack: YamlSourceNode[] = [];
-  const metadata = load(source, {
-    listener(event, state) {
-      if (event === "open") {
-        const node: YamlSourceNode = {
-          start: state.position,
-          end: state.position,
-          kind: null,
-          result: null,
-          children: [],
-        };
-        (stack.at(-1)?.children ?? roots).push(node);
-        stack.push(node);
-      } else {
-        Object.assign(stack.pop()!, {
-          end: state.position,
-          kind: state.kind,
-          result: state.result,
-        });
+  const events = parseEvents(source, {});
+  let scalar:
+    | Extract<(typeof events)[number], { type: typeof EVENT_ID.SCALAR }>
+    | undefined;
+  let depth = 0;
+  let expectingKey = true;
+  let nameValue = false;
+  if (events[1]?.type === EVENT_ID.MAPPING) {
+    for (const event of events.slice(2)) {
+      if (event.type === EVENT_ID.POP) {
+        if (depth === 0) break;
+        depth--;
+        continue;
       }
-    },
-  });
-  function findName(node: YamlSourceNode): YamlSourceNode | undefined {
-    if (node.kind === "mapping" && node.result === metadata) {
-      for (let index = 0; index + 1 < node.children.length; index += 2) {
-        if (
-          node.children[index].kind === "scalar" &&
-          node.children[index].result === "name"
-        )
-          return node.children[index + 1];
+      if (depth === 0) {
+        if (expectingKey) {
+          nameValue =
+            event.type === EVENT_ID.SCALAR &&
+            getScalarValue(source, event) === "name";
+        } else if (nameValue && event.type === EVENT_ID.SCALAR) {
+          scalar = event;
+          break;
+        }
+        expectingKey = !expectingKey;
       }
-    }
-    for (const child of node.children) {
-      const found = findName(child);
-      if (found) return found;
+      if (event.type === EVENT_ID.MAPPING || event.type === EVENT_ID.SEQUENCE)
+        depth++;
     }
   }
-  let scalar = roots[0] && findName(roots[0]);
-  // The loader can wrap explicit keys, tags, or a scalar on its own indented line.
-  while (scalar?.children.length === 1 && scalar.children[0].kind === "scalar")
-    scalar = scalar.children[0];
-  if (!scalar || scalar.kind !== "scalar" || scalar.end > source.length)
+  if (!scalar || scalar.valueEnd > source.length)
     throw new Error(
       "Cannot locate the skill name safely. Edit SKILL.md source to create a personal copy."
     );
-  const original = source.slice(scalar.start, scalar.end);
-  const replacement = `${/^\s*/.exec(original)![0]}${JSON.stringify(name)}${
-    /\s*$/.exec(original)![0]
-  }`;
+  let from = scalar.valueStart;
+  let to = scalar.valueEnd;
+  let replacement = JSON.stringify(name);
+  if (
+    scalar.style === SCALAR_STYLE.SINGLE_QUOTED ||
+    scalar.style === SCALAR_STYLE.DOUBLE_QUOTED
+  ) {
+    from--;
+    to++;
+  } else if (
+    scalar.style === SCALAR_STYLE.LITERAL_BLOCK ||
+    scalar.style === SCALAR_STYLE.FOLDED_BLOCK
+  ) {
+    const header = /[|>][1-9+-]{0,2}([ \t]*(?:#[^\r\n]*)?)(\r?\n)$/.exec(
+      source.slice(0, from)
+    );
+    if (!header)
+      throw new Error(
+        "Cannot locate the skill name safely. Edit SKILL.md source to create a personal copy."
+      );
+    from = header.index;
+    replacement +=
+      header[1] + (source.slice(from, to).endsWith("\n") ? header[2] : "");
+  }
   return (
-    content.slice(0, start + scalar.start) +
-    replacement +
-    content.slice(start + scalar.end)
+    content.slice(0, start + from) + replacement + content.slice(start + to)
   );
 }
 

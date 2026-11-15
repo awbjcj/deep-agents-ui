@@ -199,8 +199,8 @@ test(
         isScript
           ? bundle.outputFiles[0].text
           : isStyle
-          ? css.css
-          : '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><title>Code themes</title></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css.css
+            : '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><title>Code themes</title></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

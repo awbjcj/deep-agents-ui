@@ -107,13 +107,13 @@ export function ToolPermissionsSection() {
                 current[tier] ||
                   Boolean(
                     preserveDirty &&
-                      previous &&
-                      !sameToolIds(
-                        currentDrafts[tier],
-                        previous.tiers[tier].allowed_tool_ids
-                      ) &&
-                      previous.tiers[tier].revision !==
-                        response.tiers[tier].revision
+                    previous &&
+                    !sameToolIds(
+                      currentDrafts[tier],
+                      previous.tiers[tier].allowed_tool_ids
+                    ) &&
+                    previous.tiers[tier].revision !==
+                      response.tiers[tier].revision
                   ),
               ])
             ) as Record<ToolTier, boolean>
@@ -246,7 +246,7 @@ export function ToolPermissionsSection() {
         role="radiogroup"
         onKeyDown={navigateRadioGroup}
         aria-label="Tool permission tier"
-        className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/35 p-1"
+        className="border-border bg-muted/35 grid grid-cols-3 gap-1 rounded-lg border p-1"
       >
         {ROLES.map((tier) => (
           <button
@@ -256,7 +256,7 @@ export function ToolPermissionsSection() {
             aria-checked={activeTier === tier}
             tabIndex={activeTier === tier ? 0 : -1}
             onClick={() => setActiveTier(tier)}
-            className={`rounded-md px-2 py-2 text-xs font-semibold capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+            className={`focus-visible:ring-primary/50 rounded-md px-2 py-2 text-xs font-semibold capitalize focus-visible:ring-2 focus-visible:outline-none ${
               activeTier === tier
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -270,11 +270,11 @@ export function ToolPermissionsSection() {
       {error ? (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs text-foreground"
+          className="border-destructive/35 bg-destructive/10 text-foreground rounded-lg border p-3 text-xs"
         >
           <div className="flex gap-2">
             <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+              className="text-destructive mt-0.5 h-4 w-4 shrink-0"
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
@@ -300,7 +300,7 @@ export function ToolPermissionsSection() {
       {reviewRequired[activeTier] ? (
         <div
           role="status"
-          className="border-[var(--aptiv-orange)]/35 bg-[var(--aptiv-orange)]/5 rounded-lg border p-3 text-xs text-foreground"
+          className="text-foreground rounded-lg border border-(--aptiv-orange)/35 bg-(--aptiv-orange)/5 p-3 text-xs"
         >
           <p>
             The {activeTier} tier policy was refreshed. Your unsaved draft is
@@ -331,7 +331,7 @@ export function ToolPermissionsSection() {
       {savedNotice ? (
         <p
           role="status"
-          className="text-xs text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)]"
+          className="text-xs text-(--aptiv-turquoise-dark) dark:text-(--aptiv-turquoise)"
         >
           {savedNotice}
         </p>
@@ -342,8 +342,8 @@ export function ToolPermissionsSection() {
       ) : snapshot ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">
+            <p className="text-muted-foreground text-xs">
+              <span className="text-foreground font-semibold">
                 {activeDraft.length}
               </span>{" "}
               of {snapshot.catalog.length} allowed

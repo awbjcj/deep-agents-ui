@@ -186,7 +186,7 @@ export function ResponseJobs({
             size="sm"
             aria-label="Background jobs"
             title="Background jobs"
-            className="h-9 min-w-9 shrink-0 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-none hover:text-foreground active:scale-[0.97] motion-reduce:transform-none"
+            className="text-muted-foreground hover:text-foreground h-9 min-w-9 shrink-0 gap-1.5 rounded-lg px-2 text-xs transition-none active:scale-[0.97] motion-reduce:transform-none"
           >
             <Clock3
               className="h-3.5 w-3.5"
@@ -206,10 +206,10 @@ export function ResponseJobs({
           }
         }}
       >
-        <div className="shrink-0 space-y-2 border-b border-border p-5 pr-12">
+        <div className="border-border shrink-0 space-y-2 border-b p-5 pr-12">
           <DialogTitle className="flex items-center gap-2">
             <Clock3
-              className="h-5 w-5 text-primary"
+              className="text-primary h-5 w-5"
               aria-hidden="true"
             />
             Background jobs
@@ -220,7 +220,7 @@ export function ResponseJobs({
             <p
               role="status"
               aria-atomic="true"
-              className="text-xs tabular-nums text-muted-foreground"
+              className="text-muted-foreground text-xs tabular-nums"
             >
               {loaded
                 ? jobs.length
@@ -229,8 +229,8 @@ export function ResponseJobs({
                     } on this page`
                   : ""
                 : error
-                ? "Status unavailable"
-                : "Loading background jobs…"}
+                  ? "Status unavailable"
+                  : "Loading background jobs…"}
             </p>
             <Button
               size="sm"
@@ -286,7 +286,7 @@ export function ResponseJobs({
           {error && (
             <p
               role="alert"
-              className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              className="border-destructive/30 bg-destructive/5 text-destructive rounded-lg border p-3 text-sm"
             >
               {error}
             </p>
@@ -294,7 +294,7 @@ export function ResponseJobs({
           {actionError && (
             <p
               role="alert"
-              className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              className="border-destructive/30 bg-destructive/5 text-destructive rounded-lg border p-3 text-sm"
             >
               {actionError}
             </p>
@@ -302,22 +302,22 @@ export function ResponseJobs({
           {!loaded && !error && (
             <div className="flex justify-center py-8">
               <Loader2
-                className="h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none"
+                className="text-muted-foreground h-5 w-5 animate-spin motion-reduce:animate-none"
                 aria-hidden="true"
               />
             </div>
           )}
           {loaded && !error && !jobs.length && (
-            <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center">
+            <div className="border-border rounded-xl border border-dashed px-5 py-8 text-center">
               <Clock3
-                className="mx-auto mb-3 h-6 w-6 text-muted-foreground"
+                className="text-muted-foreground mx-auto mb-3 h-6 w-6"
                 aria-hidden="true"
               />
               <p className="mb-2 text-sm font-medium">
                 {before ? "No older jobs" : "No background jobs yet"}
               </p>
               {!before && (
-                <p className="text-xs leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground text-xs leading-relaxed">
                   Enable “Run models in the background” in Workspace → Tools.
                 </p>
               )}
@@ -326,20 +326,20 @@ export function ResponseJobs({
           {jobs.map((job) => (
             <div
               key={job.id}
-              className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-4"
+              className="border-border bg-card min-w-0 space-y-3 rounded-xl border p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="min-w-0 break-all text-sm font-semibold">
+                <p className="min-w-0 text-sm font-semibold break-all">
                   {job.model}
                 </p>
                 <span
                   className={cn(
                     "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium",
                     job.status === "completed"
-                      ? "border-border bg-muted/30 text-[var(--text-brand-secondary)]"
+                      ? "border-border bg-muted/30 text-(--text-brand-secondary)"
                       : job.status === "failed" || job.status === "incomplete"
-                      ? "border-amber-500/30 bg-amber-500/10 text-[var(--text-warning)]"
-                      : "border-border bg-muted/40 text-muted-foreground"
+                        ? "border-amber-500/30 bg-amber-500/10 text-(--text-warning)"
+                        : "border-border bg-muted/40 text-muted-foreground"
                   )}
                 >
                   {active(job) ? (
@@ -362,22 +362,22 @@ export function ResponseJobs({
                 </span>
               </div>
               {active(job) && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {job.status === "unknown"
                     ? "Status is not confirmed. Refresh to check again."
                     : "Status refreshes automatically while this panel is open."}
                 </p>
               )}
               {job.result?.output?.some((item) => item.type === "message") && (
-                <details className="group/result rounded-lg border border-border/70 bg-muted/15">
-                  <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <details className="group/result border-border/70 bg-muted/15 rounded-lg border">
+                  <summary className="hover:bg-muted/40 focus-visible:ring-ring flex min-h-9 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
                     View result
                     <ChevronDown
-                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-open/result:rotate-180"
+                      className="text-muted-foreground h-3.5 w-3.5 shrink-0 group-open/result:rotate-180"
                       aria-hidden="true"
                     />
                   </summary>
-                  <div className="space-y-3 border-t border-border/70 p-3">
+                  <div className="border-border/70 space-y-3 border-t p-3">
                     {job.result?.output
                       ?.filter((item) => item.type === "message")
                       .map((item, index) => (
@@ -391,7 +391,7 @@ export function ResponseJobs({
                               className="space-y-2"
                             >
                               {part.text && (
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere]">
+                                <p className="text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">
                                   {part.text}
                                 </p>
                               )}
@@ -407,7 +407,7 @@ export function ResponseJobs({
                                     key={ref.file_id}
                                     variant="outline"
                                     size="sm"
-                                    className="h-auto min-h-9 max-w-full justify-start whitespace-normal break-all text-left"
+                                    className="h-auto min-h-9 max-w-full justify-start text-left break-all whitespace-normal"
                                     onClick={() =>
                                       void (async () => {
                                         setActionError("");
@@ -451,11 +451,11 @@ export function ResponseJobs({
                   </div>
                 </details>
               )}
-              <div className="flex justify-end border-t border-border/60 pt-2">
+              <div className="border-border/60 flex justify-end border-t pt-2">
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-auto min-h-8 whitespace-normal text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-auto min-h-8 text-xs whitespace-normal"
                   disabled={busy !== null}
                   onClick={() =>
                     void act(job, active(job) ? "cancel" : "delete")
@@ -482,14 +482,14 @@ export function ResponseJobs({
                       ? "Cancelling…"
                       : "Deleting…"
                     : active(job)
-                    ? "Cancel job"
-                    : "Delete stored response"}
+                      ? "Cancel job"
+                      : "Delete stored response"}
                 </Button>
               </div>
             </div>
           ))}
         </div>
-        <p className="shrink-0 border-t border-border bg-muted/20 px-5 py-3 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="border-border bg-muted/20 text-muted-foreground shrink-0 border-t px-5 py-3 text-[11px] leading-relaxed">
           Cancelling stops the model call. Deleting removes its stored response.
           Downloaded thread files remain available.
         </p>

@@ -15,11 +15,12 @@ approvals, file/workspace views, and Aptiv branding.
 ## Quick Start
 
 ```bash
-# 1. Use the pinned Node version (20)
+# 1. Use the pinned Node LTS version
 nvm use                       # reads .nvmrc
 
-# 2. Install dependencies (Yarn 1.x — the repo is yarn-locked)
-yarn install
+# 2. Install Yarn 1 and the locked dependencies
+npm install --global yarn@1.22.22
+yarn install --frozen-lockfile
 
 # 3. Configure the deployment URL
 cp .env.example .env          # set NEXT_PUBLIC_DEPLOYMENT_URL
@@ -178,10 +179,12 @@ Key pieces:
 
 ## Tech Stack
 
-- Next.js 16 (App Router) · React 19 · TypeScript 5
-- Tailwind CSS 3.4 with Radix UI primitives
+- Next.js 16 (App Router) · React 19 · TypeScript 6
+- Tailwind CSS 4 with Radix UI primitives
 - `@langchain/langgraph-sdk` for streaming
-- Node 20 (`.nvmrc`) · Yarn 1.22 (`packageManager`)
+- Node 26 LTS (`.nvmrc`) · Yarn 1.22 (`packageManager`)
+
+Tailwind CSS 4 targets Safari 16.4+, Chrome 111+, and Firefox 128+.
 
 ## Related
 

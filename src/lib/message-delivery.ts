@@ -5,7 +5,10 @@ export type DeliveryResult = "accepted" | "rejected" | "unknown";
 
 /** A transport failure is not evidence that the server rejected a message. */
 export class MessageDeliveryError extends Error {
-  constructor(public readonly outcome: "rejected" | "unknown", cause: unknown) {
+  constructor(
+    public readonly outcome: "rejected" | "unknown",
+    cause: unknown
+  ) {
     super(
       outcome === "unknown"
         ? "Delivery could not be confirmed."
@@ -96,9 +99,9 @@ export async function deliverMessageRun(
         : undefined;
     throw new MessageDeliveryError(
       typeof status === "number" &&
-      status >= 400 &&
-      status < 500 &&
-      status !== 408
+        status >= 400 &&
+        status < 500 &&
+        status !== 408
         ? "rejected"
         : "unknown",
       error

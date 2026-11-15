@@ -169,7 +169,7 @@ export function LibraryShelfFilesDialog({
           >
             <FolderOpen />
             Files
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-[10px]">
               {fileCount}
             </span>
           </Button>
@@ -201,7 +201,7 @@ export function LibraryShelfFilesDialog({
             {uploading ? <Loader2 className="animate-spin" /> : <FileUp />}
             {uploading ? "Uploading files" : "Upload documents"}
           </Button>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
             PDF, Word, PowerPoint, Excel, HTML, Markdown, text, and Outlook
             message files are supported. Up to 20 files per upload, 25 MB each.
           </p>

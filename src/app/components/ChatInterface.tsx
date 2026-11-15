@@ -45,13 +45,13 @@ function ConversationSkeleton() {
       className="flex flex-col gap-5 py-6"
     >
       <span className="sr-only">Loading conversation</span>
-      <div className="ml-auto h-12 w-[min(60%,26rem)] rounded-2xl rounded-br-sm bg-muted motion-safe:animate-pulse" />
+      <div className="bg-muted ml-auto h-12 w-[min(60%,26rem)] rounded-2xl rounded-br-sm motion-safe:animate-pulse" />
       <div className="flex flex-col gap-2.5">
-        <div className="h-4 w-[72%] rounded bg-muted motion-safe:animate-pulse" />
-        <div className="h-4 w-[88%] rounded bg-muted motion-safe:animate-pulse" />
-        <div className="h-4 w-[54%] rounded bg-muted motion-safe:animate-pulse" />
+        <div className="bg-muted h-4 w-[72%] rounded motion-safe:animate-pulse" />
+        <div className="bg-muted h-4 w-[88%] rounded motion-safe:animate-pulse" />
+        <div className="bg-muted h-4 w-[54%] rounded motion-safe:animate-pulse" />
       </div>
-      <div className="h-10 w-full rounded-lg bg-muted/70 motion-safe:animate-pulse" />
+      <div className="bg-muted/70 h-10 w-full rounded-lg motion-safe:animate-pulse" />
     </div>
   );
 }
@@ -290,7 +290,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             anchoring can nudge scrollTop up a pixel on re-render, which the
             hook reads as the user scrolling away, so following stops. */}
         <div
-          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="focus-visible:ring-ring flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none] focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
           id="conversation"
           role="region"
           tabIndex={0}
@@ -304,7 +304,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
         >
           <div
             className={cn(
-              "mx-auto w-full max-w-[960px] px-4 pb-6 pt-4 sm:px-6",
+              "mx-auto w-full max-w-[960px] px-4 pt-4 pb-6 sm:px-6",
               showWelcome && "flex min-h-full flex-col justify-center"
             )}
             ref={contentRef}
@@ -312,13 +312,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             {historyError && (
               <div
                 role="alert"
-                className="rounded-lg border border-border p-4 text-sm"
+                className="border-border rounded-lg border p-4 text-sm"
               >
                 <p>Couldn’t load the latest conversation content.</p>
                 <button
                   type="button"
                   onClick={retryHistory}
-                  className="mt-2 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="focus-visible:ring-ring mt-2 underline focus-visible:ring-2 focus-visible:outline-none"
                 >
                   Retry loading conversation
                 </button>
@@ -399,14 +399,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
           </div>
         </div>
 
-        <div className="pointer-events-none relative flex-shrink-0">
+        <div className="pointer-events-none relative shrink-0">
           {!isAtBottom && processedMessages.length > 0 && (
             <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 flex justify-center pb-3">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="pointer-events-auto gap-1.5 rounded-full bg-background shadow-md"
+                className="bg-background pointer-events-auto gap-1.5 rounded-full shadow-md"
                 onClick={(event) => {
                   void scrollToBottom({
                     animation:
@@ -431,12 +431,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               // extends past the top edge of this box. Clipping here would hide it
               // behind the chatbox; instead we round the inner top panel below so
               // the corners stay clean while the menu can render on top.
-              "pointer-events-auto mb-3 flex min-w-0 flex-shrink-0 flex-col rounded-2xl border border-border bg-card shadow-md shadow-black/[0.04] @container/composer focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20 sm:mb-5",
+              "border-border bg-card focus-within:border-ring focus-within:ring-ring/20 @container/composer pointer-events-auto mb-3 flex min-w-0 shrink-0 flex-col rounded-2xl border shadow-md shadow-black/4 focus-within:ring-2 sm:mb-5",
               "mx-auto w-[calc(100%-24px)] max-w-[960px] sm:w-[calc(100%-32px)]"
             )}
           >
             {(hasTasks || hasFiles) && (
-              <div className="flex max-h-[min(18rem,30dvh)] flex-col overflow-y-auto rounded-t-2xl border-b border-border bg-muted/30 empty:hidden">
+              <div className="border-border bg-muted/30 flex max-h-[min(18rem,30dvh)] flex-col overflow-y-auto rounded-t-2xl border-b empty:hidden">
                 {!metaOpen && (
                   <>
                     {(() => {
@@ -458,7 +458,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                 prev === "tasks" ? null : "tasks"
                               )
                             }
-                            className="grid min-w-0 flex-1 cursor-pointer grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 rounded-tl-2xl px-4 py-3 text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                            className="hover:bg-muted/50 focus-visible:ring-ring grid min-w-0 flex-1 cursor-pointer grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 rounded-tl-2xl px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                             aria-expanded={metaOpen === "tasks"}
                           >
                             {(() => {
@@ -471,7 +471,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                   />,
                                   <span
                                     key="label"
-                                    className="ml-[1px] min-w-0 truncate text-sm"
+                                    className="ml-px min-w-0 truncate text-sm"
                                   >
                                     All tasks completed
                                   </span>,
@@ -485,7 +485,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                   </div>,
                                   <span
                                     key="label"
-                                    className="ml-[1px] min-w-0 truncate text-sm"
+                                    className="ml-px min-w-0 truncate text-sm"
                                   >
                                     Task{" "}
                                     {totalTasks - groupedTodos.pending.length}{" "}
@@ -493,7 +493,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                   </span>,
                                   <span
                                     key="content"
-                                    className="min-w-0 gap-2 truncate text-sm text-muted-foreground"
+                                    className="text-muted-foreground min-w-0 gap-2 truncate text-sm"
                                   >
                                     {activeTask.content}
                                   </span>,
@@ -508,7 +508,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                 />,
                                 <span
                                   key="label"
-                                  className="ml-[1px] min-w-0 truncate text-sm"
+                                  className="ml-px min-w-0 truncate text-sm"
                                 >
                                   Task{" "}
                                   {totalTasks - groupedTodos.pending.length} of{" "}
@@ -530,7 +530,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                 prev === "files" ? null : "files"
                               )
                             }
-                            className="flex shrink-0 cursor-pointer items-center gap-2 rounded-tr-2xl px-4 py-3 text-left text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                            className="text-muted-foreground hover:bg-muted/50 hover:text-foreground focus-visible:ring-ring flex shrink-0 cursor-pointer items-center gap-2 rounded-tr-2xl px-4 py-3 text-left text-sm focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                             aria-expanded={metaOpen === "files"}
                           >
                             <FileIcon
@@ -538,7 +538,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                               aria-hidden="true"
                             />
                             Files
-                            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                            <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium">
                               {fileKeysCount}
                             </span>
                           </button>
@@ -557,11 +557,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
 
                 {metaOpen && (
                   <>
-                    <div className="sticky top-0 z-10 flex shrink-0 items-center border-b border-border bg-sidebar text-sm">
+                    <div className="border-border bg-sidebar sticky top-0 z-10 flex shrink-0 items-center border-b text-sm">
                       {hasTasks && (
                         <button
                           type="button"
-                          className="px-4 py-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-expanded:bg-muted/50 aria-expanded:font-semibold aria-expanded:text-foreground"
+                          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring aria-expanded:bg-muted/50 aria-expanded:text-foreground px-4 py-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset aria-expanded:font-semibold"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "tasks" ? null : "tasks"
@@ -575,7 +575,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                       {hasFiles && (
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 px-4 py-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-expanded:bg-muted/50 aria-expanded:font-semibold aria-expanded:text-foreground"
+                          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring aria-expanded:bg-muted/50 aria-expanded:text-foreground inline-flex items-center gap-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset aria-expanded:font-semibold"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "files" ? null : "files"
@@ -584,7 +584,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                           aria-expanded={metaOpen === "files"}
                         >
                           Files
-                          <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                          <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium">
                             {fileKeysCount}
                           </span>
                         </button>
@@ -598,7 +598,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                         aria-label="Close panel"
                         title="Close panel"
                         onClick={() => setMetaOpen(null)}
-                        className="mr-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                        className="text-muted-foreground hover:bg-foreground/5 hover:text-foreground focus-visible:ring-ring mr-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -615,7 +615,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                               key={status}
                               className="mb-4"
                             >
-                              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-tertiary">
+                              <h3 className="text-tertiary mb-1 text-[10px] font-semibold tracking-wider uppercase">
                                 {
                                   {
                                     pending: "Pending",
@@ -630,7 +630,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                                     key={`${status}_${todo.id}_${index}`}
                                   >
                                     {getStatusIcon(todo.status, "mt-0.5")}
-                                    <span className="break-words text-inherit">
+                                    <span className="wrap-break-word text-inherit">
                                       {todo.content}
                                     </span>
                                   </Fragment>
@@ -660,7 +660,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               </div>
             )}
             {showRepositoryWorkspace && (
-              <div className="flex items-center border-b border-border px-2 sm:px-3">
+              <div className="border-border flex items-center border-b px-2 sm:px-3">
                 <RepositoryWorkspace
                   key={user?.user_id}
                   accountId={user?.user_id ?? ""}

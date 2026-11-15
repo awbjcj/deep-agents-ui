@@ -266,8 +266,8 @@ export function useChat({
         notif.severity === "error"
           ? toast.error
           : notif.severity === "warning"
-          ? toast.warning
-          : toast.info;
+            ? toast.warning
+            : toast.info;
       show(notif.title, {
         description: notif.message,
         duration: notif.severity === "error" ? Infinity : 8000,
@@ -959,9 +959,8 @@ export function useChat({
       }
 
       try {
-        const refreshed = await client.threads.getState<StateType>(
-          deletionThreadId
-        );
+        const refreshed =
+          await client.threads.getState<StateType>(deletionThreadId);
         if (threadIdRef.current !== deletionThreadId) return;
         const refreshedFiles = refreshed.values.files ?? {};
         const refreshedRecords = reconcileSourceImageRecords(

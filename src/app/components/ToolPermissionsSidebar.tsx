@@ -217,12 +217,12 @@ export function ToolPermissionsSidebar() {
               Account permissions
             </h3>
             {snapshot ? (
-              <span className="rounded-full border border-border bg-muted/35 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              <span className="border-border bg-muted/35 text-muted-foreground rounded-full border px-2 py-1 text-[10px] font-bold tracking-[0.14em] uppercase">
                 {snapshot.tier} tier
               </span>
             ) : null}
           </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-xs leading-relaxed">
             Tool choices apply to every conversation. Approval mode is set
             separately for each conversation.
           </p>
@@ -231,11 +231,11 @@ export function ToolPermissionsSidebar() {
         {error ? (
           <div
             role="alert"
-            className="rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs text-foreground"
+            className="border-destructive/35 bg-destructive/10 text-foreground rounded-lg border p-3 text-xs"
           >
             <div className="flex gap-2">
               <AlertTriangle
-                className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+                className="text-destructive mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden="true"
               />
               <div className="min-w-0 flex-1">
@@ -261,7 +261,7 @@ export function ToolPermissionsSidebar() {
         {policyReviewRequired ? (
           <div
             role="status"
-            className="border-[var(--aptiv-orange)]/35 bg-[var(--aptiv-orange)]/5 rounded-lg border p-3 text-xs text-foreground"
+            className="text-foreground rounded-lg border border-(--aptiv-orange)/35 bg-(--aptiv-orange)/5 p-3 text-xs"
           >
             <p>
               Your tool policy was refreshed. Your unsaved draft is still here;
@@ -286,7 +286,7 @@ export function ToolPermissionsSidebar() {
         {savedNotice ? (
           <p
             role="status"
-            className="text-xs text-[var(--aptiv-turquoise-dark)] dark:text-[var(--aptiv-turquoise)]"
+            className="text-xs text-(--aptiv-turquoise-dark) dark:text-(--aptiv-turquoise)"
           >
             {savedNotice}
           </p>
@@ -294,12 +294,12 @@ export function ToolPermissionsSidebar() {
 
         {loading && !snapshot ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
           </div>
         ) : snapshot ? (
           <>
-            <div className="rounded-lg border border-border bg-muted/25 p-3">
-              <p className="text-xs leading-relaxed text-muted-foreground">
+            <div className="border-border bg-muted/25 rounded-lg border p-3">
+              <p className="text-muted-foreground text-xs leading-relaxed">
                 {snapshot.effective_tool_ids.length} active
                 {snapshot.blocked_tool_ids.length > 0 &&
                   ` · ${snapshot.blocked_tool_ids.length} blocked by your administrator`}
@@ -312,7 +312,7 @@ export function ToolPermissionsSidebar() {
             </div>
 
             {snapshot.selected_tool_ids.length === 0 && draft.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-card/50 px-4 py-5 text-center">
+              <div className="border-border bg-card/50 rounded-lg border border-dashed px-4 py-5 text-center">
                 <p className="text-sm font-semibold">
                   {snapshot.allowed_tool_ids.length === 0
                     ? "No tools available for your tier"
@@ -322,8 +322,8 @@ export function ToolPermissionsSidebar() {
             ) : null}
 
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">
+              <p className="text-muted-foreground text-xs">
+                <span className="text-foreground font-semibold">
                   {draft.length}
                 </span>{" "}
                 in this draft

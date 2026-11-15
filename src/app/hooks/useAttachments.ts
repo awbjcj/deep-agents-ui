@@ -285,10 +285,10 @@ export function useAttachments({
           it.phase === "reference"
             ? [it.path]
             : it.phase === "ready"
-            ? [it.meta.artifact_path, it.meta.state_files_key].filter(
-                (path): path is string => !!path
-              )
-            : []
+              ? [it.meta.artifact_path, it.meta.state_files_key].filter(
+                  (path): path is string => !!path
+                )
+              : []
         )
       );
       const attached = refs
@@ -452,7 +452,7 @@ export function useAttachments({
         filename: it.filename,
         kind: it.kind,
         detail: undefined,
-        imageUrl: it.kind === "image" ? it.thumb ?? null : null,
+        imageUrl: it.kind === "image" ? (it.thumb ?? null) : null,
         source_image_ref: it.source_image_ref,
       });
     });

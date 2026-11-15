@@ -146,15 +146,15 @@ async function fixture() {
       request.url === "/app.js"
         ? "text/javascript"
         : request.url === "/style.css"
-        ? "text/css"
-        : "text/html"
+          ? "text/css"
+          : "text/html"
     );
     response.end(
       request.url === "/app.js"
         ? bundle.outputFiles[0].text
         : request.url === "/style.css"
-        ? css.css
-        : '<!doctype html><html lang="en"><head><title>Motion refinements</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root" style="height:100dvh;display:flex;flex-direction:column"></div><script type="module" src="/app.js"></script></body></html>'
+          ? css.css
+          : '<!doctype html><html lang="en"><head><title>Motion refinements</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root" style="height:100dvh;display:flex;flex-direction:column"></div><script type="module" src="/app.js"></script></body></html>'
     );
   });
   await new Promise((done) => server.listen(0, "127.0.0.1", done));

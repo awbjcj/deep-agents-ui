@@ -113,7 +113,7 @@ export function WorkspaceAnalysisForm({
         <h3 className="text-sm font-semibold">
           What would you like to investigate?
         </h3>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
           Ask a question across the selected repositories. Findings will cite
           the prepared revisions.
         </p>
@@ -123,7 +123,7 @@ export function WorkspaceAnalysisForm({
           ref={errorRef}
           role="alert"
           tabIndex={-1}
-          className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive outline-none"
+          className="border-destructive/30 bg-destructive/5 text-destructive rounded-lg border p-3 text-sm outline-none"
         >
           {error}
         </p>
@@ -175,13 +175,13 @@ export function WorkspaceAnalysisForm({
           ))}
         </WorkspaceSelect>
         {selectedEngine && !selectedEngine.ready && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {selectedEngine.blockers.map(analysisBlockerMessage).join(" ") ||
               "Choose an available engine."}
           </p>
         )}
         {catalogError && (
-          <div className="space-y-2 text-xs text-muted-foreground">
+          <div className="text-muted-foreground space-y-2 text-xs">
             <p>
               Engine availability couldn’t be checked. You can use the server
               default.

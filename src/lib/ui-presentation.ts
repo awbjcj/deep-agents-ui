@@ -104,7 +104,7 @@ export function parsePresentation(
     if (
       (typeof result === "string"
         ? result.length
-        : JSON.stringify(result)?.length ?? 0) > 200000
+        : (JSON.stringify(result)?.length ?? 0)) > 200000
     )
       return null;
     const parsed = presentationSchema.safeParse(

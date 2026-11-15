@@ -58,8 +58,8 @@ export default function LoginPage() {
           expiresInMinutes ?? 15
         } minutes.`
       : mode === "login"
-      ? "Use your VSDA account credentials, which are separate from your Aptiv NetID."
-      : undefined;
+        ? "Use your VSDA account credentials, which are separate from your Aptiv NetID."
+        : undefined;
 
   const errorFor = (field: AuthFieldName) =>
     fieldError?.field === field ? fieldError.message : undefined;
@@ -212,8 +212,8 @@ export default function LoginPage() {
             mode === "register"
               ? { current: 1, total: 2 }
               : mode === "verify"
-              ? { current: 2, total: 2 }
-              : undefined
+                ? { current: 2, total: 2 }
+                : undefined
           }
         />
 
@@ -352,15 +352,15 @@ export default function LoginPage() {
               mode === "login"
                 ? "Signing in…"
                 : mode === "register"
-                ? "Sending code…"
-                : "Verifying…"
+                  ? "Sending code…"
+                  : "Verifying…"
             }
           >
             {mode === "login"
               ? "Sign in"
               : mode === "register"
-              ? "Send verification code"
-              : "Verify and create account"}
+                ? "Send verification code"
+                : "Verify and create account"}
           </AuthSubmitButton>
         </form>
       </div>

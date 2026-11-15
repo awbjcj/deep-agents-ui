@@ -115,6 +115,24 @@ test(
       );
       await input.waitFor();
       await approvalMode.waitFor();
+      const headerPadding = await page
+        .locator("header")
+        .first()
+        .evaluate((header) =>
+          Number.parseFloat(getComputedStyle(header).paddingLeft)
+        );
+      assert.ok(
+        headerPadding >= 10,
+        "utility spacing overrides the global reset"
+      );
+      const newThreadColor = await page
+        .getByRole("button", { name: "New Thread", exact: true })
+        .evaluate((button) => getComputedStyle(button).backgroundColor);
+      assert.notEqual(newThreadColor, "rgba(0, 0, 0, 0)");
+      const welcome = await page
+        .getByRole("heading", { name: "What should your agents work on?" })
+        .boundingBox();
+      assert.ok(Math.abs(welcome.x + welcome.width / 2 - 720) < 3);
       await initialJobs;
       assert.ok(jobLists > 0);
       assert.equal(await background.count(), 0);

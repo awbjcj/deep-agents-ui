@@ -21,9 +21,10 @@ test(
     const { default: tailwind } = await import("tailwindcss");
     const { default: config } = await import("../tailwind.config.mjs");
     const css = await postcss([tailwind(config)]).process(
-      (
-        await readFile(join(ROOT, "src/app/globals.css"), "utf8")
-      ).replace('@import "katex/dist/katex.min.css";', ""),
+      (await readFile(join(ROOT, "src/app/globals.css"), "utf8")).replace(
+        '@import "katex/dist/katex.min.css";',
+        ""
+      ),
       { from: join(ROOT, "src/app/globals.css") }
     );
     const bundle = await build({

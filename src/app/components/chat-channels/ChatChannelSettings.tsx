@@ -130,9 +130,9 @@ export function ChatChannelSettings({
   return (
     <div className="absolute inset-0 flex flex-col">
       <ScrollArea className="h-0 flex-1">
-        <div className="mx-auto max-w-2xl space-y-5 p-4 text-foreground @container/bots">
+        <div className="text-foreground @container/bots mx-auto max-w-2xl space-y-5 p-4">
           <div className="flex items-center gap-3">
-            <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
+            <p className="text-muted-foreground min-w-0 flex-1 text-sm leading-relaxed">
               Switching apps moves your conversation to the new app.
             </p>
             <Button
@@ -154,9 +154,9 @@ export function ChatChannelSettings({
           {(error || loadError) && (
             <div
               role="alert"
-              className="space-y-2 rounded-lg border border-error bg-error-secondary p-3 text-sm"
+              className="border-error bg-error-secondary space-y-2 rounded-lg border p-3 text-sm"
             >
-              <p className="break-words">
+              <p className="wrap-break-word">
                 {error ||
                   (loadError instanceof Error
                     ? loadError.message
@@ -181,13 +181,13 @@ export function ChatChannelSettings({
           <p
             role="status"
             aria-live="polite"
-            className="min-h-5 text-sm text-muted-foreground empty:min-h-0"
+            className="text-muted-foreground min-h-5 text-sm empty:min-h-0"
           >
             {pending === "save"
               ? "Saving…"
               : pending === "refresh"
-              ? "Refreshing…"
-              : notice}
+                ? "Refreshing…"
+                : notice}
           </p>
 
           {data && binding && (
@@ -304,7 +304,7 @@ function OverviewSkeleton() {
       aria-busy="true"
       className="space-y-3"
     >
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+      <p className="text-muted-foreground flex items-center gap-2 text-sm">
         <Loader2
           aria-hidden="true"
           className="size-4 motion-safe:animate-spin"
@@ -315,11 +315,11 @@ function OverviewSkeleton() {
         {[0, 1, 2].map((index) => (
           <div
             key={index}
-            className="h-16 rounded-lg border border-border bg-muted/50 @md/bots:h-24 motion-safe:animate-pulse"
+            className="border-border bg-muted/50 h-16 rounded-lg border motion-safe:animate-pulse @md/bots:h-24"
           />
         ))}
       </div>
-      <div className="h-48 rounded-xl border border-border bg-muted/40 motion-safe:animate-pulse" />
+      <div className="border-border bg-muted/40 h-48 rounded-xl border motion-safe:animate-pulse" />
     </div>
   );
 }

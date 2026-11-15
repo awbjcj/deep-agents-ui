@@ -103,8 +103,8 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
     view.mode === "scale"
       ? view.scale
       : view.mode === "width"
-      ? widthScale
-      : Math.min(1, widthScale, heightScale);
+        ? widthScale
+        : Math.min(1, widthScale, heightScale);
   const imageWidth = (imageSize?.width ?? 0) * scale;
   const imageHeight = (imageSize?.height ?? 0) * scale;
   const imageLeft = Math.max(PADDING, (viewportSize.width - imageWidth) / 2);
@@ -130,8 +130,8 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
   function zoom(direction: 1 | -1) {
     const next =
       direction === 1
-        ? SCALES.find((value) => value > scale + 0.001) ?? 8
-        : SCALES.findLast((value) => value < scale - 0.001) ?? 0.1;
+        ? (SCALES.find((value) => value > scale + 0.001) ?? 8)
+        : (SCALES.findLast((value) => value < scale - 0.001) ?? 0.1);
     setScale(next);
   }
 
@@ -160,11 +160,11 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
   const selectValue = view.mode === "scale" ? String(view.scale) : view.mode;
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-muted/20">
+    <div className="border-border bg-muted/20 flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border">
       <div
         role="group"
         aria-label="Image preview controls"
-        className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-border bg-background p-2"
+        className="border-border bg-background flex shrink-0 flex-wrap items-center gap-1.5 border-b p-2"
       >
         <Button
           type="button"
@@ -257,7 +257,7 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
         aria-busy={!ready && !error}
         tabIndex={0}
         className={cn(
-          "relative min-h-0 flex-1 overflow-auto overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          "focus-visible:ring-ring relative min-h-0 flex-1 overflow-auto overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset",
           canPan && "cursor-grab active:cursor-grabbing"
         )}
         style={{ scrollbarGutter: "stable" }}
@@ -329,7 +329,7 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
         {!ready && (
           <div
             role="status"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground"
+            className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center text-sm"
           >
             {error && (
               <ImageOff
@@ -357,7 +357,7 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
               setImageSize(null);
               setError(true);
             }}
-            className="absolute block max-w-none select-none rounded-sm bg-background shadow-sm"
+            className="bg-background absolute block max-w-none rounded-sm shadow-sm select-none"
             style={{
               width: imageWidth,
               height: imageHeight,
@@ -368,7 +368,7 @@ function ImagePreviewSession({ src, alt }: { src: string; alt: string }) {
           />
         </div>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+      <div className="border-border bg-background text-muted-foreground flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t px-3 py-2 text-xs">
         <span id={helpId}>
           Scroll or drag to pan · + / − zoom · 0 actual size · F fit
         </span>

@@ -94,8 +94,8 @@ export function ScheduledTaskEditor({
       }}
     >
       <DialogContent
-        className="flex max-h-[90dvh] !animate-none flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none"
-        overlayClassName="!animate-none"
+        className="flex max-h-[90dvh] animate-none! flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none"
+        overlayClassName="animate-none!"
         showCloseButton={false}
         onInteractOutside={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => {
@@ -103,7 +103,7 @@ export function ScheduledTaskEditor({
           returnFocus();
         }}
       >
-        <DialogHeader className="border-b border-border px-5 py-4 text-left sm:px-6">
+        <DialogHeader className="border-border border-b px-5 py-4 text-left sm:px-6">
           <DialogTitle>
             {task ? "Edit scheduled task" : "Schedule a task"}
           </DialogTitle>
@@ -153,7 +153,7 @@ export function ScheduledTaskEditor({
                 update={update}
               />
               <section
-                className="space-y-4 border-t border-border pt-5"
+                className="border-border space-y-4 border-t pt-5"
                 aria-labelledby="task-execution-heading"
               >
                 <h3
@@ -191,7 +191,7 @@ export function ScheduledTaskEditor({
                 </label>
                 <p
                   id="task-mode-description"
-                  className="text-sm leading-relaxed text-muted-foreground"
+                  className="text-muted-foreground text-sm leading-relaxed"
                 >
                   {form.execution_mode === "autopilot"
                     ? "Automatically approves supported interventions. Existing tool permissions still apply."
@@ -201,20 +201,20 @@ export function ScheduledTaskEditor({
                 </p>
               </section>
               {task?.active_run && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   Changes apply to future executions. The active run keeps its
                   original prompt and settings.
                 </p>
               )}
             </fieldset>
           </div>
-          <footer className="shrink-0 space-y-3 border-t border-border bg-background px-5 py-4 sm:px-6">
+          <footer className="border-border bg-background shrink-0 space-y-3 border-t px-5 py-4 sm:px-6">
             {error && (
               <p
                 ref={errorRef}
                 tabIndex={-1}
                 role="alert"
-                className="text-sm text-[var(--text-error)] focus-visible:outline-none"
+                className="text-sm text-(--text-error) focus-visible:outline-none"
               >
                 {error}
               </p>
@@ -239,7 +239,7 @@ export function ScheduledTaskEditor({
                   <Button
                     type="button"
                     variant="outline"
-                    className="min-h-11 text-[var(--text-error)]"
+                    className="min-h-11 text-(--text-error)"
                     onClick={onClose}
                   >
                     Discard changes

@@ -54,12 +54,12 @@ export function SourceAttachmentControl({
         >
           <Label
             htmlFor={`${id}-${field}`}
-            className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs font-medium leading-5"
+            className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs leading-5 font-medium"
           >
             {title}
             <span
               aria-hidden="true"
-              className="text-xs font-normal text-muted-foreground"
+              className="text-muted-foreground text-xs font-normal"
             >
               {policy[field] ? "On" : "Off"}
             </span>
@@ -91,7 +91,7 @@ export function SourceAttachmentControl({
         >
           <SelectTrigger
             id={`${id}-default`}
-            className="h-auto min-h-11 min-w-0 gap-1 border-muted-foreground bg-background px-2 text-left text-xs shadow-none focus:ring-ring [&>span]:line-clamp-none [&>span]:whitespace-normal"
+            className="border-muted-foreground bg-background focus:ring-ring h-auto min-h-11 min-w-0 gap-1 px-2 text-left text-xs shadow-none [&>span]:line-clamp-none [&>span]:whitespace-normal"
             aria-label={`Default ${label} attachment fetch for ${tier} tier`}
             aria-describedby={`source-attachment-scope-${tier}`}
           >
@@ -106,12 +106,12 @@ export function SourceAttachmentControl({
       <div className="flex min-h-11 min-w-0 items-center gap-3">
         <Label
           htmlFor={`${id}-allow-all`}
-          className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs font-medium leading-5"
+          className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs leading-5 font-medium"
         >
           Allow all
           <span
             aria-hidden="true"
-            className="text-xs font-normal text-muted-foreground"
+            className="text-muted-foreground text-xs font-normal"
           >
             {policy.allow_all ? "On" : "Off"}
           </span>

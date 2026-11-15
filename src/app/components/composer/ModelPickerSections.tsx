@@ -81,7 +81,7 @@ export function ModelList({
       tabIndex={0}
       aria-activedescendant={`${baseId}-${activeIndex}`}
       onKeyDown={onKeyDown}
-      className="max-h-52 overflow-y-auto rounded-lg py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      className="focus-visible:ring-ring/40 max-h-52 overflow-y-auto rounded-lg py-0.5 outline-none focus-visible:ring-2"
     >
       {models.map((entry, index) => {
         const selected = entry.provider === provider && entry.model === model;
@@ -104,14 +104,14 @@ export function ModelList({
             <ChevronRight
               aria-hidden="true"
               className={cn(
-                "h-3.5 w-3.5 text-[var(--color-primary)]",
+                "h-3.5 w-3.5 text-(--color-primary)",
                 !highlighted && "invisible"
               )}
             />
             <span
               className={cn(
-                "truncate text-foreground",
-                selected && "font-semibold text-[var(--color-primary)]"
+                "text-foreground truncate",
+                selected && "font-semibold text-(--color-primary)"
               )}
             >
               {modelDisplayName(entry.model)}
@@ -122,7 +122,7 @@ export function ModelList({
             {selected && (
               <Check
                 aria-hidden="true"
-                className="h-3.5 w-3.5 text-[var(--color-primary)]"
+                className="h-3.5 w-3.5 text-(--color-primary)"
               />
             )}
           </div>
@@ -153,8 +153,8 @@ export function EffortSegments({
       event.key === "ArrowRight" || event.key === "ArrowDown"
         ? 1
         : event.key === "ArrowLeft" || event.key === "ArrowUp"
-        ? -1
-        : 0;
+          ? -1
+          : 0;
     if (!step) return;
     event.preventDefault();
     const next = (current + step + options.length) % options.length;
@@ -222,11 +222,11 @@ export function ThinkingRow({
     <div className="flex items-center justify-between gap-3">
       <label
         htmlFor={id}
-        className="min-w-0 text-xs text-foreground"
+        className="text-foreground min-w-0 text-xs"
       >
         Adaptive thinking
         {required && (
-          <span className="ml-1.5 text-muted-foreground">· required</span>
+          <span className="text-muted-foreground ml-1.5">· required</span>
         )}
       </label>
       <Switch
@@ -258,8 +258,8 @@ export function OutputStepper({
       event.key === "ArrowUp" || event.key === "ArrowRight"
         ? 1
         : event.key === "ArrowDown" || event.key === "ArrowLeft"
-        ? -1
-        : 0;
+          ? -1
+          : 0;
     if (!step) return;
     event.preventDefault();
     onChange(stepOutputTokenCap(value, step));
@@ -275,7 +275,7 @@ export function OutputStepper({
       >
         Max output
       </span>
-      <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+      <div className="border-border flex items-center gap-0.5 rounded-lg border p-0.5">
         <button
           type="button"
           aria-label="Decrease max output"
@@ -298,10 +298,10 @@ export function OutputStepper({
           aria-valuemax={max}
           aria-valuetext={label}
           onKeyDown={onKeyDown}
-          className="min-w-[5.5rem] rounded px-1 text-center font-mono text-xs tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="focus-visible:ring-ring/40 min-w-22 rounded px-1 text-center font-mono text-xs tabular-nums outline-none focus-visible:ring-2"
         >
           {value.toLocaleString("en-US")}
-          <span className="ml-1 text-muted-foreground">tok</span>
+          <span className="text-muted-foreground ml-1">tok</span>
         </div>
         <button
           type="button"

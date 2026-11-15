@@ -36,7 +36,7 @@ export function SourceImagePolicySection() {
             key={tier}
             value={tier}
             forceMount
-            className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring data-[state=inactive]:hidden"
+            className="focus-visible:outline-ring focus-visible:outline focus-visible:outline-2 data-[state=inactive]:hidden"
           >
             <SourceImageControls tier={tier} />
           </TabsContent>

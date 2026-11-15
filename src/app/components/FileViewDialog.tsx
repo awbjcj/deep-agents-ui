@@ -70,7 +70,7 @@ function FileViewDialogSession({
   // Read directly from the current graph snapshot; only edits need a draft.
   const displayedContent = isEditingMode
     ? fileContent
-    : file?.content ?? fileContent;
+    : (file?.content ?? fileContent);
 
   const imageMime = useMemo<string | null>(
     () => imageMimeForPath(fileName),
@@ -188,7 +188,7 @@ function FileViewDialogSession({
     >
       <DialogContent
         className={cn(
-          "flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-5xl flex-col p-4 sm:min-w-[60vw] sm:p-6",
+          "flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-5xl min-w-0 flex-col p-4 sm:min-w-[60vw] sm:p-6",
           (isImage || (isPdf && showViewer)) &&
             "h-[calc(100dvh-1.5rem)] max-w-none gap-3 transition-none sm:max-w-none"
         )}
@@ -201,9 +201,9 @@ function FileViewDialogSession({
               : `View, copy, download, or edit ${file.path}.`
             : "Create a new file by entering a file name and content."}
         </DialogDescription>
-        <div className="mb-4 flex shrink-0 flex-col gap-3 border-b border-border pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
+        <div className="border-border mb-4 flex shrink-0 flex-col gap-3 border-b pb-4 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between min-[520px]:pr-10">
           <div className="flex min-w-0 items-center gap-2.5 pr-10 min-[520px]:pr-0">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-[var(--color-primary)]">
+            <span className="bg-primary/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-(--color-primary)">
               {isImage ? (
                 <ImageIcon
                   className="h-4 w-4"
@@ -229,29 +229,29 @@ function FileViewDialogSession({
             ) : (
               <div className="min-w-0">
                 <span
-                  className="block break-words text-base font-medium text-primary [overflow-wrap:anywhere]"
+                  className="text-primary block text-base font-medium wrap-anywhere wrap-break-word"
                   data-testid="file-view-title"
                 >
                   {displayName}
                 </span>
                 {fullPath && (
                   <span
-                    className="mt-0.5 block break-all font-mono text-[11px] text-muted-foreground"
+                    className="text-muted-foreground mt-0.5 block font-mono text-[11px] break-all"
                     data-testid="file-view-path"
                   >
                     {fullPath}
                   </span>
                 )}
                 {sourceImage && (
-                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <span className="bg-primary/8 rounded-full px-1.5 py-0.5 font-semibold text-[var(--color-primary)]">
+                  <span className="text-muted-foreground mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <span className="bg-primary/8 rounded-full px-1.5 py-0.5 font-semibold text-(--color-primary)">
                       {SOURCE_IMAGE_LABELS[sourceImage.source]} source image
                     </span>
-                    <span className="rounded-full bg-muted px-1.5 py-0.5">
+                    <span className="bg-muted rounded-full px-1.5 py-0.5">
                       {sourceImage.embedded ? "Embedded" : "Attachment"}
                     </span>
                     {sourceImage.optimized_copy && (
-                      <span className="rounded-full bg-muted px-1.5 py-0.5">
+                      <span className="bg-muted rounded-full px-1.5 py-0.5">
                         Optimized for model
                       </span>
                     )}
@@ -260,7 +260,7 @@ function FileViewDialogSession({
                         href={sourcePageUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded px-1 py-0.5 font-medium hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="hover:bg-muted hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-1 rounded px-1 py-0.5 font-medium focus-visible:ring-2 focus-visible:outline-none"
                       >
                         Open source
                         <ExternalLink
@@ -372,16 +372,16 @@ function FileViewDialogSession({
               )}
             </div>
           ) : (
-            <ScrollArea className="h-full rounded-xl border border-border/60 bg-muted/20 [&_[data-slot=scroll-area-viewport]>div]:!block">
+            <ScrollArea className="border-border/60 bg-muted/20 h-full rounded-xl border [&_[data-slot=scroll-area-viewport]>div]:block!">
               <div className="p-4">
                 {displayedContent ? (
                   isTooLarge ? (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       This file is larger than 10 MB, so it is not previewed.
                       Download it to open it.
                     </p>
                   ) : isBinary ? (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       This file is ready to download. A text preview is not
                       available.
                     </p>
@@ -393,7 +393,7 @@ function FileViewDialogSession({
                   )
                 ) : (
                   <div className="flex items-center justify-center p-12">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       File is empty
                     </p>
                   </div>
@@ -403,7 +403,7 @@ function FileViewDialogSession({
           )}
         </div>
         {isEditingMode && (
-          <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
+          <div className="border-border mt-4 flex justify-end gap-2 border-t pt-4">
             <Button
               onClick={handleCancel}
               variant="outline"

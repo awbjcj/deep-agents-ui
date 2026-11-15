@@ -27,7 +27,7 @@ export function RunStatus({
     <span
       id={id}
       data-run-status={status}
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-normal tracking-normal text-muted-foreground"
+      className="text-muted-foreground inline-flex shrink-0 items-center gap-1.5 text-xs font-normal tracking-normal whitespace-nowrap"
     >
       <Icon
         size={14}

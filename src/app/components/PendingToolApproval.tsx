@@ -26,8 +26,7 @@ export function PendingToolApproval({
   isLoading,
 }: PendingToolApprovalProps) {
   const value = interrupt?.value as
-    | Partial<ToolApprovalInterruptData>
-    | undefined;
+    Partial<ToolApprovalInterruptData> | undefined;
   if (!value || !Array.isArray(value.action_requests)) {
     return null;
   }

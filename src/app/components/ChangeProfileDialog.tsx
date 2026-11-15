@@ -63,10 +63,10 @@ export function ChangeProfileDialog({
     trimmedUsername.length === 0
       ? ""
       : trimmedUsername.length < 3
-      ? "Username must be at least 3 characters"
-      : !USERNAME_PATTERN.test(trimmedUsername)
-      ? "Letters, digits, underscores, hyphens, and dots only"
-      : "";
+        ? "Username must be at least 3 characters"
+        : !USERNAME_PATTERN.test(trimmedUsername)
+          ? "Letters, digits, underscores, hyphens, and dots only"
+          : "";
   const usernameDirty =
     !!trimmedUsername && trimmedUsername !== user?.username && !usernameError;
   const passwordDirty = !!currentPassword && !!newPassword && !!confirmPassword;
@@ -187,7 +187,7 @@ export function ChangeProfileDialog({
               />
               <p
                 id="username-hint"
-                className="text-xs leading-relaxed text-muted-foreground"
+                className="text-muted-foreground text-xs leading-relaxed"
               >
                 At least 3 characters. Use letters, digits, underscores,
                 hyphens, or dots.
@@ -195,7 +195,7 @@ export function ChangeProfileDialog({
               {usernameError && (
                 <p
                   id="username-error"
-                  className="text-xs text-destructive"
+                  className="text-destructive text-xs"
                 >
                   {usernameError}
                 </p>
@@ -203,7 +203,7 @@ export function ChangeProfileDialog({
               {usernameSaveError && (
                 <p
                   role="alert"
-                  className="text-sm text-destructive"
+                  className="text-destructive text-sm"
                 >
                   {usernameSaveError}
                 </p>
@@ -238,7 +238,7 @@ export function ChangeProfileDialog({
                 void savePassword();
               }}
             >
-              <p className="text-xs leading-relaxed text-muted-foreground">
+              <p className="text-muted-foreground text-xs leading-relaxed">
                 Use at least 8 characters for your new password.
               </p>
               <fieldset
@@ -286,7 +286,7 @@ export function ChangeProfileDialog({
                 {passwordSaveError && (
                   <p
                     role="alert"
-                    className="text-sm text-destructive"
+                    className="text-destructive text-sm"
                   >
                     {passwordSaveError}
                   </p>
@@ -345,7 +345,7 @@ function PasswordField(props: {
         <button
           type="button"
           onClick={props.onToggle}
-          className="absolute right-0 top-1/2 flex size-touch -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="size-touch text-muted-foreground hover:text-foreground focus-visible:ring-ring absolute top-1/2 right-0 flex -translate-y-1/2 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:outline-none"
           aria-label={props.show ? "Hide password" : "Show password"}
           aria-pressed={props.show}
         >
@@ -359,7 +359,7 @@ function PasswordField(props: {
       {props.error && (
         <p
           id={`${props.id}-error`}
-          className="text-xs text-destructive"
+          className="text-destructive text-xs"
         >
           {props.error}
         </p>

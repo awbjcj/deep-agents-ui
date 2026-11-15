@@ -138,31 +138,31 @@ export function SpreadsheetView({
 
   if (parsed === null)
     return compact ? (
-      <span className="text-xs text-muted-foreground">
+      <span className="text-muted-foreground text-xs">
         Loading spreadsheet…
       </span>
     ) : (
       <p
         role="status"
-        className="text-sm text-muted-foreground"
+        className="text-muted-foreground text-sm"
       >
         Loading spreadsheet…
       </p>
     );
   if (!sheet)
     return compact ? (
-      <span className="text-xs text-muted-foreground">
+      <span className="text-muted-foreground text-xs">
         Preview unavailable.
       </span>
     ) : (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {UNAVAILABLE_PREVIEW_MESSAGE}
       </p>
     );
 
   if (compact && sheet.rows.length === 0)
     return (
-      <span className="text-xs text-muted-foreground">
+      <span className="text-muted-foreground text-xs">
         This sheet is empty.
       </span>
     );
@@ -174,7 +174,7 @@ export function SpreadsheetView({
           role="region"
           aria-label={`${sheet.name} preview table`}
           tabIndex={0}
-          className="block max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="border-border focus-visible:ring-ring block max-w-full overflow-x-auto rounded-md border focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
         >
           <span
             role="table"
@@ -196,7 +196,7 @@ export function SpreadsheetView({
                   <span
                     role={rowIndex === 0 ? "columnheader" : "cell"}
                     key={columnIndex}
-                    className="table-cell max-w-[14rem] truncate border-b border-border px-2 py-1"
+                    className="border-border table-cell max-w-56 truncate border-b px-2 py-1"
                   >
                     {cell}
                   </span>
@@ -206,7 +206,7 @@ export function SpreadsheetView({
           </span>
         </span>
         {sheet.truncated && (
-          <span className="block text-xs text-muted-foreground">
+          <span className="text-muted-foreground block text-xs">
             {truncationNotice(sheet)}
           </span>
         )}
@@ -218,8 +218,8 @@ export function SpreadsheetView({
       current?.column === column && current.direction === "ascending"
         ? { column, direction: "descending" }
         : current?.column === column
-        ? null
-        : { column, direction: "ascending" }
+          ? null
+          : { column, direction: "ascending" }
     );
 
   return (
@@ -249,19 +249,19 @@ export function SpreadsheetView({
       {sheet.truncated && (
         <p
           role="status"
-          className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground"
+          className="border-border bg-secondary text-muted-foreground rounded-md border px-3 py-2 text-sm"
         >
           {truncationNotice(sheet)}
         </p>
       )}
       {sheet.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">This sheet is empty.</p>
+        <p className="text-muted-foreground text-sm">This sheet is empty.</p>
       ) : (
         <div
           role="region"
           aria-label={`${sheet.name} table`}
           tabIndex={0}
-          className="min-h-0 flex-1 overflow-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="border-border focus-visible:ring-ring min-h-0 flex-1 overflow-auto rounded-md border focus-visible:ring-2 focus-visible:outline-none"
         >
           <table className="w-max min-w-full border-collapse text-sm">
             <thead>
@@ -273,14 +273,14 @@ export function SpreadsheetView({
                       key={column}
                       scope="col"
                       aria-sort={active ? sort.direction : "none"}
-                      className="sticky top-0 z-10 border-b border-border bg-secondary px-0 py-0 text-left font-semibold"
+                      className="border-border bg-secondary sticky top-0 z-10 border-b px-0 py-0 text-left font-semibold"
                     >
                       <button
                         type="button"
                         onClick={() => toggleSort(column)}
-                        className="flex w-full items-center gap-1 whitespace-pre-wrap px-3 py-2 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        className="hover:bg-muted focus-visible:ring-ring flex w-full items-center gap-1 px-3 py-2 text-left whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                       >
-                        <span className="max-w-[24rem] [overflow-wrap:anywhere]">
+                        <span className="max-w-96 wrap-anywhere">
                           {cell || `Column ${column + 1}`}
                         </span>
                         {active &&
@@ -305,12 +305,12 @@ export function SpreadsheetView({
               {body.map((row, rowIndex) => (
                 <tr
                   key={rowIndex}
-                  className="border-b border-border last:border-b-0"
+                  className="border-border border-b last:border-b-0"
                 >
                   {row.map((cell, column) => (
                     <td
                       key={column}
-                      className="max-w-[24rem] whitespace-pre-wrap px-3 py-1.5 align-top [overflow-wrap:anywhere]"
+                      className="max-w-96 px-3 py-1.5 align-top wrap-anywhere whitespace-pre-wrap"
                     >
                       {cell}
                     </td>

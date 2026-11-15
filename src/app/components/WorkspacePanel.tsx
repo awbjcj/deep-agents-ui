@@ -23,12 +23,7 @@ import { SettingsDrafts } from "./settings/SettingsDrafts";
 import { useSettingsLeaveGuard } from "./settings/useSettingsDrafts";
 
 export type WorkspaceTab =
-  | "models"
-  | "tokens"
-  | "bots"
-  | "connectivity"
-  | "tools"
-  | "skills";
+  "models" | "tokens" | "bots" | "connectivity" | "tools" | "skills";
 
 interface WorkspacePanelProps {
   /** Tab to show on mount; falls back to "models" if undefined. */

@@ -16,7 +16,7 @@ function Checkbox({ className, ...props }: CheckboxProps) {
       <input
         data-slot="checkbox"
         type="checkbox"
-        className="focus-visible:ring-[var(--aptiv-orange)]/45 peer absolute inset-0 size-5 cursor-pointer appearance-none rounded-[5px] border-2 border-muted-foreground/70 bg-background shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-[var(--aptiv-orange)] checked:bg-[var(--aptiv-orange)] checked:bg-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
+        className="peer border-muted-foreground/70 bg-background absolute inset-0 size-5 cursor-pointer appearance-none rounded-[5px] border-2 shadow-sm transition-[border-color,background-color,box-shadow] duration-150 checked:border-(--aptiv-orange) checked:bg-(--aptiv-orange) checked:bg-none focus-visible:ring-2 focus-visible:ring-(--aptiv-orange)/45 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
         {...props}
       />
       <Check

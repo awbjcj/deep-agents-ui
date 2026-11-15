@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
-import resolveConfig from "tailwindcss/resolveConfig.js";
-import tailwindConfig from "../tailwind.config.mjs";
+import postcss from "postcss";
+import tailwind from "@tailwindcss/postcss";
 import {
   FILE_PREVIEW_CHARACTERS,
   filePreview,
@@ -13,13 +13,14 @@ import {
 import { FileContentView } from "../src/app/components/FileContentView.tsx";
 import { FilesPopover } from "../src/app/components/TasksFilesSidebar.tsx";
 
-test("custom typography retains the default Markdown prose styles", () => {
-  const config = resolveConfig(tailwindConfig);
-  assert.ok(
-    config.theme.typography.DEFAULT,
-    "base prose typography must be generated"
-  );
-  assert.ok(config.theme.typography.playground);
+test("custom typography retains the default Markdown prose styles", async () => {
+  const source =
+    '@import "tailwindcss"; @config "../../tailwind.config.mjs"; @source inline("prose prose-playground");';
+  const { css } = await postcss([tailwind()]).process(source, {
+    from: new URL("../src/app/globals.css", import.meta.url).pathname,
+  });
+  assert.match(css, /\.prose\s*\{/);
+  assert.match(css, /\.prose-playground\s/);
 });
 
 test("file previews preserve small documents and bound long lines and Unicode", () => {

@@ -8,8 +8,8 @@ export function recommendedModelControls(
     ? model.recommended_effort !== undefined
       ? model.recommended_effort
       : model.efforts.includes("medium")
-      ? "medium"
-      : model.efforts[0] ?? null
+        ? "medium"
+        : (model.efforts[0] ?? null)
     : null;
   return {
     effort,
@@ -29,8 +29,8 @@ export function linkedModelControls(
   const thinking = !model.supports_thinking
     ? null
     : requiresThinking(model, controls.effort)
-    ? true
-    : controls.thinking ?? !!model.recommended_thinking;
+      ? true
+      : (controls.thinking ?? !!model.recommended_thinking);
   const defaults = model.control_defaults?.find(
     (option) =>
       option.effort === controls.effort && option.thinking === thinking

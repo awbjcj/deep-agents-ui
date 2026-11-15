@@ -95,7 +95,7 @@ function StatusFilterItem({
       />
       {label}
       {badge !== undefined && badge > 0 && (
-        <span className="ml-1 inline-flex items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-xs font-bold leading-none text-destructive-foreground">
+        <span className="bg-destructive text-destructive-foreground ml-1 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-xs leading-none font-bold">
           {badge}
         </span>
       )}
@@ -106,10 +106,10 @@ function StatusFilterItem({
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
-      <p className="text-sm font-medium text-destructive">
+      <p className="text-destructive text-sm font-medium">
         Failed to load threads
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">{message}</p>
+      <p className="text-muted-foreground mt-1 text-xs">{message}</p>
     </div>
   );
 }
@@ -130,8 +130,8 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
-      <MessageSquare className="mb-3 h-8 w-8 text-muted-foreground/30" />
-      <p className="text-sm text-muted-foreground">No threads found</p>
+      <MessageSquare className="text-muted-foreground/30 mb-3 h-8 w-8" />
+      <p className="text-muted-foreground text-sm">No threads found</p>
     </div>
   );
 }
@@ -161,10 +161,10 @@ function SelectionControl({
       }}
       onKeyDown={(event) => event.stopPropagation()}
       className={cn(
-        "inline-flex min-w-0 items-center gap-2 rounded-md text-xs font-medium text-muted-foreground outline-none",
-        "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "text-muted-foreground inline-flex min-w-0 items-center gap-2 rounded-md text-xs font-medium outline-none",
+        "focus-visible:ring-primary/40 focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2",
         "transition-[color,transform] duration-150 active:scale-[0.97]",
-        showLabel && "px-1 py-1 hover:text-foreground"
+        showLabel && "hover:text-foreground px-1 py-1"
       )}
     >
       <span
@@ -455,7 +455,7 @@ export function ThreadList({
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Header */}
-      <div className="grid min-w-0 flex-shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border p-4">
+      <div className="border-border grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b p-4">
         <h2 className="text-xl font-semibold tracking-tight">Threads</h2>
         {onClose && (
           <Button
@@ -533,7 +533,7 @@ export function ThreadList({
         <div
           role="toolbar"
           aria-label="Batch thread actions"
-          className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-border bg-muted/35 px-3 py-2"
+          className="border-border bg-muted/35 flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2"
         >
           <SelectionControl
             checked={allLoadedSelected}
@@ -542,7 +542,7 @@ export function ThreadList({
             onToggle={handleToggleAllLoaded}
             showLabel
           />
-          <span className="ml-auto text-[11px] font-medium tabular-nums text-muted-foreground">
+          <span className="text-muted-foreground ml-auto text-[11px] font-medium tabular-nums">
             {selectedThreads.length} selected
           </span>
           <Button
@@ -581,12 +581,12 @@ export function ThreadList({
                   className="mb-5 first:mt-1"
                 >
                   <div className="mb-1 flex items-center gap-2 px-3">
-                    <h4 className="m-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/55">
+                    <h4 className="text-muted-foreground/55 m-0 text-[10px] font-semibold tracking-[0.14em] uppercase">
                       {GROUP_LABELS[group]}
                     </h4>
                     <div
                       aria-hidden="true"
-                      className="h-px flex-1 bg-border/50"
+                      className="bg-border/50 h-px flex-1"
                     />
                   </div>
                   <div
@@ -618,11 +618,11 @@ export function ThreadList({
                         }}
                         className={cn(
                           "group relative cursor-pointer rounded-md py-2 pr-2 transition-colors duration-150",
-                          "hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60",
+                          "hover:bg-accent/60 focus-visible:ring-primary/60 focus-visible:ring-1 focus-visible:outline-none",
                           isManaging ? "pl-10" : "pl-3",
                           isManaging &&
                             selectedIds.has(thread.id) &&
-                            "bg-primary/10 ring-1 ring-inset ring-primary/25",
+                            "bg-primary/10 ring-primary/25 ring-1 ring-inset",
                           currentThreadId === thread.id
                             ? "bg-accent"
                             : "bg-transparent",
@@ -642,7 +642,7 @@ export function ThreadList({
                         />
 
                         {isManaging && (
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                          <span className="absolute top-1/2 left-3 -translate-y-1/2">
                             <SelectionControl
                               checked={selectedIds.has(thread.id)}
                               label={`${
@@ -677,23 +677,23 @@ export function ThreadList({
                                   }
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className="border-primary/40 h-auto w-full min-w-0 rounded-none border-0 border-b bg-transparent p-0 text-[13px] font-semibold leading-tight tracking-tight shadow-none focus-visible:border-primary focus-visible:ring-0"
+                                className="border-primary/40 focus-visible:border-primary h-auto w-full min-w-0 rounded-none border-0 border-b bg-transparent p-0 text-[13px] leading-tight font-semibold tracking-tight shadow-none focus-visible:ring-0"
                               />
                             ) : (
                               <h3
-                                className="min-w-0 whitespace-normal break-words text-[13px] font-semibold leading-tight tracking-tight [overflow-wrap:anywhere]"
+                                className="min-w-0 text-[13px] leading-tight font-semibold tracking-tight wrap-anywhere wrap-break-word whitespace-normal"
                                 title={thread.title}
                               >
                                 {thread.title}
                               </h3>
                             )}
                           </div>
-                          <span className="pt-px text-[10px] font-medium tabular-nums text-muted-foreground/60">
+                          <span className="text-muted-foreground/60 pt-px text-[10px] font-medium tabular-nums">
                             {formatTime(thread.updatedAt)}
                           </span>
 
                           {/* Meta row — description + status + actions */}
-                          <p className="min-w-0 whitespace-normal break-words text-[11px] leading-snug text-muted-foreground/75 [overflow-wrap:anywhere]">
+                          <p className="text-muted-foreground/75 min-w-0 text-[11px] leading-snug wrap-anywhere wrap-break-word whitespace-normal">
                             {thread.description || (
                               <span className="italic opacity-60">
                                 No response yet
@@ -701,12 +701,12 @@ export function ThreadList({
                             )}
                           </p>
                           {/* Fixed-width slot: dot and buttons share the same position */}
-                          <div className="relative h-5 w-[42px] flex-shrink-0 justify-self-end">
+                          <div className="relative h-5 w-[42px] shrink-0 justify-self-end">
                             <span
                               aria-hidden="true"
                               title={thread.status}
                               className={cn(
-                                "absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background/40 transition-opacity duration-150",
+                                "ring-background/40 absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 transition-opacity duration-150",
                                 getThreadColor(thread.status),
                                 !isManaging &&
                                   editingId !== thread.id &&
@@ -718,7 +718,7 @@ export function ThreadList({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-5 w-5 text-muted-foreground/70 hover:bg-background/70 hover:text-foreground"
+                                  className="text-muted-foreground/70 hover:bg-background/70 hover:text-foreground h-5 w-5"
                                   aria-label="Rename thread"
                                   onClick={(e) => handleStartRename(thread, e)}
                                 >
@@ -727,7 +727,7 @@ export function ThreadList({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-5 w-5 text-muted-foreground/70 hover:bg-background/70 hover:text-destructive"
+                                  className="text-muted-foreground/70 hover:bg-background/70 hover:text-destructive h-5 w-5"
                                   aria-label="Delete thread"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -784,7 +784,7 @@ export function ThreadList({
           <DialogHeader>
             <DialogTitle>Delete thread?</DialogTitle>
             <DialogDescription>
-              <span className="font-medium text-foreground">
+              <span className="text-foreground font-medium">
                 &ldquo;{deleteTarget?.title}&rdquo;
               </span>{" "}
               will be permanently removed and cannot be recovered.
@@ -830,19 +830,19 @@ export function ThreadList({
               permanently removed. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-md border border-border bg-muted/35 p-3">
+          <div className="border-border bg-muted/35 rounded-md border p-3">
             <ul className="m-0 list-none space-y-1 p-0">
               {selectedThreads.slice(0, 3).map((thread) => (
                 <li
                   key={thread.id}
-                  className="m-0 truncate text-xs font-medium text-foreground"
+                  className="text-foreground m-0 truncate text-xs font-medium"
                 >
                   {thread.title}
                 </li>
               ))}
             </ul>
             {selectedThreads.length > 3 && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-2 text-xs">
                 +{selectedThreads.length - 3} more
               </p>
             )}

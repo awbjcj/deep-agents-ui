@@ -35,7 +35,7 @@ export function SkillSuggestions({
 }) {
   if (loading)
     return (
-      <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+      <p className="text-muted-foreground flex items-center gap-2 p-3 text-sm">
         <Loader2
           aria-hidden="true"
           className="size-4 motion-safe:animate-spin"
@@ -137,8 +137,8 @@ export function FileSuggestions({
           entry.source
             ? `${SOURCE_IMAGE_LABELS[entry.source.source]} source image`
             : entry.kind === "image"
-            ? "Image"
-            : "Document"
+              ? "Image"
+              : "Document"
         }
         description={entry.path}
         onActivate={() => onActivate(index)}

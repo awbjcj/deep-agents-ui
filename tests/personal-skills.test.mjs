@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DEFAULT_SCHEMA, Type, load } from "js-yaml";
+import { YAML11_SCHEMA, load } from "js-yaml";
 import * as api from "../src/lib/skills.ts";
 import * as drafts from "../src/lib/skill-drafts.ts";
 import {
@@ -364,23 +364,7 @@ test("draft copies are independent, use a distinct name, and preserve unknown me
 });
 
 // Match PyYAML SafeLoader's supported legacy booleans and tagged sets for these regressions.
-const backendMetadataSchema = DEFAULT_SCHEMA.extend({
-  implicit: [
-    new Type("tag:yaml.org,2002:bool", {
-      kind: "scalar",
-      resolve: (value) => /^(?:yes|no|true|false|on|off)$/i.test(value ?? ""),
-      construct: (value) => /^(?:yes|true|on)$/i.test(value),
-    }),
-  ],
-  explicit: [
-    new Type("tag:yaml.org,2002:set", {
-      kind: "mapping",
-      resolve: (value) =>
-        value !== null && Object.values(value).every((item) => item === null),
-      construct: (value) => new Set(Object.keys(value)),
-    }),
-  ],
-});
+const backendMetadataSchema = YAML11_SCHEMA;
 
 test("copies preserve backend YAML scalar and tag semantics in supported frontmatter shapes", () => {
   const extra =
@@ -390,6 +374,8 @@ test("copies preserve backend YAML scalar and tag semantics in supported frontma
     `{"name": "original", description: A description, ${extra}}\n`,
     `!!map\n? !!str name\n: !!str original\ndescription: A description\n${extra}\n`,
     `name: >-\n  original\ndescription: A description\n${extra}\n`,
+    `name: >- # preserve this comment\n  original\ndescription: A description\n${extra}\n`,
+    `${extra}\nname: original\ndescription: A description\n`,
     `name: # Keep this comment\n  'original'\ndescription: A description\n${extra}\n`,
     `'name': !!str original\ndescription: A description\n${extra}\n`,
     `description: A description\n${extra}\nname: original\n\n`,

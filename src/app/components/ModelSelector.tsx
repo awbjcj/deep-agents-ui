@@ -88,7 +88,7 @@ export function ModelSelector() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading models...
       </div>
@@ -109,7 +109,7 @@ export function ModelSelector() {
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
           disabled={isSaving || models.length === 0}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+          className="border-input bg-background ring-offset-background focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none disabled:opacity-50"
           aria-label="Selected model"
         >
           <option

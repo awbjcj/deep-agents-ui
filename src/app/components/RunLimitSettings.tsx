@@ -36,13 +36,13 @@ export function RunLimitSettings() {
     <section className="space-y-3">
       <Label
         htmlFor="run-step-limit"
-        className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+        className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
       >
         Maximum agent steps
       </Label>
       <p
         id="run-step-limit-help"
-        className="text-xs leading-relaxed text-muted-foreground"
+        className="text-muted-foreground text-xs leading-relaxed"
       >
         Graph steps available for the next run or resume. Applies across models;
         saved for your account in this browser. The minimum leaves room for the

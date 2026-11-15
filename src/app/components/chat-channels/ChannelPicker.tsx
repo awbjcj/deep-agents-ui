@@ -33,13 +33,13 @@ export function ChannelPicker({
               key={channel.id}
               style={{ animationDelay: `${index * 50}ms` }}
               className={cn(
-                "group relative flex min-h-16 cursor-pointer items-center gap-3 rounded-lg border bg-card p-3 [animation-fill-mode:both] motion-safe:duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1",
+                "group bg-card fill-mode-both motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 relative flex min-h-16 cursor-pointer items-center gap-3 rounded-lg border p-3 motion-safe:duration-300",
                 "transition-[border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none",
-                "has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-primary/25",
+                "has-focus-visible:ring-primary/25 has-focus-visible:ring-[3px]",
                 "@md/bots:flex-col @md/bots:items-start @md/bots:gap-2",
                 checked
                   ? "border-primary shadow-[inset_0_0_0_1px_hsl(var(--primary))]"
-                  : "border-border [@media(hover:hover)]:hover:border-[var(--border-strong)]"
+                  : "border-border [@media(hover:hover)]:hover:border-(--border-strong)"
               )}
             >
               <input
@@ -57,7 +57,7 @@ export function ChannelPicker({
                 selected={checked}
               />
               <span className="flex min-w-0 flex-1 flex-col gap-1">
-                <span className="text-sm font-semibold leading-tight">
+                <span className="text-sm leading-tight font-semibold">
                   {meta.label}
                 </span>
                 <StatusBadge

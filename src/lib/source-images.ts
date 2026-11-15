@@ -93,7 +93,7 @@ export interface SourceImageRemovalState<FilesValue = unknown> {
 
 /** Keep source-image bytes transient while retaining the live state reference. */
 export function serializeAttachment<
-  T extends SourceImageSerializableAttachment
+  T extends SourceImageSerializableAttachment,
 >(attachment: T): T {
   return attachment.source_image_ref
     ? { ...attachment, imageUrl: null }

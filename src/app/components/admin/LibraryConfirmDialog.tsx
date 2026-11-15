@@ -71,7 +71,7 @@ export function LibraryConfirmDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md border border-destructive/25 bg-destructive/10 text-destructive">
+          <div className="border-destructive/25 bg-destructive/10 text-destructive mb-1 flex h-9 w-9 items-center justify-center rounded-md border">
             <AlertTriangle
               className="h-4 w-4"
               aria-hidden="true"
@@ -80,7 +80,7 @@ export function LibraryConfirmDialog({
           <DialogTitle className="break-anywhere">{title}</DialogTitle>
           {/* Shelf ids are 60+ characters with no spaces, so the description
               must be allowed to break mid-token or it overflows the dialog. */}
-          <DialogDescription className="leading-relaxed break-anywhere">
+          <DialogDescription className="break-anywhere leading-relaxed">
             {description}
           </DialogDescription>
         </DialogHeader>

@@ -23,7 +23,7 @@ export function ReasoningEffortControl({
 }) {
   return (
     <fieldset className="min-w-0 space-y-2">
-      <legend className="flex w-full items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <legend className="text-muted-foreground flex w-full items-center justify-between text-xs font-medium tracking-wider uppercase">
         <span>Reasoning effort</span>
         {!supported && <span className="text-xs">Not supported</span>}
       </legend>
@@ -71,7 +71,7 @@ export function AdaptiveThinkingControl({
         </Label>
         <p
           id={`${id}-help`}
-          className="text-xs leading-relaxed text-muted-foreground"
+          className="text-muted-foreground text-xs leading-relaxed"
         >
           {description}
         </p>
@@ -113,13 +113,13 @@ export function OutputTokenControl({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Label
           htmlFor={id}
-          className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+          className="text-muted-foreground text-xs font-medium tracking-wider uppercase"
         >
           Output cap
         </Label>
-        <span className="rounded-md border border-border bg-muted/40 px-2.5 py-1 font-mono text-sm font-semibold tabular-nums">
+        <span className="border-border bg-muted/40 rounded-md border px-2.5 py-1 font-mono text-sm font-semibold tabular-nums">
           {value.toLocaleString("en-US")}
-          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+          <span className="text-muted-foreground ml-1.5 text-xs font-normal">
             tokens
           </span>
         </span>
@@ -141,7 +141,7 @@ export function OutputTokenControl({
             <input
               id={id}
               type="range"
-              className="aptiv-slider !h-11"
+              className="aptiv-slider h-11!"
               min={0}
               max={lastIndex}
               step={1}
@@ -173,7 +173,7 @@ export function OutputTokenControl({
             </div>
             <div
               aria-hidden="true"
-              className="relative mx-[7px] mb-2 h-4 font-mono text-xxs text-muted-foreground"
+              className="text-xxs text-muted-foreground relative mx-[7px] mb-2 h-4 font-mono"
             >
               {[512, 4096, 16384, 32768, 65536].map((stop, markIndex) => (
                 <span
@@ -185,8 +185,8 @@ export function OutputTokenControl({
                       markIndex === 0
                         ? undefined
                         : markIndex === 4
-                        ? "translateX(-100%)"
-                        : "translateX(-50%)",
+                          ? "translateX(-100%)"
+                          : "translateX(-50%)",
                   }}
                 >
                   {stop === 512 ? "512" : `${stop / 1024}K`}
@@ -209,7 +209,7 @@ export function OutputTokenControl({
       </div>
       <p
         id={`${id}-help`}
-        className="text-xs leading-relaxed text-muted-foreground"
+        className="text-muted-foreground text-xs leading-relaxed"
       >
         Steps use common token caps.
       </p>

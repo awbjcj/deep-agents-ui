@@ -46,7 +46,7 @@ export function PdfView({
 
   if (!bytes)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         {UNAVAILABLE_PREVIEW_MESSAGE}
       </p>
     );
@@ -54,7 +54,7 @@ export function PdfView({
     return (
       <p
         role="status"
-        className="text-sm text-muted-foreground"
+        className="text-muted-foreground text-sm"
       >
         Loading PDF…
       </p>
@@ -66,7 +66,7 @@ export function PdfView({
     <iframe
       src={url.url}
       title={title}
-      className="h-full w-full rounded-md border border-border bg-background"
+      className="border-border bg-background h-full w-full rounded-md border"
     />
   );
 }

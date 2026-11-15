@@ -31,11 +31,11 @@ export function ProviderEndpointFields({
   onTokenChange: (key: string, value: string | undefined) => void;
 }) {
   return (
-    <fieldset className="min-w-0 rounded-lg border border-border px-4 @container">
-      <legend className="px-1 text-sm font-semibold text-foreground">
+    <fieldset className="border-border @container min-w-0 rounded-lg border px-4">
+      <legend className="text-foreground px-1 text-sm font-semibold">
         {provider.label}
       </legend>
-      <div className="divide-y divide-border">
+      <div className="divide-border divide-y">
         {CONNECTION_MODES.map((mode) => {
           const key = `${provider.prefix}_base_url${
             mode.id === "remote" ? "" : `_${mode.id}`
@@ -51,7 +51,7 @@ export function ProviderEndpointFields({
               data-connectivity-mode={mode.id}
             >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="text-xs font-semibold text-foreground">
+                <span className="text-foreground text-xs font-semibold">
                   {mode.label}
                 </span>
                 <span className="text-xxs text-muted-foreground">
@@ -62,7 +62,7 @@ export function ProviderEndpointFields({
                 <div className="min-w-0 space-y-1.5">
                   <Label
                     htmlFor={`runtime-${key}`}
-                    className="block text-xs font-medium leading-5 text-foreground"
+                    className="text-foreground block text-xs leading-5 font-medium"
                   >
                     Base URL
                   </Label>
@@ -81,15 +81,15 @@ export function ProviderEndpointFields({
                   />
                   <p
                     id={`runtime-${key}-status`}
-                    className="text-xxs leading-relaxed text-muted-foreground"
+                    className="text-xxs text-muted-foreground leading-relaxed"
                   >
                     {changed
                       ? value
                         ? "URL change · not saved"
                         : "Will use environment default"
                       : info?.source === "database"
-                      ? "Admin override"
-                      : "Environment default"}
+                        ? "Admin override"
+                        : "Environment default"}
                     {!changed && info?.source === "database" && info.updated_at
                       ? ` · ${formatTimestamp(info.updated_at)}`
                       : ""}
@@ -106,17 +106,17 @@ export function ProviderEndpointFields({
                   />
                 ) : (
                   <div className="min-w-0 space-y-1.5">
-                    <span className="block text-xs font-medium leading-5 text-foreground">
+                    <span className="text-foreground block text-xs leading-5 font-medium">
                       Authentication
                     </span>
-                    <div className="flex h-10 items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 text-xs text-muted-foreground">
+                    <div className="border-border bg-muted/30 text-muted-foreground flex h-10 items-center gap-2 rounded-md border border-dashed px-3 text-xs">
                       <LockKeyhole
                         className="h-3.5 w-3.5 shrink-0"
                         aria-hidden="true"
                       />
                       Managed by proxy
                     </div>
-                    <p className="text-xxs leading-relaxed text-muted-foreground">
+                    <p className="text-xxs text-muted-foreground leading-relaxed">
                       Provider tokens are not sent to the proxy.
                     </p>
                   </div>

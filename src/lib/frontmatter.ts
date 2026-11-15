@@ -4,8 +4,7 @@ export type FrontmatterValue = string | string[];
 
 /** Parsed `key: value` pairs, or the raw payload when the YAML is invalid. */
 export type Frontmatter =
-  | { entries: [string, FrontmatterValue][] }
-  | { raw: string };
+  { entries: [string, FrontmatterValue][] } | { raw: string };
 
 export interface FrontmatterSplit {
   frontmatter: Frontmatter | null;

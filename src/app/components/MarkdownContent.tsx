@@ -37,7 +37,7 @@ const PROSE_CLASS =
   // continue to drive text color, but we keep prose's structural styles
   // (lists, tables, code) and explicitly re-affirm italic + bold so they
   // remain visually distinct across both themes.
-  "prose dark:prose-invert min-w-0 max-w-full overflow-hidden break-words text-base leading-7 text-inherit " +
+  "prose dark:prose-invert min-w-0 max-w-full overflow-hidden wrap-break-word text-base leading-7 text-inherit " +
   "prose-strong:font-semibold prose-strong:text-current " +
   "prose-em:italic prose-em:text-current " +
   "prose-code:text-current prose-headings:text-current prose-p:text-current prose-li:text-current " +
@@ -69,7 +69,7 @@ const STREAMING_REMARK_PLUGINS = [...REMARK_PLUGINS, remarkStreamingEmphasis];
 // instead of KaTeX's hard-coded #cc0000.
 const REHYPE_PLUGINS: [
   typeof rehypeKatex,
-  { strict: string; errorColor: string }
+  { strict: string; errorColor: string },
 ][] = [[rehypeKatex, { strict: "ignore", errorColor: "var(--text-error)" }]];
 
 // Markdown here is agent output, i.e. untrusted. react-markdown strips unsafe
@@ -119,7 +119,7 @@ function safeImageSrc(value: unknown): string | undefined {
 
 const INLINE_CODE_CLASS =
   "rounded-sm border border-border/70 bg-secondary px-1.5 py-0.5 font-mono " +
-  "text-[0.9em] font-medium text-foreground [overflow-wrap:anywhere]";
+  "text-[0.9em] font-medium text-foreground wrap-anywhere";
 
 const CODE_BLOCK_STYLE: React.CSSProperties = {
   margin: 0,
@@ -186,7 +186,7 @@ function PlainCodeBlock({
       role="region"
       aria-label={label}
       tabIndex={0}
-      className="code-block my-0 max-w-full overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="code-block focus-visible:ring-primary/40 my-0 max-w-full overflow-x-auto rounded-md focus-visible:ring-2 focus-visible:outline-none"
       style={CODE_BLOCK_STYLE}
     >
       <code
@@ -271,7 +271,7 @@ function MarkdownImage({
         "not-prose relative block overflow-hidden rounded-md border",
         !compact && "my-4",
         isError
-          ? "border-dashed border-border bg-muted/30"
+          ? "border-border bg-muted/30 border-dashed"
           : "border-border bg-muted/30",
         status === "loading" && "animate-pulse motion-reduce:animate-none"
       )}
@@ -279,36 +279,34 @@ function MarkdownImage({
         isError
           ? undefined
           : size
-          ? {
-              aspectRatio: `${size.w} / ${size.h}`,
-              // Never upscale past the image's own pixels: without this a
-              // 10x10 icon would be stretched into a full-column square.
-              maxWidth: `${size.w}px`,
-              maxHeight: compact ? "240px" : "60vh",
-            }
-          : // Reserved box before the natural size is known, so a loading
-            // image has a stable footprint instead of being laid out at zero
-            // height and reflowing the transcript when the bytes land.
-            { aspectRatio: "16 / 9", maxHeight: compact ? "240px" : "22rem" }
+            ? {
+                aspectRatio: `${size.w} / ${size.h}`,
+                // Never upscale past the image's own pixels: without this a
+                // 10x10 icon would be stretched into a full-column square.
+                maxWidth: `${size.w}px`,
+                maxHeight: compact ? "240px" : "60vh",
+              }
+            : // Reserved box before the natural size is known, so a loading
+              // image has a stable footprint instead of being laid out at zero
+              // height and reflowing the transcript when the bytes land.
+              { aspectRatio: "16 / 9", maxHeight: compact ? "240px" : "22rem" }
       }
     >
       {/* A failed image gets a labelled placeholder rather than disappearing:
           returning null would delete content the author meant to be there,
           leaving the surrounding prose referring to nothing. */}
       {isError && (
-        <span className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-muted-foreground">
+        <span className="text-muted-foreground flex items-center gap-2.5 px-3 py-2.5 text-xs">
           <ImageOff
             className="h-4 w-4 shrink-0"
             aria-hidden="true"
           />
           <span className="min-w-0">
-            <span className="block font-medium text-foreground">
+            <span className="text-foreground block font-medium">
               Image failed to load
             </span>
             {alt ? (
-              <span className="mt-0.5 block [overflow-wrap:anywhere]">
-                {alt}
-              </span>
+              <span className="mt-0.5 block wrap-anywhere">{alt}</span>
             ) : null}
           </span>
         </span>
@@ -345,9 +343,9 @@ function MarkdownImage({
           <button
             type="button"
             aria-label={`Preview image: ${alt || "Image"}`}
-            className="absolute inset-0 cursor-zoom-in rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="focus-visible:ring-ring absolute inset-0 cursor-zoom-in rounded-md outline-none focus-visible:ring-2 focus-visible:ring-inset"
           >
-            <span className="absolute bottom-2 right-2 inline-flex items-center gap-1.5 rounded-md border border-border bg-background/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm">
+            <span className="border-border bg-background/95 text-foreground absolute right-2 bottom-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium shadow-sm">
               <Maximize2
                 className="size-3.5"
                 aria-hidden="true"
@@ -454,17 +452,17 @@ const COMPONENTS: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="my-4 rounded-r-md border-l-2 border-[hsl(var(--primary)/0.55)] bg-muted/60 py-2.5 pl-4 pr-3 font-normal not-italic text-foreground/85 [&_p]:my-0">
+      <blockquote className="bg-muted/60 text-foreground/85 my-4 rounded-r-md border-l-2 border-[hsl(var(--primary)/0.55)] py-2.5 pr-3 pl-4 font-normal not-italic [&_p]:my-0">
         {children}
       </blockquote>
     );
   },
   hr() {
-    return <hr className="my-6 border-0 border-t border-border" />;
+    return <hr className="border-border my-6 border-0 border-t" />;
   },
   del({ children }) {
     return (
-      <del className="text-foreground/60 line-through decoration-foreground/40">
+      <del className="text-foreground/60 decoration-foreground/40 line-through">
         {children}
       </del>
     );
@@ -480,7 +478,7 @@ const COMPONENTS: Components = {
         checked={Boolean(checked)}
         readOnly
         disabled
-        className="mr-2 h-3.5 w-3.5 translate-y-[1px] cursor-default accent-primary"
+        className="accent-primary mr-2 h-3.5 w-3.5 translate-y-px cursor-default"
       />
     );
   },
@@ -491,7 +489,7 @@ const COMPONENTS: Components = {
     return (
       <ul
         className={cn(
-          "my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1",
+          "my-4 pl-6 [&>li]:mb-1 [&>li:last-child]:mb-0",
           "[&.contains-task-list]:list-none [&.contains-task-list]:pl-1",
           className
         )}
@@ -505,7 +503,7 @@ const COMPONENTS: Components = {
       <ol
         start={start}
         className={cn(
-          "my-4 pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1",
+          "my-4 pl-6 [&>li]:mb-1 [&>li:last-child]:mb-0",
           className
         )}
       >
@@ -526,7 +524,7 @@ const COMPONENTS: Components = {
   table({ children }) {
     return (
       <div
-        className="not-prose my-4 max-w-full overflow-x-auto rounded-md border border-border bg-secondary"
+        className="not-prose border-border bg-secondary my-4 max-w-full overflow-x-auto rounded-md border"
         role="region"
         aria-label="Markdown table"
         tabIndex={0}
@@ -540,11 +538,11 @@ const COMPONENTS: Components = {
           className={
             "my-0 w-full border-collapse text-sm " +
             "[&_strong]:font-semibold [&_strong]:text-current " +
-            "[&_em]:italic [&_em]:text-current " +
-            "[&_code]:rounded-sm [&_code]:border [&_code]:border-border/60 " +
+            "[&_em]:text-current [&_em]:italic " +
+            "[&_code]:border-border/60 [&_code]:rounded-sm [&_code]:border " +
             "[&_code]:bg-background [&_code]:px-1 [&_code]:py-0.5 " +
             "[&_code]:font-mono [&_code]:text-[0.85em] [&_code]:font-medium " +
-            "[&_a:hover]:underline [&_a]:text-primary"
+            "[&_a]:text-primary [&_a:hover]:underline"
           }
         >
           {children}
@@ -564,14 +562,14 @@ const COMPONENTS: Components = {
   },
   tr({ children }) {
     return (
-      <tr className="border-b border-border last:border-b-0">{children}</tr>
+      <tr className="border-border border-b last:border-b-0">{children}</tr>
     );
   },
   th({ style, children }) {
     return (
       <th
         style={style}
-        className="whitespace-nowrap border-b border-border px-3 py-2 font-semibold"
+        className="border-border border-b px-3 py-2 font-semibold whitespace-nowrap"
       >
         {children}
       </th>
@@ -581,7 +579,7 @@ const COMPONENTS: Components = {
     return (
       <td
         style={style}
-        className="px-3 py-2 align-top [&_p:last-child]:mb-0 [&_p]:mb-1"
+        className="px-3 py-2 align-top [&_p]:mb-1 [&_p:last-child]:mb-0"
       >
         {children}
       </td>
@@ -594,7 +592,7 @@ const COMPONENTS: Components = {
       return (
         <span
           title={safeSrc}
-          className="text-sm italic text-muted-foreground"
+          className="text-muted-foreground text-sm italic"
         >
           [Image: {alt || safeSrc.split("/").pop()}]
         </span>
@@ -651,7 +649,7 @@ function ArtifactDownload({
         type="button"
         disabled={!available}
         aria-label={`Download ${filename}`}
-        className="text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground"
+        className="text-primary focus-visible:ring-primary disabled:text-muted-foreground underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
         onClick={() => {
           try {
             saveBlob(
@@ -673,7 +671,7 @@ function ArtifactDownload({
         </MarkdownLinkContext.Provider>
       </button>
       {!available && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {" "}
           (file unavailable)
         </span>
@@ -681,7 +679,7 @@ function ArtifactDownload({
       {error && (
         <span
           role="alert"
-          className="text-xs text-muted-foreground"
+          className="text-muted-foreground text-xs"
         >
           {" "}
           Download failed.
@@ -803,7 +801,7 @@ function ArtifactOpen({
         </MarkdownLinkContext.Provider>
       </button>
       {!available && (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {" "}
           (file unavailable)
         </span>
@@ -888,7 +886,7 @@ const ARTIFACT_COMPONENTS: Components = {
           type="button"
           aria-label={`Open ${filename}`}
           onClick={() => opener.open(path)}
-          className="not-prose my-2 block w-full max-w-full rounded-md text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="not-prose hover:bg-muted/50 focus-visible:ring-ring my-2 block w-full max-w-full rounded-md text-left focus-visible:ring-2 focus-visible:outline-none"
         >
           {thumbnail}
         </button>
@@ -929,7 +927,7 @@ function FrontmatterPanel({ frontmatter }: { frontmatter: Frontmatter }) {
     return (
       <pre
         aria-label="Document metadata"
-        className={cn(frame, "overflow-x-auto whitespace-pre font-mono")}
+        className={cn(frame, "overflow-x-auto font-mono whitespace-pre")}
       >
         {frontmatter.raw}
       </pre>
@@ -945,16 +943,16 @@ function FrontmatterPanel({ frontmatter }: { frontmatter: Frontmatter }) {
     >
       {frontmatter.entries.map(([key, value]) => (
         <React.Fragment key={key}>
-          <dt className="font-medium text-muted-foreground [overflow-wrap:anywhere]">
+          <dt className="text-muted-foreground font-medium wrap-anywhere">
             {key}
           </dt>
-          <dd className="min-w-0 [overflow-wrap:anywhere]">
+          <dd className="min-w-0 wrap-anywhere">
             {Array.isArray(value) ? (
               <span className="flex flex-wrap gap-1">
                 {value.map((item, index) => (
                   <span
                     key={index}
-                    className="rounded bg-background px-1.5 font-mono"
+                    className="bg-background rounded px-1.5 font-mono"
                   >
                     {item}
                   </span>
@@ -990,7 +988,7 @@ export const MarkdownContent = React.memo<MarkdownContentProps>(
     return (
       <div className={cn(PROSE_CLASS, className)}>
         {isLarge && (
-          <div className="not-prose border-warning/40 bg-warning/10 mb-3 rounded-md border px-3 py-2 text-xs text-foreground/80">
+          <div className="not-prose border-warning/40 bg-warning/10 text-foreground/80 mb-3 rounded-md border px-3 py-2 text-xs">
             Rendering a large document (
             {normalizedContent.length.toLocaleString()} characters).
           </div>

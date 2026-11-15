@@ -91,12 +91,7 @@ export function metaForTransport(transport: Transport): ChannelMeta {
 }
 
 export type StatusTone =
-  | "active"
-  | "paused"
-  | "linked"
-  | "available"
-  | "unavailable"
-  | "attention";
+  "active" | "paused" | "linked" | "available" | "unavailable" | "attention";
 
 export interface ChannelStatus {
   tone: StatusTone;

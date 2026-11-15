@@ -45,9 +45,9 @@ export function SettingsPanel<Id extends string>({
   return (
     <div
       ref={panel}
-      className="absolute inset-0 flex min-w-0 flex-col bg-background @container/panel"
+      className="bg-background @container/panel absolute inset-0 flex min-w-0 flex-col"
     >
-      <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4">
+      <header className="border-border bg-card flex min-h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
         <h2 className="text-base font-semibold tracking-tight">{title}</h2>
         <div className="flex shrink-0 items-center gap-1">
           {onToggleExpanded && (
@@ -84,10 +84,10 @@ export function SettingsPanel<Id extends string>({
       <div className={cn("flex min-h-0 flex-1", !wide && "flex-col")}>
         <div
           className={cn(
-            "shrink-0 bg-card",
+            "bg-card shrink-0",
             wide
-              ? "w-52 overflow-y-auto border-r border-border py-3"
-              : "border-b border-border px-1"
+              ? "border-border w-52 overflow-y-auto border-r py-3"
+              : "border-border border-b px-1"
           )}
         >
           <PanelTabs
@@ -103,7 +103,7 @@ export function SettingsPanel<Id extends string>({
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {section?.description && (
-            <p className="shrink-0 border-b border-border/60 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="border-border/60 text-muted-foreground shrink-0 border-b px-4 py-3 text-xs leading-relaxed">
               {section.description}
             </p>
           )}

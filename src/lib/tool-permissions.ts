@@ -91,8 +91,8 @@ async function requestToolPermissions<T>(
     response.status === 503
       ? "Tool permissions are unavailable."
       : response.status === 409
-      ? "Tool permissions changed. Refresh and review before saving again."
-      : "Tool permissions request failed.";
+        ? "Tool permissions changed. Refresh and review before saving again."
+        : "Tool permissions request failed.";
   throw new ToolPermissionsApiError(
     extractErrorMessage(detail, fallback),
     response.status,

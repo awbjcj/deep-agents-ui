@@ -84,15 +84,15 @@ test(
         req.url === "/app.js"
           ? "text/javascript"
           : req.url === "/style.css"
-          ? "text/css"
-          : "text/html"
+            ? "text/css"
+            : "text/html"
       );
       res.end(
         req.url === "/app.js"
           ? bundle.outputFiles[0].text
           : req.url === "/style.css"
-          ? css
-          : '<html><head><title>Context summary verification</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html><head><title>Context summary verification</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

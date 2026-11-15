@@ -83,7 +83,7 @@ export function RepositoryWorkspace({
             ) : (
               <p
                 role="status"
-                className="text-sm text-muted-foreground"
+                className="text-muted-foreground text-sm"
               >
                 Opening the conversation…
               </p>

@@ -208,7 +208,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 block w-fit text-sm text-primary underline"
+            className="text-primary mt-2 block w-fit text-sm underline"
           >
             Open image result
             {imageUrls.length > 1 ? ` ${index + 1}` : ""}
@@ -223,7 +223,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           "w-full overflow-hidden rounded-lg border transition-colors duration-150 motion-reduce:transition-none",
           isExpanded && hasContent
             ? "border-border bg-card/80"
-            : "border-transparent hover:border-border/70 hover:bg-card/50"
+            : "hover:border-border/70 hover:bg-card/50 border-transparent"
         )}
       >
         <Button
@@ -232,7 +232,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
           onClick={toggleExpanded}
           data-motion={pointerMotion ? "animate" : "instant"}
           className={cn(
-            "group/tool flex h-auto min-h-touch w-full items-center justify-between gap-3 whitespace-normal rounded-lg border-none px-2.5 py-2 text-left shadow-none outline-none hover:bg-transparent focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100 dark:hover:bg-transparent"
+            "group/tool min-h-touch focus-visible:ring-ring flex h-auto w-full items-center justify-between gap-3 rounded-lg border-none px-2.5 py-2 text-left whitespace-normal shadow-none outline-none hover:bg-transparent focus-visible:ring-2 disabled:cursor-default disabled:opacity-100 dark:hover:bg-transparent"
           )}
           aria-expanded={isExpanded}
           aria-label={name}
@@ -247,12 +247,12 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 "flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
                 status === "error"
                   ? "bg-destructive/10 text-destructive"
-                  : "bg-primary/10 text-[var(--color-primary)]"
+                  : "bg-primary/10 text-(--color-primary)"
               )}
             >
               <Wrench className="size-3.5" />
             </span>
-            <span className="min-w-0 break-words font-mono text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+            <span className="text-foreground min-w-0 font-mono text-sm font-medium wrap-anywhere wrap-break-word">
               {name}
             </span>
           </div>
@@ -274,7 +274,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
               size={14}
               aria-hidden="true"
               className={cn(
-                "shrink-0 text-muted-foreground transition-transform duration-150 [transition-timing-function:var(--ease-out)] group-data-[motion=instant]/tool:transition-none motion-reduce:transition-none",
+                "text-muted-foreground shrink-0 transition-transform duration-150 [transition-timing-function:var(--ease-out)] group-data-[motion=instant]/tool:transition-none motion-reduce:transition-none",
                 isExpanded && "rotate-180"
               )}
             />
@@ -282,7 +282,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
         </Button>
 
         {analysisJobId && showAnalysisJob && (
-          <div className="px-2.5 pb-3 pt-1">
+          <div className="px-2.5 pt-1 pb-3">
             <CodeAnalysisJob
               key={analysisJobId}
               jobId={analysisJobId}
@@ -293,7 +293,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
         {isExpanded && hasContent && (
           <div
             id={contentId}
-            className="border-t border-border/70 px-3.5 pb-4"
+            className="border-border/70 border-t px-3.5 pb-4"
           >
             {presentation && (
               <div className="py-3">
@@ -331,38 +331,38 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                 {resultView}
                 {Object.keys(args).length > 0 && (
                   <div className="mt-4">
-                    <h4 className="mb-1.5 text-xxs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h4 className="text-xxs text-muted-foreground mb-1.5 font-semibold tracking-wide uppercase">
                       Arguments
                     </h4>
                     <div className="space-y-2">
                       {Object.entries(args).map(([key, value]) => (
                         <div
                           key={key}
-                          className="overflow-hidden rounded-md border border-border"
+                          className="border-border overflow-hidden rounded-md border"
                         >
                           <button
                             type="button"
                             onClick={() => toggleArgExpanded(key)}
                             aria-expanded={!!expandedArgs[key]}
-                            className="flex min-h-touch w-full items-center justify-between gap-2 bg-muted/30 px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
+                            className="min-h-touch bg-muted/30 hover:bg-muted/50 focus-visible:ring-ring flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset motion-reduce:transition-none"
                           >
-                            <span className="min-w-0 break-words font-mono [overflow-wrap:anywhere]">
+                            <span className="min-w-0 font-mono wrap-anywhere wrap-break-word">
                               {key}
                             </span>
                             <ChevronDown
                               aria-hidden="true"
                               size={13}
                               className={cn(
-                                "shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none",
+                                "text-muted-foreground shrink-0 transition-transform duration-150 motion-reduce:transition-none",
                                 expandedArgs[key] && "rotate-180"
                               )}
                             />
                           </button>
                           {expandedArgs[key] && (
-                            <div className="border-t border-border bg-muted/20 p-2">
+                            <div className="border-border bg-muted/20 border-t p-2">
                               <pre
                                 aria-label={`${key} argument value`}
-                                className="m-0 max-h-80 overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-sm font-mono text-xs leading-6 text-foreground [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                                className="text-foreground focus-visible:ring-ring m-0 max-h-80 overflow-auto overscroll-contain rounded-sm font-mono text-xs leading-6 wrap-anywhere wrap-break-word whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                                 role="region"
                                 tabIndex={0}
                               >

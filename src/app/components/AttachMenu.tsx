@@ -9,7 +9,7 @@ import { ComposerMenuOption, PRESS_FEEDBACK } from "./ComposerMenuOption";
 const ITEM =
   "group flex w-full rounded-lg px-2 py-2 text-left outline-none transition-colors duration-150 hover:bg-primary/5 focus-visible:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent motion-reduce:transition-none";
 const TILE =
-  "bg-primary/10 text-[var(--color-primary)] group-hover:bg-primary/15 group-focus-visible:bg-primary/15 group-disabled:bg-primary/10";
+  "bg-primary/10 text-(--color-primary) group-hover:bg-primary/15 group-focus-visible:bg-primary/15 group-disabled:bg-primary/10";
 
 const enabledItems = (menu: HTMLElement | null) =>
   Array.from(
@@ -81,12 +81,12 @@ export function AttachMenu({
       event.key === "ArrowDown"
         ? (index + 1) % list.length
         : event.key === "ArrowUp"
-        ? (index - 1 + list.length) % list.length
-        : event.key === "Home"
-        ? 0
-        : event.key === "End"
-        ? list.length - 1
-        : -1;
+          ? (index - 1 + list.length) % list.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? list.length - 1
+              : -1;
     if (next < 0) return;
     event.preventDefault();
     list[next].focus();
@@ -106,7 +106,7 @@ export function AttachMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground dark:aria-expanded:bg-accent/60",
+          "text-muted-foreground hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground dark:aria-expanded:bg-accent/60 h-9 w-9 rounded-lg",
           PRESS_FEEDBACK
         )}
         onClick={() => setOpen((value) => !value)}
@@ -124,7 +124,7 @@ export function AttachMenu({
           role="menu"
           aria-label="Attach files"
           onKeyDown={onMenuKeyDown}
-          className="absolute bottom-full left-0 z-[80] mb-2 w-64 origin-bottom-left rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-md [animation-timing-function:var(--ease-out)] motion-safe:duration-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-1"
+          className="border-border bg-popover text-popover-foreground motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-1 absolute bottom-full left-0 z-80 mb-2 w-64 origin-bottom-left rounded-xl border p-1 shadow-md [animation-timing-function:var(--ease-out)] motion-safe:duration-150"
         >
           <button
             type="button"

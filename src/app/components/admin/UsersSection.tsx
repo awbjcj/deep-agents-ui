@@ -270,11 +270,11 @@ export function UsersSection() {
             return (
               <article
                 key={u.user_id}
-                className="aptiv-glass-soft rounded-lg p-2.5 shadow-sm transition-[background-color,border-color] duration-150 hover:bg-muted/50"
+                className="aptiv-glass-soft hover:bg-muted/50 rounded-lg p-2.5 shadow-sm transition-[background-color,border-color] duration-150"
               >
                 <header className="flex items-center gap-2">
                   <div
-                    className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
                     style={{
                       color: roleColor,
                       borderColor: `color-mix(in srgb, ${roleColor} 40%, transparent)`,
@@ -290,7 +290,7 @@ export function UsersSection() {
                         {u.username}
                       </span>
                       {isSelf && (
-                        <span className="rounded-sm bg-muted px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span className="bg-muted text-muted-foreground rounded-sm px-1.5 py-px text-[9px] font-semibold tracking-wider uppercase">
                           You
                         </span>
                       )}
@@ -369,7 +369,7 @@ export function UsersSection() {
         <Button
           type="button"
           variant="outline"
-          className="hover:bg-[var(--aptiv-turquoise)]/10 dark:hover:bg-[var(--aptiv-turquoise)]/15 h-8 w-full text-xs text-[var(--aptiv-turquoise-dark)] transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:text-[var(--aptiv-turquoise-dark)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 dark:text-[var(--aptiv-turquoise)] dark:hover:text-[var(--aptiv-turquoise)]"
+          className="h-8 w-full text-xs text-(--aptiv-turquoise-dark) transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:bg-(--aptiv-turquoise)/10 hover:text-(--aptiv-turquoise-dark) focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 dark:text-(--aptiv-turquoise) dark:hover:bg-(--aptiv-turquoise)/15 dark:hover:text-(--aptiv-turquoise)"
           onClick={handleResetAllUsage}
         >
           <RotateCcw className="mr-2 h-4 w-4" />
@@ -378,7 +378,7 @@ export function UsersSection() {
         <Button
           type="button"
           variant="outline"
-          className="h-8 w-full text-xs text-destructive transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:bg-destructive/10 hover:text-destructive focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-full text-xs transition-[background-color,border-color,color,box-shadow,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:transition-none active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
           onClick={handleResetAll}
         >
           <Download className="mr-2 h-4 w-4" />
@@ -404,18 +404,18 @@ function UsageStrip({
 }) {
   const { primary } = splitUsageByEnforcement(usage, override);
   return (
-    <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-      <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+    <div className="text-muted-foreground mt-2 flex items-center gap-2 text-[11px]">
+      <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
         <div
           className={cn(
             "h-full origin-left rounded-full transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
             primary.isUnlimited
               ? "bg-muted-foreground/40"
               : primary.pct >= 90
-              ? "bg-destructive"
-              : primary.pct >= 70
-              ? "bg-[var(--color-warning)]"
-              : "bg-primary"
+                ? "bg-destructive"
+                : primary.pct >= 70
+                  ? "bg-(--color-warning)"
+                  : "bg-primary"
           )}
           style={{
             width: primary.isUnlimited
@@ -425,7 +425,7 @@ function UsageStrip({
         />
       </div>
       <span
-        className="whitespace-nowrap font-mono tabular-nums text-foreground"
+        className="text-foreground font-mono whitespace-nowrap tabular-nums"
         title={`Weekly ${primary.dimension} cap`}
       >
         {primary.dimension}{" "}

@@ -92,7 +92,7 @@ function IndexRowImpl({
 
   return (
     <article
-      className="aptiv-glass-soft overflow-hidden rounded-lg border border-border/70"
+      className="aptiv-glass-soft border-border/70 overflow-hidden rounded-lg border"
       style={{
         contentVisibility: "auto",
         containIntrinsicSize: ROW_INTRINSIC_HEIGHT,
@@ -111,10 +111,10 @@ function IndexRowImpl({
             aria-label={`Select ${index.name}`}
             onClick={() => onToggleSelect(index.name)}
             className={cn(
-              "group flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border transition-[border-color,background-color,color,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
+              "group focus-visible:ring-primary/30 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-[border-color,background-color,color,transform] duration-150 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] focus-visible:ring-2 focus-visible:outline-none active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
               isSelected
-                ? "bg-[var(--aptiv-turquoise)]/12 border-[var(--aptiv-turquoise)] text-[var(--aptiv-turquoise)]"
-                : "hover:border-[var(--aptiv-turquoise)]/60 border-[var(--aptiv-glass-border)] bg-[var(--aptiv-glass-bg)] text-[var(--color-primary)]"
+                ? "border-(--aptiv-turquoise) bg-(--aptiv-turquoise)/12 text-(--aptiv-turquoise)"
+                : "border-(--aptiv-glass-border) bg-(--aptiv-glass-bg) text-(--color-primary) hover:border-(--aptiv-turquoise)/60"
             )}
           >
             {isSelected ? (
@@ -141,7 +141,7 @@ function IndexRowImpl({
                 pushed the badge onto a third row as soon as a name ran long. */}
             <div className="flex items-start gap-1">
               <h5
-                className="min-w-0 flex-1 font-mono text-xs font-semibold leading-relaxed text-foreground break-anywhere"
+                className="text-foreground break-anywhere min-w-0 flex-1 font-mono text-xs leading-relaxed font-semibold"
                 title={index.name}
               >
                 {sharedPrefix && (
@@ -155,11 +155,11 @@ function IndexRowImpl({
                 type="button"
                 onClick={() => void copyName()}
                 aria-label={`Copy index name ${index.name}`}
-                className="-mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-primary/30 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
               >
                 {copied ? (
                   <Check
-                    className="h-3 w-3 text-success"
+                    className="text-success h-3 w-3"
                     aria-hidden="true"
                   />
                 ) : (
@@ -171,19 +171,19 @@ function IndexRowImpl({
               </button>
             </div>
 
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
               <LibraryStatus
                 label={index.health}
                 tone={indexTone(index.health)}
               />
               <span>
-                <strong className="font-medium tabular-nums text-foreground">
+                <strong className="text-foreground font-medium tabular-nums">
                   {index.doc_count.toLocaleString()}
                 </strong>{" "}
                 docs
               </span>
               <span>
-                <strong className="font-medium tabular-nums text-foreground">
+                <strong className="text-foreground font-medium tabular-nums">
                   {formatBytes(index.store_size_bytes)}
                 </strong>{" "}
                 stored
@@ -193,7 +193,7 @@ function IndexRowImpl({
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-2.5">
+        <div className="border-border/60 mt-3 flex flex-wrap gap-1.5 border-t pt-2.5">
           <Button
             type="button"
             size="sm"
@@ -231,7 +231,7 @@ function IndexRowImpl({
             type="button"
             size="sm"
             variant="ghost"
-            className="ml-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
             onClick={() => onDelete(index)}
           >
             <Trash2 aria-hidden="true" />
@@ -243,14 +243,14 @@ function IndexRowImpl({
       {isExpanded && (
         <div
           id={panelId}
-          className="border-t border-border/70 bg-background/45 p-3 duration-200 animate-in fade-in slide-in-from-top-1"
+          className="border-border/70 bg-background/45 animate-in fade-in slide-in-from-top-1 border-t p-3 duration-200"
         >
           {detailError ? (
             <div
               role="alert"
               className="flex flex-wrap items-center justify-between gap-2"
             >
-              <p className="text-[11px] text-destructive break-anywhere">
+              <p className="text-destructive break-anywhere text-[11px]">
                 {detailError}
               </p>
               <Button
@@ -272,9 +272,9 @@ function IndexRowImpl({
                   // let a long field name shove the type off the row.
                   <div
                     key={field}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 border-b border-border/40 py-1 text-[11px]"
+                    className="border-border/40 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 border-b py-1 text-[11px]"
                   >
-                    <dt className="font-mono text-foreground break-anywhere">
+                    <dt className="text-foreground break-anywhere font-mono">
                       {field}
                     </dt>
                     <dd className="text-muted-foreground">{type}</dd>

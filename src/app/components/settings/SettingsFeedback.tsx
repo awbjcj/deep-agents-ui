@@ -16,9 +16,9 @@ export function SettingsLoading({ compact = false }: { compact?: boolean }) {
         aria-hidden="true"
         className="space-y-3 motion-safe:animate-pulse"
       >
-        <div className="h-3 w-1/3 rounded bg-muted" />
-        <div className="h-10 rounded-md bg-muted" />
-        {!compact && <div className="h-10 rounded-md bg-muted" />}
+        <div className="bg-muted h-3 w-1/3 rounded" />
+        <div className="bg-muted h-10 rounded-md" />
+        {!compact && <div className="bg-muted h-10 rounded-md" />}
       </div>
     </div>
   );
@@ -35,7 +35,7 @@ export function SettingsLoadError({
   return (
     <div
       role="alert"
-      className="space-y-3 rounded-lg border border-border p-4 text-sm"
+      className="border-border space-y-3 rounded-lg border p-4 text-sm"
     >
       <p>{message}</p>
       <Button

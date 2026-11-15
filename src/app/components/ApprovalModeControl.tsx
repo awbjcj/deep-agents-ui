@@ -47,7 +47,7 @@ interface ApprovalModeControlProps {
   unavailableReason?: string;
 }
 
-const INSTANT = "!animate-none";
+const INSTANT = "animate-none!";
 
 const ICONS: Record<ApprovalMode, LucideIcon> = {
   interactive: ShieldCheck,
@@ -156,7 +156,7 @@ export function ApprovalModeControl({
               return (
                 <Fragment key={option}>
                   {option === "autopilot" && (
-                    <SelectSeparator className="my-1 bg-border/70" />
+                    <SelectSeparator className="bg-border/70 my-1" />
                   )}
                   <SelectItem
                     value={option}
@@ -204,7 +204,7 @@ export function ApprovalModeControl({
 
       <DialogContent
         className={cn(
-          "max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto rounded-2xl p-5 sm:p-6 [&_p]:!mb-0",
+          "max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto rounded-2xl p-5 sm:p-6 [&_p]:mb-0!",
           INSTANT
         )}
         overlayClassName={INSTANT}
@@ -215,7 +215,7 @@ export function ApprovalModeControl({
       >
         <DialogHeader className="text-left">
           <div
-            className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-destructive/25 bg-destructive/10 text-destructive"
+            className="border-destructive/25 bg-destructive/10 text-destructive mb-2 flex h-10 w-10 items-center justify-center rounded-xl border"
             aria-hidden="true"
           >
             <ShieldAlert className="h-5 w-5" />
@@ -226,7 +226,7 @@ export function ApprovalModeControl({
             including subagent calls.
           </DialogDescription>
         </DialogHeader>
-        <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm leading-6">
+        <div className="border-destructive/25 bg-destructive/5 rounded-xl border px-4 py-3 text-sm leading-6">
           <p>
             The agent can send messages, change external data, and trigger
             builds without asking. Actions may be irreversible.
@@ -235,7 +235,7 @@ export function ApprovalModeControl({
         <dl className="space-y-3 text-sm leading-5">
           <div>
             <dt className="font-medium">This chat only</dt>
-            <dd className="mt-0.5 text-muted-foreground">
+            <dd className="text-muted-foreground mt-0.5">
               Returns to Interactive when you leave, reload, sign out, or stop
               the run. Available to admins and developers; tool permissions
               still apply.
@@ -243,7 +243,7 @@ export function ApprovalModeControl({
           </div>
           <div>
             <dt className="font-medium">Allow reads</dt>
-            <dd className="mt-0.5 text-muted-foreground">
+            <dd className="text-muted-foreground mt-0.5">
               Searches and reads run automatically. Writes and sends still
               require approval.
             </dd>
@@ -252,12 +252,12 @@ export function ApprovalModeControl({
         {error && (
           <p
             role="alert"
-            className="text-sm leading-5 text-destructive"
+            className="text-destructive text-sm leading-5"
           >
             {error}
           </p>
         )}
-        <DialogFooter className="gap-2 border-t border-border/60 pt-4">
+        <DialogFooter className="border-border/60 gap-2 border-t pt-4">
           <Button
             type="button"
             variant="outline"

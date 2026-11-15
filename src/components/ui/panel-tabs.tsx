@@ -135,9 +135,9 @@ export function PanelTabs<Id extends string>({
           ? isRail
             ? "flex min-w-0 flex-col gap-1 px-3"
             : isTwoRow
-            ? "grid min-w-0 items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
-            : "flex min-w-0 items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
+              ? "grid min-w-0 items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
+              : "flex min-w-0 scrollbar-none items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [&::-webkit-scrollbar]:hidden"
+          : "border-border bg-muted/35 grid auto-cols-fr grid-flow-col rounded-md border p-1",
         className
       )}
     >
@@ -166,11 +166,11 @@ export function PanelTabs<Id extends string>({
             }}
             onKeyDown={(event) => onKeyDown(event, index)}
             className={cn(
-              "group relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-center font-medium transition-colors motion-reduce:transition-none",
-              "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
+              "group relative inline-flex items-center justify-center gap-1.5 text-center font-medium whitespace-nowrap transition-colors motion-reduce:transition-none",
+              "focus-visible:ring-2 focus-visible:ring-(--aptiv-orange)/40 focus-visible:outline-none",
               isUnderline
                 ? cn(
-                    "min-h-touch shrink-0 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal @[480px]/panel:text-sm",
+                    "min-h-touch shrink-0 rounded-t-md px-3 py-2.5 text-xs tracking-normal normal-case @[480px]/panel:text-sm",
                     isTwoRow &&
                       "w-full min-w-0 flex-col gap-1 px-0.5 py-2 text-xs @[440px]/panel:flex-row @[440px]/panel:px-1",
                     isRail &&
@@ -181,13 +181,13 @@ export function PanelTabs<Id extends string>({
                 ? isRail
                   ? "bg-primary/10 text-primary"
                   : isUnderline
-                  ? "bg-background/60 text-foreground"
-                  : "bg-card text-foreground shadow-sm"
+                    ? "bg-background/60 text-foreground"
+                    : "bg-card text-foreground shadow-sm"
                 : isUnderline
-                ? "text-muted-foreground hover:bg-background/30 hover:text-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                  ? "text-muted-foreground hover:bg-background/30 hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               tab.disabled &&
-                "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground"
+                "hover:text-muted-foreground cursor-not-allowed opacity-40 hover:bg-transparent"
             )}
           >
             {Icon ? (
@@ -199,7 +199,7 @@ export function PanelTabs<Id extends string>({
             <span
               data-slot="panel-tab-label"
               className={cn(
-                "min-w-0 whitespace-normal break-words",
+                "min-w-0 wrap-break-word whitespace-normal",
                 isRail ? "text-left" : "text-center"
               )}
             >
@@ -219,7 +219,7 @@ export function PanelTabs<Id extends string>({
               <span
                 aria-hidden="true"
                 className={cn(
-                  "absolute -bottom-px left-0 right-0 h-[2.5px] rounded-t-full transition-opacity motion-reduce:transition-none",
+                  "absolute right-0 -bottom-px left-0 h-[2.5px] rounded-t-full transition-opacity motion-reduce:transition-none",
                   isActive ? "opacity-100" : "opacity-0"
                 )}
                 style={{ background: "var(--aptiv-orange)" }}

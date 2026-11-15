@@ -21,10 +21,10 @@ export function remarkStreamingEmphasis() {
             const marker = hasUnmatchedOpener
               ? raw[0].repeat(2)
               : raw.startsWith("**")
-              ? "**"
-              : raw.startsWith("__")
-              ? "__"
-              : null;
+                ? "**"
+                : raw.startsWith("__")
+                  ? "__"
+                  : null;
             // CommonMark reads `**heading*` as italic `*heading`. Keep the
             // source visible until the second closing marker arrives. Complete
             // emphasis (including ***bold italic***) retains its semantics.

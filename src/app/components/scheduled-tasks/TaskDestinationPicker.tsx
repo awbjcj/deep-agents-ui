@@ -93,7 +93,7 @@ export function TaskDestinationPicker({
           {error && (
             <p
               role="alert"
-              className="text-sm text-[var(--text-error)]"
+              className="text-sm text-(--text-error)"
             >
               {error}
             </p>
@@ -101,7 +101,7 @@ export function TaskDestinationPicker({
           {busy ? (
             <p
               role="status"
-              className="text-sm text-muted-foreground"
+              className="text-muted-foreground text-sm"
             >
               Loading chats…
             </p>
@@ -127,7 +127,7 @@ export function TaskDestinationPicker({
             </Button>
           ) : (
             chats.length === 0 && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 No chats yet. Create a new chat for this task.
               </p>
             )

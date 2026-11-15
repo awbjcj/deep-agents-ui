@@ -126,8 +126,8 @@ test(
           request.url.endsWith(".woff2")
             ? "font/woff2"
             : request.url.endsWith(".woff")
-            ? "font/woff"
-            : "font/ttf"
+              ? "font/woff"
+              : "font/ttf"
         );
         response.end(await readFile(join(ROOT, "public", request.url)));
         return;
@@ -137,15 +137,15 @@ test(
         request.url === "/app.js"
           ? "text/javascript"
           : request.url === "/style.css"
-          ? "text/css"
-          : "text/html"
+            ? "text/css"
+            : "text/html"
       );
       response.end(
         request.url === "/app.js"
           ? bundle.outputFiles[0].text
           : request.url === "/style.css"
-          ? css.css
-          : '<!doctype html><html lang="en"><head><title>Tool results review</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css.css
+            : '<!doctype html><html lang="en"><head><title>Tool results review</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

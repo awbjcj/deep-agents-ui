@@ -5,7 +5,7 @@ export function ResponseActivity({ activity }: { activity: string[] }) {
   if (!activity.length) return null;
   return (
     <div
-      className="flex flex-wrap items-start gap-x-4 gap-y-2 text-muted-foreground"
+      className="text-muted-foreground flex flex-wrap items-start gap-x-4 gap-y-2"
       aria-label="Response activity"
     >
       {activity.map((label) => {
@@ -13,25 +13,25 @@ export function ResponseActivity({ activity }: { activity: string[] }) {
         const Icon = compacted
           ? Minimize2
           : label.includes("web") || label === "Web searched"
-          ? Globe2
-          : Search;
+            ? Globe2
+            : Search;
         return compacted ? (
           <details
             key={label}
-            className="group max-w-full rounded-lg border border-border/70 bg-muted/20 text-xs"
+            className="group border-border/70 bg-muted/20 max-w-full rounded-lg border text-xs"
           >
-            <summary className="flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-foreground hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+            <summary className="text-foreground hover:bg-muted/50 focus-visible:ring-ring flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 py-1.5 focus-visible:ring-2 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
               <Icon
-                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                className="text-muted-foreground h-3.5 w-3.5 shrink-0"
                 aria-hidden="true"
               />
               {label}
               <ChevronDown
-                className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground group-open:rotate-180"
+                className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0 group-open:rotate-180"
                 aria-hidden="true"
               />
             </summary>
-            <p className="max-w-sm border-t border-border/70 px-3 py-2.5 leading-relaxed text-muted-foreground">
+            <p className="border-border/70 text-muted-foreground max-w-sm border-t px-3 py-2.5 leading-relaxed">
               Earlier context was compacted to make room for the conversation to
               continue. You can keep chatting; no action is needed.
             </p>

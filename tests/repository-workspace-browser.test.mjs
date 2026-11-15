@@ -195,8 +195,8 @@ test(
             body.ref.repository === projects[0].repository
               ? 1
               : body.ref.repository === projects[1].repository
-              ? 2
-              : 3;
+                ? 2
+                : 3;
           const result = {
             target_handle: `opaque-target-${index}`,
             target: {
@@ -281,15 +281,15 @@ test(
           url.pathname === "/app.js"
             ? "text/javascript"
             : url.pathname === "/style.css"
-            ? "text/css"
-            : "text/html",
+              ? "text/css"
+              : "text/html",
       });
       res.end(
         url.pathname === "/app.js"
           ? bundle.outputFiles[0].text
           : url.pathname === "/style.css"
-          ? css
-          : '<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

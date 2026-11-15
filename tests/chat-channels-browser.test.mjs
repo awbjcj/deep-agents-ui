@@ -73,8 +73,8 @@ async function bundleFixture() {
               args.path === "link"
                 ? 'import React from "react"; export default function Link(props) { return <a {...props} />; }'
                 : args.path === "auth"
-                ? 'import React from "react"; export const FixtureAuth = React.createContext({}); export const useAuth = () => React.useContext(FixtureAuth);'
-                : `import React from 'react'; export function ${args.path}() { return <p>Other workspace settings</p>; }`,
+                  ? 'import React from "react"; export const FixtureAuth = React.createContext({}); export const useAuth = () => React.useContext(FixtureAuth);'
+                  : `import React from 'react'; export function ${args.path}() { return <p>Other workspace settings</p>; }`,
           }));
         },
       },
@@ -190,8 +190,8 @@ function createApi() {
             channel === "telegram"
               ? `https://t.me/vsda_fixture_bot?start=${code}`
               : channel === "teams"
-              ? "https://teams.microsoft.com/l/chat/0/0?users=28:app&message=x"
-              : "https://slack.com/app_redirect?app=A1&team=T1",
+                ? "https://teams.microsoft.com/l/chat/0/0?users=28:app&message=x"
+                : "https://slack.com/app_redirect?app=A1&team=T1",
           code_prefilled: channel !== "slack",
           expires_at: Date.now() / 1000 + 300,
         },

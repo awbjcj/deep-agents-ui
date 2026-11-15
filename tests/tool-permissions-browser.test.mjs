@@ -233,9 +233,8 @@ test(
                 assert.equal(await email.isChecked(), true);
 
                 // A later save must use the recovery response's current revision.
-                policy.tiers[
-                  panel === "personal" ? "admin" : "user"
-                ].revision = 7;
+                policy.tiers[panel === "personal" ? "admin" : "user"].revision =
+                  7;
                 await retry.click();
                 await recoveryStarted.promise;
                 assert.equal(await save.isDisabled(), true);

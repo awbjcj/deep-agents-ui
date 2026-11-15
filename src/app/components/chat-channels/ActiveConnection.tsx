@@ -57,19 +57,19 @@ export function ActiveConnection({
     channel && !channel.linked
       ? { tone: "unavailable", label: "Unlinked" }
       : channel
-      ? channelStatus(channel, binding)
-      : binding.needs_reconnect
-      ? { tone: "attention", label: "Needs reconnect" }
-      : binding.enabled
-      ? { tone: "active", label: "Active" }
-      : { tone: "paused", label: "Paused" };
+        ? channelStatus(channel, binding)
+        : binding.needs_reconnect
+          ? { tone: "attention", label: "Needs reconnect" }
+          : binding.enabled
+            ? { tone: "active", label: "Active" }
+            : { tone: "paused", label: "Paused" };
   const showSwitch = linked && !binding.needs_reconnect;
   const state = locked ? "Refresh to confirm the saved state." : null;
 
   return (
     <section
       aria-labelledby="chat-app-active-title"
-      className="overflow-hidden rounded-xl border border-border bg-card shadow-xs motion-safe:duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1"
+      className="border-border bg-card motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 overflow-hidden rounded-xl border shadow-xs motion-safe:duration-300"
     >
       <div className="flex items-start gap-3 p-4">
         <AppTile
@@ -80,14 +80,14 @@ export function ActiveConnection({
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <h3
               id="chat-app-active-title"
-              className="text-base font-semibold leading-tight"
+              className="text-base leading-tight font-semibold"
             >
               {meta.label}
             </h3>
             <StatusBadge status={status} />
           </div>
           {(channel?.linked_account || !channel) && (
-            <p className="mt-1 break-words text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm wrap-break-word">
               {channel?.linked_account || meta.place}
             </p>
           )}
@@ -96,7 +96,7 @@ export function ActiveConnection({
 
       {showSwitch && (
         <>
-          <div className="flex items-center justify-between gap-4 border-t border-border px-4 py-3">
+          <div className="border-border flex items-center justify-between gap-4 border-t px-4 py-3">
             <div className="min-w-0 space-y-0.5">
               <Label
                 htmlFor="chat-app-enabled"
@@ -107,7 +107,7 @@ export function ActiveConnection({
               {state && (
                 <p
                   id="chat-app-enabled-state"
-                  className="text-sm text-muted-foreground"
+                  className="text-muted-foreground text-sm"
                 >
                   {state}
                 </p>
@@ -124,13 +124,13 @@ export function ActiveConnection({
                   ? "chat-app-enabled-state chat-app-enabled-help"
                   : "chat-app-enabled-help"
               }
-              className="h-6 w-11 data-[state=unchecked]:bg-foreground/50 motion-reduce:transition-none [&_[data-slot=switch-thumb]]:size-5 [&_[data-slot=switch-thumb]]:data-[state=checked]:translate-x-[22px] [&_[data-slot=switch-thumb]]:motion-reduce:transition-none"
+              className="data-[state=unchecked]:bg-foreground/50 h-6 w-11 **:data-[slot=switch-thumb]:size-5 **:data-[slot=switch-thumb]:data-[state=checked]:translate-x-[22px] motion-reduce:transition-none **:data-[slot=switch-thumb]:motion-reduce:transition-none"
               onCheckedChange={onToggle}
             />
           </div>
           <p
             id="chat-app-enabled-help"
-            className="border-t border-border bg-muted/20 px-4 py-3 text-sm leading-relaxed text-muted-foreground"
+            className="border-border bg-muted/20 text-muted-foreground border-t px-4 py-3 text-sm leading-relaxed"
           >
             Pausing stops new requests and replies. To stop a running task, open
             the conversation.
@@ -138,7 +138,7 @@ export function ActiveConnection({
         </>
       )}
 
-      <div className="space-y-2 border-t border-border p-4 empty:hidden">
+      <div className="border-border space-y-2 border-t p-4 empty:hidden">
         {binding.needs_reconnect && (
           <Notice
             tone="attention"
@@ -222,7 +222,7 @@ export function ActiveConnection({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-border p-3">
+      <div className="border-border flex flex-wrap gap-2 border-t p-3">
         <Button
           asChild
           variant="outline"
@@ -245,15 +245,15 @@ export function ActiveConnection({
           </Button>
         )}
       </div>
-      <details className="border-t border-border px-4 text-sm">
-        <summary className="cursor-pointer py-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+      <details className="border-border border-t px-4 text-sm">
+        <summary className="focus-visible:outline-ring cursor-pointer py-3 font-medium focus-visible:outline focus-visible:outline-2">
           Connection details
         </summary>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 pb-4">
           {linked && (
             <>
               <dt className="text-muted-foreground">Conversation</dt>
-              <dd className="break-all font-mono text-xs">{binding.chat_id}</dd>
+              <dd className="font-mono text-xs break-all">{binding.chat_id}</dd>
             </>
           )}
           <dt className="text-muted-foreground">Execution mode</dt>
@@ -297,7 +297,7 @@ function Notice({
       <div className="min-w-0 flex-1 space-y-2">
         <p className="font-semibold">{title}</p>
         {children && (
-          <p className="break-words leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground leading-relaxed wrap-break-word">
             {children}
           </p>
         )}

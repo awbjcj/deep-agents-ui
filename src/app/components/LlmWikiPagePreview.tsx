@@ -17,14 +17,14 @@ export function LlmWikiPagePreview({
       className="mt-3 space-y-2"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="min-w-0 break-all text-sm font-medium">
+        <h4 className="min-w-0 text-sm font-medium break-all">
           LLM Wiki · <span className="font-mono text-xs">{page.path}</span>
         </h4>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           project {page.project}
         </span>
       </div>
-      <div className="max-h-[32rem] overflow-y-auto rounded-md border border-border bg-background p-3">
+      <div className="border-border bg-background max-h-128 overflow-y-auto rounded-md border p-3">
         <MarkdownContent
           content={page.markdown}
           mode="document"
@@ -33,7 +33,7 @@ export function LlmWikiPagePreview({
         />
       </div>
       {page.truncatedAt !== undefined && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Truncated at {page.truncatedAt.toLocaleString()} characters. Ask for
           the full page to load the rest.
         </p>

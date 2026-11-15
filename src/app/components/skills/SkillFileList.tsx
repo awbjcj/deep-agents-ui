@@ -26,13 +26,13 @@ export function SkillFileList({
   return (
     <nav
       aria-label="Skill files"
-      className="flex min-h-0 min-w-0 flex-col rounded-lg border bg-muted/20 p-2 @[36rem]:flex-1"
+      className="bg-muted/20 flex min-h-0 min-w-0 flex-col rounded-lg border p-2 @xl:flex-1"
     >
-      <p className="shrink-0 px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="text-muted-foreground shrink-0 px-2 py-1 text-xs font-medium tracking-wide uppercase">
         Package files · {files.length}
       </p>
-      <div className="min-h-0 @[36rem]:relative @[36rem]:flex-1">
-        <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto overscroll-contain p-0 @[36rem]:absolute @[36rem]:inset-0 @[36rem]:max-h-none">
+      <div className="min-h-0 @xl:relative @xl:flex-1">
+        <ul className="m-0 max-h-48 list-none space-y-1 overflow-y-auto overscroll-contain p-0 @xl:absolute @xl:inset-0 @xl:max-h-none">
           {files.map((file) => (
             <li
               key={file.path}
@@ -43,9 +43,9 @@ export function SkillFileList({
                 disabled={disabled}
                 aria-current={selectedPath === file.path ? "true" : undefined}
                 className={cn(
-                  "flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                  "hover:bg-accent focus-visible:ring-ring flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-left text-sm outline-none focus-visible:ring-2 disabled:opacity-50",
                   selectedPath === file.path &&
-                    "bg-accent font-medium text-accent-foreground"
+                    "bg-accent text-accent-foreground font-medium"
                 )}
                 onClick={() => onSelect(file.path)}
               >
@@ -56,7 +56,7 @@ export function SkillFileList({
                 <span className="min-w-0 break-all">
                   {file.path}
                   {file.copyable === false && (
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="text-muted-foreground block text-xs">
                       Cannot copy
                     </span>
                   )}
@@ -109,7 +109,7 @@ export function SkillDiagnostics({
         {diagnostics.map((diagnostic, index) => (
           <li
             key={`${diagnostic.code}:${diagnostic.path}:${index}`}
-            className="break-words"
+            className="wrap-break-word"
           >
             {diagnostic.path && (
               <span className="font-mono text-xs">{diagnostic.path}: </span>
@@ -146,7 +146,7 @@ export function SkillFilePreview({
     return (
       <pre
         className={cn(
-          "max-h-96 min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/20 p-4 font-mono text-xs leading-6",
+          "bg-muted/20 max-h-96 min-w-0 overflow-auto rounded-lg border p-4 font-mono text-xs leading-6 wrap-break-word whitespace-pre-wrap",
           className
         )}
         tabIndex={0}
@@ -158,7 +158,7 @@ export function SkillFilePreview({
   return (
     <div
       className={cn(
-        "prose prose-sm max-h-96 min-w-0 max-w-none overflow-auto break-words rounded-lg border bg-card p-4 text-foreground outline-none dark:prose-invert focus-visible:ring-2 focus-visible:ring-ring prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current [&_pre]:overflow-auto",
+        "prose prose-sm bg-card text-foreground dark:prose-invert focus-visible:ring-ring prose-headings:text-current prose-p:text-current prose-strong:text-current prose-code:text-current prose-li:text-current max-h-96 max-w-none min-w-0 overflow-auto rounded-lg border p-4 wrap-break-word outline-none focus-visible:ring-2 [&_pre]:overflow-auto",
         className
       )}
       tabIndex={0}
@@ -175,7 +175,7 @@ export function SkillFilePreview({
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-sm text-brand-primary underline underline-offset-2 hover:decoration-2 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              className="text-brand-primary focus-visible:ring-ring focus-visible:ring-offset-card rounded-sm underline underline-offset-2 hover:decoration-2 hover:opacity-100 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
               {children}
             </a>

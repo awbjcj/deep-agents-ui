@@ -273,7 +273,7 @@ export function UsageLimitControls() {
       contentClassName="p-0"
     >
       {(settingsLoadFailed || quotaLoadFailed) && (
-        <div className="flex justify-end border-b border-border/70 px-3 py-2">
+        <div className="border-border/70 flex justify-end border-b px-3 py-2">
           <Button
             type="button"
             variant="ghost"
@@ -286,16 +286,16 @@ export function UsageLimitControls() {
         </div>
       )}
 
-      <div className="divide-y divide-border/70">
+      <div className="divide-border/70 divide-y">
         <div className="px-3 py-2.5">
           <div className="flex items-baseline justify-between gap-3">
             <p className="aptiv-eyebrow">Enforcement</p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-muted-foreground text-[10px]">
               Disabled caps keep their history
             </p>
           </div>
           {settings ? (
-            <div className="mt-2 grid overflow-hidden rounded-md border border-border/70 bg-background/35 sm:grid-cols-3 sm:divide-x sm:divide-border/70">
+            <div className="border-border/70 bg-background/35 sm:divide-border/70 mt-2 grid overflow-hidden rounded-md border sm:grid-cols-3 sm:divide-x">
               {WEEKLY_LIMIT_OPTIONS.map((option, index) => {
                 const controlId = `weekly-limit-${option.key}`;
                 return (
@@ -304,17 +304,17 @@ export function UsageLimitControls() {
                     className={`flex min-h-12 items-center gap-2.5 px-2.5 py-2 ${
                       index === 0
                         ? ""
-                        : "border-t border-border/70 sm:border-t-0"
+                        : "border-border/70 border-t sm:border-t-0"
                     }`}
                   >
                     <Label
                       htmlFor={controlId}
                       className="min-w-0 flex-1 cursor-pointer"
                     >
-                      <span className="block text-xs font-semibold text-foreground">
+                      <span className="text-foreground block text-xs font-semibold">
                         {option.label}
                       </span>
-                      <span className="block truncate text-[10px] font-normal text-muted-foreground">
+                      <span className="text-muted-foreground block truncate text-[10px] font-normal">
                         {option.description}
                       </span>
                     </Label>
@@ -333,7 +333,7 @@ export function UsageLimitControls() {
             </div>
           ) : (
             <p
-              className="mt-2 rounded-md border border-border/70 bg-background/35 px-3 py-2 text-xs text-muted-foreground"
+              className="border-border/70 bg-background/35 text-muted-foreground mt-2 rounded-md border px-3 py-2 text-xs"
               role="status"
             >
               {settingsLoadFailed
@@ -346,12 +346,12 @@ export function UsageLimitControls() {
         <div className="px-3 py-2.5">
           <div className="flex items-baseline justify-between gap-3">
             <p className="aptiv-eyebrow">Tier defaults</p>
-            <p className="text-[10px] text-muted-foreground">0 = unlimited</p>
+            <p className="text-muted-foreground text-[10px]">0 = unlimited</p>
           </div>
 
           {!drafts || !limits ? (
             <p
-              className="mt-2 rounded-md border border-border/70 bg-background/35 px-3 py-2 text-xs text-muted-foreground"
+              className="border-border/70 bg-background/35 text-muted-foreground mt-2 rounded-md border px-3 py-2 text-xs"
               role="status"
             >
               {quotaLoadFailed
@@ -359,9 +359,9 @@ export function UsageLimitControls() {
                 : "Loading tier quotas…"}
             </p>
           ) : (
-            <div className="mt-2 overflow-x-auto rounded-md border border-border/70 bg-background/35">
+            <div className="border-border/70 bg-background/35 mt-2 overflow-x-auto rounded-md border">
               <div className="min-w-[480px]">
-                <div className="grid grid-cols-[76px_minmax(104px,1fr)_minmax(84px,0.75fr)_minmax(96px,0.85fr)_64px] items-center gap-2 bg-muted/45 px-2 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="bg-muted/45 text-muted-foreground grid grid-cols-[76px_minmax(104px,1fr)_minmax(84px,0.75fr)_minmax(96px,0.85fr)_64px] items-center gap-2 px-2 py-1.5 text-[9px] font-semibold tracking-[0.12em] uppercase">
                   <span>Tier</span>
                   <span id="quota-column-tokens">Tokens</span>
                   <span id="quota-column-calls">Calls</span>
@@ -385,7 +385,7 @@ export function UsageLimitControls() {
                   return (
                     <form
                       key={role}
-                      className="border-t border-border/70 first:border-t-0"
+                      className="border-border/70 border-t first:border-t-0"
                       onSubmit={(event) => {
                         event.preventDefault();
                         void saveTier(role);
@@ -394,7 +394,7 @@ export function UsageLimitControls() {
                       <div className="grid grid-cols-[76px_minmax(104px,1fr)_minmax(84px,0.75fr)_minmax(96px,0.85fr)_64px] items-center gap-2 px-2 py-1.5">
                         <span
                           id={rowId}
-                          className="truncate text-xs font-semibold capitalize text-foreground"
+                          className="text-foreground truncate text-xs font-semibold capitalize"
                         >
                           {role}
                         </span>
@@ -426,7 +426,7 @@ export function UsageLimitControls() {
                         />
                         <div className="relative">
                           <span
-                            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+                            className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-xs"
                             aria-hidden="true"
                           >
                             $
@@ -448,7 +448,7 @@ export function UsageLimitControls() {
                               errors[role] ? errorId : undefined
                             }
                             aria-invalid={Boolean(errors[role])}
-                            className="h-8 rounded-md pl-6 pr-2.5 font-mono text-xs tabular-nums"
+                            className="h-8 rounded-md pr-2.5 pl-6 font-mono text-xs tabular-nums"
                           />
                         </div>
                         <Button
@@ -470,7 +470,7 @@ export function UsageLimitControls() {
                         <p
                           id={errorId}
                           role="alert"
-                          className="px-2 pb-1.5 pl-[86px] text-[10px] leading-relaxed text-destructive"
+                          className="text-destructive px-2 pb-1.5 pl-[86px] text-[10px] leading-relaxed"
                         >
                           {errors[role]}
                         </p>

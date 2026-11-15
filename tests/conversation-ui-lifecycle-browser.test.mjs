@@ -146,15 +146,15 @@ test(
         url.pathname === "/app.js"
           ? "text/javascript"
           : url.pathname === "/style.css"
-          ? "text/css"
-          : "text/html"
+            ? "text/css"
+            : "text/html"
       );
       res.end(
         url.pathname === "/app.js"
           ? bundle.outputFiles[0].text
           : url.pathname === "/style.css"
-          ? css
-          : '<html lang="en"><head><title>Conversation lifecycle</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main id="root" style="height:100dvh;display:flex;flex-direction:column"></main><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html lang="en"><head><title>Conversation lifecycle</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main id="root" style="height:100dvh;display:flex;flex-direction:column"></main><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

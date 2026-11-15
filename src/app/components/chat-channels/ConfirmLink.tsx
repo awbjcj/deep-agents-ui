@@ -32,12 +32,12 @@ export function ConfirmLink({
     <div
       role="group"
       aria-labelledby={`chat-app-${channel.id}-confirm`}
-      className="space-y-4 rounded-lg border border-brand-subtle bg-brand-tertiary p-4 motion-safe:duration-300 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95"
+      className="border-brand-subtle bg-brand-tertiary motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 space-y-4 rounded-lg border p-4 motion-safe:duration-300"
     >
       <div className="flex gap-3">
         <UserCheck
           aria-hidden="true"
-          className="mt-0.5 size-5 shrink-0 text-brand-primary"
+          className="text-brand-primary mt-0.5 size-5 shrink-0"
         />
         <div className="min-w-0 space-y-1 text-sm">
           <p
@@ -50,20 +50,20 @@ export function ConfirmLink({
             {pending.display_name && (
               <>
                 <dt className="text-muted-foreground">Name</dt>
-                <dd className="break-all font-medium">
+                <dd className="font-medium break-all">
                   {pending.display_name}
                 </dd>
               </>
             )}
             <dt className="text-muted-foreground">{meta.short} ID</dt>
-            <dd className="break-all font-mono text-xs leading-5">
+            <dd className="font-mono text-xs leading-5 break-all">
               {pending.external_user_id}
             </dd>
           </dl>
-          <p className="pt-1 leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground pt-1 leading-relaxed">
             This account sent your link code. Linking moves your VSDA
             conversation to it. If you do not recognize it, choose{" "}
-            <span className="font-medium text-foreground">Not mine</span>;
+            <span className="text-foreground font-medium">Not mine</span>;
             nothing is linked until you confirm. This request expires at{" "}
             {expires}.
           </p>

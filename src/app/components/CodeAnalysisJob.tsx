@@ -85,10 +85,10 @@ function AnalysisJobSession({
   const Icon = failed
     ? AlertCircle
     : job?.status === "succeeded"
-    ? CheckCircle2
-    : active
-    ? Loader2
-    : Clock3;
+      ? CheckCircle2
+      : active
+        ? Loader2
+        : Clock3;
 
   return (
     <Card
@@ -114,10 +114,10 @@ function AnalysisJobSession({
               }
             />
             {job
-              ? statuses[job.status] ?? "In progress"
+              ? (statuses[job.status] ?? "In progress")
               : error
-              ? "Unavailable"
-              : "Loading"}
+                ? "Unavailable"
+                : "Loading"}
           </Badge>
         </div>
         <CardDescription>
@@ -132,13 +132,13 @@ function AnalysisJobSession({
         {reportFile && (
           <p
             role="status"
-            className="text-sm text-muted-foreground"
+            className="text-muted-foreground text-sm"
           >
             {reportFile.saved
               ? "Report saved to Files"
               : reportFile.error
-              ? `${reportFile.error}. Retrying automatically; the report is available to download.`
-              : "Saving report to Files…"}
+                ? `${reportFile.error}. Retrying automatically; the report is available to download.`
+                : "Saving report to Files…"}
           </p>
         )}
         {!job && !error ? (
@@ -162,12 +162,12 @@ function AnalysisJobSession({
                   {phase}
                 </p>
                 {elapsed && (
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {elapsed} elapsed
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">{description}</p>
+              <p className="text-muted-foreground text-sm">{description}</p>
               {percentage !== null &&
                 job.operation === "prepare" &&
                 !failed && (
@@ -229,7 +229,7 @@ function AnalysisJobSession({
           allowRelease={allowRelease}
         />
         <span
-          className="text-xs text-muted-foreground sm:ml-auto"
+          className="text-muted-foreground text-xs sm:ml-auto"
           title={
             checkedAt
               ? `Last checked ${new Date(checkedAt).toLocaleTimeString()}`
@@ -239,10 +239,10 @@ function AnalysisJobSession({
           {error
             ? "Updates delayed"
             : active
-            ? "Connected"
-            : job
-            ? "Final status"
-            : "Connecting…"}
+              ? "Connected"
+              : job
+                ? "Final status"
+                : "Connecting…"}
         </span>
       </CardFooter>
     </Card>

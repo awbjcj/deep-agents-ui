@@ -22,8 +22,7 @@ export function ResponseDetails({
   const sourceListId = useId();
   const { sources, refusals, activity, notice } = responsesDetails(message);
   const metadata = message.response_metadata as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const generated = Array.isArray(metadata?.generated_files)
     ? metadata.generated_files
         .filter(
@@ -53,10 +52,10 @@ export function ResponseDetails({
       {notice && (
         <div
           role="status"
-          className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-foreground"
+          className="text-foreground flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"
         >
           <CircleAlert
-            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-warning)]"
+            className="mt-0.5 h-4 w-4 shrink-0 text-(--text-warning)"
             aria-hidden="true"
           />
           <div className="min-w-0 space-y-1">
@@ -74,7 +73,7 @@ export function ResponseDetails({
           aria-label="Generated files"
           className="space-y-2"
         >
-          <p className="text-xs font-medium text-muted-foreground">
+          <p className="text-muted-foreground text-xs font-medium">
             Generated files{" "}
             <span className="ml-1 tabular-nums">{generated.length}</span>
           </p>
@@ -90,7 +89,7 @@ export function ResponseDetails({
                   aria-label={`Download ${item.filename}`}
                   aria-describedby={`${sourceListId}-file-${index}`}
                   variant="outline"
-                  className="h-auto min-h-16 min-w-0 max-w-full justify-start gap-3 whitespace-normal rounded-xl p-3 text-left disabled:opacity-70"
+                  className="h-auto min-h-16 max-w-full min-w-0 justify-start gap-3 rounded-xl p-3 text-left whitespace-normal disabled:opacity-70"
                   onClick={() => {
                     try {
                       const value = files[item.path];
@@ -111,16 +110,16 @@ export function ResponseDetails({
                   }}
                 >
                   <FileText
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    className="text-muted-foreground h-4 w-4 shrink-0"
                     aria-hidden="true"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block break-all text-xs font-medium">
+                    <span className="block text-xs font-medium break-all">
                       {item.filename}
                     </span>
                     <span
                       id={`${sourceListId}-file-${index}`}
-                      className="mt-1 block text-[11px] font-normal text-muted-foreground"
+                      className="text-muted-foreground mt-1 block text-[11px] font-normal"
                     >
                       {available
                         ? "Ready to download"
@@ -128,7 +127,7 @@ export function ResponseDetails({
                     </span>
                   </span>
                   <Download
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    className="text-muted-foreground h-4 w-4 shrink-0"
                     aria-hidden="true"
                   />
                 </Button>
@@ -141,7 +140,7 @@ export function ResponseDetails({
         <p
           key={index}
           role="status"
-          className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs leading-relaxed text-muted-foreground"
+          className="border-border bg-muted/20 text-muted-foreground rounded-lg border px-3 py-2 text-xs leading-relaxed"
         >
           {error}
         </p>
@@ -149,7 +148,7 @@ export function ResponseDetails({
       {refusals.map((refusal, index) => (
         <p
           key={index}
-          className="whitespace-pre-wrap text-foreground"
+          className="text-foreground whitespace-pre-wrap"
         >
           {refusal}
         </p>
