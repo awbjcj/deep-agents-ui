@@ -534,9 +534,9 @@ function HomePageInner({
                   }
                   void setSidebar("1");
                 }}
-                className="border-border bg-card text-foreground hover:bg-accent rounded-full border px-3 hover:border-[hsl(var(--primary)/0.4)] max-sm:px-2"
+                className="border-border bg-card text-foreground hover:bg-accent h-9 rounded-md border px-3 hover:border-[hsl(var(--primary)/0.4)] max-sm:px-2"
               >
-                <MessagesSquare className="h-4 w-4 sm:mr-2" />
+                <MessagesSquare className="h-4 w-4" />
                 <span className="max-sm:hidden">Threads</span>
                 {interruptCount > 0 && (
                   <span
@@ -562,9 +562,9 @@ function HomePageInner({
                 if (!allowSettingsLeave()) return;
                 router.push("/tasks");
               }}
-              className="border-border bg-card rounded-full border px-3 max-sm:px-2"
+              className="border-border bg-card h-9 rounded-md border px-3 max-sm:px-2"
             >
-              <CalendarClock className="h-4 w-4 sm:mr-2" />
+              <CalendarClock className="h-4 w-4" />
               <span className="max-sm:hidden">Tasks</span>
             </Button>
             {/* Keep the agent picker reachable when the toolbar becomes compact. */}
@@ -574,7 +574,7 @@ function HomePageInner({
                   type="button"
                   onClick={() => setConfigDialogOpen(true)}
                   aria-label="Switch agent"
-                  className="border-border bg-card text-foreground hover:bg-accent focus-visible:ring-ring inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-2 text-xs transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  className="border-border bg-card text-foreground hover:bg-accent focus-visible:ring-ring inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
                   <Bot
                     className="h-4 w-4"
@@ -616,11 +616,11 @@ function HomePageInner({
               aria-pressed={workspaceOpen}
               className={
                 workspaceOpen
-                  ? "bg-primary/10 text-primary hover:bg-primary/15 rounded-full border border-[hsl(var(--primary)/0.4)] px-3 max-sm:px-2"
-                  : "border-border bg-card text-foreground hover:bg-accent rounded-full border px-3 hover:border-[hsl(var(--primary)/0.4)] max-sm:px-2"
+                  ? "bg-primary/10 text-primary hover:bg-primary/15 h-9 rounded-md border border-[hsl(var(--primary)/0.4)] px-3 max-sm:px-2"
+                  : "border-border bg-card text-foreground hover:bg-accent h-9 rounded-md border px-3 hover:border-[hsl(var(--primary)/0.4)] max-sm:px-2"
               }
             >
-              <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
+              <LayoutPanelLeft className="h-4 w-4" />
               <span className="max-sm:hidden">Workspace</span>
             </Button>
             {isAdmin && (
@@ -643,8 +643,8 @@ function HomePageInner({
                     aria-pressed={adminOpen}
                     className={
                       adminOpen
-                        ? "rounded-full border border-(--aptiv-orange)/50 bg-(--aptiv-orange)/10 text-(--aptiv-orange) hover:bg-(--aptiv-orange)/15"
-                        : "border-border bg-card text-foreground rounded-full border hover:border-(--aptiv-orange)/50 hover:text-(--aptiv-orange)"
+                        ? "rounded-md border border-(--aptiv-orange)/50 bg-(--aptiv-orange)/10 text-(--aptiv-orange) hover:bg-(--aptiv-orange)/15"
+                        : "border-border bg-card text-foreground rounded-md border hover:border-(--aptiv-orange)/50 hover:text-(--aptiv-orange)"
                     }
                   >
                     <Shield className="h-4 w-4" />
@@ -660,7 +660,7 @@ function HomePageInner({
                   size="icon"
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="border-border bg-card text-foreground hover:text-primary rounded-full border hover:border-[hsl(var(--primary)/0.4)] max-sm:hidden"
+                  className="border-border bg-card text-foreground hover:text-primary h-9 rounded-md border hover:border-[hsl(var(--primary)/0.4)] max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
                 </Button>
@@ -676,7 +676,7 @@ function HomePageInner({
               }}
               disabled={!threadId}
               aria-label="New Thread"
-              className="max-lg:px-2"
+              className="h-9 max-lg:px-2"
             >
               <SquarePen
                 className="h-4 w-4"

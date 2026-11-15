@@ -135,7 +135,7 @@ export function PanelTabs<Id extends string>({
           ? isRail
             ? "flex min-w-0 flex-col gap-1 px-3"
             : isTwoRow
-              ? "grid min-w-0 items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
+              ? "grid min-w-0 auto-rows-fr items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
               : "flex min-w-0 scrollbar-none items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [&::-webkit-scrollbar]:hidden"
           : "border-border bg-muted/35 grid auto-cols-fr grid-flow-col rounded-md border p-1",
         className

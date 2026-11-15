@@ -455,14 +455,16 @@ export function ThreadList({
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Header */}
-      <div className="border-border grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b p-4">
-        <h2 className="text-xl font-semibold tracking-tight">Threads</h2>
+      <div className="border-border bg-card grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b px-4 pb-3">
+        <h2 className="flex min-h-14 items-center text-base font-semibold tracking-tight">
+          Threads
+        </h2>
         {onClose && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8"
+            className="size-touch"
             aria-label="Close threads sidebar"
           >
             <X className="h-4 w-4" />
