@@ -8,8 +8,8 @@ export function recommendedModelControls(
     ? model.recommended_effort !== undefined
       ? model.recommended_effort
       : model.efforts.includes("medium")
-        ? "medium"
-        : (model.efforts[0] ?? null)
+      ? "medium"
+      : model.efforts[0] ?? null
     : null;
   return {
     effort,
@@ -29,8 +29,8 @@ export function linkedModelControls(
   const thinking = !model.supports_thinking
     ? null
     : requiresThinking(model, controls.effort)
-      ? true
-      : (controls.thinking ?? !!model.recommended_thinking);
+    ? true
+    : controls.thinking ?? !!model.recommended_thinking;
   const defaults = model.control_defaults?.find(
     (option) =>
       option.effort === controls.effort && option.thinking === thinking
@@ -63,6 +63,7 @@ export interface ModelDraft {
   effort: string | null;
   thinking: boolean | null;
   max_tokens: number;
+  task_budget?: number | null;
 }
 
 /**
@@ -86,6 +87,9 @@ export function nextModelDraft(
     next.thinking !== current.thinking;
   if (reasoningChanged) {
     Object.assign(next, linkedModelControls(entry, next));
+    if (current.max_tokens === 0 && patch.max_tokens === undefined) {
+      next.max_tokens = 0;
+    }
   } else if (requiresThinking(entry, next.effort)) {
     next.thinking = true;
   }
@@ -101,6 +105,7 @@ export function switchModelDraft(
   return nextModelDraft(models, current, {
     provider: entry.provider,
     model: entry.model,
+    task_budget: null,
     ...recommendedModelControls(entry),
   });
 }
@@ -114,6 +119,7 @@ export function stepOutputTokenCap(value: number, direction: 1 | -1): number {
 
 /** Compact cap label for tight toolbars: 512, 4K, 12.1K. */
 export function formatTokenCap(value: number): string {
+  if (value === 0) return "Unlimited";
   if (value < 1024) return String(value);
   const k = value / 1024;
   return `${Number.isInteger(k) ? k : Number(k.toFixed(1))}K`;

@@ -81,7 +81,7 @@ export function ModelList({
       tabIndex={0}
       aria-activedescendant={`${baseId}-${activeIndex}`}
       onKeyDown={onKeyDown}
-      className="focus-visible:ring-ring/40 max-h-52 overflow-y-auto rounded-lg py-0.5 outline-none focus-visible:ring-2"
+      className="max-h-52 overflow-y-auto rounded-lg py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
     >
       {models.map((entry, index) => {
         const selected = entry.provider === provider && entry.model === model;
@@ -104,14 +104,14 @@ export function ModelList({
             <ChevronRight
               aria-hidden="true"
               className={cn(
-                "h-3.5 w-3.5 text-(--color-primary)",
+                "text-(--color-primary) h-3.5 w-3.5",
                 !highlighted && "invisible"
               )}
             />
             <span
               className={cn(
-                "text-foreground truncate",
-                selected && "font-semibold text-(--color-primary)"
+                "truncate text-foreground",
+                selected && "text-(--color-primary) font-semibold"
               )}
             >
               {modelDisplayName(entry.model)}
@@ -122,7 +122,7 @@ export function ModelList({
             {selected && (
               <Check
                 aria-hidden="true"
-                className="h-3.5 w-3.5 text-(--color-primary)"
+                className="text-(--color-primary) h-3.5 w-3.5"
               />
             )}
           </div>
@@ -153,8 +153,8 @@ export function EffortSegments({
       event.key === "ArrowRight" || event.key === "ArrowDown"
         ? 1
         : event.key === "ArrowLeft" || event.key === "ArrowUp"
-          ? -1
-          : 0;
+        ? -1
+        : 0;
     if (!step) return;
     event.preventDefault();
     const next = (current + step + options.length) % options.length;
@@ -228,11 +228,11 @@ export function ThinkingRow({
     <div className="flex items-center justify-between gap-3">
       <label
         htmlFor={id}
-        className="text-foreground min-w-0 text-xs"
+        className="min-w-0 text-xs text-foreground"
       >
         Adaptive thinking
         {required && (
-          <span className="text-muted-foreground ml-1.5">· required</span>
+          <span className="ml-1.5 text-muted-foreground">· required</span>
         )}
       </label>
       <Switch
@@ -250,22 +250,29 @@ export function ThinkingRow({
 export function OutputStepper({
   value,
   onChange,
+  allowUnlimited = true,
+  recommended = 65536,
 }: {
   value: number;
   onChange: (value: number) => void;
+  allowUnlimited?: boolean;
+  recommended?: number;
 }) {
   const labelId = useId();
   const min = Math.min(COMMON_OUTPUT_TOKEN_CAPS[0], value);
   const max = Math.max(COMMON_OUTPUT_TOKEN_CAPS.at(-1) ?? value, value);
-  const label = `${value.toLocaleString("en-US")} tokens`;
+  const label =
+    value === 0
+      ? "Unlimited, subject to provider limits"
+      : `${value.toLocaleString("en-US")} tokens`;
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const step =
       event.key === "ArrowUp" || event.key === "ArrowRight"
         ? 1
         : event.key === "ArrowDown" || event.key === "ArrowLeft"
-          ? -1
-          : 0;
+        ? -1
+        : 0;
     if (!step) return;
     event.preventDefault();
     onChange(stepOutputTokenCap(value, step));
@@ -274,55 +281,74 @@ export function OutputStepper({
   const stepButton =
     "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40 motion-reduce:transition-none";
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span
-        id={labelId}
-        className={SECTION_LABEL}
-      >
-        Max output
-      </span>
-      <div className="border-border flex items-center gap-0.5 rounded-lg border p-0.5">
-        <button
-          type="button"
-          aria-label="Decrease max output"
-          tabIndex={-1}
-          disabled={value <= min}
-          onClick={() => onChange(stepOutputTokenCap(value, -1))}
-          className={stepButton}
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span
+          id={labelId}
+          className={SECTION_LABEL}
         >
-          <Minus
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-          />
-        </button>
-        <div
-          role="spinbutton"
-          tabIndex={0}
-          aria-labelledby={labelId}
-          aria-valuenow={value}
-          aria-valuemin={min}
-          aria-valuemax={max}
-          aria-valuetext={label}
-          onKeyDown={onKeyDown}
-          className="focus-visible:ring-ring/40 min-w-22 rounded px-1 text-center font-mono text-xs tabular-nums outline-none focus-visible:ring-2"
-        >
-          {value.toLocaleString("en-US")}
-          <span className="text-muted-foreground ml-1">tok</span>
+          Max output
+        </span>
+        <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+          <button
+            type="button"
+            aria-label="Decrease max output"
+            tabIndex={-1}
+            disabled={value === 0 || value <= min}
+            onClick={() => onChange(stepOutputTokenCap(value, -1))}
+            className={stepButton}
+          >
+            <Minus
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
+            />
+          </button>
+          <div
+            role="spinbutton"
+            tabIndex={0}
+            aria-labelledby={labelId}
+            aria-valuenow={value === 0 ? max : value}
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuetext={label}
+            onKeyDown={onKeyDown}
+            className="min-w-22 rounded px-1 text-center font-mono text-xs tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            {value === 0 ? "Unlimited" : value.toLocaleString("en-US")}
+            {value !== 0 && (
+              <span className="ml-1 text-muted-foreground">tok</span>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-label="Increase max output"
+            tabIndex={-1}
+            disabled={value === 0 || value >= max}
+            onClick={() => onChange(stepOutputTokenCap(value, 1))}
+            className={stepButton}
+          >
+            <Plus
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
+            />
+          </button>
         </div>
+      </div>
+      {allowUnlimited && (
         <button
           type="button"
-          aria-label="Increase max output"
-          tabIndex={-1}
-          disabled={value >= max}
-          onClick={() => onChange(stepOutputTokenCap(value, 1))}
-          className={stepButton}
+          aria-pressed={value === 0}
+          onClick={() => onChange(value === 0 ? recommended : 0)}
+          className="text-xs text-muted-foreground underline hover:text-foreground"
         >
-          <Plus
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-          />
+          {value === 0 ? "Use a token cap" : "Unlimited output"}
         </button>
-      </div>
+      )}
+      {value === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Provider defaults and model limits still apply.
+        </p>
+      )}
     </div>
   );
 }

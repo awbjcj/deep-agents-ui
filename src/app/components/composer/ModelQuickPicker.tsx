@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { formatTokenCap, requiresThinking } from "@/lib/model-controls";
 import { modelDisplayName } from "@/lib/model-names";
 import { useModelSelection } from "@/app/hooks/useModelSelection";
+import { TaskBudgetControl } from "@/app/components/ModelInferenceControls";
 import { COMPOSER_TRIGGER, TRIGGER_TONE } from "../ComposerMenuOption";
 import {
   EffortSegments,
@@ -64,7 +65,9 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
     ? [
         modelName,
         effortLabel && `${effortLabel} effort`,
-        `${draft.max_tokens.toLocaleString("en-US")} max output tokens`,
+        draft.max_tokens === 0
+          ? "unlimited output (provider limits apply)"
+          : `${draft.max_tokens.toLocaleString("en-US")} max output tokens`,
       ]
         .filter(Boolean)
         .join(", ")
@@ -255,10 +258,34 @@ export function ModelQuickPicker({ accountId }: { accountId?: string }) {
               )}
               <OutputStepper
                 value={draft.max_tokens}
+                allowUnlimited={!!entry?.supports_unlimited_output}
+                recommended={entry?.recommended_max_tokens ?? 65536}
                 onChange={edit((max_tokens: number) =>
                   selection.update({ max_tokens })
                 )}
               />
+              {entry?.supports_task_budget && (
+                <TaskBudgetControl
+                  value={draft.task_budget ?? null}
+                  onChange={edit((task_budget: number | null) =>
+                    selection.update({ task_budget })
+                  )}
+                />
+              )}
+              {!entry?.supports_task_budget && draft.task_budget != null && (
+                <div className="text-muted-foreground text-xs">
+                  Saved task budget is inactive on this connection.{" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={edit(() =>
+                      selection.update({ task_budget: null })
+                    )}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}

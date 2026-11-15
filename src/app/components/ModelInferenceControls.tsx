@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type CSSProperties } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -99,18 +99,23 @@ export function OutputTokenControl({
   value,
   disabled,
   onChange,
+  allowUnlimited = true,
+  recommended = 65536,
 }: {
   value: number;
   disabled: boolean;
   onChange: (value: number) => void;
+  allowUnlimited?: boolean;
+  recommended?: number;
 }) {
   const id = useId();
-  const [stops, setStops] = useState(() => outputTokenStops(value));
+  const sliderValue = value === 0 ? recommended : value;
+  const [stops, setStops] = useState(() => outputTokenStops(sliderValue));
   // Keep positions stable during edits and autosaves. A new server-provided cap
   // joins the list without replacing a custom cap already shown in this panel.
-  const index = stops.indexOf(value);
+  const index = stops.indexOf(sliderValue);
   if (index === -1) {
-    setStops(outputTokenStops(value, stops));
+    setStops(outputTokenStops(sliderValue, stops));
   }
   const lastIndex = stops.length - 1;
   const selectIndex = (nextIndex: number) => onChange(stops[nextIndex]);
@@ -124,9 +129,9 @@ export function OutputTokenControl({
           Output cap
         </Label>
         <span className="border-border bg-muted/40 rounded-md border px-2.5 py-1 font-mono text-sm font-semibold tabular-nums">
-          {value.toLocaleString("en-US")}
+          {value === 0 ? "Unlimited" : value.toLocaleString("en-US")}
           <span className="text-muted-foreground ml-1.5 text-xs font-normal">
-            tokens
+            {value === 0 ? "" : "tokens"}
           </span>
         </span>
       </div>
@@ -138,7 +143,7 @@ export function OutputTokenControl({
             size="icon"
             className="h-11 w-11 transition-colors"
             aria-label="Decrease output cap"
-            disabled={disabled || index <= 0}
+            disabled={disabled || value === 0 || index <= 0}
             onClick={() => selectIndex(index - 1)}
           >
             <Minus aria-hidden="true" />
@@ -152,8 +157,8 @@ export function OutputTokenControl({
               max={lastIndex}
               step={1}
               value={Math.max(0, index)}
-              disabled={disabled}
-              aria-valuetext={`${value.toLocaleString("en-US")} tokens`}
+              disabled={disabled || value === 0}
+              aria-valuetext={`${sliderValue.toLocaleString("en-US")} tokens`}
               aria-describedby={`${id}-help`}
               onChange={(event) => selectIndex(Number(event.target.value))}
               style={
@@ -210,7 +215,7 @@ export function OutputTokenControl({
             size="icon"
             className="h-11 w-11 transition-colors"
             aria-label="Increase output cap"
-            disabled={disabled || index >= lastIndex}
+            disabled={disabled || value === 0 || index >= lastIndex}
             onClick={() => selectIndex(index + 1)}
           >
             <Plus aria-hidden="true" />
@@ -221,7 +226,96 @@ export function OutputTokenControl({
         id={`${id}-help`}
         className="text-muted-foreground text-xs leading-relaxed"
       >
-        Steps use common token caps.
+        {allowUnlimited
+          ? "Unlimited removes the app cap; provider defaults, model limits, and context still apply."
+          : "Choose an output cap for this model."}
+      </p>
+      {allowUnlimited && (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          aria-pressed={value === 0}
+          onClick={() => onChange(value === 0 ? recommended : 0)}
+        >
+          {value === 0 ? "Use a token cap" : "Unlimited output"}
+        </Button>
+      )}
+    </section>
+  );
+}
+
+/** An optional advisory budget for supported direct Claude agent loops. */
+export function TaskBudgetControl({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: number | null;
+  disabled?: boolean;
+  onChange: (value: number | null) => void;
+}) {
+  const id = useId();
+  const [text, setText] = useState(value === null ? "" : String(value));
+  const [invalid, setInvalid] = useState(false);
+  useEffect(() => {
+    setText(value === null ? "" : String(value));
+    setInvalid(false);
+  }, [value]);
+  function commit() {
+    if (!text.trim()) {
+      setInvalid(false);
+      onChange(null);
+      return;
+    }
+    const amount = Number(text);
+    if (!Number.isInteger(amount) || amount < 20000 || amount > 10000000) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    onChange(amount);
+  }
+  return (
+    <section className="space-y-2">
+      <Label htmlFor={id}>Task budget (tokens)</Label>
+      <div className="flex gap-2">
+        <input
+          id={id}
+          type="number"
+          min={20000}
+          max={10000000}
+          step={1000}
+          value={text}
+          disabled={disabled}
+          placeholder="Off"
+          aria-invalid={invalid}
+          aria-describedby={`${id}-help`}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commit();
+            }
+          }}
+          className="border-input bg-background min-w-0 flex-1 rounded-md border px-2 py-1 text-sm"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          onClick={commit}
+        >
+          Apply
+        </Button>
+      </div>
+      <p
+        id={`${id}-help`}
+        className="text-muted-foreground text-xs leading-relaxed"
+      >
+        {invalid
+          ? "Enter 20,000–10,000,000 tokens, or leave blank to turn off."
+          : "Advisory for one agent task, not a spending limit. Context compaction can reset it."}
       </p>
     </section>
   );

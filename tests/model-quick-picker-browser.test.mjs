@@ -11,10 +11,12 @@ import { loadPlaywright } from "./browser-fixtures.mjs";
 const MODELS = [
   {
     provider: "anthropic",
-    model: "claude-sonnet-5",
+    model: "claude-sonnet-5-5",
     supports_effort: true,
     efforts: ["low", "medium", "high", "max"],
     supports_thinking: true,
+    supports_task_budget: true,
+    supports_unlimited_output: true,
     thinking_required: false,
     disabled_thinking_efforts: ["low", "medium", "high"],
     recommended_effort: "medium",
@@ -26,6 +28,7 @@ const MODELS = [
     supports_effort: true,
     efforts: ["low", "medium", "high"],
     supports_thinking: false,
+    supports_unlimited_output: true,
     thinking_required: false,
     recommended_effort: "high",
     recommended_max_tokens: 32768,
@@ -48,7 +51,7 @@ test(
     const puts = [];
     let effective = {
       provider: "anthropic",
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
       effort: "medium",
       thinking: false,
       max_tokens: 8192,
@@ -108,7 +111,7 @@ test(
       await approval.waitFor();
       await page
         .getByRole("button", {
-          name: "Model: Claude Sonnet 5, medium effort, 8,192 max output tokens",
+          name: "Model: Claude Sonnet 5.5, medium effort, 8,192 max output tokens",
         })
         .waitFor();
 
@@ -126,7 +129,7 @@ test(
         ) < 2
       );
       await page.getByText("medium · 8K", { exact: true }).waitFor();
-      await page.getByText("Claude Sonnet 5", { exact: true }).waitFor();
+      await page.getByText("Claude Sonnet 5.5", { exact: true }).waitFor();
 
       const shots = process.env.MODEL_PICKER_EVIDENCE;
       if (shots) await mkdir(shots, { recursive: true });
@@ -142,10 +145,17 @@ test(
       const options = list.getByRole("option");
       assert.equal(await options.count(), 2);
       assert.deepEqual(await options.allInnerTexts(), [
-        "Claude Sonnet 5\nAnthropic",
+        "Claude Sonnet 5.5\nAnthropic",
         "GPT-6\nOpenAI",
       ]);
       assert.equal(await options.nth(0).getAttribute("aria-selected"), "true");
+      const budget = page.getByLabel("Task budget (tokens)");
+      await budget.fill("64000");
+      await page.getByRole("button", { name: "Apply", exact: true }).click();
+      await expectEventually(() =>
+        assert.equal(puts.at(-1)?.task_budget, 64000)
+      );
+      await list.focus();
       if (shots) {
         await settled(page);
         await page.screenshot({ path: `${shots}/picker-open.png` });
@@ -160,6 +170,7 @@ test(
         effort: "high",
         thinking: null,
         max_tokens: 32768,
+        task_budget: null,
       });
       assert.equal(await options.nth(1).getAttribute("aria-selected"), "true");
       assert.equal(
@@ -189,6 +200,13 @@ test(
       );
       await page.keyboard.press("ArrowDown");
       assert.equal(await cap.getAttribute("aria-valuenow"), "24576");
+      await page.getByRole("button", { name: "Unlimited output" }).click();
+      await expectEventually(() => assert.equal(puts.at(-1)?.max_tokens, 0));
+      assert.match(await cap.getAttribute("aria-valuetext"), /Unlimited/);
+      await page.getByRole("button", { name: "Use a token cap" }).click();
+      await cap.focus();
+      await page.keyboard.press("ArrowDown");
+      assert.equal(await cap.getAttribute("aria-valuenow"), "24576");
       if (shots) {
         await settled(page);
         await page.screenshot({ path: `${shots}/picker-edited.png` });
@@ -213,6 +231,7 @@ test(
           effort: "medium",
           thinking: null,
           max_tokens: 24576,
+          task_budget: null,
         })
       );
 
@@ -269,7 +288,7 @@ test(
     const fallback = makePolicyFixture();
     let effective = {
       provider: "anthropic",
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
       effort: "medium",
       thinking: false,
       max_tokens: 8192,
@@ -331,7 +350,7 @@ test(
       );
       const trigger = page.getByRole("button", { name: /^Model: / });
       await page
-        .getByRole("button", { name: /^Model: Claude Sonnet 5,/ })
+        .getByRole("button", { name: /^Model: Claude Sonnet 5\.5,/ })
         .waitFor();
 
       // The open-time refresh reads the old selection, but answers only after
@@ -402,7 +421,7 @@ test(
     const fallback = makePolicyFixture();
     const initial = {
       provider: "anthropic",
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
       effort: "medium",
       thinking: false,
       max_tokens: 8192,
@@ -500,7 +519,7 @@ test(
       const { page } = first;
       const trigger = page.getByRole("button", { name: /^Model: / });
       await page
-        .getByRole("button", { name: /^Model: Claude Sonnet 5,/ })
+        .getByRole("button", { name: /^Model: Claude Sonnet 5\.5,/ })
         .waitFor();
       const pickerRead = delayNextGet();
       await trigger.click();
@@ -543,7 +562,7 @@ test(
       const otherPage = second.page;
       const otherTrigger = otherPage.getByRole("button", { name: /^Model: / });
       await otherPage
-        .getByRole("button", { name: /^Model: Claude Sonnet 5,/ })
+        .getByRole("button", { name: /^Model: Claude Sonnet 5\.5,/ })
         .waitFor();
       await otherPage
         .getByRole("button", { name: "Workspace", exact: true })

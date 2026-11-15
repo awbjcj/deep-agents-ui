@@ -53,6 +53,7 @@ import {
   AdaptiveThinkingControl,
   OutputTokenControl,
   ReasoningEffortControl,
+  TaskBudgetControl,
 } from "@/app/components/ModelInferenceControls";
 import {
   nextModelDraft,
@@ -138,6 +139,7 @@ function draftFromEffective(eff: EffectiveModelSelection): DraftState {
     effort: eff.effort,
     thinking: eff.thinking,
     max_tokens: eff.max_tokens,
+    task_budget: eff.task_budget ?? null,
   };
 }
 
@@ -147,7 +149,8 @@ function draftsEqual(a: DraftState, b: DraftState): boolean {
     a.model === b.model &&
     (a.effort ?? null) === (b.effort ?? null) &&
     (a.thinking ?? null) === (b.thinking ?? null) &&
-    a.max_tokens === b.max_tokens
+    a.max_tokens === b.max_tokens &&
+    (a.task_budget ?? null) === (b.task_budget ?? null)
   );
 }
 
@@ -354,6 +357,7 @@ export function ModelSidebar() {
         effort: draft.effort,
         thinking: draft.thinking,
         max_tokens: draft.max_tokens,
+        task_budget: draft.task_budget ?? null,
       })
         .then((result) => {
           setSelection(result);
@@ -679,8 +683,31 @@ export function ModelSidebar() {
               <OutputTokenControl
                 value={draft.max_tokens}
                 disabled={isSaving}
+                allowUnlimited={!!currentModelEntry?.supports_unlimited_output}
+                recommended={currentModelEntry?.recommended_max_tokens ?? 65536}
                 onChange={(max_tokens) => updateDraft({ max_tokens })}
               />
+              {currentModelEntry?.supports_task_budget && (
+                <TaskBudgetControl
+                  value={draft.task_budget ?? null}
+                  disabled={isSaving}
+                  onChange={(task_budget) => updateDraft({ task_budget })}
+                />
+              )}
+              {!currentModelEntry?.supports_task_budget &&
+                draft.task_budget != null && (
+                  <div className="text-muted-foreground text-xs">
+                    Saved task budget is inactive on this connection.{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      disabled={isSaving}
+                      onClick={() => updateDraft({ task_budget: null })}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
             </>
           )}
         </SettingsContent>
