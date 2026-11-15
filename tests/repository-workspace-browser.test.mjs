@@ -110,6 +110,10 @@ test(
     let released = false;
     let serverFailure = false;
     let noServers = false;
+    let delayMore = true;
+    let finishMore;
+    let moreStarted;
+    const moreRequested = new Promise((done) => (moreStarted = done));
     const makeJob = (job_id, operation, status, payload, result = {}) => ({
       job_id,
       operation,
@@ -168,8 +172,14 @@ test(
             );
           if (resource === "branches")
             return json(pageResult([{ ref: "refs/heads/main" }]));
-          if (cursor === "more-projects")
+          if (cursor === "more-projects") {
+            if (delayMore) {
+              delayMore = false;
+              moreStarted();
+              await new Promise((done) => (finishMore = done));
+            }
             return json(pageResult([projects[1]]));
+          }
           const job = makeJob(
             "list-1",
             "list",
@@ -335,6 +345,22 @@ test(
         .getByText("Prepare source in Repositories", { exact: false })
         .waitFor();
       await repositoriesTab.click();
+      await dialog.getByRole("button", { name: "Browse", exact: true }).click();
+      await dialog.getByRole("button", { name: "Load more" }).click();
+      await moreRequested;
+      await dialog
+        .getByRole("button", { name: "Close source results" })
+        .click();
+      await dialog
+        .getByLabel("Filter loaded results")
+        .waitFor({ state: "hidden" });
+      finishMore();
+      await page.waitForTimeout(150);
+      assert.equal(
+        await dialog.getByLabel("Filter loaded results").count(),
+        0,
+        "a late source page must not resurrect dismissed results"
+      );
       await dialog.getByRole("button", { name: "Browse", exact: true }).click();
       await dialog.getByRole("button", { name: "Load more" }).click();
       await dialog
@@ -605,6 +631,7 @@ test(
       await dialog.getByLabel("Source server").waitFor();
       assert.deepEqual(issues, []);
     } finally {
+      finishMore?.();
       await browser?.close();
       await new Promise((done) => server.close(done));
     }

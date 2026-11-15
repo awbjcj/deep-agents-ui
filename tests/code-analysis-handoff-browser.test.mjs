@@ -231,6 +231,13 @@ test(
         .waitFor();
       await page.evaluate(() => window.handoff());
       assert.equal(await cards.count(), 2);
+      assert.equal(
+        await region
+          .getByRole("button", { name: "Release workspace", exact: true })
+          .count(),
+        0,
+        "a completed preparation must not offer release while analysis is running"
+      );
       await page
         .getByText("Waiting for model response", { exact: true })
         .waitFor();
@@ -284,6 +291,16 @@ test(
       jobs[0].finished_at = new Date().toISOString();
       await page.getByText("Report ready", { exact: true }).waitFor();
       assert.equal(await cards.count(), 2);
+      await region
+        .getByRole("button", { name: "Release workspace", exact: true })
+        .waitFor();
+      assert.equal(
+        await region
+          .getByRole("button", { name: "Release workspace", exact: true })
+          .count(),
+        1,
+        "all historical jobs share one conversation workspace action"
+      );
       await page.addScriptTag({
         path: resolve(ROOT, "node_modules/axe-core/axe.min.js"),
       });

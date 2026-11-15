@@ -4,6 +4,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -62,6 +63,9 @@ export function FileOpenerProvider({
   }, []);
   const opener = useMemo<FileOpener>(() => ({ open }), [open]);
   const close = useCallback(() => setPath(null), []);
+  useEffect(() => {
+    if (path !== null && !Object.hasOwn(files, path)) setPath(null);
+  }, [files, path]);
 
   const file = useMemo(
     () =>

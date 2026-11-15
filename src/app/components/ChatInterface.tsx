@@ -102,8 +102,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       canUseCodeAnalyzer(user) &&
       assistant?.graph_id === CODE_ANALYZER_AGENT_ID;
     const [analysisRefresh, setAnalysisRefresh] = useState(0);
-    const [threadWithAnalysis, setThreadWithAnalysis] = useState<string | null>(
-      null
+    const [analysisVisibility, setAnalysisVisibility] = useState<{
+      threadId: string;
+      hasJobs: boolean;
+    } | null>(null);
+    const updateAnalysisVisibility = useCallback(
+      (threadId: string, hasJobs: boolean) =>
+        setAnalysisVisibility({ threadId, hasJobs }),
+      []
     );
     const refreshAnalysis = useCallback(
       () => setAnalysisRefresh((revision) => revision + 1),
@@ -211,7 +217,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       />
     );
     // Wait for the assistant so the welcome never flashes another agent's copy.
-    const analysisThreadId = threadId ?? createdThreadId ?? null;
+    // createdThreadId also records past creations for draft migration. Only
+    // the active route may own background jobs and repository resources.
+    const analysisThreadId = threadId;
     const showWelcome =
       assistant !== null &&
       !isThreadLoading &&
@@ -219,7 +227,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       !isLoading &&
       !interrupt &&
       processedMessages.length === 0 &&
-      !(analysisThreadId && threadWithAnalysis === analysisThreadId);
+      !(
+        analysisThreadId &&
+        analysisVisibility?.threadId === analysisThreadId &&
+        analysisVisibility.hasJobs
+      );
 
     // Single-pass bucket instead of three .filter() calls per render.
     // ChatInterface re-renders on every stream token; the old form
@@ -240,6 +252,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const hasTasks = todos.length > 0;
     const fileKeysCount = Object.keys(files).length;
     const hasFiles = fileKeysCount > 0;
+
+    React.useEffect(() => setMetaOpen(null), [threadId]);
+    React.useEffect(() => {
+      if (
+        (metaOpen === "tasks" && !hasTasks) ||
+        (metaOpen === "files" && !hasFiles)
+      )
+        setMetaOpen(null);
+    }, [metaOpen, hasTasks, hasFiles]);
 
     // Build the message-id → ui[] index once per render instead of running
     // `ui?.filter(...)` inside every `processedMessages.map` iteration
@@ -315,6 +336,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
               />
             ) : (
               <FileOpenerProvider
+                key={`files:${threadId}`}
                 files={files}
                 sourceImageAttachments={sourceImageAttachments}
                 sourceAttachmentRecords={sourceAttachmentRecords}
@@ -371,7 +393,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 isLoading={isLoading}
                 refreshRevision={analysisRefresh}
                 allowRelease={!showRepositoryWorkspace}
-                onJobsVisible={setThreadWithAnalysis}
+                onJobsChange={updateAnalysisVisibility}
               />
             )}
           </div>

@@ -9,6 +9,21 @@ import {
 
 /** Present an agent handoff as a compact disclosure while retaining its source. */
 export function ContextSummaryCard({ summary }: { summary: ContextSummary }) {
+  if (summary.status === "updating" || summary.status === "interrupted") {
+    const updating = summary.status === "updating";
+    const title = updating
+      ? "Updating agent context…"
+      : "Context update interrupted";
+    return (
+      <DisclosureCard
+        icon={<ListRestart />}
+        title={title}
+        tone={updating ? "progress" : "neutral"}
+        announcement={title}
+        description={updating ? undefined : "No context update was confirmed."}
+      />
+    );
+  }
   return (
     <DisclosureCard
       icon={<ListRestart />}

@@ -84,6 +84,8 @@ test(
               export const apiGetImageFetching = async () => ({enabled: false, effective: false, sources: null});
               export const apiSetImageFetching = apiGetImageFetching;
               export const apiFetch = async () => new Response(JSON.stringify([]), {headers: {"Content-Type": "application/json"}});
+              export const extractErrorMessage = (detail, fallback) => typeof detail === "string" ? detail : fallback;
+              export const getAuthUser = () => null;
             `,
               loader: "ts",
             }));

@@ -2,42 +2,56 @@
 
 import { useEffect } from "react";
 import { useCodeAnalysisJobs } from "@/app/hooks/useCodeAnalysisJobs";
+import { shouldPoll } from "@/lib/code-analysis";
 import { CodeAnalysisJob } from "./CodeAnalysisJob";
 
-/** Keep preparation and analysis visible after a delegated task hands back. */
-export function CodeAnalysisJobs({
-  threadId,
-  isLoading,
-  refreshRevision = 0,
-  allowRelease = true,
-  onJobsVisible,
-}: {
+type CodeAnalysisJobsProps = {
   threadId: string | null;
   isLoading: boolean;
   refreshRevision?: number;
   allowRelease?: boolean;
-  onJobsVisible?: (threadId: string) => void;
-}) {
+  onJobsChange?: (threadId: string, hasJobs: boolean) => void;
+};
+
+/** Keep preparation and analysis visible after a delegated task hands back. */
+export function CodeAnalysisJobs(props: CodeAnalysisJobsProps) {
+  return props.threadId ? (
+    <ConversationAnalysisJobs
+      key={props.threadId}
+      {...props}
+    />
+  ) : null;
+}
+
+function ConversationAnalysisJobs({
+  threadId,
+  isLoading,
+  refreshRevision = 0,
+  allowRelease = true,
+  onJobsChange,
+}: CodeAnalysisJobsProps) {
   const { jobs, error } = useCodeAnalysisJobs(
     threadId,
     isLoading,
     refreshRevision
   );
   const hasJobs = jobs.length > 0;
+  const canRelease =
+    allowRelease && !jobs.some((job) => shouldPoll(job.status));
   useEffect(() => {
-    if (threadId && hasJobs) onJobsVisible?.(threadId);
-  }, [threadId, hasJobs, onJobsVisible]);
+    if (threadId) onJobsChange?.(threadId, hasJobs);
+  }, [threadId, hasJobs, onJobsChange]);
   if (!jobs.length && !error) return null;
   return (
     <section
       aria-label="Background code analysis"
       className="mt-4 flex min-w-0 flex-col gap-3"
     >
-      {jobs.map((job) => (
+      {jobs.map((job, index) => (
         <CodeAnalysisJob
           key={job.job_id}
           jobId={job.job_id}
-          allowRelease={allowRelease}
+          allowRelease={canRelease && index === 0}
         />
       ))}
       {error && (

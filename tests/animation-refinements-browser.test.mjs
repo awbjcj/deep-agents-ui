@@ -88,6 +88,9 @@ async function fixture() {
       {
         name: "isolated-chat",
         setup(build) {
+          build.onLoad({ filter: /[\\/]AuthProvider\.tsx$/ }, () => ({
+            contents: "export const useAuth = () => ({user: null});",
+          }));
           build.onLoad({ filter: /[\\/]ChatProvider\.tsx$/ }, () => ({
             loader: "tsx",
             contents: `

@@ -253,7 +253,15 @@ export function useRepositoryWorkspace(
     analysisExpired,
     retryServers: () => setServerAttempt((value) => value + 1),
     retryCatalog: () => setCatalogAttempt((value) => value + 1),
-    dismissBrowse: () => setBrowse(null),
+    dismissBrowse: () => {
+      // A dismissed page must not reappear when its pending lookup finishes.
+      if (busy === "browse") {
+        request.current?.abort();
+        request.current = null;
+        setBusy(null);
+      }
+      setBrowse(null);
+    },
     browseSource: (query: SourceQuery, append = false) =>
       run("browse", async (signal) => {
         if (!append) setBrowse(null);
