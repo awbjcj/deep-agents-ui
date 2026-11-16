@@ -114,6 +114,7 @@ export function useAttachments({
   const previousThreadId = useRef<string | null>(null);
   const itemsRef = useRef<AttachmentState[]>([]);
   const reserved = useRef(new Set<string>());
+  const uploadQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     itemsRef.current = items;
@@ -196,7 +197,16 @@ export function useAttachments({
     async (item: { localId: string; file: File }) => {
       const controller = new AbortController();
       aborters.current.set(item.localId, controller);
+      // Each upload stores through an exclusive thread maintenance run.
+      // Register cancellation before waiting so queued chips remain removable.
+      const previous = uploadQueue.current;
+      let release!: () => void;
+      uploadQueue.current = new Promise<void>((resolve) => {
+        release = resolve;
+      });
       try {
+        await previous;
+        if (controller.signal.aborted) return;
         const uploadThreadId = threadId ?? (await ensureThreadId());
         if (controller.signal.aborted) return;
         if (!uploadThreadId) {
@@ -226,6 +236,7 @@ export function useAttachments({
         toast.error(`Upload failed: ${item.file.name}`, { description: msg });
       } finally {
         aborters.current.delete(item.localId);
+        release();
       }
     },
     [ensureThreadId, onFilesChanged, threadId, update]
