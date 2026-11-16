@@ -42,7 +42,7 @@ export function createMessageRun(
       },
     },
     metadata: { message_delivery: delivery, message_id: message.id },
-    multitaskStrategy: delivery === "steer" ? "interrupt" : "enqueue",
+    multitaskStrategy: delivery === "steer" ? "interrupt" : "reject",
     streamMode: ["values", "messages-tuple", "updates", "custom"],
     streamSubgraphs: true,
     streamResumable: true,

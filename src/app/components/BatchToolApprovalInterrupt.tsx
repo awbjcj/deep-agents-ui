@@ -15,6 +15,7 @@ import type {
 interface BatchToolApprovalInterruptProps {
   actionRequests: ActionRequest[];
   reviewConfigsMap?: Map<string, ReviewConfig>;
+  reviewConfigs?: Array<ReviewConfig | undefined>;
   onResume: (value: ResumeInterruptValue) => void;
   isLoading?: boolean;
 }
@@ -26,6 +27,7 @@ const isHumanDecision = (
 export function BatchToolApprovalInterrupt({
   actionRequests,
   reviewConfigsMap,
+  reviewConfigs,
   onResume,
   isLoading,
 }: BatchToolApprovalInterruptProps) {
@@ -112,7 +114,10 @@ export function BatchToolApprovalInterrupt({
           <li key={`${actionRequest.name}-${index}`}>
             <ToolApprovalInterrupt
               actionRequest={actionRequest}
-              reviewConfig={reviewConfigsMap?.get(actionRequest.name)}
+              reviewConfig={
+                reviewConfigs?.[index] ??
+                reviewConfigsMap?.get(actionRequest.name)
+              }
               onDecisionChange={(decision) =>
                 handleDecisionChange(index, decision)
               }

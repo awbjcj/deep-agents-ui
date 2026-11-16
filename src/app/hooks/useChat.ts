@@ -14,9 +14,13 @@ import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import {
+  ApprovalReviewError,
   buildInterruptResume,
   createInterruptResumeHandler,
+  currentApprovalDecisions,
+  pendingApprovalInterrupts,
   selectPendingInterrupt,
+  validateResumeIds,
 } from "@/app/utils/interruptResume";
 import { useClient, useDeploymentUrl } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
@@ -44,6 +48,7 @@ import {
   readStreamRunId,
 } from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
+import { APPROVAL_DISPATCH_GUARD } from "@/app/utils/langgraphStreamModes";
 import { deleteUpload } from "@/lib/uploads";
 import { CONVERSATION_FILES_CHANGED_EVENT } from "@/lib/conversation-files";
 import {
@@ -158,11 +163,19 @@ export function useChat({
   const creatingThreadRef = useRef<Promise<string> | null>(null);
   const reportedHistoryErrorsRef = useRef(new Set<string>());
   const pendingSendRef = useRef<((accepted: boolean) => void) | null>(null);
-  const restoredValues = useRef<StateType | null>(null);
+  const restoredValues = useRef<{
+    values: StateType;
+    interrupts?: { id: string; value?: unknown }[];
+  } | null>(null);
   const handleStreamStopped = useCallback(
     ({ mutate }: { mutate: (values: Partial<StateType>) => void }) => {
       if (!restoredValues.current) return;
-      const values = { ...restoredValues.current, __interrupt__: undefined };
+      const values = {
+        ...restoredValues.current.values,
+        __interrupt__: restoredValues.current.interrupts?.length
+          ? restoredValues.current.interrupts
+          : undefined,
+      };
       restoredValues.current = null;
       mutate(values);
     },
@@ -432,6 +445,29 @@ export function useChat({
   const stream = rawStream;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
+  const approvalScope = JSON.stringify([
+    user?.user_id,
+    threadId,
+    activeAssistant?.assistant_id,
+  ]);
+  const {
+    submit: trackApprovalSubmission,
+    isSubmitting: isApprovalSubmitting,
+    submittingIds: approvalSubmittingIds,
+    cancelQueued: cancelQueuedApprovals,
+  } = useApprovalSubmission(approvalScope, client);
+  const [approvalSnapshotVersion, setApprovalSnapshotVersion] = useState(0);
+  const pendingApprovals = usePendingApprovals(
+    stream.interrupts,
+    approvalSubmittingIds,
+    JSON.stringify([approvalScope, approvalSnapshotVersion]),
+    client,
+    Boolean(stream.error)
+  );
+  const pendingApprovalsRef = useRef(pendingApprovals);
+  pendingApprovalsRef.current = pendingApprovals;
+  const approvalInFlightRef = useRef(isApprovalSubmitting);
+  approvalInFlightRef.current = isApprovalSubmitting;
   useEffect(() => {
     setLiveContextUpdate(null);
   }, [threadId]);
@@ -452,6 +488,8 @@ export function useChat({
     threadId,
     loading: stream.isLoading,
     threadLoading: stream.isThreadLoading,
+    paused: pendingApprovals.length > 0,
+    blockJoin: isApprovalSubmitting,
     joinStream: (runId) => streamRef.current.joinStream(runId),
     refreshThread: async (isCurrent) => {
       if (!threadId) return;
@@ -462,7 +500,7 @@ export function useChat({
         throw new Error("Conversation state is not available yet.");
       // Reconcile both text and approvals if the SSE connection ended before
       // the server sent its final values. The run is already terminal.
-      restoredValues.current = snapshot.values;
+      restoredValues.current = { values: snapshot.values };
       clearStreamReconnectState(threadId);
       await streamRef.current.stop();
     },
@@ -502,8 +540,10 @@ export function useChat({
       !stream.isThreadLoading &&
       !stream.error &&
       !historyError &&
-      stream.interrupts.length === 0,
+      pendingApprovals.length === 0 &&
+      !isApprovalSubmitting,
     busy:
+      isApprovalSubmitting ||
       stream.isLoading ||
       messageRuns.serverBusy ||
       messageRuns.pendingCount > 0 ||
@@ -517,7 +557,8 @@ export function useChat({
       !historyError &&
       !messageRuns.stopping &&
       !submissionPending &&
-      stream.interrupts.length === 0,
+      pendingApprovals.length === 0 &&
+      !isApprovalSubmitting,
     submit: async (item) => {
       const target = threadId;
       if (!target || messageSubmission.current)
@@ -588,7 +629,12 @@ export function useChat({
       }
       if (delivery) {
         const target = threadIdRef.current;
-        if (!target || streamRef.current.interrupts.length) return false;
+        if (
+          !target ||
+          pendingApprovalsRef.current.length ||
+          approvalInFlightRef.current
+        )
+          return false;
         // Persist before crossing the network: refresh can otherwise lose a
         // steering prompt whose acceptance has not reached this browser yet.
         enqueueMessage({
@@ -1143,58 +1189,173 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
 
-  const approvalScope = JSON.stringify([
-    user?.user_id,
-    threadId,
-    activeAssistant?.assistant_id,
-  ]);
-  const {
-    submit: trackApprovalSubmission,
-    isSubmitting: isApprovalSubmitting,
-    submittingIds: approvalSubmittingIds,
-    cancelQueued: cancelQueuedApprovals,
-  } = useApprovalSubmission(approvalScope, client);
-  const pendingApprovals = usePendingApprovals(
-    stream.interrupts,
-    approvalSubmittingIds,
-    approvalScope,
-    client
-  );
-  const pendingApprovalsRef = useRef(pendingApprovals);
-  pendingApprovalsRef.current = pendingApprovals;
   const submitApproval = useCallback(
-    (
+    async (
       resume: Record<string, ResumeInterruptValue>,
-      mode?: AutomaticApprovalMode
-    ) =>
-      trackApprovalSubmission(Object.keys(resume), async (isCurrent) => {
-        if (!threadId) throw new Error("No conversation is selected.");
-        // Read the server: React may not have rendered the preceding resume yet.
-        const snapshot = await client.threads.getState<StateType>(threadId);
-        if (!isCurrent() || threadIdRef.current !== threadId) return;
-        const pending = snapshot.tasks.flatMap((task) => task.interrupts ?? []);
-        for (const [id, decision] of Object.entries(resume)) {
-          buildInterruptResume(pending, id, decision);
-        }
-        await streamRef.current.submit(
-          null,
-          fromLatestCheckpoint({
-            command: { resume },
-            config: buildConfig(mode),
-            streamSubgraphs: true,
-            streamMode: STREAM_MODES,
-            multitaskStrategy: "reject" as const,
-            strictResume: true,
-          })
+      mode?: AutomaticApprovalMode,
+      signal?: AbortSignal
+    ): Promise<false | readonly string[]> => {
+      validateResumeIds(Object.keys(resume));
+      if (!activeAssistant?.assistant_id) {
+        throw new ApprovalReviewError(
+          "The assistant is still loading. Try again shortly."
         );
-        onHistoryRevalidate?.();
-      }),
+      }
+      let dispatchedIds: string[] | null = null;
+      const reviewed = [...pendingApprovalsRef.current];
+      try {
+        await trackApprovalSubmission(
+          Object.keys(resume),
+          async (isCurrent, actionSignal) => {
+            if (!threadId) throw new Error("No conversation is selected.");
+            // Read the server: React may not have rendered the preceding resume yet.
+            const preflightSignal = AbortSignal.any([
+              actionSignal,
+              AbortSignal.timeout(15000),
+            ]);
+            let snapshot;
+            try {
+              snapshot = await client.threads.getState<StateType>(
+                threadId,
+                undefined,
+                {
+                  subgraphs: true,
+                  signal: preflightSignal,
+                }
+              );
+            } catch (error) {
+              if (!isCurrent()) return;
+              throw error;
+            }
+            if (!isCurrent() || threadIdRef.current !== threadId) return;
+            let pending = pendingApprovalInterrupts(snapshot);
+            let current = currentApprovalDecisions(resume, reviewed, pending);
+            let ids = Object.keys(current);
+            if (ids.length !== Object.keys(resume).length) {
+              // Another client changed a review. Refresh the actual thread,
+              // keeping the current stream alive if it is still running.
+              const historySnapshots = await history.mutate(threadId);
+              if (!isCurrent() || threadIdRef.current !== threadId) return;
+              const latest = historySnapshots?.[0] ?? snapshot;
+              pending = pendingApprovalInterrupts(latest);
+              current = currentApprovalDecisions(resume, reviewed, pending);
+              ids = Object.keys(current);
+              if (!streamRef.current.isLoading) {
+                restoredValues.current = {
+                  values: latest.values,
+                  interrupts: pending,
+                };
+                await streamRef.current.stop();
+                setApprovalSnapshotVersion((previous) => previous + 1);
+              }
+              if (!mode)
+                throw new ApprovalReviewError(
+                  "This approval is no longer pending. Review the current action."
+                );
+            }
+            if (!ids.length) return;
+            let streamError: unknown;
+            let failedRun: { run_id: string; thread_id: string } | undefined;
+            try {
+              await streamRef.current.submit(
+                null,
+                fromLatestCheckpoint({
+                  command: { resume: current },
+                  config: buildConfig(mode),
+                  streamSubgraphs: true,
+                  streamMode: STREAM_MODES,
+                  multitaskStrategy: "reject" as const,
+                  strictResume: true,
+                  metadata: {
+                    [APPROVAL_DISPATCH_GUARD]: {
+                      signal: actionSignal,
+                      onDispatch: () => {
+                        dispatchedIds = ids;
+                      },
+                    },
+                  },
+                  onError: (
+                    error: unknown,
+                    run: { run_id: string; thread_id: string } | undefined
+                  ) => {
+                    streamError = error ?? new Error("Approval failed");
+                    failedRun = run;
+                  },
+                })
+              );
+            } catch (error) {
+              streamError = error;
+            }
+            if (streamError) {
+              const status =
+                typeof streamError === "object" &&
+                streamError !== null &&
+                "status" in streamError
+                  ? streamError.status
+                  : undefined;
+              const rejected =
+                !failedRun &&
+                typeof status === "number" &&
+                status >= 400 &&
+                status < 500 &&
+                status !== 408 &&
+                status !== 429;
+              // A lost stream can have accepted the request. Stop other queued
+              // decisions until the user reviews its unknown outcome.
+              if (!rejected) cancelQueuedApprovals();
+              throw new ApprovalReviewError(
+                rejected
+                  ? "The server rejected this approval. Review the action before trying again."
+                  : "The approval outcome could not be confirmed. Other queued decisions were cancelled; review them before continuing.",
+                { cause: streamError }
+              );
+            }
+            if (!isCurrent() || threadIdRef.current !== threadId) return;
+            try {
+              const latest = await client.threads.getState<StateType>(
+                threadId,
+                undefined,
+                {
+                  subgraphs: true,
+                  signal: AbortSignal.any([
+                    actionSignal,
+                    AbortSignal.timeout(15000),
+                  ]),
+                }
+              );
+              if (!isCurrent() || threadIdRef.current !== threadId) return;
+              const remaining = new Set(
+                pendingApprovalInterrupts(latest).map((item) => item.id)
+              );
+              if (ids.some((id) => remaining.has(id))) {
+                throw new ApprovalReviewError(
+                  "The approval is still pending. Review it and try again."
+                );
+              }
+            } catch (error) {
+              if (!isCurrent()) return;
+              cancelQueuedApprovals();
+              throw error;
+            }
+            onHistoryRevalidate?.();
+          },
+          signal
+        );
+        return dispatchedIds ?? false;
+      } catch (error) {
+        if (signal?.aborted && !dispatchedIds) return false;
+        throw error;
+      }
+    },
     [
       buildConfig,
+      activeAssistant?.assistant_id,
       client,
+      history,
       threadId,
       onHistoryRevalidate,
       trackApprovalSubmission,
+      cancelQueuedApprovals,
     ]
   );
   const approvals = useApprovalMode({
@@ -1202,11 +1363,12 @@ export function useChat({
     scope: approvalScope,
     accountId: user?.user_id,
     role: user?.role,
-    ready: !!threadId && !!activeAssistant && !stream.isThreadLoading,
+    ready:
+      !!threadId && !!activeAssistant?.assistant_id && !stream.isThreadLoading,
     busy:
       isApprovalSubmitting ||
       stream.isLoading ||
-      messageRuns.pendingCount > 0 ||
+      messageRuns.serverRunning ||
       messageRuns.stopping ||
       submissionPending,
     failed:
@@ -1221,26 +1383,46 @@ export function useChat({
 
   const interrupt = selectPendingInterrupt(pendingApprovals);
   const selectedInterruptId = interrupt?.id;
+  const resumeInterrupts = useCallback(
+    (resume: Record<string, ResumeInterruptValue>) => {
+      try {
+        for (const [id, decision] of Object.entries(resume)) {
+          buildInterruptResume(pendingApprovalsRef.current, id, decision);
+        }
+      } catch {
+        toast.error(
+          "This approval is no longer pending. Review the current action."
+        );
+        return;
+      }
+      approvalModeRef.current = onManualResume();
+      void submitApproval(resume).catch((error: unknown) => {
+        toast.error(
+          "Could not submit the approval. Review the current action and try again.",
+          {
+            description:
+              error instanceof ApprovalReviewError
+                ? error.message
+                : "Check the connection and review the current action before trying again.",
+          }
+        );
+      });
+    },
+    [onManualResume, submitApproval]
+  );
   const resumeInterrupt = useCallback(
     (value: ResumeInterruptValue, interruptId = selectedInterruptId) =>
       createInterruptResumeHandler({
         getPending: () => pendingApprovalsRef.current,
         selectedId: interruptId,
-        submit: (resume) => {
-          approvalModeRef.current = onManualResume();
-          void submitApproval(resume).catch(() => {
-            toast.error(
-              "Could not submit the approval. Review the current action and try again."
-            );
-          });
-        },
+        submit: resumeInterrupts,
         onStale: () => {
           toast.error(
             "This approval is no longer pending. Review the current action."
           );
         },
       })(value),
-    [selectedInterruptId, submitApproval, onManualResume]
+    [selectedInterruptId, resumeInterrupts]
   );
 
   const stopStream = useCallback(async () => {
@@ -1310,6 +1492,7 @@ export function useChat({
   const ui = stream.values.ui;
   const messages = visibleMessages;
   const isLoading =
+    isApprovalSubmitting ||
     stream.isLoading ||
     messageRuns.serverActive ||
     messageRuns.pendingCount > 0 ||
@@ -1374,6 +1557,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
+      resumeInterrupts,
       approvals,
       taskVerification,
     }),
@@ -1412,6 +1596,7 @@ export function useChat({
       stopStream,
       markCurrentThreadAsResolved,
       resumeInterrupt,
+      resumeInterrupts,
       approvals,
       taskVerification,
     ]

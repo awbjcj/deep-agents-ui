@@ -27,8 +27,9 @@ interface ApprovalModeOptions {
   pending: readonly AutopilotInterrupt[];
   submit: (
     resume: Record<string, ResumeInterruptValue>,
-    mode: AutomaticApprovalMode
-  ) => Promise<void>;
+    mode: AutomaticApprovalMode,
+    signal: AbortSignal
+  ) => Promise<boolean | readonly string[] | void>;
 }
 
 interface ModeState {
@@ -221,6 +222,11 @@ export function useApprovalMode(options: ApprovalModeOptions) {
    * Returns the mode in effect for the run that carries the decision.
    */
   const onManualResume = useCallback((): ApprovalMode => {
+    if (selection.current) {
+      selection.current.abort();
+      selection.current = null;
+      setState((previous) => ({ ...previous, checking: null }));
+    }
     if (modeRef.current === "autopilot") {
       reset();
       return "interactive";
@@ -287,7 +293,17 @@ export function useApprovalMode(options: ApprovalModeOptions) {
           return;
         Object.keys(resume).forEach((id) => submitted.current.add(id));
         didSubmit = true;
-        await latest.current.submit(resume, automatic);
+        const dispatched = await latest.current.submit(
+          resume,
+          automatic,
+          controller.signal
+        );
+        if (dispatched === false || Array.isArray(dispatched)) {
+          Object.keys(resume).forEach((id) => {
+            if (!Array.isArray(dispatched) || !dispatched.includes(id))
+              submitted.current.delete(id);
+          });
+        }
       } catch (cause) {
         if (
           version === generation.current &&
@@ -302,11 +318,13 @@ export function useApprovalMode(options: ApprovalModeOptions) {
               : `Automatic approval failed. ${label(automatic)} is off.`
           );
         }
+      } finally {
+        if (request.current === controller) request.current = null;
       }
     }, 600);
     return () => {
       clearTimeout(timer);
-      controller.abort();
+      if (!didSubmit) controller.abort();
     };
   }, [
     automatic,

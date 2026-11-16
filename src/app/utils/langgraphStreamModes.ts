@@ -2,6 +2,14 @@ import type { Client, StreamMode } from "@langchain/langgraph-sdk";
 
 type StreamModeRequest = StreamMode | StreamMode[] | undefined;
 
+/** Local-only guard checked when the SDK actually starts a queued stream. */
+export const APPROVAL_DISPATCH_GUARD: unique symbol =
+  Symbol("approval-dispatch");
+export interface ApprovalDispatchGuard {
+  signal: AbortSignal;
+  onDispatch: () => void;
+}
+
 // "tools" was a valid mode in older SDK versions; the newer typings dropped
 // it from the union, but the runtime still rejects it server-side. We keep
 // stripping it on the way out for backward compatibility, using a widened
@@ -49,12 +57,28 @@ export function createStreamModeCompatibilityClient<TClient extends Client>(
   const runs = new Proxy(client.runs as any, {
     get(target, prop, receiver) {
       if (prop === "stream") {
-        return (threadId: unknown, assistantId: unknown, payload?: any) =>
-          target.stream(
-            threadId,
-            assistantId,
-            filterPayloadStreamMode(payload)
-          );
+        return (threadId: unknown, assistantId: unknown, payload?: any) => {
+          const guard: ApprovalDispatchGuard | undefined =
+            payload?.metadata?.[APPROVAL_DISPATCH_GUARD];
+          if (!guard)
+            return target.stream(
+              threadId,
+              assistantId,
+              filterPayloadStreamMode(payload)
+            );
+          const metadata = { ...payload.metadata };
+          delete metadata[APPROVAL_DISPATCH_GUARD];
+          const cleanPayload = filterPayloadStreamMode({
+            ...payload,
+            metadata,
+          });
+          return (async function* () {
+            if (guard.signal.aborted)
+              throw new DOMException("Approval cancelled", "AbortError");
+            guard.onDispatch();
+            yield* target.stream(threadId, assistantId, cleanPayload);
+          })();
+        };
       }
 
       if (prop === "joinStream") {

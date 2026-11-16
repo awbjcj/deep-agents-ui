@@ -40,9 +40,10 @@ function harness() {
   const server = new Map();
   const client = {
     threads: {
-      getHistory: async (id) => {
+      getHistory: async (id, options) => {
         const result = server.get(id);
         if (result instanceof Error) throw result;
+        if (typeof result === "function") return result(options);
         return result;
       },
     },
@@ -90,6 +91,30 @@ test("a callback captured before thread creation publishes the approval to displ
   assert.deepEqual(h.cached("new-thread")?.[0]?.tasks[0]?.interrupts, [
     approval,
   ]);
+});
+
+test("a stalled history refresh is bounded and preserves the last approval", async () => {
+  const h = harness();
+  const previous = history("current", [approval]);
+  const current = h.render("current");
+  h.seed("current", previous);
+  h.server.set("current", ({ signal }) => {
+    signal.throwIfAborted();
+    return new Promise((_resolve, reject) =>
+      signal.addEventListener("abort", () => reject(signal.reason), {
+        once: true,
+      })
+    );
+  });
+  const originalTimeout = AbortSignal.timeout;
+  AbortSignal.timeout = () =>
+    AbortSignal.abort(new DOMException("Timed out", "TimeoutError"));
+  try {
+    await assert.rejects(current.mutate("current"), { name: "TimeoutError" });
+    assert.deepEqual(h.cached("current"), previous);
+  } finally {
+    AbortSignal.timeout = originalTimeout;
+  }
 });
 
 test("late completion updates its own thread without replacing the newly selected conversation", async () => {

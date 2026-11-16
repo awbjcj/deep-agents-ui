@@ -50,3 +50,49 @@ test("filters unsupported stream modes before creating runs", () => {
     "custom",
   ]);
 });
+
+test("a queued approval checks cancellation at SDK dispatch and never sends local guard metadata", async () => {
+  const { APPROVAL_DISPATCH_GUARD } =
+    await import("../src/app/utils/langgraphStreamModes.ts");
+  const controller = new AbortController();
+  let calls = 0;
+  let payload;
+  let dispatched = 0;
+  const client = createStreamModeCompatibilityClient({
+    runs: {
+      async *stream(_thread, _assistant, options) {
+        calls++;
+        payload = options;
+        yield "started";
+      },
+    },
+  });
+  const options = {
+    metadata: {
+      visible: "yes",
+      [APPROVAL_DISPATCH_GUARD]: {
+        signal: controller.signal,
+        onDispatch: () => dispatched++,
+      },
+    },
+  };
+  const deferred = client.runs.stream("thread", "assistant", options);
+  controller.abort();
+  await assert.rejects(() => deferred.next(), { name: "AbortError" });
+  assert.equal(calls, 0);
+  assert.equal(dispatched, 0);
+  const next = new AbortController();
+  const active = client.runs.stream("thread", "assistant", {
+    metadata: {
+      visible: "yes",
+      [APPROVAL_DISPATCH_GUARD]: {
+        signal: next.signal,
+        onDispatch: () => dispatched++,
+      },
+    },
+  });
+  assert.deepEqual(await active.next(), { value: "started", done: false });
+  assert.equal(calls, 1);
+  assert.equal(dispatched, 1);
+  assert.deepEqual(payload.metadata, { visible: "yes" });
+});

@@ -185,6 +185,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       ensureThreadId,
       stopStream,
       resumeInterrupt,
+      resumeInterrupts,
       approvals,
       createdThreadId,
       serverQueuedCount,
@@ -373,6 +374,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 <PendingToolApprovals
                   interrupts={interrupts}
                   onResume={resumeInterrupt}
+                  onResumeBatch={resumeInterrupts}
                   submittingIds={approvalSubmittingIds}
                 />
                 <AgentActivity

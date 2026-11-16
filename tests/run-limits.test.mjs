@@ -126,6 +126,6 @@ test("interrupt resumes reapply the configured run limit", () => {
     source.indexOf("const submitApproval"),
     source.indexOf("const approvals =")
   );
-  assert.match(submissionBlock, /command: \{ resume \}/);
+  assert.match(submissionBlock, /command: \{ resume: current \}/);
   assert.match(submissionBlock, /config: buildConfig\(mode\)/);
 });

@@ -128,6 +128,52 @@ test(
         }
       );
       await t.test(
+        "pending approval defers joining a queued follow-up",
+        async () => {
+          await reset();
+          await page.evaluate(async () => {
+            window.update({ paused: true });
+            const run = window.run("queued-after-approval", "A", "pending");
+            window.serverRuns.A = [run];
+            await window.followups.submit(async () => run, "A");
+          });
+          await page.waitForFunction(() => window.followups.pendingCount === 1);
+          await page.waitForTimeout(200);
+          assert.equal(
+            await page.evaluate(
+              () => window.events.filter((event) => event[0] === "join").length
+            ),
+            0
+          );
+          await page.evaluate(() => window.update({ paused: false }));
+          await page.waitForFunction(() =>
+            window.events.some((event) => event[0] === "join")
+          );
+        }
+      );
+      await t.test(
+        "a running follow-up reconnects while a review is visible",
+        async () => {
+          await reset();
+          await page.evaluate(async () => {
+            window.update({ paused: true });
+            const run = window.run("active-with-approval", "A", "running");
+            window.serverRuns.A = [run];
+            await window.followups.submit(async () => run, "A");
+          });
+          await page.waitForFunction(() =>
+            window.events.some(
+              (event) =>
+                event[0] === "join" && event[2] === "active-with-approval"
+            )
+          );
+          assert.equal(
+            await page.evaluate(() => window.followups.serverRunning),
+            true
+          );
+        }
+      );
+      await t.test(
         "a failed stream keeps the run controllable and retries until completion",
         async () => {
           await reset();

@@ -377,6 +377,31 @@ test(
         }
       );
       await t.test(
+        "a manual decision cancels a pending mode activation",
+        async () => {
+          await reset();
+          await page.evaluate(() => {
+            window.holdAccess = true;
+          });
+          await choose("Autopilot");
+          await page
+            .getByRole("button", { name: "I understand, enable autopilot" })
+            .click();
+          await page.waitForFunction(() => window.releaseAccess.length === 1);
+          assert.equal(
+            await page.evaluate(() => window.approvals.onManualResume()),
+            "interactive"
+          );
+          await page.evaluate(() =>
+            window.releaseAccess.forEach((resolve) => resolve())
+          );
+          await page.evaluate((pending) => window.update({ pending }), pending);
+          await page.waitForTimeout(800);
+          assert.equal(await mode(), "interactive");
+          assert.deepEqual(await page.evaluate(() => window.submissions), []);
+        }
+      );
+      await t.test(
         "thread or account changes and reload return to interactive",
         async () => {
           for (const change of [
