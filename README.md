@@ -29,6 +29,11 @@ cp .env.example .env          # set NEXT_PUBLIC_DEPLOYMENT_URL
 yarn dev
 ```
 
+This is a single-package app, so `.yarnrc` disables Yarn 1's workspace handling
+to avoid warnings from published dependency manifests. The PostCSS resolution
+sets a minimum of `8.5.33` for transitive dependencies, including Next.js;
+`yarn.lock` pins the installed version.
+
 In development the app proxies `/api/*` to the LangGraph + FastAPI runtime at
 `http://localhost:2024` (override with `LANGGRAPH_API_URL`), so start the backend
 (`make dev` in [`../vsda-deep-agent`](../vsda-deep-agent)) alongside the UI.
