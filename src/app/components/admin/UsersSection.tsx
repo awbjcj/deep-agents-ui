@@ -304,7 +304,7 @@ export function UsersSection() {
                     disabled={isSelf}
                   >
                     <SelectTrigger
-                      className="h-7 w-[110px] gap-1.5 px-2 text-xs"
+                      className="h-7 w-[140px] shrink-0 gap-1.5 px-2 text-xs"
                       aria-label={`Role for ${u.username}`}
                     >
                       <SelectValue />
