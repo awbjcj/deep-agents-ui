@@ -119,8 +119,13 @@ test("interrupt resumes reapply the configured run limit", () => {
   );
   assert.match(
     resumeBlock,
-    /createInterruptResumeHandler\(\{[\s\S]*getPending: \(\) => streamRef\.current\.interrupts/
+    /createInterruptResumeHandler\(\{[\s\S]*getPending: \(\) => pendingApprovalsRef\.current/
   );
-  assert.match(resumeBlock, /command: \{ resume \}/);
-  assert.match(resumeBlock, /config: buildConfig\(\)/);
+  assert.match(resumeBlock, /submitApproval\(resume\)/);
+  const submissionBlock = source.slice(
+    source.indexOf("const submitApproval"),
+    source.indexOf("const approvals =")
+  );
+  assert.match(submissionBlock, /command: \{ resume \}/);
+  assert.match(submissionBlock, /config: buildConfig\(mode\)/);
 });

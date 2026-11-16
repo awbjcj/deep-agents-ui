@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { NotificationBanner } from "@/app/components/NotificationBanner";
-import { PendingToolApproval } from "@/app/components/PendingToolApproval";
+import { PendingToolApprovals } from "@/app/components/PendingToolApproval";
 import type { TodoItem } from "@/app/types/types";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { useChatContext } from "@/providers/ChatProvider";
@@ -175,10 +175,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       refreshFiles,
       removeSourceImage,
       isLoading,
+      approvalSubmittingIds = [],
       isThreadLoading,
       historyError,
       retryHistory,
       interrupt,
+      interrupts = interrupt ? [interrupt] : [],
       sendMessage,
       ensureThreadId,
       stopStream,
@@ -368,11 +370,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   );
                 })}
                 {candidateIndex === -1 && outcomeStatus}
-                <PendingToolApproval
-                  key={interrupt?.id}
-                  interrupt={interrupt}
+                <PendingToolApprovals
+                  interrupts={interrupts}
                   onResume={resumeInterrupt}
-                  isLoading={isLoading}
+                  submittingIds={approvalSubmittingIds}
                 />
                 <AgentActivity
                   label={

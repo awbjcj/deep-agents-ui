@@ -4,7 +4,10 @@ import { isValidElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { BatchToolApprovalInterrupt } from "../src/app/components/BatchToolApprovalInterrupt.tsx";
-import { PendingToolApproval } from "../src/app/components/PendingToolApproval.tsx";
+import {
+  PendingToolApproval,
+  PendingToolApprovals,
+} from "../src/app/components/PendingToolApproval.tsx";
 import { ToolApprovalInterrupt } from "../src/app/components/ToolApprovalInterrupt.tsx";
 import {
   buildInterruptResume,
@@ -234,4 +237,25 @@ test("resume helpers preserve exact payloads and reject missing IDs", () => {
     () => buildInterruptResume([], undefined, decision),
     /no longer pending/
   );
+});
+
+test("concurrent panels disable only their own submission and keep decisions bound by ID", () => {
+  const submissions = [];
+  const panels = PendingToolApprovals({
+    interrupts: sameNamedWrites,
+    submittingIds: ["first-write"],
+    onResume: (value, id) =>
+      submissions.push(buildInterruptResume(sameNamedWrites, id, value)),
+  });
+  assert.equal(panels.length, 2);
+  assert.equal(panels[0].props.isLoading, true);
+  assert.equal(panels[1].props.isLoading, false);
+  const html = renderToStaticMarkup(panels);
+  assert.match(html, /Approving\.\.\./);
+  assert.match(html, />Approve<\/button>/);
+  const decision = {
+    decisions: [{ type: "reject", message: "Reject second only" }],
+  };
+  panels[1].props.onResume(decision);
+  assert.deepEqual(submissions, [{ "second-write": decision }]);
 });

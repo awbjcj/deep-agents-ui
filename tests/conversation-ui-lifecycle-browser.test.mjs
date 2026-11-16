@@ -52,8 +52,8 @@ test(
                   threadId:'thread-1', createdThreadId:'thread-1',
                   processedMessages:[], messages:[], todos:[], files:{}, ui:[],
                   pendingFilePaths:new Set(), sourceImageAttachments:{}, sourceAttachmentRecords:{},
-                  isLoading:false, isThreadLoading:false, approvals:[],
-                  setFiles:async()=>{}, refreshFiles:async()=>{}, resumeInterrupt:async()=>{}
+                  isLoading:false, approvalSubmittingIds:[], isThreadLoading:false, approvals:[],
+                  setFiles:async()=>{}, refreshFiles:async()=>{}, resumeInterrupt:async(_value,id)=>{ window.approvalClicks = (window.approvalClicks ?? 0) + 1; window.lastApprovalId = id; }
                 };
                 export const FixtureContext = createContext(initialChat);
                 export const useChatContext = () => useContext(FixtureContext);
@@ -166,6 +166,80 @@ test(
       const cards = page.getByRole("region", {
         name: "Code analysis progress",
       });
+      await welcome.waitFor();
+      // Queued/active conversation work must not lock a pending human review.
+      await page.evaluate(() =>
+        window.updateChat({
+          isLoading: true,
+          serverQueuedCount: 1,
+          interrupt: {
+            id: "human-review",
+            value: {
+              action_requests: [{ name: "send_email", args: {} }],
+            },
+          },
+        })
+      );
+      const approve = page.getByRole("button", {
+        name: "Approve",
+        exact: true,
+      });
+      await approve.waitFor();
+      assert.equal(await approve.isEnabled(), true);
+      await approve.click();
+      assert.equal(await page.evaluate(() => window.approvalClicks), 1);
+      await page.evaluate(() =>
+        window.updateChat({ approvalSubmittingIds: ["human-review"] })
+      );
+      const submitting = page.getByRole("button", {
+        name: "Approving...",
+        exact: true,
+      });
+      await submitting.waitFor();
+      assert.equal(await submitting.isDisabled(), true);
+      await page.evaluate(() =>
+        window.updateChat({ approvalSubmittingIds: [] })
+      );
+      await approve.waitFor();
+      assert.equal(await approve.isEnabled(), true);
+      await page.evaluate(() =>
+        window.updateChat({
+          interrupts: [
+            {
+              id: "human-review",
+              value: { action_requests: [{ name: "send_email", args: {} }] },
+            },
+            {
+              id: "other-agent",
+              value: {
+                action_requests: [{ name: "create_jira_ticket", args: {} }],
+              },
+            },
+          ],
+          approvalSubmittingIds: ["human-review"],
+        })
+      );
+      await submitting.waitFor();
+      assert.equal(await submitting.isDisabled(), true);
+      const otherApprove = page
+        .getByRole("article", { name: "Approval for create_jira_ticket" })
+        .getByRole("button", { name: "Approve", exact: true });
+      await otherApprove.waitFor();
+      assert.equal(await otherApprove.isEnabled(), true);
+      await otherApprove.click();
+      assert.equal(
+        await page.evaluate(() => window.lastApprovalId),
+        "other-agent"
+      );
+      await page.evaluate(() =>
+        window.updateChat({
+          isLoading: false,
+          serverQueuedCount: 0,
+          interrupt: undefined,
+          interrupts: undefined,
+          approvalSubmittingIds: [],
+        })
+      );
       await welcome.waitFor();
       // Idle discovery must find a delegated job even after chat has settled.
       jobs = [job, job];

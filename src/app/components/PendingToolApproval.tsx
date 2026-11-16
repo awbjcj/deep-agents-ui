@@ -89,3 +89,23 @@ export function PendingToolApproval({
     </div>
   );
 }
+
+/** Render concurrent reviews with controls bound to their own interrupt IDs. */
+export function PendingToolApprovals({
+  interrupts,
+  submittingIds,
+  onResume,
+}: {
+  interrupts: readonly PendingInterrupt[];
+  submittingIds: readonly string[];
+  onResume: (value: ResumeInterruptValue, interruptId?: string) => void;
+}) {
+  return interrupts.map((interrupt) => (
+    <PendingToolApproval
+      key={interrupt.id}
+      interrupt={interrupt}
+      isLoading={!!interrupt.id && submittingIds.includes(interrupt.id)}
+      onResume={(value) => onResume(value, interrupt.id)}
+    />
+  ));
+}
