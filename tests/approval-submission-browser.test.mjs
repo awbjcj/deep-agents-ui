@@ -41,12 +41,15 @@ test(
             return new Promise((resolve, reject) => window.requests.push({ resolve, reject }));
           }).catch(() => { window.errors++; });
           window.resume = resume;
+          window.resumeBatch = () => void submission.submit([scope, scope + '-other'], (_isCurrent, _signal, onAccepted) =>
+            new Promise((resolve) => { window.acceptBatch = onAccepted; window.resolveBatch = resolve; })
+          ).catch(() => { window.errors++; });
           window.cancelQueued = submission.cancelQueued;
           window.submission = submission;
           const interrupts = usePendingApprovals(streamPending ? [
             { id: scope, value: { action_requests: [{ name: 'send_email', args: {} }] } },
             { id: scope + '-other', value: { action_requests: [{ name: 'create_jira_ticket', args: {} }] } },
-          ] : [], submission.submittingIds, scope, connection);
+          ] : [], submission.submittingIds, scope, connection, false, submission.acceptedIds);
           return <main>
             <output>Queued messages: 1</output>
             <PendingToolApprovals interrupts={interrupts} onResume={resume} submittingIds={submission.submittingIds} />
@@ -192,6 +195,21 @@ test(
         await page.evaluate(() => window.calls),
         callsBeforeStop + 1
       );
+
+      // A partially accepted batch must leave the other review visible.
+      await page.evaluate(() => {
+        window.setStreamPending(true);
+        window.resumeBatch();
+      });
+      await page.waitForFunction(() => !!window.acceptBatch);
+      await page.evaluate(() => {
+        window.acceptBatch(["B"]);
+        window.setStreamPending(false);
+      });
+      await first.waitFor({ state: "detached" });
+      await otherWaiting.waitFor();
+      await page.evaluate(() => window.resolveBatch());
+      await page.waitForFunction(() => !window.submission.isSubmitting);
       assert.deepEqual(errors, []);
     } finally {
       await browser?.close();

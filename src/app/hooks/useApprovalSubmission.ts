@@ -16,6 +16,7 @@ export function useApprovalSubmission(scope: string, connection: object) {
           promise: Promise<void>;
           signal: AbortSignal;
           controller: AbortController;
+          acceptedIds: Set<string>;
         }
       >(),
       tail: Promise.resolve(),
@@ -25,7 +26,11 @@ export function useApprovalSubmission(scope: string, connection: object) {
   );
   const current = useRef(session);
   current.current = session;
-  const [state, setState] = useState({ session, ids: EMPTY_IDS });
+  const [state, setState] = useState({
+    session,
+    ids: EMPTY_IDS,
+    acceptedIds: EMPTY_IDS,
+  });
   useEffect(
     () => () => {
       session.generation += 1;
@@ -37,7 +42,11 @@ export function useApprovalSubmission(scope: string, connection: object) {
   const submit = useCallback(
     (
       ids: readonly string[],
-      action: (isCurrent: () => boolean, signal: AbortSignal) => Promise<void>,
+      action: (
+        isCurrent: () => boolean,
+        signal: AbortSignal,
+        onAccepted: (ids: readonly string[]) => void
+      ) => Promise<void>,
       signal?: AbortSignal
     ): Promise<void> => {
       const existing = ids
@@ -59,7 +68,15 @@ export function useApprovalSubmission(scope: string, connection: object) {
         promise: Promise.resolve(),
         signal: actionSignal,
         controller,
+        acceptedIds: new Set<string>(),
       };
+      const snapshot = () => ({
+        session,
+        ids: [...session.pending.keys()],
+        acceptedIds: [...session.pending].flatMap(([id, item]) =>
+          item.acceptedIds.has(id) ? [id] : []
+        ),
+      });
       // One SDK stream owns the thread. Serialize transport, not human review.
       const pending = session.tail
         .then(async () => {
@@ -74,7 +91,22 @@ export function useApprovalSubmission(scope: string, connection: object) {
               current.current === session &&
               generation === session.generation &&
               !actionSignal.aborted,
-            actionSignal
+            actionSignal,
+            (acceptedIds) => {
+              if (
+                current.current !== session ||
+                generation !== session.generation ||
+                actionSignal.aborted
+              )
+                return;
+              acceptedIds.forEach((id) => {
+                if (session.pending.get(id) === entry)
+                  entry.acceptedIds.add(id);
+              });
+              setState((previous) =>
+                previous.session === session ? snapshot() : previous
+              );
+            }
           );
         })
         .finally(() => {
@@ -82,15 +114,13 @@ export function useApprovalSubmission(scope: string, connection: object) {
             if (session.pending.get(id) === entry) session.pending.delete(id);
           });
           setState((previous) =>
-            previous.session === session
-              ? { session, ids: [...session.pending.keys()] }
-              : previous
+            previous.session === session ? snapshot() : previous
           );
         });
       entry.promise = pending;
       ids.forEach((id) => session.pending.set(id, entry));
       session.tail = pending.catch(() => {});
-      setState({ session, ids: [...session.pending.keys()] });
+      setState(snapshot());
       return pending;
     },
     [session]
@@ -100,11 +130,13 @@ export function useApprovalSubmission(scope: string, connection: object) {
     session.pending.forEach((entry) => entry.controller.abort());
   }, [session]);
   const submittingIds = state.session === session ? state.ids : EMPTY_IDS;
+  const acceptedIds = state.session === session ? state.acceptedIds : EMPTY_IDS;
 
   return {
     submit,
     cancelQueued,
     submittingIds,
+    acceptedIds,
     isSubmitting: submittingIds.length > 0,
   };
 }

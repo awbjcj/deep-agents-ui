@@ -8,6 +8,7 @@ export const APPROVAL_DISPATCH_GUARD: unique symbol =
 export interface ApprovalDispatchGuard {
   signal: AbortSignal;
   onDispatch: () => void;
+  onAccepted?: () => void;
 }
 
 // "tools" was a valid mode in older SDK versions; the newer typings dropped
@@ -76,7 +77,25 @@ export function createStreamModeCompatibilityClient<TClient extends Client>(
             if (guard.signal.aborted)
               throw new DOMException("Approval cancelled", "AbortError");
             guard.onDispatch();
-            yield* target.stream(threadId, assistantId, cleanPayload);
+            let accepted = false;
+            const acknowledge = () => {
+              if (accepted) return;
+              accepted = true;
+              guard.onAccepted?.();
+            };
+            const onRunCreated = cleanPayload.onRunCreated;
+            for await (const event of target.stream(threadId, assistantId, {
+              ...cleanPayload,
+              onRunCreated: (...args: unknown[]) => {
+                onRunCreated?.(...args);
+                acknowledge();
+              },
+            })) {
+              // Some proxies omit run metadata; a streamed event also proves
+              // that the server accepted the request. Errors alone do not.
+              if (event?.event !== "error") acknowledge();
+              yield event;
+            }
           })();
         };
       }

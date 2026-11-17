@@ -454,6 +454,7 @@ export function useChat({
     submit: trackApprovalSubmission,
     isSubmitting: isApprovalSubmitting,
     submittingIds: approvalSubmittingIds,
+    acceptedIds: acceptedApprovalIds,
     cancelQueued: cancelQueuedApprovals,
   } = useApprovalSubmission(approvalScope, client);
   const [approvalSnapshotVersion, setApprovalSnapshotVersion] = useState(0);
@@ -462,7 +463,8 @@ export function useChat({
     approvalSubmittingIds,
     JSON.stringify([approvalScope, approvalSnapshotVersion]),
     client,
-    Boolean(stream.error)
+    Boolean(stream.error),
+    acceptedApprovalIds
   );
   const pendingApprovalsRef = useRef(pendingApprovals);
   pendingApprovalsRef.current = pendingApprovals;
@@ -1206,7 +1208,7 @@ export function useChat({
       try {
         await trackApprovalSubmission(
           Object.keys(resume),
-          async (isCurrent, actionSignal) => {
+          async (isCurrent, actionSignal, onAccepted) => {
             if (!threadId) throw new Error("No conversation is selected.");
             // Read the server: React may not have rendered the preceding resume yet.
             const preflightSignal = AbortSignal.any([
@@ -1272,6 +1274,7 @@ export function useChat({
                       onDispatch: () => {
                         dispatchedIds = ids;
                       },
+                      onAccepted: () => onAccepted(ids),
                     },
                   },
                   onError: (

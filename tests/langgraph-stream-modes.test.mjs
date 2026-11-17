@@ -96,3 +96,65 @@ test("a queued approval checks cancellation at SDK dispatch and never sends loca
   assert.equal(dispatched, 1);
   assert.deepEqual(payload.metadata, { visible: "yes" });
 });
+
+test("approval acceptance is reported once and preserves the SDK callback", async () => {
+  const { APPROVAL_DISPATCH_GUARD } =
+    await import("../src/app/utils/langgraphStreamModes.ts");
+  const controller = new AbortController();
+  const created = [];
+  let accepted = 0;
+  const client = createStreamModeCompatibilityClient({
+    runs: {
+      async *stream(_thread, _assistant, options) {
+        options.onRunCreated({ run_id: "run", thread_id: "thread" });
+        yield { event: "metadata", data: { run_id: "run" } };
+        yield { event: "values", data: {} };
+      },
+    },
+  });
+  const stream = client.runs.stream("thread", "assistant", {
+    onRunCreated: (run) => created.push(run),
+    metadata: {
+      [APPROVAL_DISPATCH_GUARD]: {
+        signal: controller.signal,
+        onDispatch() {},
+        onAccepted: () => accepted++,
+      },
+    },
+  });
+  for await (const _event of stream) {
+    // Consume the stream, as useStream does.
+  }
+  assert.equal(accepted, 1);
+  assert.deepEqual(created, [{ run_id: "run", thread_id: "thread" }]);
+});
+
+test("streamed progress acknowledges approval without metadata, but an error does not", async () => {
+  const { APPROVAL_DISPATCH_GUARD } =
+    await import("../src/app/utils/langgraphStreamModes.ts");
+  let accepted = 0;
+  const client = createStreamModeCompatibilityClient({
+    runs: {
+      async *stream(_thread, assistant) {
+        yield { event: assistant === "failed" ? "error" : "values", data: {} };
+      },
+    },
+  });
+  const options = {
+    metadata: {
+      [APPROVAL_DISPATCH_GUARD]: {
+        signal: new AbortController().signal,
+        onDispatch() {},
+        onAccepted: () => accepted++,
+      },
+    },
+  };
+  for await (const _event of client.runs.stream("thread", "failed", options)) {
+    // An error is not an acknowledgement.
+  }
+  assert.equal(accepted, 0);
+  for await (const _event of client.runs.stream("thread", "working", options)) {
+    // A values event confirms that the server accepted the run.
+  }
+  assert.equal(accepted, 1);
+});

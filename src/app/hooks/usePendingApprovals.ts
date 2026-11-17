@@ -13,7 +13,8 @@ export function usePendingApprovals<T extends PendingInterrupt>(
   submittingIds: readonly string[],
   scope: string,
   connection: object,
-  retainOnError = false
+  retainOnError = false,
+  acceptedIds: readonly string[] = []
 ): readonly T[] {
   const snapshot = useRef({ scope, connection, pending, submittingIds });
   if (
@@ -39,5 +40,11 @@ export function usePendingApprovals<T extends PendingInterrupt>(
     snapshot.current.pending = [...merged.values()];
     snapshot.current.submittingIds = submittingIds;
   }
-  return snapshot.current.pending;
+  // Keep accepted reviews in the snapshot for error recovery, but stop showing
+  // them once the server starts the run that carries their decisions.
+  return acceptedIds.length
+    ? snapshot.current.pending.filter(
+        (item) => !item.id || !acceptedIds.includes(item.id)
+      )
+    : snapshot.current.pending;
 }
