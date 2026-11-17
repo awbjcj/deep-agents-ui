@@ -19,13 +19,21 @@ const review = (id, name) => ({
   },
 });
 
-async function fixture(t, { old, current = old, noOp = false }) {
+async function fixture(
+  t,
+  { old, current = old, noOp = false, staleHistory = false }
+) {
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({ headless: true });
   const server = await staticServer();
   const fallback = makePolicyFixture();
   let pending = current;
   let readCurrent = false;
+  let stateReads = 0;
+  let notifyPostflight;
+  const postflight = new Promise((resolve) => {
+    notifyPostflight = resolve;
+  });
   const submissions = [];
   const state = (reviews) => ({
     values: {
@@ -63,9 +71,11 @@ async function fixture(t, { old, current = old, noOp = false }) {
           read_tools: ["search_jira_tickets"],
         });
       if (path.endsWith("/threads/reviews/history"))
-        return json([state(readCurrent ? pending : old)]);
+        return json([state(staleHistory || !readCurrent ? old : pending)]);
       if (path.endsWith("/threads/reviews/state")) {
         readCurrent = true;
+        stateReads += 1;
+        if (stateReads === 2) notifyPostflight();
         return json(state(pending));
       }
       if (path.endsWith("/threads/reviews/runs/stream")) {
@@ -100,7 +110,7 @@ async function fixture(t, { old, current = old, noOp = false }) {
     await browser.close();
     await server.close();
   });
-  return { page, submissions, pageErrors };
+  return { page, submissions, pageErrors, postflight };
 }
 
 const options = {
@@ -163,6 +173,55 @@ test(
       0
     );
     assert.equal(submissions.length, 0);
+  }
+);
+
+test(
+  "a stale history response cannot replace the current approval",
+  options,
+  async (t) => {
+    const { page, submissions } = await fixture(t, {
+      old: [review(firstId, "send_email")],
+      current: [review(secondId, "create_jira_ticket")],
+      staleHistory: true,
+    });
+    await page
+      .getByRole("article", { name: "Approval for send_email" })
+      .getByRole("button", { name: "Approve", exact: true })
+      .click();
+    await page
+      .getByRole("article", { name: "Approval for create_jira_ticket" })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole("article", { name: "Approval for send_email" })
+        .count(),
+      0
+    );
+    assert.equal(submissions.length, 0);
+  }
+);
+
+test(
+  "a confirmed resume stays cleared when history is stale",
+  options,
+  async (t) => {
+    const { page, submissions, postflight } = await fixture(t, {
+      old: [review(firstId, "send_email")],
+      staleHistory: true,
+    });
+    const approval = page.getByRole("article", {
+      name: "Approval for send_email",
+    });
+    await approval
+      .getByRole("button", { name: "Approve", exact: true })
+      .click();
+    await postflight;
+    await page
+      .getByRole("button", { name: "Send message", exact: true })
+      .waitFor();
+    assert.equal(await approval.count(), 0);
+    assert.equal(submissions.length, 1);
   }
 );
 

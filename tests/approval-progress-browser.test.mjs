@@ -26,7 +26,13 @@ function review(id, name) {
 
 async function fixture(
   t,
-  { failAfterAcceptance = false, singleReview = false } = {}
+  {
+    failAfterAcceptance = false,
+    singleReview = false,
+    initialHistory,
+    currentReviews,
+    resolvedId = firstId,
+  } = {}
 ) {
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({ headless: true });
@@ -36,20 +42,20 @@ async function fixture(
   const accept = deferred();
   const finish = deferred();
   const submissions = [];
-  let pending = [
+  let pending = currentReviews ?? [
     review(firstId, "search_jira_tickets"),
     ...(singleReview ? [] : [review(secondId, "send_email")]),
   ];
   let streamOpen = false;
   const messages = [{ type: "human", id: "human", content: "Test" }];
-  const state = () => ({
+  const state = (reviews = pending) => ({
     values: { messages, files: {}, todos: [] },
-    tasks: pending.map((interrupt, index) => ({
+    tasks: reviews.map((interrupt, index) => ({
       id: `task-${index}`,
       name: "tools",
       interrupts: [interrupt],
     })),
-    next: pending.length ? ["tools"] : [],
+    next: reviews.length ? ["tools"] : [],
     checkpoint: {
       thread_id: "progress",
       checkpoint_id: "head",
@@ -71,7 +77,7 @@ async function fixture(
     started.resolve();
     await accept.promise;
     if (!failAfterAcceptance)
-      pending = pending.filter((item) => item.id !== firstId);
+      pending = pending.filter((item) => item.id !== resolvedId);
     streamOpen = true;
     response.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -109,7 +115,8 @@ async function fixture(
           contentType: "application/json",
           body: JSON.stringify(body),
         });
-      if (path.endsWith("/threads/progress/history")) return json([state()]);
+      if (path.endsWith("/threads/progress/history"))
+        return json([state(initialHistory ?? pending)]);
       if (path.endsWith("/threads/progress/state")) return json(state());
       if (path.endsWith("/threads/progress/runs/stream")) {
         if (request.method() === "POST")
@@ -176,6 +183,33 @@ const options = {
   skip: process.env.APPROVAL_CONCURRENCY_BROWSER_TEST !== "1",
   timeout: 30000,
 };
+
+test(
+  "an old review stays hidden when a refreshed approval is resumed",
+  options,
+  async (t) => {
+    const h = await fixture(t, {
+      initialHistory: [review(firstId, "send_email")],
+      currentReviews: [review(secondId, "search_jira_tickets")],
+      resolvedId: secondId,
+    });
+    const old = h.page.getByRole("article", {
+      name: "Approval for send_email",
+    });
+    await old.getByRole("button", { name: "Approve", exact: true }).click();
+    const current = h.page.getByRole("article", {
+      name: "Approval for search_jira_tickets",
+    });
+    await current.getByRole("button", { name: "Approve", exact: true }).click();
+    await h.started;
+    h.accept();
+    await h.page.getByText("Working after approval").waitFor();
+    await current.waitFor({ state: "detached" });
+    assert.equal(await old.count(), 0);
+    assert.equal(h.isStreamOpen(), true);
+    h.finish();
+  }
+);
 
 test(
   "the only approved review disappears while the agent continues",

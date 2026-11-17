@@ -9,6 +9,7 @@ import {
   type Assistant,
   type Checkpoint,
   type StreamMode,
+  type ThreadState,
 } from "@langchain/langgraph-sdk";
 import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
@@ -167,6 +168,15 @@ export function useChat({
     values: StateType;
     interrupts?: { id: string; value?: unknown }[];
   } | null>(null);
+  // Keep a verified checkpoint visible until a new run starts; history can lag.
+  const [verifiedApprovalHead, setVerifiedApprovalHead] = useState<{
+    threadId: string;
+    connection: object;
+    state: ThreadState<StateType>;
+  } | null>(null);
+  useEffect(() => {
+    setVerifiedApprovalHead(null);
+  }, [threadId, client, userId]);
   const handleStreamStopped = useCallback(
     ({ mutate }: { mutate: (values: Partial<StateType>) => void }) => {
       if (!restoredValues.current) return;
@@ -401,12 +411,21 @@ export function useChat({
     [onHistoryRevalidate]
   );
   const handleRunCreated = useCallback(() => {
+    setVerifiedApprovalHead(null);
     pendingSendRef.current?.(true);
     pendingSendRef.current = null;
     onHistoryRevalidate?.();
   }, [onHistoryRevalidate]);
 
-  const history = thread ?? recoverableThread;
+  const sourceHistory = thread ?? recoverableThread;
+  const history = useMemo(
+    () =>
+      verifiedApprovalHead?.threadId === threadId &&
+      verifiedApprovalHead.connection === client
+        ? { ...sourceHistory, data: [verifiedApprovalHead.state] }
+        : sourceHistory,
+    [client, sourceHistory, threadId, verifiedApprovalHead]
+  );
   // A resumed stream can start with only message deltas. Give the SDK its
   // persisted base before exposing an existing thread to reconnectOnMount;
   // otherwise those deltas mask the history that arrives later. A thread
@@ -1230,21 +1249,19 @@ export function useChat({
               throw error;
             }
             if (!isCurrent() || threadIdRef.current !== threadId) return;
-            let pending = pendingApprovalInterrupts(snapshot);
-            let current = currentApprovalDecisions(resume, reviewed, pending);
-            let ids = Object.keys(current);
+            const pending = pendingApprovalInterrupts(snapshot);
+            const current = currentApprovalDecisions(resume, reviewed, pending);
+            const ids = Object.keys(current);
             if (ids.length !== Object.keys(resume).length) {
-              // Another client changed a review. Refresh the actual thread,
-              // keeping the current stream alive if it is still running.
-              const historySnapshots = await history.mutate(threadId);
-              if (!isCurrent() || threadIdRef.current !== threadId) return;
-              const latest = historySnapshots?.[0] ?? snapshot;
-              pending = pendingApprovalInterrupts(latest);
-              current = currentApprovalDecisions(resume, reviewed, pending);
-              ids = Object.keys(current);
+              // The expanded state is authoritative even if history lags it.
+              setVerifiedApprovalHead({
+                threadId,
+                connection: client,
+                state: snapshot,
+              });
               if (!streamRef.current.isLoading) {
                 restoredValues.current = {
-                  values: latest.values,
+                  values: snapshot.values,
                   interrupts: pending,
                 };
                 await streamRef.current.stop();
@@ -1327,13 +1344,25 @@ export function useChat({
                 }
               );
               if (!isCurrent() || threadIdRef.current !== threadId) return;
-              const remaining = new Set(
-                pendingApprovalInterrupts(latest).map((item) => item.id)
-              );
+              const pending = pendingApprovalInterrupts(latest);
+              const remaining = new Set(pending.map((item) => item.id));
               if (ids.some((id) => remaining.has(id))) {
                 throw new ApprovalReviewError(
                   "The approval is still pending. Review it and try again."
                 );
+              }
+              setVerifiedApprovalHead({
+                threadId,
+                connection: client,
+                state: latest,
+              });
+              if (!streamRef.current.isLoading) {
+                restoredValues.current = {
+                  values: latest.values,
+                  interrupts: pending,
+                };
+                await streamRef.current.stop();
+                setApprovalSnapshotVersion((previous) => previous + 1);
               }
             } catch (error) {
               if (!isCurrent()) return;
@@ -1354,7 +1383,6 @@ export function useChat({
       buildConfig,
       activeAssistant?.assistant_id,
       client,
-      history,
       threadId,
       onHistoryRevalidate,
       trackApprovalSubmission,
