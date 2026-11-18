@@ -153,7 +153,7 @@ function AdminPanelContent({
     >
       {/* Only the active section is mounted, so an unopened section never
           issues its requests. */}
-      <ScrollArea className="h-0 flex-1">
+      <ScrollArea className="h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
         <SettingsContent
           {...panelTabPanelProps("admin", active)}
           className="focus-visible:outline-none"
