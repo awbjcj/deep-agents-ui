@@ -1,5 +1,6 @@
 "use client";
 
+import { SETTINGS_WIDE_GRID } from "@/app/components/settings/SettingsLayout";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useEffect, useRef, useState } from "react";
@@ -290,7 +291,7 @@ export function ScmServersSection() {
           <Loader2 className="h-4 w-4 animate-spin" />
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={SETTINGS_WIDE_GRID}>
           {active.map((server) => (
             <div
               key={server.id}
@@ -338,8 +339,8 @@ export function ScmServersSection() {
             <p className="text-muted-foreground text-sm">No enabled servers.</p>
           )}
           {disabled.length > 0 && (
-            <div className="space-y-2 pt-2">
-              <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+            <div className="col-span-full grid grid-cols-1 items-start gap-3 pt-2 @5xl/panel:grid-cols-2">
+              <p className="text-muted-foreground col-span-full text-xs font-semibold tracking-wide uppercase">
                 Disabled servers
               </p>
               {disabled.map((server) => (

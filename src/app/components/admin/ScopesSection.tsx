@@ -1,5 +1,6 @@
 "use client";
 
+import { SETTINGS_WIDE_GRID } from "@/app/components/settings/SettingsLayout";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import {
@@ -338,7 +339,7 @@ export function ScopesSection() {
                     </span>
                   </h4>
                 </div>
-                <div className="space-y-1.5">
+                <div className={SETTINGS_WIDE_GRID}>
                   {items.map((scope) => {
                     const key = scopeKey(scope);
                     const isOpen = expanded === key;
@@ -749,7 +750,7 @@ function ScopeCard({
       className={cn(
         "bg-card/60 rounded-lg border transition-colors",
         isOpen
-          ? "border-(--aptiv-orange)/40 shadow-sm"
+          ? "col-span-full border-(--aptiv-orange)/40 shadow-sm"
           : "hover:border-primary/30 border-border"
       )}
     >

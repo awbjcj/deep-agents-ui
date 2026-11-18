@@ -429,46 +429,48 @@ export function NewsletterSection() {
             {composerView === "write" ? (
               <div
                 {...panelTabPanelProps("newsletter-composer", "write")}
-                className="space-y-4 p-4 focus-visible:outline-none"
+                className="grid gap-4 p-4 focus-visible:outline-none @5xl/panel:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
               >
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="newsletter-subject"
-                    className="text-xs"
-                  >
-                    Subject
-                  </Label>
-                  <Input
-                    id="newsletter-subject"
-                    value={subject}
-                    maxLength={180}
-                    onChange={(event) => setSubject(event.target.value)}
-                    placeholder="A clear, useful subject line"
-                    className="h-10"
-                  />
-                  <p className="text-muted-foreground text-right text-xs tabular-nums">
-                    {subject.length}/180
-                  </p>
-                </div>
-
-                <fieldset className="space-y-2">
-                  <legend className="text-xs font-medium">Audience</legend>
-                  <div className="flex flex-wrap gap-1.5">
-                    <AudienceButton
-                      label="Everyone"
-                      selected={targetTiers === null}
-                      onClick={() => setTargetTiers(null)}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="newsletter-subject"
+                      className="text-xs"
+                    >
+                      Subject
+                    </Label>
+                    <Input
+                      id="newsletter-subject"
+                      value={subject}
+                      maxLength={180}
+                      onChange={(event) => setSubject(event.target.value)}
+                      placeholder="A clear, useful subject line"
+                      className="h-10"
                     />
-                    {ROLES.map((role) => (
-                      <AudienceButton
-                        key={role}
-                        label={`${role[0]?.toUpperCase()}${role.slice(1)}`}
-                        selected={targetTiers?.includes(role) ?? false}
-                        onClick={() => toggleTier(role)}
-                      />
-                    ))}
+                    <p className="text-muted-foreground text-right text-xs tabular-nums">
+                      {subject.length}/180
+                    </p>
                   </div>
-                </fieldset>
+
+                  <fieldset className="space-y-2">
+                    <legend className="text-xs font-medium">Audience</legend>
+                    <div className="flex flex-wrap gap-1.5">
+                      <AudienceButton
+                        label="Everyone"
+                        selected={targetTiers === null}
+                        onClick={() => setTargetTiers(null)}
+                      />
+                      {ROLES.map((role) => (
+                        <AudienceButton
+                          key={role}
+                          label={`${role[0]?.toUpperCase()}${role.slice(1)}`}
+                          selected={targetTiers?.includes(role) ?? false}
+                          onClick={() => toggleTier(role)}
+                        />
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-end justify-between gap-2">
@@ -500,7 +502,7 @@ export function NewsletterSection() {
                   type="button"
                   onClick={saveDraft}
                   disabled={isSaving || !subject.trim() || !body.trim()}
-                  className="w-full"
+                  className="w-full @5xl/panel:col-span-full"
                 >
                   {isSaving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -709,8 +711,8 @@ function HistoryView({
       </div>
     );
   return (
-    <div className="space-y-2">
-      <div className="flex items-end justify-between gap-3">
+    <div className="grid grid-cols-1 items-start gap-2 @5xl/panel:grid-cols-2">
+      <div className="col-span-full flex items-end justify-between gap-3">
         <p className="text-muted-foreground text-xs tabular-nums">
           {newsletters.length}{" "}
           {newsletters.length === 1 ? "newsletter" : "newsletters"}

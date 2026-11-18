@@ -135,7 +135,7 @@ export function TiersSection() {
       ) : (
         <fieldset
           disabled={isSaving}
-          className="min-w-0 space-y-5"
+          className="grid min-w-0 grid-cols-1 items-start gap-5 @7xl/panel:grid-cols-3"
         >
           {ROLES.map((tier) => (
             <div
@@ -187,7 +187,7 @@ export function TiersSection() {
             disabled={
               isSaving || !dirty || ROLES.some((role) => !!errors[role])
             }
-            className="min-h-touch w-full"
+            className="min-h-touch w-full @7xl/panel:col-span-3"
           >
             {isSaving ? (
               <>

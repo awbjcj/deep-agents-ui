@@ -537,14 +537,14 @@ export function IndexInventory({
       ) : (
         <div
           className={cn(
-            "space-y-2 motion-safe:transition-opacity motion-safe:duration-150",
+            "grid grid-cols-1 items-start gap-2 motion-safe:transition-opacity motion-safe:duration-150 @5xl/panel:grid-cols-2",
             // A held-back list would otherwise look frozen rather than busy.
             isFiltering && "opacity-60"
           )}
         >
           {selectedVisible.length ? (
             <div
-              className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-(--aptiv-turquoise)/40 bg-(--aptiv-glass-bg) px-3 py-2 backdrop-blur"
+              className="sticky top-0 z-10 col-span-full flex flex-wrap items-center gap-2 rounded-lg border border-(--aptiv-turquoise)/40 bg-(--aptiv-glass-bg) px-3 py-2 backdrop-blur"
               role="toolbar"
               aria-label="Selected index actions"
             >

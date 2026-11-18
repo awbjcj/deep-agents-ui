@@ -1,5 +1,6 @@
 "use client";
 
+import { SETTINGS_WIDE_GRID } from "@/app/components/settings/SettingsLayout";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import {
   ArchiveRestore,
@@ -302,7 +303,7 @@ export function LibraryShelves({
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className={SETTINGS_WIDE_GRID}>
           {visibleShelves.map((shelf) => {
             const audit = auditsByShelf[shelf.shelf_id];
             const driftReport = driftByShelf[shelf.shelf_id];

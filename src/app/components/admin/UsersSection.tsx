@@ -41,6 +41,7 @@ import {
   SectionHeader,
 } from "@/app/components/admin/primitives";
 import { ROLES, downloadBlob } from "@/app/components/admin/primitives-utils";
+import { SETTINGS_CARD_GRID } from "@/app/components/settings/SettingsLayout";
 
 export function UsersSection() {
   const { user } = useAuth();
@@ -262,7 +263,7 @@ export function UsersSection() {
       {isLoading ? (
         <LoadingRow />
       ) : (
-        <div className="space-y-2">
+        <div className={SETTINGS_CARD_GRID}>
           {users.map((u) => {
             const u_usage = usage[u.username];
             const isSelf = u.user_id === user?.user_id;

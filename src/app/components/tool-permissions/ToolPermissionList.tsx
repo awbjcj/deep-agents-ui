@@ -48,7 +48,13 @@ export function ToolPermissionList({
   }
 
   return (
-    <div className={compactGroups ? "space-y-2" : "space-y-5"}>
+    <div
+      className={
+        compactGroups
+          ? "grid grid-cols-1 items-start gap-2 @5xl/panel:grid-cols-2"
+          : "space-y-5"
+      }
+    >
       {[...groups].map(([group, tools]) => {
         const groupId = `${idPrefix}-group-${toDomId(group)}`;
         const selectedCount = tools.filter((tool) =>
