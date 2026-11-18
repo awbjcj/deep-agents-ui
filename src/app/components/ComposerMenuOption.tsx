@@ -21,6 +21,8 @@ export const TRIGGER_TONE = {
     "text-(--color-primary) hover:bg-primary/10 data-[state=open]:bg-primary/10",
   destructive:
     "text-destructive hover:bg-destructive/10 data-[state=open]:bg-destructive/10",
+  warning:
+    "text-warning hover:bg-warning-primary data-[state=open]:bg-warning-primary",
 } as const;
 
 /** Select row: no resting fill, tinted while hovered or keyboard-highlighted. */

@@ -690,6 +690,85 @@ test(
         }
       );
       await t.test(
+        "a stopped automatic approval warns without the Autopilot color and clears once reviewed",
+        async () => {
+          await reset({ pending: [read("reads")] });
+          await page.evaluate(() => {
+            window.failSubmit = true;
+          });
+          await choose("Allow reads");
+          await page.getByRole("alert").waitFor();
+          await page.evaluate(() => {
+            window.failSubmit = false;
+          });
+          await modeIs("Interactive");
+          const tone = () => trigger().getAttribute("class");
+          assert.doesNotMatch(await tone(), /text-destructive/);
+          assert.match(await tone(), /text-warning/);
+          // The uncertain approval still blocks re-enabling until it is resolved.
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            false
+          );
+          await page.evaluate(() => window.update({ pending: [] }));
+          await page.waitForFunction(() => window.approvals.error === null);
+          assert.doesNotMatch(await tone(), /text-warning|text-destructive/);
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            true
+          );
+          await modeIs("Allow reads");
+          await page.evaluate(
+            (next) => window.update({ pending: next }),
+            [read("next")]
+          );
+          await page.waitForFunction(() => window.submissions.length === 2);
+        }
+      );
+      await t.test(
+        "a recovered run error clears its warning and modes can be selected again",
+        async () => {
+          await reset();
+          await choose("Allow reads");
+          await modeIs("Allow reads");
+          await page.evaluate(() => window.update({ failed: true }));
+          await page.getByRole("alert").waitFor();
+          assert.equal(await mode(), "interactive");
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            false
+          );
+          await page.evaluate(() => window.update({ failed: false }));
+          await page.waitForFunction(() => window.approvals.error === null);
+          await choose("Allow reads");
+          await modeIs("Allow reads");
+          await enable();
+        }
+      );
+      await t.test(
+        "a manual review releases the uncertain automatic approval",
+        async () => {
+          await reset({ pending: [read("reads")] });
+          await page.evaluate(() => {
+            window.failSubmit = true;
+          });
+          await choose("Allow reads");
+          await page.getByRole("alert").waitFor();
+          await page.evaluate(() => {
+            window.failSubmit = false;
+          });
+          assert.equal(
+            await page.evaluate(() =>
+              window.approvals.onManualResume(["reads"])
+            ),
+            "interactive"
+          );
+          assert.equal(await page.evaluate(() => window.approvals.error), null);
+          await choose("Allow reads");
+          await modeIs("Allow reads");
+        }
+      );
+      await t.test(
         "background failures leave keyboard focus in the message draft",
         async () => {
           await reset();

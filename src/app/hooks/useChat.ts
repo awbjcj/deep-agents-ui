@@ -46,6 +46,8 @@ import {
 import { useQueryState } from "nuqs";
 import {
   clearStreamReconnectState,
+  detachStream,
+  isRunCancellation,
   readStreamRunId,
 } from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
@@ -522,8 +524,7 @@ export function useChat({
       // Reconcile both text and approvals if the SSE connection ended before
       // the server sent its final values. The run is already terminal.
       restoredValues.current = { values: snapshot.values };
-      clearStreamReconnectState(threadId);
-      await streamRef.current.stop();
+      await detachStream(threadId, () => streamRef.current.stop());
     },
   });
   const submitMessageRun = messageRuns.submit;
@@ -1264,7 +1265,7 @@ export function useChat({
                   values: snapshot.values,
                   interrupts: pending,
                 };
-                await streamRef.current.stop();
+                await detachStream(threadId, () => streamRef.current.stop());
                 setApprovalSnapshotVersion((previous) => previous + 1);
               }
               if (!mode)
@@ -1313,7 +1314,9 @@ export function useChat({
                 "status" in streamError
                   ? streamError.status
                   : undefined;
+              const stopped = isRunCancellation(streamError);
               const rejected =
+                !stopped &&
                 !failedRun &&
                 typeof status === "number" &&
                 status >= 400 &&
@@ -1324,9 +1327,11 @@ export function useChat({
               // decisions until the user reviews its unknown outcome.
               if (!rejected) cancelQueuedApprovals();
               throw new ApprovalReviewError(
-                rejected
-                  ? "The server rejected this approval. Review the action before trying again."
-                  : "The approval outcome could not be confirmed. Other queued decisions were cancelled; review them before continuing.",
+                stopped
+                  ? "The run was stopped before this approval finished. Review the action before continuing."
+                  : rejected
+                    ? "The server rejected this approval. Review the action before trying again."
+                    : "The approval outcome could not be confirmed. Other queued decisions were cancelled; review them before continuing.",
                 { cause: streamError }
               );
             }
@@ -1361,7 +1366,7 @@ export function useChat({
                   values: latest.values,
                   interrupts: pending,
                 };
-                await streamRef.current.stop();
+                await detachStream(threadId, () => streamRef.current.stop());
                 setApprovalSnapshotVersion((previous) => previous + 1);
               }
             } catch (error) {
@@ -1402,8 +1407,10 @@ export function useChat({
       messageRuns.serverRunning ||
       messageRuns.stopping ||
       submissionPending,
+    // A requested stop is a known outcome, not a conversation failure; the
+    // stopped approval stays pending and its own guard covers it.
     failed:
-      Boolean(stream.error) ||
+      (Boolean(stream.error) && !isRunCancellation(stream.error)) ||
       historyError ||
       messageQueue.items.some((item) => item.status === "unknown"),
     pending: stream.interrupts,
@@ -1426,7 +1433,7 @@ export function useChat({
         );
         return;
       }
-      approvalModeRef.current = onManualResume();
+      approvalModeRef.current = onManualResume(Object.keys(resume));
       void submitApproval(resume).catch((error: unknown) => {
         toast.error(
           "Could not submit the approval. Review the current action and try again.",

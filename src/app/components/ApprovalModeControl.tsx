@@ -6,6 +6,7 @@ import {
   Loader2,
   ShieldAlert,
   ShieldCheck,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,9 @@ const TONE = {
  * Compact approval-mode picker for the composer.
  *
  * Interactive and Allow reads switch immediately; Autopilot opens an explicit
- * consent dialog. Background stops announce status without moving focus.
+ * consent dialog. Background stops announce status without moving focus and
+ * show a warning that clears once its cause is resolved. Only Autopilot uses
+ * the destructive tone, so a stopped mode never looks like Autopilot.
  */
 export function ApprovalModeControl({
   approvals,
@@ -79,7 +82,8 @@ export function ApprovalModeControl({
   const handingOff = useRef(false);
   const { mode, checking, error } = approvals;
   const copy = APPROVAL_MODE_COPY[mode];
-  const Icon = checking ? Loader2 : ICONS[mode];
+  const warning = !!error && mode === "interactive";
+  const Icon = checking ? Loader2 : warning ? TriangleAlert : ICONS[mode];
 
   function closeConsent() {
     approvals.cancel();
@@ -121,9 +125,7 @@ export function ApprovalModeControl({
             }
             className={cn(
               COMPOSER_TRIGGER,
-              TRIGGER_TONE[
-                error && mode === "interactive" ? "destructive" : TONE[mode]
-              ]
+              TRIGGER_TONE[warning ? "warning" : TONE[mode]]
             )}
           >
             <SelectValue>
@@ -151,6 +153,18 @@ export function ApprovalModeControl({
               event.preventDefault();
             }}
           >
+            {error && (
+              <>
+                <p className="text-warning flex gap-2 px-2 pt-1.5 pb-2 text-xs leading-5">
+                  <TriangleAlert
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{error}</span>
+                </p>
+                <SelectSeparator className="bg-border/70 mb-1" />
+              </>
+            )}
             {APPROVAL_MODES.map((option) => {
               const locked = option === "autopilot" && !approvals.canAutopilot;
               return (

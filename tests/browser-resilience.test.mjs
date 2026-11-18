@@ -14,6 +14,8 @@ import {
 } from "../src/app/utils/navigationRecovery.ts";
 import {
   clearStreamReconnectState,
+  detachStream,
+  isRunCancellation,
   readStreamRunId,
   streamRunStorageKey,
 } from "../src/app/utils/threadRecovery.ts";
@@ -185,4 +187,31 @@ test("Stop can fall back to server discovery when reconnect storage is blocked",
     }),
     "active-run"
   );
+});
+
+test("reconciling the stream view never cancels the recorded server run", async () => {
+  const items = new Map([["lg:stream:thread", "live-run"]]);
+  const sessionStorage = {
+    getItem: (key) => items.get(key) ?? null,
+    removeItem: (key) => items.delete(key),
+  };
+  const cancelled = [];
+  // Mirrors the SDK: stop() cancels whatever run the reconnect key records.
+  const sdkStop = async () => {
+    const runId = sessionStorage.getItem("lg:stream:thread");
+    if (runId) cancelled.push(runId);
+    sessionStorage.removeItem("lg:stream:thread");
+  };
+  await withWindow({ sessionStorage }, () => detachStream("thread", sdkStop));
+  assert.deepEqual(cancelled, []);
+  assert.equal(items.size, 0);
+});
+
+test("requested run stops are not treated as conversation failures", () => {
+  const named = (name) => Object.assign(new Error("stopped"), { name });
+  assert.equal(isRunCancellation(named("UserInterrupt")), true);
+  assert.equal(isRunCancellation(named("UserRollback")), true);
+  assert.equal(isRunCancellation(named("StreamError")), false);
+  assert.equal(isRunCancellation(new TypeError("Failed to fetch")), false);
+  assert.equal(isRunCancellation({ name: "UserInterrupt" }), false);
 });
