@@ -114,33 +114,58 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName;
 /**
  * Select option row. Pass `indicator={false}` when the row styles its own
  * checked state (via `data-[state=checked]`) and the check gutter is redundant.
+ * An optional `description` appears under the label in the menu only; the
+ * trigger keeps showing just the label.
  */
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
     indicator?: boolean;
+    description?: React.ReactNode;
   }
->(({ className, children, indicator = true, ...props }, ref) => (
-  <SelectPrimitive.Item
-    ref={ref}
-    className={cn(
-      "focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50",
-      indicator ? "pl-8" : "pl-2",
-      className
-    )}
-    {...props}
-  >
-    {indicator && (
-      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-        <SelectPrimitive.ItemIndicator>
-          <Check className="h-4 w-4" />
-        </SelectPrimitive.ItemIndicator>
-      </span>
-    )}
+>(({ className, children, indicator = true, description, ...props }, ref) => {
+  const descriptionId = React.useId();
+  return (
+    <SelectPrimitive.Item
+      ref={ref}
+      className={cn(
+        "focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50",
+        indicator ? "pl-8" : "pl-2",
+        description && "items-start py-2",
+        className
+      )}
+      aria-describedby={description ? descriptionId : undefined}
+      {...props}
+    >
+      {indicator && (
+        <span
+          className={cn(
+            "absolute left-2 flex h-3.5 w-3.5 items-center justify-center",
+            description && "top-2.5"
+          )}
+        >
+          <SelectPrimitive.ItemIndicator>
+            <Check className="h-4 w-4" />
+          </SelectPrimitive.ItemIndicator>
+        </span>
+      )}
 
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-  </SelectPrimitive.Item>
-));
+      {description ? (
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+          <span
+            id={descriptionId}
+            className="text-muted-foreground text-xs leading-snug"
+          >
+            {description}
+          </span>
+        </span>
+      ) : (
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      )}
+    </SelectPrimitive.Item>
+  );
+});
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
 const SelectSeparator = React.forwardRef<

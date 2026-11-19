@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import {
   SOURCE_IMAGE_LABELS,
+  scopeOptionsFor,
+  type SourceImageFetchScope,
   type SourceImagePolicy,
   type SourceImagePolicyEdit,
   type SourceImageSource,
@@ -85,7 +87,7 @@ export function SourceAttachmentControl({
         <Select
           value={policy.default_scope}
           disabled={scopeDisabled}
-          onValueChange={(value: "embedded" | "all") =>
+          onValueChange={(value: SourceImageFetchScope) =>
             onChange({ field: "default_scope", value })
           }
         >
@@ -97,9 +99,19 @@ export function SourceAttachmentControl({
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="embedded">Embedded only</SelectItem>
-            <SelectItem value="all">All attachments</SelectItem>
+          <SelectContent className="max-w-72">
+            {scopeOptionsFor(source, policy.default_scope).map(
+              ({ value, label: optionLabel, description }) => (
+                <SelectItem
+                  key={value}
+                  value={value}
+                  description={description}
+                  className="min-h-11"
+                >
+                  {optionLabel}
+                </SelectItem>
+              )
+            )}
           </SelectContent>
         </Select>
       </div>

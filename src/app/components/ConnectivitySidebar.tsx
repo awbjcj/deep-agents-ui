@@ -58,10 +58,12 @@ function sourcePolicyDescription(
     : "Documents";
   const scope =
     policy.default_scope === "all"
-      ? "All by default"
-      : policy.allow_all
-        ? "Embedded · all on request"
-        : "Embedded only";
+      ? "Embedded + attachments"
+      : policy.default_scope === "attachments"
+        ? "Attachments only"
+        : policy.allow_all
+          ? "Embedded · attachments on request"
+          : "Embedded only";
   return `${types} · ${scope}`;
 }
 

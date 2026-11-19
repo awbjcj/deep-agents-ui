@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   applyPolicyEdit,
+  scopeOptionsFor,
   SOURCE_IMAGE_SOURCES,
   SOURCE_IMAGE_LABELS,
 } from "../src/lib/source-images.ts";
@@ -53,6 +54,38 @@ test("selecting all attachments also grants permission to request all", () => {
       allow_all: true,
     }
   );
+});
+
+test("selecting attachments only grants permission and revoking it restores embedded", () => {
+  const attachments = applyPolicyEdit(embeddedPolicy, {
+    field: "default_scope",
+    value: "attachments",
+  });
+  assert.deepEqual(attachments, {
+    ...embeddedPolicy,
+    default_scope: "attachments",
+    allow_all: true,
+  });
+  assert.deepEqual(
+    applyPolicyEdit(attachments, { field: "allow_all", value: false }),
+    embeddedPolicy
+  );
+});
+
+test("LLM Wiki hides attachments only unless it is already stored", () => {
+  const values = (source, current) =>
+    scopeOptionsFor(source, current).map((option) => option.value);
+  assert.deepEqual(values("jira", "embedded"), [
+    "embedded",
+    "attachments",
+    "all",
+  ]);
+  assert.deepEqual(values("llm_wiki", "embedded"), ["embedded", "all"]);
+  assert.deepEqual(values("llm_wiki", "attachments"), [
+    "embedded",
+    "attachments",
+    "all",
+  ]);
 });
 
 test("revoking all-attachment permission restores the embedded default", () => {

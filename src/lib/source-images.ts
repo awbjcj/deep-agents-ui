@@ -7,7 +7,51 @@ export const SOURCE_IMAGE_SOURCES = [
 ] as const;
 
 export type SourceImageSource = (typeof SOURCE_IMAGE_SOURCES)[number];
-export type SourceImageFetchScope = "embedded" | "all";
+/**
+ * `embedded` fetches files referenced inline, `attachments` fetches only files
+ * that are not (skipping email signatures and logos), and `all` fetches both.
+ */
+export type SourceImageFetchScope = "embedded" | "attachments" | "all";
+
+export interface SourceImageScopeOption {
+  value: SourceImageFetchScope;
+  label: string;
+  description: string;
+}
+
+export const SOURCE_IMAGE_SCOPE_OPTIONS: readonly SourceImageScopeOption[] = [
+  {
+    value: "embedded",
+    label: "Embedded only",
+    description: "Files shown inline in the content",
+  },
+  {
+    value: "attachments",
+    label: "Attachments only",
+    description: "Attached files; skips inline signatures and logos",
+  },
+  {
+    value: "all",
+    label: "Embedded + attachments",
+    description: "Inline and attached files",
+  },
+];
+
+/**
+ * Scope options offered for one source. LLM Wiki pages have no attachments,
+ * so attachments-only is hidden there unless it is already stored.
+ */
+export function scopeOptionsFor(
+  source: SourceImageSource,
+  current: SourceImageFetchScope
+): readonly SourceImageScopeOption[] {
+  if (source !== "llm_wiki" || current === "attachments") {
+    return SOURCE_IMAGE_SCOPE_OPTIONS;
+  }
+  return SOURCE_IMAGE_SCOPE_OPTIONS.filter(
+    (option) => option.value !== "attachments"
+  );
+}
 
 export const SOURCE_IMAGE_LABELS: Record<SourceImageSource, string> = {
   jira: "Jira",
@@ -219,6 +263,6 @@ export function applyPolicyEdit(
   return {
     ...current,
     default_scope: edit.value,
-    allow_all: edit.value === "all" ? true : current.allow_all,
+    allow_all: edit.value === "embedded" ? current.allow_all : true,
   };
 }

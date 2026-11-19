@@ -300,15 +300,18 @@ export function SourceImageControls({ tier }: { tier: string }) {
       <div className="border-border bg-muted/20 text-muted-foreground space-y-1 border-t px-3 py-3 text-xs leading-relaxed">
         <p id={`source-attachment-scope-${tier}`}>
           Scope applies to images and documents. Enable either to edit scope.
-          Embedded only fetches files referenced in content. Allow all lets
-          users request other attachments.
+          Embedded only fetches files shown inline in the content. Attachments
+          only skips inline files such as email signatures and logos. Allow all
+          lets users request attachments beyond the default, and is required for
+          either non-embedded default.
         </p>
         <details className="group">
           <summary className="text-foreground decoration-border focus-visible:outline-ring min-h-11 cursor-pointer rounded-sm py-3 font-medium underline underline-offset-4 focus-visible:outline focus-visible:outline-2">
             File types and limits
           </summary>
           <p id={`source-attachment-images-${tier}`}>
-            Images require the user's image opt-in.
+            Images require the user's image opt-in. Images smaller than 10,000
+            px² or under 24 px on a side are skipped as icons or signatures.
           </p>
           <p id={`source-attachment-documents-${tier}`}>
             Documents are downloaded and converted, up to 10 MB per file.

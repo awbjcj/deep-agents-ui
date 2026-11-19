@@ -222,9 +222,11 @@ test(
       assert.equal(writes.at(-1).body.documents_enabled, true);
       await scope.click();
       await page
-        .getByRole("option", { name: "All attachments", exact: true })
+        .getByRole("option", { name: "Attachments only", exact: true })
         .click();
       await settled(scope);
+      assert.equal(await scope.innerText(), "Attachments only");
+      assert.equal(writes.at(-1).body.default_scope, "attachments");
       assert.equal(await allowAll.getAttribute("aria-checked"), "true");
       await allowAll.click();
       await settled(allowAll);

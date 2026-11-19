@@ -915,7 +915,8 @@ test(
       await jiraDefault.focus();
       await page.keyboard.press("Enter");
       const allAttachmentsOption = page.getByRole("option", {
-        name: "All attachments",
+        name: "Embedded + attachments",
+        exact: true,
       });
       await allAttachmentsOption.waitFor();
       await allAttachmentsOption.focus();
@@ -924,7 +925,7 @@ test(
         (element) => element?.getAttribute("aria-busy") === "false",
         await jiraCard.elementHandle()
       );
-      assert.equal(await jiraDefault.textContent(), "All attachments");
+      assert.equal(await jiraDefault.textContent(), "Embedded + attachments");
       assert.equal(await jiraAllowAll.getAttribute("aria-checked"), "true");
       const allBody = putBodies.find(
         (entry) => entry.source === "jira" && entry.body.default_scope === "all"
