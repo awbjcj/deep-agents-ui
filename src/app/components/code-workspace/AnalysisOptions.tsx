@@ -30,29 +30,29 @@ export function AnalysisOptions({
   ));
   return (
     <details
-      className="group/options border-t border-border pt-1"
+      className="group/options border-border border-t pt-1"
       open={draft.pairs.length > 0 || !!draft.checklist || undefined}
     >
-      <summary className="flex min-h-touch cursor-pointer list-none items-center gap-2 rounded-md text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+      <summary className="min-h-touch focus-visible:ring-ring flex cursor-pointer list-none items-center gap-2 rounded-md text-sm font-medium outline-none focus-visible:ring-2 [&::-webkit-details-marker]:hidden">
         <GitCompare
-          className="size-4 text-muted-foreground"
+          className="text-muted-foreground size-4"
           aria-hidden="true"
         />{" "}
         <span className="min-w-0 flex-1">Comparison and report options</span>{" "}
         <ChevronDown
-          className="ml-auto size-4 text-muted-foreground group-open/options:rotate-180"
+          className="text-muted-foreground ml-auto size-4 group-open/options:rotate-180"
           aria-hidden="true"
         />
       </summary>
       <div className="space-y-4 pt-2">
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Compare two prepared revisions, or list questions the report must
           address.
         </p>
         {draft.pairs.map((pair, index) => (
           <fieldset
             key={pair.id}
-            className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border border-border p-3"
+            className="border-border grid min-w-0 grid-cols-1 gap-3 rounded-lg border p-3"
             disabled={disabled}
           >
             <legend className="px-1 text-xs font-medium">
@@ -102,7 +102,7 @@ export function AnalysisOptions({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-auto min-h-touch min-w-0 max-w-full justify-self-start whitespace-normal py-2 text-muted-foreground"
+              className="min-h-touch text-muted-foreground h-auto max-w-full min-w-0 justify-self-start py-2 whitespace-normal"
               onClick={() =>
                 onChange((previous) => ({
                   ...previous,
@@ -117,7 +117,7 @@ export function AnalysisOptions({
         <Button
           type="button"
           variant="outline"
-          className="h-auto min-h-touch min-w-0 max-w-full whitespace-normal py-2"
+          className="min-h-touch h-auto max-w-full min-w-0 py-2 whitespace-normal"
           disabled={disabled || targets.length < 2 || draft.pairs.length >= 20}
           onClick={() =>
             onChange((previous) => ({
@@ -155,7 +155,7 @@ export function AnalysisOptions({
           />
           <p
             id={`${id}-checklist-hint`}
-            className="text-xs leading-relaxed text-muted-foreground"
+            className="text-muted-foreground text-xs leading-relaxed"
           >
             One question per line, up to 32. The report addresses each question
             separately.

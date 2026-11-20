@@ -118,8 +118,8 @@ export function SkillImportDialog({
             Preview a SKILL.md file or a ZIP of text resources before importing.
           </DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 min-w-0 space-y-5 overflow-y-auto overscroll-contain p-1 @container">
-          <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+        <div className="@container min-h-0 min-w-0 space-y-5 overflow-y-auto overscroll-contain p-1">
+          <div className="bg-muted/20 space-y-2 rounded-lg border p-3">
             <label
               htmlFor={`${id}-destination`}
               className="text-sm font-medium"
@@ -128,7 +128,7 @@ export function SkillImportDialog({
             </label>
             <select
               id={`${id}-destination`}
-              className="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="bg-background focus-visible:ring-ring h-10 w-full min-w-0 rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
               value={targetId ?? ""}
               onChange={(event) => onTarget(event.target.value || null)}
             >
@@ -149,12 +149,12 @@ export function SkillImportDialog({
             {targetLoading ? (
               <p
                 role="status"
-                className="text-sm text-muted-foreground"
+                className="text-muted-foreground text-sm"
               >
                 Loading current replacement package…
               </p>
             ) : target ? (
-              <p className="break-words text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm wrap-break-word">
                 Saving the draft replaces all files in this package.
               </p>
             ) : null}
@@ -194,13 +194,13 @@ export function SkillImportDialog({
               }}
             />
             {filename && (
-              <p className="break-all text-xs font-medium">
+              <p className="text-xs font-medium break-all">
                 Selected: {filename}
               </p>
             )}
             <p
               id={`${id}-upload-help`}
-              className="text-xs text-muted-foreground"
+              className="text-muted-foreground text-xs"
             >
               Up to {limits.upload_bytes.toLocaleString()} bytes. Binary
               resources cannot be imported.
@@ -216,7 +216,7 @@ export function SkillImportDialog({
           {loading && (
             <p
               role="status"
-              className="text-sm text-muted-foreground"
+              className="text-muted-foreground text-sm"
             >
               Validating package…
             </p>
@@ -224,18 +224,18 @@ export function SkillImportDialog({
           {preview && !loading && preview !== invalidatedPreview && (
             <>
               <div>
-                <h4 className="break-all text-sm font-semibold">
+                <h4 className="text-sm font-semibold break-all">
                   {preview.package.name}
                 </h4>
-                <p className="break-words text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm wrap-break-word">
                   {preview.package.description}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-muted-foreground mt-1 text-xs">
                   {preview.package.files.length} files ·{" "}
                   {preview.package.total_bytes.toLocaleString()} UTF-8 bytes
                 </p>
               </div>
-              <div className="grid min-w-0 gap-3 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
+              <div className="grid min-w-0 gap-3 @xl:grid-cols-[minmax(0,11rem)_minmax(0,1fr)]">
                 <SkillFileList
                   files={preview.package.files}
                   selectedPath={selected?.path ?? null}

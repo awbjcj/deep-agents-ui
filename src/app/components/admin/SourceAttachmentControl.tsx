@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import {
   SOURCE_IMAGE_LABELS,
+  scopeOptionsFor,
+  type SourceImageFetchScope,
   type SourceImagePolicy,
   type SourceImagePolicyEdit,
   type SourceImageSource,
@@ -54,12 +56,12 @@ export function SourceAttachmentControl({
         >
           <Label
             htmlFor={`${id}-${field}`}
-            className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs font-medium leading-5"
+            className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs leading-5 font-medium"
           >
             {title}
             <span
               aria-hidden="true"
-              className="text-xs font-normal text-muted-foreground"
+              className="text-muted-foreground text-xs font-normal"
             >
               {policy[field] ? "On" : "Off"}
             </span>
@@ -85,33 +87,43 @@ export function SourceAttachmentControl({
         <Select
           value={policy.default_scope}
           disabled={scopeDisabled}
-          onValueChange={(value: "embedded" | "all") =>
+          onValueChange={(value: SourceImageFetchScope) =>
             onChange({ field: "default_scope", value })
           }
         >
           <SelectTrigger
             id={`${id}-default`}
-            className="h-auto min-h-11 min-w-0 gap-1 border-muted-foreground bg-background px-2 text-left text-xs shadow-none focus:ring-ring [&>span]:line-clamp-none [&>span]:whitespace-normal"
+            className="border-muted-foreground bg-background focus:ring-ring h-auto min-h-11 min-w-0 gap-1 px-2 text-left text-xs shadow-none [&>span]:line-clamp-none [&>span]:whitespace-normal"
             aria-label={`Default ${label} attachment fetch for ${tier} tier`}
             aria-describedby={`source-attachment-scope-${tier}`}
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="embedded">Embedded only</SelectItem>
-            <SelectItem value="all">All attachments</SelectItem>
+          <SelectContent className="max-w-72">
+            {scopeOptionsFor(source, policy.default_scope).map(
+              ({ value, label: optionLabel, description }) => (
+                <SelectItem
+                  key={value}
+                  value={value}
+                  description={description}
+                  className="min-h-11"
+                >
+                  {optionLabel}
+                </SelectItem>
+              )
+            )}
           </SelectContent>
         </Select>
       </div>
       <div className="flex min-h-11 min-w-0 items-center gap-3">
         <Label
           htmlFor={`${id}-allow-all`}
-          className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs font-medium leading-5"
+          className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col justify-center text-xs leading-5 font-medium"
         >
           Allow all
           <span
             aria-hidden="true"
-            className="text-xs font-normal text-muted-foreground"
+            className="text-muted-foreground text-xs font-normal"
           >
             {policy.allow_all ? "On" : "Off"}
           </span>

@@ -43,7 +43,7 @@ export function ToolEvidenceCards({
       </div>
       <p
         role="status"
-        className="text-xs text-muted-foreground"
+        className="text-muted-foreground text-xs"
       >
         {added
           ? "Added to your message. Review it before sending."
@@ -52,7 +52,7 @@ export function ToolEvidenceCards({
       {items.map((item) => (
         <article
           key={item.id}
-          className="min-w-0 rounded-md border border-border bg-background p-3"
+          className="border-border bg-background min-w-0 rounded-md border p-3"
         >
           <div className="flex items-start justify-between gap-3">
             <label className="flex min-w-0 items-start gap-2 text-sm font-medium">
@@ -72,7 +72,7 @@ export function ToolEvidenceCards({
                   }}
                 />
               )}
-              <span className="break-words">{item.title}</span>
+              <span className="wrap-break-word">{item.title}</span>
             </label>
             {item.url && (
               <a
@@ -85,20 +85,20 @@ export function ToolEvidenceCards({
               </a>
             )}
           </div>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">
+          <p className="mt-2 text-sm leading-6 wrap-break-word whitespace-pre-wrap">
             {item.excerpt.slice(0, 700)}
             {item.excerpt.length > 700 ? "…" : ""}
           </p>
-          <details className="mt-2 text-xs text-muted-foreground">
+          <details className="text-muted-foreground mt-2 text-xs">
             <summary className="cursor-pointer">
               Source details
               {item.excerpt.length > 700 ? " and full excerpt" : ""}
             </summary>
-            <p className="mt-2 whitespace-pre-wrap break-all">
+            <p className="mt-2 break-all whitespace-pre-wrap">
               {item.metadata}
             </p>
             {item.excerpt.length > 700 && (
-              <p className="mt-2 whitespace-pre-wrap break-words">
+              <p className="mt-2 wrap-break-word whitespace-pre-wrap">
                 {item.excerpt}
               </p>
             )}

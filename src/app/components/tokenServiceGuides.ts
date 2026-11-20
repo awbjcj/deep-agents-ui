@@ -8,11 +8,7 @@ import type { UserTokens } from "@/lib/auth";
 export const OPEN_TOKEN_WIZARD_EVENT = "vsda:open-token-wizard";
 
 export type TokenServiceKey =
-  | "graph"
-  | "jira"
-  | "polarion_asux"
-  | "polarion_prod1"
-  | "confluence";
+  "graph" | "jira" | "polarion_asux" | "polarion_prod1" | "confluence";
 
 export interface TokenServiceGuide {
   /** Service key — matches the token input id prefix and notification focus key. */

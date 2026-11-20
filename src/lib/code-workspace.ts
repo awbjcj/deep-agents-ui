@@ -40,12 +40,7 @@ const pageSchema = z.object({
 });
 export type SourcePage = z.infer<typeof pageSchema>;
 export type SourceResource =
-  | "repositories"
-  | "branches"
-  | "tags"
-  | "reviews"
-  | "commits"
-  | "externals";
+  "repositories" | "branches" | "tags" | "reviews" | "commits" | "externals";
 export type SourceQuery = {
   server_id: string;
   resource: SourceResource;
@@ -56,7 +51,10 @@ export type SourceQuery = {
 export type Comparison = { base_handle: string; target_handle: string };
 
 export class WorkspaceError extends Error {
-  constructor(message: string, readonly code?: string) {
+  constructor(
+    message: string,
+    readonly code?: string
+  ) {
     super(message);
     this.name = "WorkspaceError";
   }
@@ -270,8 +268,8 @@ export function sourceChoice(
           !repository || !text("selector")
             ? "No configured repository or revision"
             : item.immutable === false
-            ? "Floating reference · resolved when added"
-            : text("location"),
+              ? "Floating reference · resolved when added"
+              : text("location"),
       };
   }
 }

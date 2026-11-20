@@ -150,10 +150,10 @@ export function OpenSearchLibrarySection() {
     const health = indices.some((index) => index.health === "red")
       ? "Attention"
       : indices.some((index) => index.health === "yellow")
-      ? "Degraded"
-      : indices.length > 0
-      ? "Healthy"
-      : "Unknown";
+        ? "Degraded"
+        : indices.length > 0
+          ? "Healthy"
+          : "Unknown";
     return { documentCount, health };
   }, [indices]);
 
@@ -194,7 +194,7 @@ export function OpenSearchLibrarySection() {
     <div className="space-y-5">
       <SectionHeader title="Search library" />
 
-      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 shadow-sm">
+      <dl className="border-border/70 bg-border/70 grid grid-cols-3 gap-px overflow-hidden rounded-lg border shadow-sm">
         {[
           { label: "Cluster", value: summary.health, icon: HardDrive },
           {
@@ -210,16 +210,16 @@ export function OpenSearchLibrarySection() {
         ].map(({ label, value, icon: Icon }) => (
           <div
             key={label}
-            className="min-w-0 bg-card/85 px-3 py-2.5"
+            className="bg-card/85 min-w-0 px-3 py-2.5"
           >
-            <dt className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+            <dt className="text-muted-foreground flex items-center gap-1 text-xs font-semibold tracking-[0.13em] uppercase">
               <Icon
                 className="h-3 w-3"
                 aria-hidden="true"
               />
               {label}
             </dt>
-            <dd className="mt-1 truncate font-mono text-xs font-semibold tabular-nums text-foreground">
+            <dd className="text-foreground mt-1 truncate font-mono text-xs font-semibold tabular-nums">
               {value}
             </dd>
           </div>
@@ -237,7 +237,7 @@ export function OpenSearchLibrarySection() {
 
       <div
         {...panelTabPanelProps("search-library", view)}
-        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+        className="focus-visible:ring-primary/25 focus-visible:ring-2 focus-visible:outline-none"
       >
         {view === "indices" ? (
           <IndexInventory

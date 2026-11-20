@@ -5,6 +5,7 @@ import test from "node:test";
 import { loadPlaywright } from "./browser-fixtures.mjs";
 import {
   OUT,
+  allToolIds,
   authenticatedPage,
   deferred,
   json,
@@ -233,9 +234,8 @@ test(
                 assert.equal(await email.isChecked(), true);
 
                 // A later save must use the recovery response's current revision.
-                policy.tiers[
-                  panel === "personal" ? "admin" : "user"
-                ].revision = 7;
+                policy.tiers[panel === "personal" ? "admin" : "user"].revision =
+                  7;
                 await retry.click();
                 await recoveryStarted.promise;
                 assert.equal(await save.isDisabled(), true);

@@ -1,6 +1,5 @@
 import { blackA, green, mauve, slate, violet } from "@radix-ui/colors";
 import plugin from "tailwindcss/plugin";
-import containerQueries from "@tailwindcss/container-queries";
 import typography from "@tailwindcss/typography";
 import forms from "@tailwindcss/forms";
 import tailwindcssAnimate from "tailwindcss-animate";
@@ -9,7 +8,8 @@ import headlessui from "@headlessui/tailwindcss";
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: ["class", '[data-joy-color-scheme="dark"]'],
+  // ThemeProvider and the first-paint script both toggle the root .dark class.
+  darkMode: "class",
   theme: {
     extend: {
       spacing: {
@@ -369,7 +369,6 @@ export default {
     },
   },
   plugins: [
-    containerQueries,
     typography,
     forms,
     tailwindcssAnimate,

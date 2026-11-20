@@ -26,10 +26,10 @@ export function CopilotQuotaMeter({
   return (
     <section
       aria-labelledby="copilot-quota-title"
-      className="overflow-hidden rounded-lg border border-border/70 bg-muted/20"
+      className="border-border/70 bg-muted/20 overflow-hidden rounded-lg border"
     >
       <div className="flex items-start gap-3 px-3 py-3">
-        <span className="border-primary/20 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-primary/10 text-primary">
+        <span className="border-primary/20 bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-md border">
           <Gauge
             aria-hidden="true"
             className="h-4 w-4"
@@ -38,11 +38,11 @@ export function CopilotQuotaMeter({
         <div className="min-w-0 flex-1">
           <h4
             id="copilot-quota-title"
-            className="text-xs font-semibold text-foreground"
+            className="text-foreground text-xs font-semibold"
           >
             GitHub account quota
           </h4>
-          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
             Premium interactions · separate from Deep Agents quotas
           </p>
         </div>
@@ -65,19 +65,19 @@ export function CopilotQuotaMeter({
       </div>
       <div
         aria-live="polite"
-        className="border-t border-border/60 px-3 py-2.5"
+        className="border-border/60 border-t px-3 py-2.5"
       >
         {loading && !quota ? (
           <p
             role="status"
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
           >
             Checking account quota…
           </p>
         ) : error ? (
           <p
             role="alert"
-            className="text-xs leading-relaxed text-destructive"
+            className="text-destructive text-xs leading-relaxed"
           >
             {error}
           </p>
@@ -93,7 +93,7 @@ export function CopilotQuotaMeter({
                   ? "Unlimited"
                   : `${remaining.toFixed(1)}% remaining`}
               </p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">
+              <p className="text-muted-foreground text-xs tabular-nums">
                 {quota.used_requests.toLocaleString()} used
                 {!quota.unlimited &&
                   ` of ${quota.entitlement_requests.toLocaleString()}`}
@@ -106,27 +106,27 @@ export function CopilotQuotaMeter({
                 aria-valuemax={100}
                 aria-valuenow={remaining}
                 aria-label="Copilot premium interactions remaining"
-                className="h-1.5 overflow-hidden rounded-full bg-border/70"
+                className="bg-border/70 h-1.5 overflow-hidden rounded-full"
               >
                 <span
                   aria-hidden="true"
-                  className={`block h-full rounded-full transition-transform duration-200 [transform-origin:left_center] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${
+                  className={`block h-full origin-[left_center] rounded-full transition-transform duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${
                     quota.exhausted ? "bg-destructive" : "bg-primary"
                   }`}
                   style={{ transform: `scaleX(${remaining / 100})` }}
                 />
               </div>
             )}
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-muted-foreground text-xs leading-relaxed">
               {quota.exhausted
                 ? "Quota reached. Copilot code analysis is disabled until the account resets."
                 : quota.reset_date
-                ? `Resets ${new Date(quota.reset_date).toLocaleString()}.`
-                : "No reset date was reported by GitHub."}
+                  ? `Resets ${new Date(quota.reset_date).toLocaleString()}.`
+                  : "No reset date was reported by GitHub."}
             </p>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             {available
               ? "Refresh to check this account."
               : "Save a Copilot token to check this account."}

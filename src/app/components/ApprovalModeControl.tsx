@@ -6,6 +6,7 @@ import {
   Loader2,
   ShieldAlert,
   ShieldCheck,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ interface ApprovalModeControlProps {
   unavailableReason?: string;
 }
 
-const INSTANT = "!animate-none";
+const INSTANT = "animate-none!";
 
 const ICONS: Record<ApprovalMode, LucideIcon> = {
   interactive: ShieldCheck,
@@ -65,7 +66,9 @@ const TONE = {
  * Compact approval-mode picker for the composer.
  *
  * Interactive and Allow reads switch immediately; Autopilot opens an explicit
- * consent dialog. Background stops announce status without moving focus.
+ * consent dialog. Background stops announce status without moving focus and
+ * show a warning that clears once its cause is resolved. Only Autopilot uses
+ * the destructive tone, so a stopped mode never looks like Autopilot.
  */
 export function ApprovalModeControl({
   approvals,
@@ -79,7 +82,8 @@ export function ApprovalModeControl({
   const handingOff = useRef(false);
   const { mode, checking, error } = approvals;
   const copy = APPROVAL_MODE_COPY[mode];
-  const Icon = checking ? Loader2 : ICONS[mode];
+  const warning = !!error && mode === "interactive";
+  const Icon = checking ? Loader2 : warning ? TriangleAlert : ICONS[mode];
 
   function closeConsent() {
     approvals.cancel();
@@ -121,9 +125,7 @@ export function ApprovalModeControl({
             }
             className={cn(
               COMPOSER_TRIGGER,
-              TRIGGER_TONE[
-                error && mode === "interactive" ? "destructive" : TONE[mode]
-              ]
+              TRIGGER_TONE[warning ? "warning" : TONE[mode]]
             )}
           >
             <SelectValue>
@@ -151,12 +153,24 @@ export function ApprovalModeControl({
               event.preventDefault();
             }}
           >
+            {error && (
+              <>
+                <p className="text-warning flex gap-2 px-2 pt-1.5 pb-2 text-xs leading-5">
+                  <TriangleAlert
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{error}</span>
+                </p>
+                <SelectSeparator className="bg-border/70 mb-1" />
+              </>
+            )}
             {APPROVAL_MODES.map((option) => {
               const locked = option === "autopilot" && !approvals.canAutopilot;
               return (
                 <Fragment key={option}>
                   {option === "autopilot" && (
-                    <SelectSeparator className="my-1 bg-border/70" />
+                    <SelectSeparator className="bg-border/70 my-1" />
                   )}
                   <SelectItem
                     value={option}
@@ -204,7 +218,7 @@ export function ApprovalModeControl({
 
       <DialogContent
         className={cn(
-          "max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto rounded-2xl p-5 sm:p-6 [&_p]:!mb-0",
+          "max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto rounded-2xl p-5 sm:p-6 [&_p]:mb-0!",
           INSTANT
         )}
         overlayClassName={INSTANT}
@@ -215,7 +229,7 @@ export function ApprovalModeControl({
       >
         <DialogHeader className="text-left">
           <div
-            className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl border border-destructive/25 bg-destructive/10 text-destructive"
+            className="border-destructive/25 bg-destructive/10 text-destructive mb-2 flex h-10 w-10 items-center justify-center rounded-xl border"
             aria-hidden="true"
           >
             <ShieldAlert className="h-5 w-5" />
@@ -226,7 +240,7 @@ export function ApprovalModeControl({
             including subagent calls.
           </DialogDescription>
         </DialogHeader>
-        <div className="rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm leading-6">
+        <div className="border-destructive/25 bg-destructive/5 rounded-xl border px-4 py-3 text-sm leading-6">
           <p>
             The agent can send messages, change external data, and trigger
             builds without asking. Actions may be irreversible.
@@ -235,7 +249,7 @@ export function ApprovalModeControl({
         <dl className="space-y-3 text-sm leading-5">
           <div>
             <dt className="font-medium">This chat only</dt>
-            <dd className="mt-0.5 text-muted-foreground">
+            <dd className="text-muted-foreground mt-0.5">
               Returns to Interactive when you leave, reload, sign out, or stop
               the run. Available to admins and developers; tool permissions
               still apply.
@@ -243,7 +257,7 @@ export function ApprovalModeControl({
           </div>
           <div>
             <dt className="font-medium">Allow reads</dt>
-            <dd className="mt-0.5 text-muted-foreground">
+            <dd className="text-muted-foreground mt-0.5">
               Searches and reads run automatically. Writes and sends still
               require approval.
             </dd>
@@ -252,12 +266,12 @@ export function ApprovalModeControl({
         {error && (
           <p
             role="alert"
-            className="text-sm leading-5 text-destructive"
+            className="text-destructive text-sm leading-5"
           >
             {error}
           </p>
         )}
-        <DialogFooter className="gap-2 border-t border-border/60 pt-4">
+        <DialogFooter className="border-border/60 gap-2 border-t pt-4">
           <Button
             type="button"
             variant="outline"

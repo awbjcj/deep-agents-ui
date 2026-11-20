@@ -181,8 +181,34 @@ test("quick-picker drafts share the panel's linked control rules", () => {
     effort: "high",
     thinking: null,
     max_tokens: 32768,
+    task_budget: null,
   });
   assert.deepEqual(start.max_tokens, 8192, "inputs are not mutated");
+});
+
+test("unlimited survives effort edits and a model switch clears the task budget", () => {
+  const start = {
+    provider: "anthropic",
+    model: "claude-haiku-5-5",
+    effort: "medium",
+    thinking: true,
+    max_tokens: 0,
+    task_budget: 64000,
+  };
+  assert.equal(
+    nextModelDraft([haiku], start, { effort: "xhigh" }).max_tokens,
+    0
+  );
+  assert.equal(formatTokenCap(0), "Unlimited");
+  const other = {
+    ...haiku,
+    provider: "openai",
+    model: "other",
+    supports_thinking: false,
+  };
+  const switched = switchModelDraft([haiku, other], start, other);
+  assert.equal(switched.task_budget, null);
+  assert.notEqual(switched.max_tokens, 0);
 });
 
 test("output steps and compact labels follow the shared slider stops", () => {

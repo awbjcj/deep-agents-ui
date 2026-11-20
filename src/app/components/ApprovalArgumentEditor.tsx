@@ -72,7 +72,7 @@ export function ApprovalArgumentEditor({
   isLoading,
 }: ApprovalArgumentEditorProps) {
   return (
-    <div className="min-w-0 divide-y divide-border">
+    <div className="divide-border min-w-0 divide-y">
       {Object.entries(original).map(([key, value], index) => {
         const id = `${fieldPrefix}-${index}`;
         const changed =
@@ -85,16 +85,16 @@ export function ApprovalArgumentEditor({
           >
             <label
               htmlFor={id}
-              className="block break-words font-mono text-xs font-medium [overflow-wrap:anywhere]"
+              className="block font-mono text-xs font-medium wrap-anywhere wrap-break-word"
             >
               {key}{" "}
-              <span className="font-sans font-normal text-muted-foreground">
+              <span className="text-muted-foreground font-sans font-normal">
                 (
                 {value === null
                   ? "null"
                   : Array.isArray(value)
-                  ? "array"
-                  : typeof value}
+                    ? "array"
+                    : typeof value}
                 )
               </span>
             </label>
@@ -104,7 +104,7 @@ export function ApprovalArgumentEditor({
                 value={drafts[key] ?? String(value)}
                 onChange={(event) => onDraftChange(key, event.target.value)}
                 disabled={isLoading}
-                className="h-9 w-full min-w-32 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                className="border-input bg-background focus-visible:ring-ring h-9 w-full min-w-32 rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 <option value="true">True</option>
                 <option value="false">False</option>
@@ -123,7 +123,7 @@ export function ApprovalArgumentEditor({
               <p
                 id={`${id}-error`}
                 role="alert"
-                className="text-xs text-error"
+                className="text-error text-xs"
               >
                 {fieldErrors[key]}
               </p>
@@ -133,19 +133,19 @@ export function ApprovalArgumentEditor({
                 role="region"
                 aria-label={`Changes to ${key}`}
                 tabIndex={0}
-                className="grid max-h-36 min-w-0 gap-2 overflow-y-auto overscroll-contain rounded-md text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-2"
+                className="focus-visible:ring-ring grid max-h-36 min-w-0 gap-2 overflow-y-auto overscroll-contain rounded-md text-xs focus-visible:ring-2 focus-visible:outline-none sm:grid-cols-2"
               >
-                <div className="min-w-0 rounded-md border border-border bg-background p-2">
-                  <p className="mb-1 font-medium text-muted-foreground">
+                <div className="border-border bg-background min-w-0 rounded-md border p-2">
+                  <p className="text-muted-foreground mb-1 font-medium">
                     Before
                   </p>
-                  <pre className="m-0 whitespace-pre-wrap rounded-none border-0 bg-transparent p-0 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                  <pre className="text-muted-foreground m-0 rounded-none border-0 bg-transparent p-0 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
                     {JSON.stringify(value, null, 2)}
                   </pre>
                 </div>
-                <div className="min-w-0 rounded-md border border-success bg-success-primary p-2">
-                  <p className="mb-1 font-medium text-success">After</p>
-                  <pre className="m-0 whitespace-pre-wrap rounded-none border-0 bg-transparent p-0 font-mono text-xs text-foreground [overflow-wrap:anywhere]">
+                <div className="border-success bg-success-primary min-w-0 rounded-md border p-2">
+                  <p className="text-success mb-1 font-medium">After</p>
+                  <pre className="text-foreground m-0 rounded-none border-0 bg-transparent p-0 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
                     {JSON.stringify(editedArgs[key], null, 2)}
                   </pre>
                 </div>

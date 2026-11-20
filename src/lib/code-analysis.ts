@@ -285,8 +285,8 @@ async function copilotCredentialRequest(
       response.status === 401
         ? "Sign in again to manage your Copilot token."
         : response.status === 400 || response.status === 422
-        ? "Enter a fine-grained token and a future expiry time."
-        : "Could not update Copilot token settings. Try again."
+          ? "Enter a fine-grained token and a future expiry time."
+          : "Could not update Copilot token settings. Try again."
     );
   return copilotCredentialStatusSchema.parse(await response.json());
 }
@@ -428,8 +428,8 @@ export function analysisTargets(
   const candidates = Array.isArray(result.targets)
     ? result.targets
     : Array.isArray(result.target_manifest)
-    ? result.target_manifest
-    : [];
+      ? result.target_manifest
+      : [];
   return candidates.slice(0, 20).flatMap((candidate) => {
     if (!candidate || typeof candidate !== "object") return [];
     const value = candidate as {

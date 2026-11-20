@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isValidElement } from "react";
+import { createElement, isValidElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { BatchToolApprovalInterrupt } from "../src/app/components/BatchToolApprovalInterrupt.tsx";
-import { PendingToolApproval } from "../src/app/components/PendingToolApproval.tsx";
+import {
+  PendingToolApproval,
+  PendingToolApprovals,
+} from "../src/app/components/PendingToolApproval.tsx";
 import { ToolApprovalInterrupt } from "../src/app/components/ToolApprovalInterrupt.tsx";
 import {
   buildInterruptResume,
@@ -234,4 +237,16 @@ test("resume helpers preserve exact payloads and reject missing IDs", () => {
     () => buildInterruptResume([], undefined, decision),
     /no longer pending/
   );
+});
+
+test("concurrent panels disable only their own submission", () => {
+  const html = renderToStaticMarkup(
+    createElement(PendingToolApprovals, {
+      interrupts: sameNamedWrites,
+      submittingIds: ["first-write"],
+      onResume: () => {},
+    })
+  );
+  assert.match(html, /Approving\.\.\./);
+  assert.match(html, />Approve<\/button>/);
 });

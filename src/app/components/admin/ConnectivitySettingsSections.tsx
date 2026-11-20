@@ -116,7 +116,7 @@ export function EmbeddingProviderSection() {
           onRetry={retry}
         />
       ) : connectivity ? (
-        <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+        <div className="settings-surface overflow-hidden">
           <div
             className="grid grid-cols-2 gap-2 p-3"
             aria-label="Embedding API"
@@ -148,17 +148,17 @@ export function EmbeddingProviderSection() {
                   onClick={() => void selectProvider(option.id)}
                   className={cn(
                     "group relative flex min-w-0 items-start gap-2 rounded-md border p-3 text-left transition-[background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none",
-                    "focus-visible:ring-[var(--color-primary)]/40 focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-70",
+                    "focus-visible:ring-2 focus-visible:ring-(--color-primary)/40 focus-visible:outline-none disabled:cursor-wait disabled:opacity-70",
                     active
                       ? "border-brand bg-primary/10"
-                      : "hover:border-[var(--color-primary)]/40 border-border bg-card"
+                      : "border-border bg-card hover:border-(--color-primary)/40"
                   )}
                 >
                   <span
                     className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
                       active
-                        ? "bg-[var(--color-primary)] text-[var(--text-button-primary)]"
+                        ? "bg-(--color-primary) text-(--text-button-primary)"
                         : "bg-muted text-muted-foreground"
                     )}
                   >
@@ -168,16 +168,16 @@ export function EmbeddingProviderSection() {
                     />
                   </span>
                   <span className="min-w-0 pr-4">
-                    <span className="block text-xs font-semibold text-foreground">
+                    <span className="text-foreground block text-xs font-semibold">
                       {option.label}
                     </span>
-                    <span className="mt-0.5 block text-xxs leading-snug text-muted-foreground">
+                    <span className="text-xxs text-muted-foreground mt-0.5 block leading-snug">
                       {option.detail}
                     </span>
                   </span>
                   {active ? (
                     <CheckCircle
-                      className="absolute right-2 top-2 h-3.5 w-3.5 text-[var(--color-primary)]"
+                      className="absolute top-2 right-2 h-3.5 w-3.5 text-(--color-primary)"
                       aria-hidden="true"
                     />
                   ) : null}
@@ -185,8 +185,8 @@ export function EmbeddingProviderSection() {
               );
             })}
           </div>
-          <div className="border-t border-border/60 bg-muted/20 px-3 py-2">
-            <div className="flex items-center gap-1.5 text-xxs text-muted-foreground">
+          <div className="border-border/60 bg-muted/20 border-t px-3 py-2">
+            <div className="text-xxs text-muted-foreground flex items-center gap-1.5">
               {saving ? (
                 <Loader2
                   className="h-3 w-3 animate-spin motion-reduce:animate-none"
@@ -203,7 +203,7 @@ export function EmbeddingProviderSection() {
                 {settingSourceLabel(connectivity.embedding_provider_source)}
               </span>
             </div>
-            <p className="mt-1 text-xxs leading-relaxed text-muted-foreground">
+            <p className="text-xxs text-muted-foreground mt-1 leading-relaxed">
               Rebuild existing vector shelves after switching providers so
               stored and query embeddings use the same vector space.
             </p>
@@ -256,9 +256,9 @@ export function AttachmentPolicySection() {
           onRetry={retry}
         />
       ) : connectivity ? (
-        <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+        <div className="settings-surface overflow-hidden">
           <div className="flex items-start gap-3 p-3">
-            <span className="bg-[var(--color-primary)]/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--color-primary)]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-(--color-primary)/10 text-(--color-primary)">
               <Paperclip
                 className="h-4 w-4"
                 aria-hidden="true"
@@ -268,17 +268,17 @@ export function AttachmentPolicySection() {
               <div className="flex flex-wrap items-center gap-2">
                 <Label
                   htmlFor="proxy-chat-attachments"
-                  className="text-sm font-semibold text-foreground"
+                  className="text-foreground text-sm font-semibold"
                 >
                   Chat file and image uploads
                 </Label>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xxs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                <span className="bg-muted text-xxs text-muted-foreground rounded-full px-2 py-0.5 font-semibold tracking-widest uppercase">
                   Proxy only
                 </span>
               </div>
               <p
                 id="proxy-chat-attachments-description"
-                className="text-xs leading-relaxed text-muted-foreground"
+                className="text-muted-foreground text-xs leading-relaxed"
               >
                 Controls uploads from the chat composer for users routed through
                 the local proxy. Remote and gateway modes are not affected.
@@ -287,7 +287,7 @@ export function AttachmentPolicySection() {
             <div className="flex shrink-0 items-center gap-2 pt-0.5">
               {saving ? (
                 <Loader2
-                  className="h-3.5 w-3.5 animate-spin text-muted-foreground motion-reduce:animate-none"
+                  className="text-muted-foreground h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
                   aria-hidden="true"
                 />
               ) : null}
@@ -300,7 +300,7 @@ export function AttachmentPolicySection() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-1.5 border-t border-border/60 bg-muted/20 px-3 py-2 text-xxs text-muted-foreground">
+          <div className="border-border/60 bg-muted/20 text-xxs text-muted-foreground flex items-center gap-1.5 border-t px-3 py-2">
             <Database
               className="h-3 w-3"
               aria-hidden="true"
@@ -393,7 +393,7 @@ export function UrlOverridesSection() {
         />
       ) : connectivity ? (
         <>
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-xs leading-relaxed">
             Configure each provider independently. Clear a base URL to restore
             its environment default.
           </p>
@@ -411,12 +411,12 @@ export function UrlOverridesSection() {
               onTokenChange={changeToken}
             />
           ))}
-          <div className="space-y-3 rounded-lg border border-border p-4 @container">
+          <div className="border-border @container space-y-3 rounded-lg border p-4">
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-foreground">
+              <h4 className="text-foreground text-sm font-semibold">
                 Cloudflare authentication
               </h4>
-              <p className="text-xxs leading-relaxed text-muted-foreground">
+              <p className="text-xxs text-muted-foreground leading-relaxed">
                 Shared across Cloudflare gateways. Provider tokens are optional
                 when the gateway stores the provider key.
               </p>
@@ -430,21 +430,21 @@ export function UrlOverridesSection() {
               onChange={(value) => changeToken("cf_aig_token", value)}
             />
           </div>
-          <div className="space-y-3 border-t border-border pt-4">
-            <p className="text-xxs leading-relaxed text-muted-foreground">
+          <div className="border-border space-y-3 border-t pt-4">
+            <p className="text-xxs text-muted-foreground leading-relaxed">
               Blank token fields keep saved credentials. Reset clears an
               override and restores the provider environment token. Saved tokens
               are never displayed.
             </p>
             <p
               role="status"
-              className="text-xxs font-medium text-muted-foreground"
+              className="text-xxs text-muted-foreground font-medium"
             >
               {saving
                 ? "Saving changes…"
                 : dirty
-                ? "Unsaved changes"
-                : "All changes saved"}
+                  ? "Unsaved changes"
+                  : "All changes saved"}
             </p>
             <Button
               type="button"

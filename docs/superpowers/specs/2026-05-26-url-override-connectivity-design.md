@@ -58,15 +58,16 @@ CREATE TABLE system_settings (
 ```
 
 Keys (seeded with empty values on migration):
-| Key | Maps to env var |
-|-----|-----------------|
-| `run_mode` | `RUN_MODE` |
-| `openai_base_url` | `OPENAI_BASE_URL` |
+
+| Key                       | Maps to env var           |
+| ------------------------- | ------------------------- |
+| `run_mode`                | `RUN_MODE`                |
+| `openai_base_url`         | `OPENAI_BASE_URL`         |
 | `openai_base_url_gateway` | `OPENAI_BASE_URL_GATEWAY` |
-| `openai_base_url_proxy` | `OPENAI_BASE_URL_PROXY` |
-| `claude_base_url` | `CLAUDE_BASE_URL` |
+| `openai_base_url_proxy`   | `OPENAI_BASE_URL_PROXY`   |
+| `claude_base_url`         | `CLAUDE_BASE_URL`         |
 | `claude_base_url_gateway` | `CLAUDE_BASE_URL_GATEWAY` |
-| `claude_base_url_proxy` | `CLAUDE_BASE_URL_PROXY` |
+| `claude_base_url_proxy`   | `CLAUDE_BASE_URL_PROXY`   |
 
 An empty `value` means "not overridden, fall back to env".
 

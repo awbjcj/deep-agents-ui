@@ -91,15 +91,15 @@ test(
         req.url === "/app.js"
           ? "text/javascript"
           : req.url === "/style.css"
-          ? "text/css"
-          : "text/html"
+            ? "text/css"
+            : "text/html"
       );
       res.end(
         req.url === "/app.js"
           ? bundle.outputFiles[0].text
           : req.url === "/style.css"
-          ? css
-          : '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));
@@ -371,6 +371,31 @@ test(
           await page.evaluate(() =>
             window.releaseAccess.forEach((resolve) => resolve())
           );
+          await page.waitForTimeout(800);
+          assert.equal(await mode(), "interactive");
+          assert.deepEqual(await page.evaluate(() => window.submissions), []);
+        }
+      );
+      await t.test(
+        "a manual decision cancels a pending mode activation",
+        async () => {
+          await reset();
+          await page.evaluate(() => {
+            window.holdAccess = true;
+          });
+          await choose("Autopilot");
+          await page
+            .getByRole("button", { name: "I understand, enable autopilot" })
+            .click();
+          await page.waitForFunction(() => window.releaseAccess.length === 1);
+          assert.equal(
+            await page.evaluate(() => window.approvals.onManualResume()),
+            "interactive"
+          );
+          await page.evaluate(() =>
+            window.releaseAccess.forEach((resolve) => resolve())
+          );
+          await page.evaluate((pending) => window.update({ pending }), pending);
           await page.waitForTimeout(800);
           assert.equal(await mode(), "interactive");
           assert.deepEqual(await page.evaluate(() => window.submissions), []);
@@ -662,6 +687,85 @@ test(
             assert.match(await page.getByRole("alert").innerText(), /manually/);
           }
           assert.equal(await page.evaluate(() => window.submissions.length), 1);
+        }
+      );
+      await t.test(
+        "a stopped automatic approval warns without the Autopilot color and clears once reviewed",
+        async () => {
+          await reset({ pending: [read("reads")] });
+          await page.evaluate(() => {
+            window.failSubmit = true;
+          });
+          await choose("Allow reads");
+          await page.getByRole("alert").waitFor();
+          await page.evaluate(() => {
+            window.failSubmit = false;
+          });
+          await modeIs("Interactive");
+          const tone = () => trigger().getAttribute("class");
+          assert.doesNotMatch(await tone(), /text-destructive/);
+          assert.match(await tone(), /text-warning/);
+          // The uncertain approval still blocks re-enabling until it is resolved.
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            false
+          );
+          await page.evaluate(() => window.update({ pending: [] }));
+          await page.waitForFunction(() => window.approvals.error === null);
+          assert.doesNotMatch(await tone(), /text-warning|text-destructive/);
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            true
+          );
+          await modeIs("Allow reads");
+          await page.evaluate(
+            (next) => window.update({ pending: next }),
+            [read("next")]
+          );
+          await page.waitForFunction(() => window.submissions.length === 2);
+        }
+      );
+      await t.test(
+        "a recovered run error clears its warning and modes can be selected again",
+        async () => {
+          await reset();
+          await choose("Allow reads");
+          await modeIs("Allow reads");
+          await page.evaluate(() => window.update({ failed: true }));
+          await page.getByRole("alert").waitFor();
+          assert.equal(await mode(), "interactive");
+          assert.equal(
+            await page.evaluate(() => window.approvals.select("allow_read")),
+            false
+          );
+          await page.evaluate(() => window.update({ failed: false }));
+          await page.waitForFunction(() => window.approvals.error === null);
+          await choose("Allow reads");
+          await modeIs("Allow reads");
+          await enable();
+        }
+      );
+      await t.test(
+        "a manual review releases the uncertain automatic approval",
+        async () => {
+          await reset({ pending: [read("reads")] });
+          await page.evaluate(() => {
+            window.failSubmit = true;
+          });
+          await choose("Allow reads");
+          await page.getByRole("alert").waitFor();
+          await page.evaluate(() => {
+            window.failSubmit = false;
+          });
+          assert.equal(
+            await page.evaluate(() =>
+              window.approvals.onManualResume(["reads"])
+            ),
+            "interactive"
+          );
+          assert.equal(await page.evaluate(() => window.approvals.error), null);
+          await choose("Allow reads");
+          await modeIs("Allow reads");
         }
       );
       await t.test(

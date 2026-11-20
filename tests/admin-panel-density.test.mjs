@@ -170,12 +170,13 @@ test("panel tabs and tool checkboxes remain legible and visible", async () => {
   assert.match(tabs, /"h-4 w-4 shrink-0"/);
   assert.doesNotMatch(tabs, /isTwoRow && "hidden/);
   assert.match(permissions, /import \{ Checkbox \}/);
-  assert.match(permissions, /text-\[var\(--aptiv-orange\)\]/);
+  assert.match(permissions, /text-primary/);
   assert.doesNotMatch(permissions, /CheckCircle2/);
   assert.doesNotMatch(permissions, /<Check(?:\s|>)/);
   assert.match(checkbox, /appearance-none/);
-  assert.match(checkbox, /border-2 border-muted-foreground\/70/);
+  assert.match(checkbox, /border-2/);
+  assert.match(checkbox, /border-muted-foreground\/70/);
   assert.match(checkbox, /peer-checked:opacity-100/);
-  assert.match(checkbox, /checked:bg-\[var\(--aptiv-orange\)\]/);
+  assert.match(checkbox, /checked:bg-primary/);
   assert.equal((checkbox.match(/<Check(?:\s|>)/g) ?? []).length, 1);
 });

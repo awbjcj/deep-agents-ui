@@ -31,7 +31,7 @@ export function WorkspaceSources({
     <div className="grid min-w-0 grid-cols-1 md:grid-cols-2">
       <section
         aria-labelledby={headingId}
-        className="min-w-0 border-b border-border p-4 sm:p-6 md:border-b-0 md:border-r"
+        className="border-border min-w-0 border-b p-4 sm:p-6 md:border-r md:border-b-0"
       >
         <h3
           id={headingId}
@@ -39,7 +39,7 @@ export function WorkspaceSources({
         >
           Add source revisions
         </h3>
-        <p className="mb-5 mt-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground mt-2 mb-5 text-sm leading-relaxed">
           Browse a repository or enter its name, then choose a revision to add.
         </p>
         <div className="mt-5">
@@ -63,7 +63,7 @@ export function WorkspaceSources({
           ) : state.serverError ? (
             <div
               role="alert"
-              className="space-y-3 rounded-lg border border-border p-4 text-sm"
+              className="border-border space-y-3 rounded-lg border p-4 text-sm"
             >
               <p>{state.serverError}</p>
               <Button
@@ -76,7 +76,7 @@ export function WorkspaceSources({
               </Button>
             </div>
           ) : !state.servers.length ? (
-            <div className="space-y-2 rounded-lg border border-dashed border-border p-4 text-sm">
+            <div className="border-border space-y-2 rounded-lg border border-dashed p-4 text-sm">
               <p className="font-medium">No source servers available</p>
               <p className="text-muted-foreground">
                 Ask an administrator to enable Gerrit or Plastic, then refresh
@@ -111,7 +111,7 @@ export function WorkspaceSources({
           )}
         </div>
       </section>
-      <div className="min-w-0 bg-muted/20 p-4 sm:p-6">
+      <div className="bg-muted/20 min-w-0 p-4 sm:p-6">
         <SelectedRevisions
           targets={state.targets}
           servers={state.servers}

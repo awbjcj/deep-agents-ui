@@ -44,6 +44,7 @@ function draftFrom(effective: EffectiveModelSelection): ModelDraft {
     effort: effective.effort,
     thinking: effective.thinking,
     max_tokens: effective.max_tokens,
+    task_budget: effective.task_budget ?? null,
   };
 }
 
@@ -54,7 +55,8 @@ function sameDraft(a: ModelDraft | null, b: ModelDraft | null): boolean {
     a.model === b.model &&
     (a.effort ?? null) === (b.effort ?? null) &&
     (a.thinking ?? null) === (b.thinking ?? null) &&
-    a.max_tokens === b.max_tokens
+    a.max_tokens === b.max_tokens &&
+    (a.task_budget ?? null) === (b.task_budget ?? null)
   );
 }
 

@@ -43,3 +43,31 @@ export function clearStreamReconnectState(
     return false;
   }
 }
+
+/**
+ * Whether a run error reports a requested stop rather than a failure.
+ *
+ * LangGraph ends a cancelled run's stream with an `error` event named
+ * `UserInterrupt` (or `UserRollback`); the SDK surfaces it as `stream.error`.
+ */
+export function isRunCancellation(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === "UserInterrupt" || error.name === "UserRollback")
+  );
+}
+
+/**
+ * Reset the SDK stream's local view without cancelling any server run.
+ *
+ * The SDK's `stop()` also cancels the run recorded under the reconnect key,
+ * even when no stream is attached. Reconciliation must only detach locally,
+ * so the key is cleared first; only the explicit Stop action cancels runs.
+ */
+export async function detachStream(
+  threadId: string | null,
+  stop: () => Promise<void> | void
+): Promise<void> {
+  if (threadId) clearStreamReconnectState(threadId);
+  await stop();
+}

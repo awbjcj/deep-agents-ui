@@ -406,7 +406,7 @@ export function ConfigDialog({
               Agent
             </Label>
             {loading && assistants.length === 0 ? (
-              <div className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex h-10 items-center gap-2 rounded-md border px-3 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading assistants...
               </div>
@@ -439,21 +439,21 @@ export function ConfigDialog({
                 : undefined;
               if (!info) return null;
               return (
-                <div className="space-y-3 rounded-md border bg-muted/50 p-3 text-sm">
+                <div className="bg-muted/50 space-y-3 rounded-md border p-3 text-sm">
                   <p className="text-muted-foreground">{info.description}</p>
                   <details>
-                    <summary className="cursor-pointer text-xs font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+                    <summary className="focus-visible:outline-ring cursor-pointer text-xs font-medium focus-visible:outline focus-visible:outline-2">
                       Examples
                     </summary>
                     <ul className="mt-2 space-y-1.5">
                       {info.useCases.map((useCase) => (
                         <li
                           key={useCase}
-                          className="flex gap-2 text-muted-foreground"
+                          className="text-muted-foreground flex gap-2"
                         >
                           <span
                             aria-hidden="true"
-                            className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary"
+                            className="bg-primary mt-1.5 h-1 w-1 shrink-0 rounded-full"
                           />
                           <span>{useCase}</span>
                         </li>
@@ -461,10 +461,10 @@ export function ConfigDialog({
                     </ul>
                   </details>
                   {info.note && (
-                    <p className="text-xs text-muted-foreground">{info.note}</p>
+                    <p className="text-muted-foreground text-xs">{info.note}</p>
                   )}
                   {info.isSupervisor && (
-                    <p className="rounded-md bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                    <p className="bg-primary/5 text-muted-foreground rounded-md px-3 py-2 text-xs leading-relaxed">
                       If the job only touches one system, pick that agent
                       directly. It will be faster and stay on topic. Keep a
                       supervisor for work that crosses systems or takes several
@@ -524,7 +524,7 @@ export function ConfigDialog({
                       <li
                         key={engine.id}
                         title={detail}
-                        className={`flex min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                        className={`flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${
                           engine.ready
                             ? "border-success/35 bg-success-primary/60"
                             : "border-warning/35 bg-warning-primary/60"
@@ -541,7 +541,7 @@ export function ConfigDialog({
                         <span className="font-medium">
                           {engineLabel(engine.id)}
                         </span>
-                        <span className="truncate text-muted-foreground">
+                        <span className="text-muted-foreground truncate">
                           {detail}
                         </span>
                       </li>
@@ -550,7 +550,7 @@ export function ConfigDialog({
                 </ul>
               ) : null}
               <p
-                className="text-[11px] leading-relaxed text-muted-foreground"
+                className="text-muted-foreground text-xs leading-relaxed"
                 title={COPILOT_USAGE_EXPLANATION}
               >
                 Applies to new analyses only. Copilot usage is billed to your

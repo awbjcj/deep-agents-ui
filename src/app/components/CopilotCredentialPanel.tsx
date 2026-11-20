@@ -5,7 +5,7 @@ import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
-  Github,
+  GitFork,
   KeyRound,
   Loader2,
   ShieldAlert,
@@ -174,11 +174,11 @@ export function CopilotCredentialPanel() {
   return (
     <section
       aria-labelledby="copilot-credential-title"
-      className="space-y-4 overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"
+      className="border-border bg-card space-y-4 overflow-hidden rounded-xl border p-4 shadow-sm"
     >
-      <div className="-mx-4 -mt-4 flex items-start gap-3 border-b border-border/70 bg-muted/20 px-4 py-3.5">
-        <span className="border-primary/20 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-primary/10 text-primary">
-          <Github
+      <div className="border-border/70 bg-muted/20 -mx-4 -mt-4 flex items-start gap-3 border-b px-4 py-3.5">
+        <span className="border-primary/20 bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
+          <GitFork
             aria-hidden="true"
             className="h-4 w-4"
           />
@@ -192,12 +192,12 @@ export function CopilotCredentialPanel() {
               Copilot analysis
             </h3>
             <p
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${
                 configured
                   ? "border-primary/25 bg-primary/10 text-primary"
                   : expired
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : "border-border bg-background/70 text-muted-foreground"
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : "border-border bg-background/70 text-muted-foreground"
               }`}
               role="status"
             >
@@ -215,17 +215,17 @@ export function CopilotCredentialPanel() {
               {busy && !status
                 ? "Loading token status…"
                 : !status
-                ? "Token status unavailable"
-                : expired
-                ? "Token expired"
-                : status.configured
-                ? "Personal token configured"
-                : "No personal token configured"}
+                  ? "Token status unavailable"
+                  : expired
+                    ? "Token expired"
+                    : status.configured
+                      ? "Personal token configured"
+                      : "No personal token configured"}
             </p>
           </div>
         </div>
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="text-muted-foreground text-xs leading-relaxed">
         {COPILOT_USAGE_EXPLANATION}
       </p>
       <CopilotQuotaMeter
@@ -252,7 +252,7 @@ export function CopilotCredentialPanel() {
           />
           <p
             id="copilot-host-help"
-            className="text-[11px] leading-relaxed text-muted-foreground"
+            className="text-muted-foreground text-xs leading-relaxed"
           >
             Use github.com or your exact company.ghe.com hostname.
             {status?.configured && ` Saved account: ${status.github_host}.`}
@@ -273,7 +273,7 @@ export function CopilotCredentialPanel() {
           />
           <p
             id="copilot-token-help"
-            className="text-[11px] leading-relaxed text-muted-foreground"
+            className="text-muted-foreground text-xs leading-relaxed"
           >
             Enter a fine-grained token with the Copilot Requests account
             permission and a Copilot license. Saved tokens are never shown.
@@ -290,7 +290,7 @@ export function CopilotCredentialPanel() {
             onChange={(event) => setExpiry(event.target.value)}
           />
           {status?.expires_at && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Current expiry: {new Date(status.expires_at).toLocaleString()}
             </p>
           )}
@@ -333,7 +333,7 @@ export function CopilotCredentialPanel() {
         </div>
       </fieldset>
       {error && (
-        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+        <div className="border-destructive/30 bg-destructive/5 text-destructive flex items-start gap-2 rounded-md border px-3 py-2 text-xs">
           <ShieldAlert
             aria-hidden="true"
             className="mt-0.5 h-3.5 w-3.5 shrink-0"
@@ -347,10 +347,10 @@ export function CopilotCredentialPanel() {
         </div>
       )}
       {notice && (
-        <div className="border-primary/20 flex items-start gap-2 rounded-md border bg-primary/5 px-3 py-2 text-xs text-foreground">
+        <div className="border-primary/20 bg-primary/5 text-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-xs">
           <CheckCircle2
             aria-hidden="true"
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
+            className="text-primary mt-0.5 h-3.5 w-3.5 shrink-0"
           />
           <p
             role="status"

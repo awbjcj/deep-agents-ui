@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const EVIDENCE = process.env.CODE_BLOCK_THEMES_EVIDENCE;
@@ -77,9 +77,7 @@ test(
   { skip: process.env.CODE_BLOCK_THEMES_BROWSER_TEST !== "1" },
   async () => {
     const { build } = await import("esbuild");
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
-    const { default: config } = await import("../tailwind.config.mjs");
+
     const { chromium } = await loadPlaywright(
       process.env.CHAT_PLAYWRIGHT_MODULE
     );
@@ -116,10 +114,7 @@ test(
         `\`\`\`text\n${"Readable source\n".repeat(1350)}\n\`\`\``,
       ],
     ];
-    const css = await postcss([tailwind(config)]).process(
-      await readFile(join(ROOT, "src/app/globals.css"), "utf8"),
-      { from: join(ROOT, "src/app/globals.css") }
-    );
+    const css = await compileBrowserStyles();
     const bundle = await build({
       absWorkingDir: ROOT,
       stdin: {
@@ -199,8 +194,8 @@ test(
         isScript
           ? bundle.outputFiles[0].text
           : isStyle
-          ? css.css
-          : '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><title>Code themes</title></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css.css
+            : '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"><title>Code themes</title></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

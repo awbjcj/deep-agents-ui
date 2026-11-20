@@ -30,31 +30,31 @@ export function TaskRow({
     task.frequency === "once"
       ? "Once"
       : task.frequency === "daily"
-      ? "Every day"
-      : "Every week";
+        ? "Every day"
+        : "Every week";
   return (
-    <article className="min-w-0 border-b border-border bg-card px-4 py-5 last:border-b-0 sm:px-6">
+    <article className="border-border bg-card min-w-0 border-b px-4 py-5 last:border-b-0 sm:px-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-8">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h2 className="min-w-0 break-words text-base font-semibold">
+            <h2 className="min-w-0 text-base font-semibold wrap-break-word">
               {task.name}
             </h2>
-            <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+            <span className="bg-muted rounded-md px-2 py-1 text-xs font-medium">
               {taskStatus[task.status]}
             </span>
           </div>
-          <p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-2 line-clamp-2 text-sm wrap-break-word whitespace-pre-wrap">
             {task.prompt}
           </p>
-          <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <p className="text-muted-foreground mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
             <span>{frequency}</span>
             <span>
               {task.destination === "new" ? (
                 "New chat each time"
               ) : (
                 <Link
-                  className="underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                  className="focus-visible:outline-ring underline underline-offset-4 focus-visible:outline focus-visible:outline-2"
                   href={chatHref(task.thread_id!)}
                 >
                   Existing chat
@@ -71,19 +71,19 @@ export function TaskRow({
         <dl className="min-w-0 space-y-2 text-sm">
           {nextRun && (
             <div>
-              <dt className="text-xs text-muted-foreground">Next run</dt>
+              <dt className="text-muted-foreground text-xs">Next run</dt>
               <dd className="mt-0.5 font-medium tabular-nums">
                 <time dateTime={nextRun}>
                   {taskDate(nextRun, task.timezone)}
                 </time>{" "}
-                <span className="ml-2 break-words text-xs font-normal text-muted-foreground">
+                <span className="text-muted-foreground ml-2 text-xs font-normal wrap-break-word">
                   {task.timezone}
                 </span>
               </dd>
             </div>
           )}
           <div>
-            <dt className="text-xs text-muted-foreground">Last run</dt>
+            <dt className="text-muted-foreground text-xs">Last run</dt>
             <dd className="mt-0.5 text-xs">
               {task.last_run ? (
                 <>
@@ -92,7 +92,7 @@ export function TaskRow({
                     {taskDate(task.last_run.created_at, task.timezone)}
                   </time>
                   {!nextRun && (
-                    <span className="ml-2 text-muted-foreground">
+                    <span className="text-muted-foreground ml-2">
                       {" "}
                       {task.timezone}
                     </span>
@@ -107,7 +107,7 @@ export function TaskRow({
       </div>
       {active && (
         <div
-          className="mt-4 flex flex-wrap items-center gap-3 border-l-2 border-primary bg-muted/40 px-3 py-2 text-sm"
+          className="border-primary bg-muted/40 mt-4 flex flex-wrap items-center gap-3 border-l-2 px-3 py-2 text-sm"
           role="status"
         >
           <span className="font-medium">
@@ -117,7 +117,7 @@ export function TaskRow({
           </span>
           <Link
             href={chatHref(active.thread_id)}
-            className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            className="text-primary focus-visible:outline-ring inline-flex min-h-11 items-center font-medium underline underline-offset-4 focus-visible:outline focus-visible:outline-2"
           >
             Open chat
           </Link>
@@ -130,7 +130,7 @@ export function TaskRow({
             Cancel run
           </Button>
           {active.error && (
-            <p className="w-full break-words text-muted-foreground">
+            <p className="text-muted-foreground w-full wrap-break-word">
               {active.error}
             </p>
           )}
@@ -173,7 +173,7 @@ export function TaskRow({
           History
         </Button>
         <Button
-          className="min-h-11 text-[var(--text-error)] sm:ml-auto sm:min-h-9"
+          className="min-h-11 text-(--text-error) sm:ml-auto sm:min-h-9"
           variant="ghost"
           disabled={busy || !!active}
           onClick={onDelete}

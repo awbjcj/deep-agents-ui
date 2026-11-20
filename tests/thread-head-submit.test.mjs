@@ -31,6 +31,7 @@ async function capturedRunCheckpoint(submitOptions) {
   const client = {
     threads: { getHistory: async () => structuredClone(STALE_HEAD) },
     runs: {
+      list: async () => [],
       stream(_threadId, _assistantId, options) {
         payload = options;
         return (async function* () {})();
@@ -56,9 +57,15 @@ async function capturedRunCheckpoint(submitOptions) {
   return payload.checkpoint;
 }
 
-test("a default submit forks from the cached (stale) history head", async () => {
-  // Documents the SDK hazard the helper exists to avoid.
+test("a default submit continues from the server head with the current SDK", async () => {
   const checkpoint = await capturedRunCheckpoint({});
+  assert.equal(checkpoint, undefined);
+});
+
+test("an explicit rewind still submits the selected checkpoint", async () => {
+  const checkpoint = await capturedRunCheckpoint({
+    checkpoint: STALE_HEAD[0].checkpoint,
+  });
   assert.equal(checkpoint?.checkpoint_id, "checkpoint-before-upload");
 });
 

@@ -75,18 +75,18 @@ export const ReferenceFileDialog = React.memo<Props>(
         open={open}
         onOpenChange={close}
       >
-        <DialogContent className="flex h-[min(70dvh,680px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] min-w-0 max-w-4xl flex-col p-4 sm:min-w-[60vw] sm:p-6">
+        <DialogContent className="flex h-[min(70dvh,680px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-4xl min-w-0 flex-col p-4 sm:min-w-[60vw] sm:p-6">
           <DialogTitle className="pr-10 text-base font-semibold tracking-tight">
             Reference conversation files
           </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+          <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
             Selected files will be attached to your draft.
           </DialogDescription>
 
           <div className="mt-3 min-h-0 flex-1 overflow-hidden">
             {entries.length === 0 ? (
               <div className="flex h-full items-center justify-center p-8 text-center">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   No files in this conversation yet. Upload a file first.
                 </p>
               </div>
@@ -103,9 +103,9 @@ export const ReferenceFileDialog = React.memo<Props>(
                         title={entry.path}
                         aria-pressed={isSelected}
                         className={cn(
-                          "relative flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                          "focus-visible:ring-ring relative flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none",
                           isSelected
-                            ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                            ? "border-primary bg-primary/5 ring-primary/30 ring-2"
                             : "hover:border-primary/40 border-border hover:bg-primary/5 hover:shadow-md"
                         )}
                       >
@@ -113,10 +113,10 @@ export const ReferenceFileDialog = React.memo<Props>(
                           <img
                             src={entry.thumb}
                             alt=""
-                            className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border"
+                            className="ring-border h-10 w-10 shrink-0 rounded-md object-cover ring-1"
                           />
                         ) : (
-                          <span className="text-primary/70 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/5">
+                          <span className="text-primary/70 bg-primary/5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md">
                             <FileText className="h-5 w-5" />
                           </span>
                         )}
@@ -126,9 +126,9 @@ export const ReferenceFileDialog = React.memo<Props>(
                           </span>
                           <span
                             className={cn(
-                              "mt-0.5 truncate text-xs text-muted-foreground",
+                              "text-muted-foreground mt-0.5 truncate text-xs",
                               entry.source
-                                ? "bg-primary/8 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]"
+                                ? "bg-primary/8 inline-flex rounded-full px-1.5 py-0.5 text-xs font-semibold text-(--color-primary)"
                                 : "block"
                             )}
                           >
@@ -163,10 +163,10 @@ export const ReferenceFileDialog = React.memo<Props>(
             )}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="border-border mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
             <span
               aria-live="polite"
-              className="text-xs text-muted-foreground"
+              className="text-muted-foreground text-xs"
             >
               {selectedCount === 0
                 ? "No files selected"

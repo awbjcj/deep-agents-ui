@@ -69,8 +69,8 @@ export function projectContextUpdates(
     if (message.id) present.add(message.id);
     const record: unknown =
       message.type === "ai"
-        ? message.additional_kwargs?.context_update ??
-          (message.id ? committedRecords.get(message.id) : undefined)
+        ? (message.additional_kwargs?.context_update ??
+          (message.id ? committedRecords.get(message.id) : undefined))
         : undefined;
     if (record && typeof record === "object") {
       const update = record as Record<string, unknown>;

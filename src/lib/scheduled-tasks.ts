@@ -67,7 +67,10 @@ export function taskInput(task: TaskInput): TaskInput {
 }
 
 export class TaskAPIError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
     super(message);
     this.name = "TaskAPIError";
   }

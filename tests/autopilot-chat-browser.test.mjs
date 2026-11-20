@@ -50,8 +50,8 @@ test(
       },
     ];
     let pending = [
-      makeInterrupt("first", ["send_email", "trigger_jenkins_build"]),
-      makeInterrupt("second", ["send_email"]),
+      makeInterrupt("1".repeat(32), ["send_email", "trigger_jenkins_build"]),
+      makeInterrupt("2".repeat(32), ["send_email"]),
     ];
     let releaseResume;
     const firstResume = new Promise((resolve) => {
@@ -90,7 +90,7 @@ test(
           acknowledge();
           if (submissions.length === 1) {
             await firstResume;
-            pending = [makeInterrupt("third", ["send_email"])];
+            pending = [makeInterrupt("3".repeat(32), ["send_email"])];
           } else pending = [];
           return route.fulfill({
             contentType: "text/event-stream",
@@ -128,10 +128,20 @@ test(
       });
       await autopilotOn.waitFor();
       assert.equal(await autopilotOn.isVisible(), true);
-      await firstSubmission;
+      await Promise.race([
+        firstSubmission,
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Automatic resume was not sent")),
+            10000
+          )
+        ),
+      ]);
       assert.deepEqual(submissions[0].command.resume, {
-        first: { decisions: [{ type: "approve" }, { type: "approve" }] },
-        second: { decisions: [{ type: "approve" }] },
+        ["1".repeat(32)]: {
+          decisions: [{ type: "approve" }, { type: "approve" }],
+        },
+        ["2".repeat(32)]: { decisions: [{ type: "approve" }] },
       });
       assert.equal(submissions[0].config.configurable.autopilot, true);
       assert.equal(
@@ -175,12 +185,138 @@ test(
         "interactive"
       );
       assert.deepEqual(submissions[1].command.resume, {
-        third: { decisions: [{ type: "approve" }] },
+        ["3".repeat(32)]: { decisions: [{ type: "approve" }] },
       });
       assert.deepEqual(pageErrors, []);
       await context.close();
     } finally {
       releaseResume();
+      await browser.close();
+      await server.close();
+    }
+  }
+);
+
+test(
+  "Allow reads resumes two subagent reviews while a follow-up is queued",
+  {
+    skip: process.env.AUTOPILOT_BROWSER_TEST !== "1",
+    timeout: 60000,
+  },
+  async () => {
+    const { chromium } = await loadPlaywright();
+    const browser = await chromium.launch({ headless: true });
+    const server = await staticServer();
+    const fallback = makePolicyFixture();
+    const submissions = [];
+    const stateRequests = [];
+    let pending = [
+      "11111111111111111111111111111111",
+      "22222222222222222222222222222222",
+    ].map((id) => ({
+      id,
+      value: { action_requests: [{ name: "search_jira_tickets", args: {} }] },
+    }));
+    const state = () => ({
+      values: {
+        messages: [{ type: "human", id: "human", content: "Search" }],
+        files: {},
+        todos: [],
+      },
+      tasks: pending.map((interrupt, index) => ({
+        id: `task-${index}`,
+        name: "tools",
+        interrupts: [interrupt],
+      })),
+      next: pending.length ? ["tools"] : [],
+      checkpoint: {
+        thread_id: "nested",
+        checkpoint_id: "head",
+        checkpoint_ns: "",
+      },
+      parent_checkpoint: null,
+      metadata: {},
+      created_at: "2026-10-20T12:00:00Z",
+    });
+    const queued = {
+      run_id: "queued",
+      thread_id: "nested",
+      status: "pending",
+      created_at: "2026-10-21T12:00:00Z",
+      metadata: { message_delivery: "queue" },
+    };
+    const policy = {
+      async route(route, account) {
+        const url = new URL(route.request().url());
+        const json = (body) =>
+          route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify(body),
+          });
+        if (url.pathname.endsWith("/user/approval-policy"))
+          return json({
+            default_mode: "interactive",
+            available_modes: ["interactive", "allow_read", "autopilot"],
+            read_tools: ["search_jira_tickets"],
+          });
+        if (url.pathname.endsWith("/threads/nested/history"))
+          return json([state()]);
+        if (url.pathname.endsWith("/threads/nested/state")) {
+          stateRequests.push(url.searchParams.get("subgraphs"));
+          return json({
+            ...state(),
+            tasks: [
+              {
+                id: "parent",
+                name: "task",
+                interrupts: [],
+                state: { tasks: state().tasks },
+              },
+            ],
+          });
+        }
+        if (url.pathname.endsWith("/threads/nested/runs/stream")) {
+          submissions.push(route.request().postDataJSON());
+          pending = [];
+          return route.fulfill({
+            contentType: "text/event-stream",
+            body: `event: metadata\ndata: {"run_id":"resume","thread_id":"nested"}\n\nevent: values\ndata: ${JSON.stringify({ ...state().values, __interrupt__: [] })}\n\nevent: end\ndata: {}\n\n`,
+          });
+        }
+        if (url.pathname.endsWith("/threads/nested/runs"))
+          return json(
+            url.searchParams.get("status") === "running" ? [] : [queued]
+          );
+        if (url.pathname.endsWith("/threads/search")) return json([]);
+        return fallback.route(route, account);
+      },
+    };
+    try {
+      const { page, context, pageErrors } = await authenticatedPage(
+        browser,
+        { ...server, baseUrl: `${server.baseUrl}?threadId=nested` },
+        policy,
+        "developer"
+      );
+      await page.getByRole("combobox", { name: /^Approval mode/ }).click();
+      await page.getByRole("option", { name: /^Allow reads/ }).click();
+      await page.waitForFunction(() =>
+        document.body.textContent?.includes("Allow reads")
+      );
+      await page.waitForTimeout(1500);
+      assert.equal(submissions.length, 1);
+      assert.deepEqual(Object.keys(submissions[0].command.resume).sort(), [
+        "11111111111111111111111111111111",
+        "22222222222222222222222222222222",
+      ]);
+      assert.equal(
+        submissions[0].config.configurable.approval_mode,
+        "allow_read"
+      );
+      assert.ok(stateRequests.includes("true"));
+      assert.deepEqual(pageErrors, []);
+      await context.close();
+    } finally {
       await browser.close();
       await server.close();
     }

@@ -215,7 +215,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card @container/permissions">
+    <div className="border-border bg-card @container/permissions rounded-lg border">
       {SOURCE_IMAGE_SOURCES.map((source) => {
         const row = rows[source];
         const policy = row.current;
@@ -224,7 +224,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
         return (
           <div
             key={source}
-            className="border-t border-border p-3 first:border-t-0"
+            className="border-border border-t p-3 first:border-t-0"
             role="group"
             aria-label={`${sourceLabel} permissions for ${tier} tier`}
             aria-busy={row.isSaving || row.isLoading}
@@ -233,16 +233,16 @@ export function SourceImageControls({ tier }: { tier: string }) {
               <div className="grid gap-2 @2xl/permissions:grid-cols-[9rem_minmax(0,1fr)] @2xl/permissions:items-center @2xl/permissions:gap-4">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <span className="text-foreground flex items-center gap-1.5 text-sm font-semibold">
                       {sourceLabel}
                       {row.isSaving && (
                         <Loader2
-                          className="h-3 w-3 animate-spin text-muted-foreground motion-reduce:animate-none"
+                          className="text-muted-foreground h-3 w-3 animate-spin motion-reduce:animate-none"
                           aria-hidden="true"
                         />
                       )}
                     </span>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="text-muted-foreground block text-xs">
                       {SOURCE_DESCRIPTIONS[source]}
                     </span>
                   </span>
@@ -273,7 +273,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
             {row.error && (
               <div
                 role="alert"
-                className="mt-2 flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-2.5 py-2 text-xs leading-relaxed text-destructive"
+                className="border-destructive/20 bg-destructive/5 text-destructive mt-2 flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs leading-relaxed"
               >
                 <AlertCircle
                   className="mt-0.5 h-3 w-3 shrink-0"
@@ -286,7 +286,7 @@ export function SourceImageControls({ tier }: { tier: string }) {
                     variant="ghost"
                     size="sm"
                     onClick={() => void retrySource(source)}
-                    className="min-h-11 shrink-0 px-3 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive min-h-11 shrink-0 px-3 text-xs"
                   >
                     <RefreshCw aria-hidden="true" />
                     Retry
@@ -297,18 +297,21 @@ export function SourceImageControls({ tier }: { tier: string }) {
           </div>
         );
       })}
-      <div className="space-y-1 border-t border-border bg-muted/20 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+      <div className="border-border bg-muted/20 text-muted-foreground space-y-1 border-t px-3 py-3 text-xs leading-relaxed">
         <p id={`source-attachment-scope-${tier}`}>
           Scope applies to images and documents. Enable either to edit scope.
-          Embedded only fetches files referenced in content. Allow all lets
-          users request other attachments.
+          Embedded only fetches files shown inline in the content. Attachments
+          only skips inline files such as email signatures and logos. Allow all
+          lets users request attachments beyond the default, and is required for
+          either non-embedded default.
         </p>
         <details className="group">
-          <summary className="min-h-11 cursor-pointer rounded-sm py-3 font-medium text-foreground underline decoration-border underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+          <summary className="text-foreground decoration-border focus-visible:outline-ring min-h-11 cursor-pointer rounded-sm py-3 font-medium underline underline-offset-4 focus-visible:outline focus-visible:outline-2">
             File types and limits
           </summary>
           <p id={`source-attachment-images-${tier}`}>
-            Images require the user's image opt-in.
+            Images require the user's image opt-in. Images smaller than 10,000
+            px² or under 24 px on a side are skipped as icons or signatures.
           </p>
           <p id={`source-attachment-documents-${tier}`}>
             Documents are downloaded and converted, up to 10 MB per file.

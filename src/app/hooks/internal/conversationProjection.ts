@@ -114,7 +114,7 @@ function toolBlockResult(blocks: unknown[], imageUrls: string[]): string {
     }
   }
   return hasJson
-    ? JSON.stringify(parts.length === 1 ? parts[0] : parts) ?? ""
+    ? (JSON.stringify(parts.length === 1 ? parts[0] : parts) ?? "")
     : parts.join("");
 }
 
@@ -295,7 +295,7 @@ function buildRawBuckets(
       const prior = message.id ? matchedResults.get(message.id) : undefined;
       const waiting = awaitingResults.get(toolCallId);
       const waitingIndex = message.name
-        ? waiting?.findIndex((call) => call.name === message.name) ?? -1
+        ? (waiting?.findIndex((call) => call.name === message.name) ?? -1)
         : 0;
       const location = prior ?? waiting?.[waitingIndex];
       const bucket = location && messageMap.get(location.messageKey);

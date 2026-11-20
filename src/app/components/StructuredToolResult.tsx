@@ -19,11 +19,11 @@ export function StructuredToolResult({
   return (
     <section
       aria-labelledby={id}
-      className="min-w-0 space-y-4 rounded-lg border border-border bg-card p-4"
+      className="border-border bg-card min-w-0 space-y-4 rounded-lg border p-4"
     >
       <h3
         id={id}
-        className="break-words font-semibold"
+        className="font-semibold wrap-break-word"
       >
         {presentation.title}
       </h3>
@@ -49,7 +49,7 @@ export function StructuredToolResult({
                       <th
                         key={i}
                         scope="col"
-                        className="border-b border-border p-2 font-medium"
+                        className="border-border border-b p-2 font-medium"
                       >
                         {column}
                       </th>
@@ -62,7 +62,7 @@ export function StructuredToolResult({
                       {row.map((cell, j) => (
                         <td
                           key={j}
-                          className="min-w-24 break-words border-b border-border p-2 align-top"
+                          className="border-border min-w-24 border-b p-2 align-top wrap-break-word"
                         >
                           {cell}
                         </td>
@@ -78,16 +78,16 @@ export function StructuredToolResult({
               {block.items.map((item, i) => (
                 <div
                   key={i}
-                  className="min-w-0 rounded-md bg-muted/40 p-3"
+                  className="bg-muted/40 min-w-0 rounded-md p-3"
                 >
-                  <dt className="break-words text-xs text-muted-foreground">
+                  <dt className="text-muted-foreground text-xs wrap-break-word">
                     {item.label}
                   </dt>
-                  <dd className="break-words text-xl font-semibold">
+                  <dd className="text-xl font-semibold wrap-break-word">
                     {item.value}
                   </dd>
                   {item.detail && (
-                    <dd className="break-words text-xs text-muted-foreground">
+                    <dd className="text-muted-foreground text-xs wrap-break-word">
                       {item.detail}
                     </dd>
                   )}
@@ -100,23 +100,25 @@ export function StructuredToolResult({
               aria-label={`${presentation.title} bar chart`}
               className="space-y-2"
             >
-              <figcaption className="text-xs text-muted-foreground">
+              <figcaption className="text-muted-foreground text-xs">
                 {block.unit ? `Values in ${block.unit}` : "Values"}
               </figcaption>
               {block.items.map((item, i) => (
                 <div key={i}>
                   <div className="flex justify-between gap-3 text-sm">
-                    <span className="min-w-0 break-words">{item.label}</span>
+                    <span className="min-w-0 wrap-break-word">
+                      {item.label}
+                    </span>
                     <span className="shrink-0 tabular-nums">
                       {item.value.toLocaleString()} {block.unit}
                     </span>
                   </div>
                   <div
                     aria-hidden
-                    className="h-2 rounded bg-muted"
+                    className="bg-muted h-2 rounded"
                   >
                     <div
-                      className="h-2 rounded bg-primary"
+                      className="bg-primary h-2 rounded"
                       style={{
                         width: `${
                           (item.value /
@@ -137,7 +139,7 @@ export function StructuredToolResult({
               {block.items.map((item, i) => (
                 <li key={i}>
                   <a
-                    className="break-all text-sm underline focus-visible:ring-2 focus-visible:ring-ring"
+                    className="focus-visible:ring-ring text-sm break-all underline focus-visible:ring-2"
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -145,7 +147,7 @@ export function StructuredToolResult({
                     {item.label}
                   </a>
                   {item.description && (
-                    <p className="break-words text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs wrap-break-word">
                       {item.description}
                     </p>
                   )}
@@ -155,7 +157,7 @@ export function StructuredToolResult({
           )}
           {block.type === "suggestions" && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Suggested follow-ups · add to your draft
               </p>
               <div className="flex flex-wrap gap-2">
@@ -164,7 +166,7 @@ export function StructuredToolResult({
                     key={i}
                     variant="outline"
                     size="sm"
-                    className="h-auto max-w-full whitespace-normal break-words text-left"
+                    className="h-auto max-w-full text-left wrap-break-word whitespace-normal"
                     disabled={disabled || !onUseSuggestion}
                     onClick={() => onUseSuggestion?.(item)}
                   >

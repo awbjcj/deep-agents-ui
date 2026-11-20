@@ -10,6 +10,8 @@ import React, {
   lazy,
 } from "react";
 import { useQueryState } from "nuqs";
+import { useDefaultLayout } from "react-resizable-panels";
+import { panelStorage } from "@/lib/panel-storage";
 import {
   canonicalAssistantId,
   canonicalSystemAssistant,
@@ -36,6 +38,7 @@ import { usePanelLayout } from "@/app/hooks/usePanelLayout";
 import { loginUrlForConversation } from "@/app/utils/navigationRecovery";
 import type { WorkspaceTab } from "@/app/components/WorkspacePanel";
 import { cn } from "@/lib/utils";
+import { HeaderButton } from "@/app/components/HeaderButton";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
@@ -110,8 +113,8 @@ interface HomePageInnerProps {
 /** Placeholder shown while a lazily-loaded side panel's chunk is fetched. */
 function PanelFallback({ label }: { label: string }) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-card/40">
-      <p className="text-sm text-muted-foreground">Loading {label}…</p>
+    <div className="bg-card/40 absolute inset-0 flex items-center justify-center">
+      <p className="text-muted-foreground text-sm">Loading {label}…</p>
     </div>
   );
 }
@@ -209,16 +212,33 @@ function HomePageInner({
     compact: compactLayout,
     threadsOpen: !!sidebar,
   });
+  const panelIds = useMemo(
+    () => [
+      ...(sidebar ? ["thread-history"] : []),
+      "chat",
+      ...(workspaceOpen
+        ? ["right-panel"]
+        : adminOpen && user?.role === "admin"
+          ? ["admin-panel"]
+          : []),
+    ],
+    [sidebar, workspaceOpen, adminOpen, user?.role]
+  );
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: "standalone-chat",
+    panelIds,
+    storage: panelStorage,
+  });
   const overlayPanel =
     expandedPanel ??
     (compactLayout
       ? workspaceOpen
         ? "workspace"
         : adminOpen
-        ? "admin"
-        : sidebar
-        ? "threads"
-        : null
+          ? "admin"
+          : sidebar
+            ? "threads"
+            : null
       : null);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const isAdmin = user?.role === "admin";
@@ -271,16 +291,16 @@ function HomePageInner({
       overlayPanel === "threads"
         ? "thread-history"
         : overlayPanel === "workspace"
-        ? "right-panel"
-        : "admin-panel";
+          ? "right-panel"
+          : "admin-panel";
     const panel = document.getElementById(panelId);
     const active = document.activeElement;
     const triggerLabel =
       overlayPanel === "threads"
         ? "Threads"
         : overlayPanel === "workspace"
-        ? "Workspace"
-        : "Admin console";
+          ? "Workspace"
+          : "Admin console";
     const previous = panel?.contains(active)
       ? document.querySelector<HTMLButtonElement>(
           `button[aria-label="${triggerLabel}"]`
@@ -471,16 +491,24 @@ function HomePageInner({
       <Suspense fallback={null}>
         <TokenSetupWizard />
       </Suspense>
+      {!overlayPanel && (
+        <a
+          href="#conversation"
+          className="bg-card text-primary focus:ring-ring sr-only z-90 rounded-lg px-4 py-3 focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:ring-2 focus:outline-none"
+        >
+          Skip to conversation
+        </a>
+      )}
       <div className="flex h-dvh min-h-0 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex min-h-16 flex-shrink-0 flex-wrap items-center justify-between gap-4 border-b border-border bg-card/70 px-6 py-2 backdrop-blur-sm max-sm:gap-2 max-sm:px-3 max-[430px]:flex-col max-[430px]:items-stretch">
+        <header className="border-border bg-card/70 sticky top-0 z-40 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-4 border-b px-6 py-2 backdrop-blur-sm max-[430px]:flex-col max-[430px]:items-stretch max-sm:gap-2 max-sm:px-3">
           {/* Orange accent underline */}
           <div
-            className="pointer-events-none absolute bottom-[-1px] left-0 h-[2px] w-24"
+            className="pointer-events-none absolute -bottom-px left-0 h-[2px] w-24"
             style={{ background: "var(--aptiv-orange)" }}
           />
 
-          <div className="flex min-w-0 items-center gap-4 max-sm:gap-2 max-[430px]:justify-between">
+          <div className="flex min-w-0 items-center gap-4 max-[430px]:justify-between max-sm:gap-2">
             <div className="flex min-w-0 items-center gap-3">
               <img
                 src={
@@ -491,20 +519,19 @@ function HomePageInner({
                 alt="Aptiv"
                 width={76}
                 height={22}
-                className="h-5 w-auto shrink-0"
+                className="h-[20px] w-auto shrink-0"
               />
               <span
-                className="h-5 w-px bg-border max-lg:hidden"
+                className="bg-border h-5 w-px max-lg:hidden"
                 aria-hidden="true"
               />
-              <h1 className="sr-only min-w-0 break-words text-sm font-semibold tracking-tight max-[430px]:not-sr-only lg:not-sr-only">
+              <h1 className="sr-only min-w-0 text-sm font-semibold tracking-tight wrap-break-word max-[430px]:not-sr-only xl:not-sr-only">
                 VSDA Deep Agent
               </h1>
             </div>
             {!sidebar && (
-              <Button
+              <HeaderButton
                 variant="ghost"
-                size="sm"
                 aria-label="Threads"
                 onClick={() => {
                   if (compactLayout) {
@@ -515,75 +542,72 @@ function HomePageInner({
                   }
                   void setSidebar("1");
                 }}
-                className="rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
+                className="max-lg:size-touch max-lg:p-0"
               >
-                <MessagesSquare className="h-4 w-4 sm:mr-2" />
-                <span className="max-sm:hidden">Threads</span>
+                <MessagesSquare className="h-4 w-4" />
+                <span className="max-lg:hidden">Threads</span>
                 {interruptCount > 0 && (
                   <span
-                    className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                    className="ml-2 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-semibold text-white"
                     style={{ background: "var(--aptiv-orange)" }}
                   >
                     {interruptCount}
                   </span>
                 )}
-              </Button>
+              </HeaderButton>
             )}
           </div>
 
           <div
             ref={sidePanel.headerActionsRef}
-            className="flex min-w-0 flex-wrap items-center gap-1.5 max-sm:ml-auto max-sm:gap-1 max-[430px]:ml-0 max-[430px]:justify-between"
+            className="flex min-w-0 flex-wrap items-center gap-2 max-[430px]:ml-0 max-[430px]:justify-between max-sm:ml-auto max-sm:gap-1"
           >
-            <Button
+            <HeaderButton
               variant="ghost"
-              size="sm"
               aria-label="Scheduled tasks"
               onClick={() => {
                 if (!allowSettingsLeave()) return;
                 router.push("/tasks");
               }}
-              className="rounded-full border border-border bg-card px-3 max-sm:px-2"
+              className="max-lg:size-touch max-lg:p-0"
             >
-              <CalendarClock className="h-4 w-4 sm:mr-2" />
-              <span className="max-sm:hidden">Tasks</span>
-            </Button>
+              <CalendarClock className="h-4 w-4" />
+              <span className="max-lg:hidden">Tasks</span>
+            </HeaderButton>
             {/* Keep the agent picker reachable when the toolbar becomes compact. */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <HeaderButton
                   type="button"
                   onClick={() => setConfigDialogOpen(true)}
                   aria-label="Switch agent"
-                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-2 text-xs text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="max-xl:size-touch max-xl:p-0"
                 >
                   <Bot
                     className="h-4 w-4"
                     aria-hidden="true"
                   />
-                  <span className="hidden max-w-[11rem] truncate font-medium xl:inline">
+                  <span className="hidden max-w-44 truncate font-medium xl:inline">
                     {agentName.replace(/^VSDA /, "")}
                   </span>
                   <ChevronDown
-                    className="hidden h-3.5 w-3.5 text-muted-foreground xl:block"
+                    className="text-muted-foreground hidden h-3.5 w-3.5 xl:block"
                     aria-hidden="true"
                   />
-                </button>
+                </HeaderButton>
               </TooltipTrigger>
               <TooltipContent>{agentName}</TooltipContent>
             </Tooltip>
             <span
               ref={sidePanel.boundaryRef}
               aria-hidden="true"
-              className="mx-1 hidden h-6 w-px bg-border md:block"
+              className="bg-border mx-1 hidden h-6 w-px md:block"
             />
             <span className="max-sm:hidden">
-              <ThemeToggle />
+              <ThemeToggle variant="icon" />
             </span>
-            <span className="mx-0.5 hidden h-5 w-px bg-border md:block" />
-            <Button
+            <HeaderButton
               variant="ghost"
-              size="sm"
               onClick={() => {
                 if (!allowSettingsLeave()) return;
                 setExpandedPanel(null);
@@ -597,19 +621,19 @@ function HomePageInner({
               aria-pressed={workspaceOpen}
               className={
                 workspaceOpen
-                  ? "rounded-full border border-[hsl(var(--primary)/0.4)] bg-primary/10 px-3 text-primary hover:bg-primary/15 max-sm:px-2"
-                  : "rounded-full border border-border bg-card px-3 text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:bg-accent max-sm:px-2"
+                  ? "bg-primary/10 text-primary hover:bg-primary/15 max-lg:size-touch max-lg:p-0"
+                  : "max-lg:size-touch max-lg:p-0"
               }
             >
-              <LayoutPanelLeft className="h-4 w-4 sm:mr-2" />
-              <span className="max-sm:hidden">Workspace</span>
-            </Button>
+              <LayoutPanelLeft className="h-4 w-4" />
+              <span className="max-lg:hidden">Workspace</span>
+            </HeaderButton>
             {isAdmin && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
+                  <HeaderButton
                     variant="ghost"
-                    size="icon"
+                    iconOnly
                     onClick={() => {
                       if (!allowSettingsLeave()) return;
                       setExpandedPanel(null);
@@ -624,48 +648,48 @@ function HomePageInner({
                     aria-pressed={adminOpen}
                     className={
                       adminOpen
-                        ? "border-[var(--aptiv-orange)]/50 bg-[var(--aptiv-orange)]/10 hover:bg-[var(--aptiv-orange)]/15 rounded-full border text-[var(--aptiv-orange)]"
-                        : "hover:border-[var(--aptiv-orange)]/50 rounded-full border border-border bg-card text-foreground hover:text-[var(--aptiv-orange)]"
+                        ? "bg-primary/10 text-primary hover:bg-primary/15"
+                        : "text-muted-foreground hover:text-foreground"
                     }
                   >
                     <Shield className="h-4 w-4" />
-                  </Button>
+                  </HeaderButton>
                 </TooltipTrigger>
                 <TooltipContent>Admin console</TooltipContent>
               </Tooltip>
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
+                <HeaderButton
                   variant="ghost"
-                  size="icon"
+                  iconOnly
                   onClick={() => setAccountDialogOpen(true)}
                   aria-label="Account settings"
-                  className="rounded-full border border-border bg-card text-foreground hover:border-[hsl(var(--primary)/0.4)] hover:text-primary max-sm:hidden"
+                  className="text-muted-foreground hover:text-foreground max-sm:hidden"
                 >
                   <UserCog className="h-4 w-4" />
-                </Button>
+                </HeaderButton>
               </TooltipTrigger>
               <TooltipContent>Account settings</TooltipContent>
             </Tooltip>
-            <Button
+            <HeaderButton
               variant="default"
-              size="sm"
               onClick={() => {
                 void setThreadId(null);
                 refreshNotifications();
               }}
               disabled={!threadId}
               aria-label="New Thread"
-              className="max-lg:px-2"
+              className="max-lg:size-touch max-lg:p-0"
             >
               <SquarePen
                 className="h-4 w-4"
                 aria-hidden="true"
               />
               <span className="max-lg:hidden">New Thread</span>
-            </Button>
+            </HeaderButton>
             <AccountMenu
+              toolbar
               onOpenSettings={() => setAccountDialogOpen(true)}
               onBeforeSignOut={allowSettingsLeave}
             />
@@ -674,20 +698,22 @@ function HomePageInner({
 
         <div
           ref={sidePanel.containerRef}
+          role="main"
           className="relative min-h-0 flex-1 overflow-hidden"
         >
           <ResizablePanelGroup
-            direction="horizontal"
-            autoSaveId="standalone-chat"
+            orientation="horizontal"
+            defaultLayout={defaultLayout}
+            onLayoutChanged={onLayoutChanged}
           >
             {sidebar && (
               <>
                 <ResizablePanel
                   id="thread-history"
-                  ref={sidePanel.threadsRef}
-                  order={1}
+                  panelRef={sidePanel.threadsRef}
+                  data-compact-overlay="true"
                   {...sidePanel.threads}
-                  className="relative min-w-0 bg-background max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full"
+                  className="bg-background relative min-w-0 max-xl:absolute! max-xl:inset-0 max-xl:z-30 max-xl:w-full!"
                   tabIndex={-1}
                   role="region"
                   aria-label="Thread history"
@@ -711,8 +737,7 @@ function HomePageInner({
             <ResizablePanel
               id="chat"
               {...sidePanel.chat}
-              className="relative flex min-w-0 flex-col max-xl:!w-full"
-              order={2}
+              className="relative flex min-w-0 flex-col max-xl:w-full!"
               inert={overlayPanel !== null}
             >
               <ChatProvider
@@ -741,13 +766,16 @@ function HomePageInner({
                 />
                 <ResizablePanel
                   id="right-panel"
-                  ref={sidePanel.settingsRef}
-                  order={3}
+                  panelRef={sidePanel.settingsRef}
+                  data-compact-overlay="true"
+                  data-expanded={
+                    expandedPanel === "workspace" ? "true" : undefined
+                  }
                   {...sidePanel.settings}
                   className={cn(
-                    "relative min-w-0 max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:bg-background",
+                    "max-xl:bg-background relative min-w-0 max-xl:absolute! max-xl:inset-0 max-xl:z-30 max-xl:w-full!",
                     expandedPanel === "workspace" &&
-                      "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
+                      "bg-background absolute! inset-0 z-50 w-full! min-w-0!"
                   )}
                   tabIndex={-1}
                   role="region"
@@ -782,13 +810,14 @@ function HomePageInner({
                 />
                 <ResizablePanel
                   id="admin-panel"
-                  ref={sidePanel.settingsRef}
-                  order={4}
+                  panelRef={sidePanel.settingsRef}
+                  data-compact-overlay="true"
+                  data-expanded={expandedPanel === "admin" ? "true" : undefined}
                   {...sidePanel.settings}
                   className={cn(
-                    "relative min-w-0 max-xl:!absolute max-xl:inset-0 max-xl:z-30 max-xl:!w-full max-xl:bg-background",
+                    "max-xl:bg-background relative min-w-0 max-xl:absolute! max-xl:inset-0 max-xl:z-30 max-xl:w-full!",
                     expandedPanel === "admin" &&
-                      "!absolute inset-0 z-50 !w-full !min-w-0 bg-background"
+                      "bg-background absolute! inset-0 z-50 w-full! min-w-0!"
                   )}
                   tabIndex={-1}
                   role="region"

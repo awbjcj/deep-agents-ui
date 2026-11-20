@@ -63,12 +63,12 @@ export function TeamsChatSetup({
         <h3 className="text-sm font-semibold">
           {reconnecting ? "Reconnect your self-chat" : "Connect your self-chat"}
         </h3>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Use your private chat with yourself in Teams. Your saved Microsoft
           Graph token is used to find and verify it.
         </p>
         {reconnecting && (
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
             Your previous connection is no longer available. Reconnecting starts
             a new conversation and handles only new commands. Previous requests
             and replies will not be replayed. Any task already running can still
@@ -96,7 +96,7 @@ export function TeamsChatSetup({
       {error && (
         <p
           role="alert"
-          className="break-words text-sm text-destructive"
+          className="text-destructive text-sm wrap-break-word"
         >
           {error}
         </p>
@@ -112,7 +112,7 @@ export function TeamsChatSetup({
       {searched && !searching && !chatId && !error && (
         <p
           role="status"
-          className="text-sm text-muted-foreground"
+          className="text-muted-foreground text-sm"
         >
           No personal self-chat found. Open your chat with yourself in Teams,
           then try again.
@@ -120,11 +120,11 @@ export function TeamsChatSetup({
       )}
       <p
         id="teams-connect-consent"
-        className="text-sm leading-relaxed text-muted-foreground"
+        className="text-muted-foreground text-sm leading-relaxed"
       >
         Connecting enables the feature and sends a setup message to this chat.
         Only messages starting with{" "}
-        <code className="rounded bg-muted px-1 font-mono text-foreground">
+        <code className="bg-muted text-foreground rounded px-1 font-mono">
           /agent
         </code>{" "}
         are handled.
@@ -144,8 +144,8 @@ export function TeamsChatSetup({
         {connecting
           ? "Connecting…"
           : reconnecting
-          ? "Reconnect and enable"
-          : "Connect and enable"}
+            ? "Reconnect and enable"
+            : "Connect and enable"}
       </Button>
     </form>
   );

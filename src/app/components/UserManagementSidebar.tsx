@@ -160,18 +160,18 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
     trimmedUsername.length === 0
       ? ""
       : trimmedUsername.length < 3
-      ? "Username must be at least 3 characters"
-      : !USERNAME_PATTERN.test(trimmedUsername)
-      ? "Username may only contain letters, digits, underscores, hyphens, and dots"
-      : "";
+        ? "Username must be at least 3 characters"
+        : !USERNAME_PATTERN.test(trimmedUsername)
+          ? "Username may only contain letters, digits, underscores, hyphens, and dots"
+          : "";
 
   const trimmedEmail = newEmail.trim().toLowerCase();
   const emailValidationError =
     trimmedEmail.length === 0
       ? ""
       : !isAllowedRegistrationEmail(trimmedEmail)
-      ? ALLOWED_EMAIL_ERROR_MESSAGE
-      : "";
+        ? ALLOWED_EMAIL_ERROR_MESSAGE
+        : "";
 
   const handleRoleChange = async (targetUserId: string, role: Role) => {
     if (targetUserId === user?.user_id && role !== "admin") {
@@ -377,9 +377,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Header */}
-      <div className="flex flex-shrink-0 items-center justify-between border-b border-border p-4">
+      <div className="border-border flex shrink-0 items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
+          <Users className="text-muted-foreground h-5 w-5" />
           <h2 className="text-lg font-semibold tracking-tight">
             User Management
           </h2>
@@ -398,9 +398,9 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       <ScrollArea className="h-0 flex-1">
         <div className="space-y-6 p-4">
           {/* User info card */}
-          <div className="rounded-lg border border-border bg-muted/50 p-4">
+          <div className="border-border bg-muted/50 rounded-lg border p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full">
                 <User className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -411,11 +411,11 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                   <RoleBadge role={user?.role || "user"} />
                 </div>
                 {profileEmail && (
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="text-muted-foreground truncate text-xs">
                     {profileEmail}
                   </p>
                 )}
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="text-muted-foreground truncate text-xs">
                   ID: {user?.user_id?.slice(0, 8)}...
                 </p>
               </div>
@@ -449,7 +449,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 autoComplete="off"
               />
               {usernameValidationError && (
-                <p className="text-xs text-destructive">
+                <p className="text-destructive text-xs">
                   {usernameValidationError}
                 </p>
               )}
@@ -462,7 +462,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 trimmedUsername === user?.username ||
                 !!usernameValidationError
               }
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
             >
               {isSavingUsername ? (
                 <>
@@ -484,7 +484,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           </div>
 
           {/* Change Email */}
-          <div className="space-y-3 border-t border-border pt-4">
+          <div className="border-border space-y-3 border-t pt-4">
             <h3 className="text-sm font-semibold">Aptiv Email</h3>
             <div className="space-y-1.5">
               <Label
@@ -502,7 +502,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 autoComplete="email"
               />
               {emailValidationError && (
-                <p className="text-xs text-destructive">
+                <p className="text-destructive text-xs">
                   {emailValidationError}
                 </p>
               )}
@@ -515,7 +515,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 trimmedEmail === profileEmail ||
                 !!emailValidationError
               }
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
             >
               {isSavingEmail ? (
                 <>
@@ -537,7 +537,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           </div>
 
           {/* Change Password */}
-          <div className="space-y-3 border-t border-border pt-4">
+          <div className="border-border space-y-3 border-t pt-4">
             <h3 className="text-sm font-semibold">Change Password</h3>
 
             <div className="space-y-1.5">
@@ -560,7 +560,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 <button
                   type="button"
                   onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
                   aria-label={
                     showCurrentPw
                       ? "Hide current password"
@@ -597,7 +597,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 <button
                   type="button"
                   onClick={() => setShowNewPw(!showNewPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
                   aria-label={
                     showNewPw ? "Hide new password" : "Show new password"
                   }
@@ -632,7 +632,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPw(!showConfirmPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
                   aria-label={
                     showConfirmPw
                       ? "Hide confirm password"
@@ -650,7 +650,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
               {newPassword &&
                 confirmPassword &&
                 newPassword !== confirmPassword && (
-                  <p className="text-xs text-destructive">
+                  <p className="text-destructive text-xs">
                     Passwords do not match
                   </p>
                 )}
@@ -664,7 +664,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                 !newPassword ||
                 !confirmPassword
               }
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 w-full"
             >
               {isSavingPassword ? (
                 <>
@@ -687,17 +687,17 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
 
           {/* Admin Panel */}
           {isAdmin(user) && (
-            <div className="space-y-4 border-t border-border pt-4">
+            <div className="border-border space-y-4 border-t pt-4">
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <Shield className="text-muted-foreground h-4 w-4" />
+                <h3 className="text-muted-foreground text-sm font-semibold tracking-wider uppercase">
                   Admin
                 </h3>
               </div>
 
               {isLoadingAdmin ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
                 </div>
               ) : (
                 <>
@@ -708,7 +708,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                       {adminUsers.map((u) => (
                         <div
                           key={u.user_id}
-                          className="space-y-2 rounded-md border border-border bg-muted/30 px-3 py-2"
+                          className="border-border bg-muted/30 space-y-2 rounded-md border px-3 py-2"
                         >
                           <div className="flex items-center gap-2">
                             <RoleBadge role={u.role} />
@@ -724,7 +724,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                                 )
                               }
                               disabled={u.user_id === user?.user_id}
-                              className="rounded border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                              className="border-input bg-background ring-offset-background focus:ring-ring rounded border px-2 py-1 text-xs focus:ring-2 focus:outline-none disabled:opacity-50"
                               aria-label={`Role for ${u.username}`}
                             >
                               {ROLES.map((role) => (
@@ -754,7 +754,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                               size="sm"
                               onClick={() => handleDeleteUser(u)}
                               disabled={u.user_id === user?.user_id}
-                              className="h-8 flex-1 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 flex-1 px-2 text-xs"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                               Delete
@@ -765,7 +765,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                     </div>
                   </div>
 
-                  <div className="space-y-3 border-t border-border pt-4">
+                  <div className="border-border space-y-3 border-t pt-4">
                     <h4 className="text-sm font-semibold">
                       Tier Model Allowlists
                     </h4>
@@ -787,7 +787,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive w-full"
                     onClick={handleResetAllPasswords}
                   >
                     <Download className="mr-2 h-4 w-4" />
@@ -799,10 +799,10 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
           )}
 
           {/* Logout */}
-          <div className="border-t border-border pt-4">
+          <div className="border-border border-t pt-4">
             <Button
               variant="outline"
-              className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive w-full"
               onClick={logout}
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -870,7 +870,7 @@ function TierAllowlistEditor({
     <div className="space-y-1.5">
       <Label
         htmlFor={`tier-allowlist-${tier}`}
-        className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        className="text-muted-foreground text-xs font-medium tracking-wide uppercase"
       >
         {tier}
       </Label>

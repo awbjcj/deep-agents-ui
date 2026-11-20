@@ -21,7 +21,7 @@ export default function TasksPage() {
         <h1 className="text-xl font-semibold">Scheduled tasks</h1>
         <Link
           href="/login"
-          className="mt-4 inline-block text-primary underline"
+          className="text-primary mt-4 inline-block underline"
         >
           Sign in
         </Link>

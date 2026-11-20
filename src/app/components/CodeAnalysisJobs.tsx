@@ -57,7 +57,7 @@ function ConversationAnalysisJobs({
       {error && (
         <p
           role="status"
-          className="text-sm text-muted-foreground"
+          className="text-muted-foreground text-sm"
         >
           Analysis progress is temporarily unavailable. Retrying automatically.
         </p>

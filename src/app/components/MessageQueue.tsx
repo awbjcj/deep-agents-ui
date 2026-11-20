@@ -55,7 +55,7 @@ export function MessageQueue({
       tabIndex={-1}
       className="mb-2 gap-1 rounded-lg bg-transparent px-2 shadow-none [&_p]:mb-0"
     >
-      <div className="flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground">
+      <div className="text-muted-foreground flex items-center gap-2 px-2 text-xs font-medium">
         <ListOrdered
           className="size-3.5"
           aria-hidden="true"
@@ -88,18 +88,18 @@ export function MessageQueue({
         </Button>
       </div>
       <p
-        className="px-2 text-xs text-muted-foreground"
+        className="text-muted-foreground px-2 text-xs"
         aria-live="polite"
       >
         {queue.items.some((item) => item.status === "unknown")
           ? "Delivery needs checking. Automatic queue delivery is paused."
           : queue.items[0]?.status === "failed"
-          ? "Message 1 wasn’t sent. Retry, edit, or delete it to continue."
-          : queue.paused
-          ? "Queue paused. Your messages are saved in this tab."
-          : queue.editingId
-          ? "Queue paused while you edit."
-          : "Sent in order after the current response. Keep this chat open."}
+            ? "Message 1 wasn’t sent. Retry, edit, or delete it to continue."
+            : queue.paused
+              ? "Queue paused. Your messages are saved in this tab."
+              : queue.editingId
+                ? "Queue paused while you edit."
+                : "Sent in order after the current response. Keep this chat open."}
       </p>
       <ol className="m-0 max-h-[min(13rem,20dvh)] list-none overflow-y-auto overscroll-contain p-0">
         {queue.items.map((item, index) => {
@@ -115,7 +115,7 @@ export function MessageQueue({
               aria-busy={sending}
             >
               <div className="flex min-w-0 flex-wrap items-start gap-2">
-                <span className="pt-1.5 text-xs tabular-nums text-muted-foreground">
+                <span className="text-muted-foreground pt-1.5 text-xs tabular-nums">
                   {index + 1}.
                 </span>
                 <div className="min-w-0 flex-1 basis-3/4 sm:basis-0">
@@ -144,16 +144,16 @@ export function MessageQueue({
                           finishEditing();
                         }
                       }}
-                      className="min-h-20 resize-y bg-background text-sm"
+                      className="bg-background min-h-20 resize-y text-sm"
                     />
                   ) : (
-                    <p className="whitespace-pre-wrap break-words py-1 [overflow-wrap:anywhere]">
+                    <p className="py-1 wrap-anywhere wrap-break-word whitespace-pre-wrap">
                       {queuedMessageText(item.message).trim() ||
                         "Attached files"}
                     </p>
                   )}
                   {Array.isArray(attachments) && attachments.length > 0 && (
-                    <p className="break-words text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs wrap-break-word">
                       {attachments
                         .map((attachment) => attachment.name)
                         .join(", ")}
@@ -162,7 +162,7 @@ export function MessageQueue({
                   {sending && (
                     <p
                       role="status"
-                      className="text-xs text-muted-foreground"
+                      className="text-muted-foreground text-xs"
                     >
                       Sending…
                     </p>
@@ -170,7 +170,7 @@ export function MessageQueue({
                   {item.status === "failed" && (
                     <p
                       role="alert"
-                      className="text-xs text-destructive"
+                      className="text-destructive text-xs"
                     >
                       Message was not sent. Retry when the response finishes, or
                       edit it.
@@ -179,7 +179,7 @@ export function MessageQueue({
                   {uncertain && (
                     <p
                       role="alert"
-                      className="text-xs text-destructive"
+                      className="text-destructive text-xs"
                     >
                       Delivery is unconfirmed. Check delivery before sending
                       again. Dismissing this draft does not cancel a run.

@@ -30,21 +30,24 @@ test(
       const admin = page.locator("#admin-panel");
       const alignedBox = async (panel) => {
         await panel.waitFor();
-        await page.waitForFunction((id) => {
-          const panel = document.getElementById(id);
-          const toggle = document.querySelector(
-            "header button[aria-label^='Switch to ']"
-          );
-          const divider =
-            toggle.parentElement.previousElementSibling.getBoundingClientRect();
-          return (
-            Math.abs(
-              panel.getBoundingClientRect().left -
-                divider.left -
-                divider.width / 2
-            ) < 2
-          );
-        }, await panel.getAttribute("id"));
+        await page.waitForFunction(
+          (id) => {
+            const panel = document.getElementById(id);
+            const toggle = document.querySelector(
+              "header button[aria-label^='Switch to ']"
+            );
+            const divider =
+              toggle.parentElement.previousElementSibling.getBoundingClientRect();
+            return (
+              Math.abs(
+                panel.getBoundingClientRect().left -
+                  divider.left -
+                  divider.width / 2
+              ) < 2
+            );
+          },
+          await panel.getAttribute("id")
+        );
         return panel.boundingBox();
       };
 
@@ -62,7 +65,7 @@ test(
           const adminBox = await alignedBox(admin);
           assert.ok(Math.abs(workspaceBox.width - adminBox.width) < 2);
 
-          const handle = page.locator("[data-panel-resize-handle-id]").last();
+          const handle = page.locator("[data-separator]").last();
           await handle.focus();
           await page.keyboard.press("ArrowLeft");
           assert.ok((await admin.boundingBox()).width > adminBox.width + 10);
@@ -112,6 +115,52 @@ test(
           .click();
         await workspace.waitFor();
       }
+      assert.deepEqual(pageErrors, []);
+      assert.deepEqual(consoleErrors, []);
+      await context.close();
+    } finally {
+      await browser.close();
+      await server.close();
+    }
+  }
+);
+
+test(
+  "restores a v3 saved thread width after the panel library upgrade",
+  { skip: process.env.PANEL_WIDTH_BROWSER_TEST !== "1", timeout: 30000 },
+  async () => {
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
+    );
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
+    const server = await staticServer();
+    try {
+      const { page, context, pageErrors, consoleErrors } =
+        await authenticatedPage(browser, server, makePolicyFixture(), "admin");
+      await page.evaluate(() => {
+        const prefix = "react-resizable-panels:standalone-chat";
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith(`${prefix}:`)) localStorage.removeItem(key);
+        }
+        localStorage.setItem(
+          prefix,
+          JSON.stringify({
+            "chat,thread-history": { layout: [22, 78], expandToSizes: {} },
+          })
+        );
+      });
+      await page.goto(`${server.baseUrl}?sidebar=1`);
+      await page.locator("#thread-history").waitFor();
+      await page.waitForFunction(() => {
+        const panel = document.getElementById("thread-history");
+        return (
+          panel &&
+          Math.abs(panel.getBoundingClientRect().width - 1440 * 0.22) < 2
+        );
+      });
       assert.deepEqual(pageErrors, []);
       assert.deepEqual(consoleErrors, []);
       await context.close();
@@ -383,18 +432,28 @@ test(
         await page.setViewportSize({ width, height: 900 });
         await verifyColumns("right-panel");
       }
-      // Legacy or stale saved percentages must be clamped to the new budgets.
+      // Stale saved percentages must be clamped to the current budgets.
       await page.waitForFunction(() =>
-        localStorage.getItem("react-resizable-panels:standalone-chat")
+        Object.keys(localStorage).some((key) =>
+          key.startsWith("react-resizable-panels:standalone-chat:")
+        )
       );
       await page.addInitScript(() => {
-        const key = "react-resizable-panels:standalone-chat";
-        const saved = JSON.parse(localStorage.getItem(key) ?? "{}");
-        for (const state of Object.values(saved)) {
-          if (state.layout?.length === 3) state.layout = [5, 5, 90];
-          if (state.layout?.length === 2) state.layout = [90, 10];
+        for (const key of Object.keys(localStorage)) {
+          if (!key.startsWith("react-resizable-panels:standalone-chat:"))
+            continue;
+          const saved = JSON.parse(localStorage.getItem(key) ?? "{}");
+          const ids = Object.keys(saved);
+          if (ids.length === 3)
+            ids.forEach((id, index) => {
+              saved[id] = [5, 5, 90][index];
+            });
+          if (ids.length === 2)
+            ids.forEach((id, index) => {
+              saved[id] = [90, 10][index];
+            });
+          localStorage.setItem(key, JSON.stringify(saved));
         }
-        localStorage.setItem(key, JSON.stringify(saved));
       });
       await page.reload();
       await page

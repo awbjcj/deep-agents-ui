@@ -116,7 +116,7 @@ export function ScmCredentials() {
     >
       <div className="flex items-start gap-2">
         <KeyRound
-          className="mt-0.5 h-4 w-4 text-primary"
+          className="text-primary mt-0.5 h-4 w-4"
           aria-hidden="true"
         />
         <div>
@@ -126,7 +126,7 @@ export function ScmCredentials() {
           >
             Source-control access
           </h3>
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-xs leading-relaxed">
             Stored tokens are encrypted.
           </p>
         </div>
@@ -137,7 +137,7 @@ export function ScmCredentials() {
           <Loader2 className="h-4 w-4 animate-spin" />
         </div>
       ) : servers.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+        <p className="border-border text-muted-foreground rounded-md border border-dashed p-3 text-xs">
           No SCM servers are available yet. Ask an administrator to configure
           one.
         </p>
@@ -152,16 +152,16 @@ export function ScmCredentials() {
           return (
             <div
               key={server.id}
-              className="space-y-2 rounded-lg border border-border bg-card p-3"
+              className="border-border bg-card space-y-2 rounded-lg border p-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium">{server.display_name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {isGerrit ? "Gerrit" : "Plastic SCM"} · {state.label}
                   </p>
                   {state.hint && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       {state.hint}
                     </p>
                   )}
@@ -175,7 +175,7 @@ export function ScmCredentials() {
                       disabled={busy}
                       aria-label={`Remove ${server.display_name} credential`}
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      <Trash2 className="text-destructive h-3.5 w-3.5" />
                     </Button>
                   )}
               </div>

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 import { loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
+const EVIDENCE = process.env.ANALYSIS_EVIDENCE_DIR ?? "/tmp";
 
 test(
   "completed and partial reports reach Files after busy-thread retries",
@@ -163,9 +165,14 @@ test(
       await page.waitForFunction(() => window.fileRefreshes >= 3);
       assert.equal(writes.length, 2, "reopening must not duplicate a report");
       assert.deepEqual(errors, []);
-      await page.screenshot({ path: "/tmp/code-analysis-files-desktop.png" });
+      await mkdir(EVIDENCE, { recursive: true });
+      await page.screenshot({
+        path: `${EVIDENCE}/code-analysis-files-desktop.png`,
+      });
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.screenshot({ path: "/tmp/code-analysis-files-mobile.png" });
+      await page.screenshot({
+        path: `${EVIDENCE}/code-analysis-files-mobile.png`,
+      });
     } finally {
       await browser?.close();
       await new Promise((done) => server.close(done));

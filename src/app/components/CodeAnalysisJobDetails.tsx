@@ -34,7 +34,7 @@ export function CodeAnalysisJobDetails({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {preparation && (
-        <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+        <div className="text-muted-foreground flex flex-wrap justify-between gap-2 text-xs">
           <span className="tabular-nums">
             {count(preparation.completed_entries)} of{" "}
             {count(preparation.total_entries)} entries
@@ -62,7 +62,7 @@ export function CodeAnalysisJobDetails({
               key={String(label)}
               className="flex flex-col gap-1"
             >
-              <dt className="text-xs text-muted-foreground">{String(label)}</dt>
+              <dt className="text-muted-foreground text-xs">{String(label)}</dt>
               <dd className="text-sm font-medium tabular-nums">
                 {count(value)}
               </dd>
@@ -71,7 +71,7 @@ export function CodeAnalysisJobDetails({
         </dl>
       )}
       {age !== null && shouldPoll(job.status) && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           {age < 10
             ? "Activity updated just now"
             : `Last activity ${
@@ -80,16 +80,16 @@ export function CodeAnalysisJobDetails({
         </p>
       )}
       {matlab && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           MATLAB: {matlab.initializationStatus} · {matlab.modelCount} models ·{" "}
           {matlab.evidenceCount} evidence items
         </p>
       )}
       <details className="min-w-0 text-xs">
-        <summary className="w-fit cursor-pointer rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <summary className="text-muted-foreground focus-visible:ring-ring w-fit cursor-pointer rounded-sm focus-visible:ring-2 focus-visible:outline-none">
           Run details
         </summary>
-        <dl className="mt-3 flex flex-col gap-2 text-muted-foreground [overflow-wrap:anywhere]">
+        <dl className="text-muted-foreground mt-3 flex flex-col gap-2 wrap-anywhere">
           <div>
             <dt className="inline font-medium">Job: </dt>
             <dd className="inline font-mono">{job.job_id}</dd>

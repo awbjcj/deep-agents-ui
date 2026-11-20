@@ -9,11 +9,11 @@ export function ConnectivityLoadingState() {
       role="status"
       aria-label="Loading connectivity settings"
       aria-busy="true"
-      className="space-y-3 rounded-lg border border-border p-4"
+      className="border-border space-y-3 rounded-lg border p-4"
     >
-      <div className="h-4 w-32 animate-pulse rounded bg-muted motion-reduce:animate-none" />
-      <div className="h-10 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
-      <div className="h-10 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+      <div className="bg-muted h-4 w-32 animate-pulse rounded motion-reduce:animate-none" />
+      <div className="bg-muted h-10 animate-pulse rounded-md motion-reduce:animate-none" />
+      <div className="bg-muted h-10 animate-pulse rounded-md motion-reduce:animate-none" />
       <span className="sr-only">Loading connectivity settings</span>
     </div>
   );
@@ -29,13 +29,13 @@ export function ConnectivityLoadError({
   return (
     <div
       role="alert"
-      className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 p-4"
+      className="border-border bg-muted/30 flex flex-wrap items-center gap-3 rounded-lg border p-4"
     >
       <AlertCircle
-        className="h-4 w-4 shrink-0 text-muted-foreground"
+        className="text-muted-foreground h-4 w-4 shrink-0"
         aria-hidden="true"
       />
-      <p className="min-w-0 flex-1 basis-40 text-xs leading-relaxed text-foreground">
+      <p className="text-foreground min-w-0 flex-1 basis-40 text-xs leading-relaxed">
         {message}
       </p>
       <Button

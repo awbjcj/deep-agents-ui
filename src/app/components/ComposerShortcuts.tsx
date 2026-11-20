@@ -19,8 +19,8 @@ export function ComposerShortcuts({
   const hint = `$ skills · @ files · Enter ${action} · Shift+Enter newline`;
 
   return (
-    <div className="flex min-w-9 flex-1 items-center @container">
-      <span className="hidden whitespace-nowrap text-xs text-muted-foreground @[20rem]:inline">
+    <div className="@container flex min-w-9 flex-1 items-center">
+      <span className="text-muted-foreground hidden text-xs whitespace-nowrap @xs:inline">
         {hint}
       </span>
       <Tooltip
@@ -34,7 +34,7 @@ export function ComposerShortcuts({
             size="icon"
             aria-label="Message shortcuts"
             onClick={() => setOpen(true)}
-            className="h-9 w-9 rounded-lg text-muted-foreground transition-none hover:text-foreground @[20rem]:hidden"
+            className="text-muted-foreground hover:text-foreground h-9 w-9 rounded-lg transition-none @xs:hidden"
           >
             <Info
               className="h-3.5 w-3.5"

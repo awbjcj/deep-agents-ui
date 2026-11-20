@@ -59,7 +59,7 @@ export function NotificationBanner() {
 
   return (
     <div
-      className="flex flex-col gap-2 px-3 pt-3 @container/notices sm:px-6"
+      className="@container/notices flex flex-col gap-2 px-3 pt-3 sm:px-6"
       role="region"
       aria-label="Notifications"
     >
@@ -79,14 +79,14 @@ export function NotificationBanner() {
             ? "Email and Teams tools need a current token."
             : ""
           : n.message?.trim() === n.title?.trim()
-          ? ""
-          : n.message;
+            ? ""
+            : n.message;
 
         return (
           <div
             key={n.id}
             className={cn(
-              "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 overflow-hidden rounded-lg border py-1.5 pl-3 pr-1.5 @sm/notices:gap-x-3",
+              "relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2 overflow-hidden rounded-lg border py-1.5 pr-1.5 pl-3 @sm/notices:gap-x-3",
               showActionButton &&
                 "@sm/notices:grid-cols-[auto_minmax(0,1fr)_auto_auto]",
               visual.bgClass,
@@ -97,7 +97,7 @@ export function NotificationBanner() {
             <span
               aria-hidden="true"
               className={cn(
-                "absolute left-0 top-0 h-full w-[3px]",
+                "absolute top-0 left-0 h-full w-[3px]",
                 visual.accentClass
               )}
             />
@@ -109,19 +109,19 @@ export function NotificationBanner() {
 
             <div
               role={n.severity === "error" ? "alert" : "status"}
-              className="min-w-0 py-2.5 [overflow-wrap:anywhere]"
+              className="min-w-0 py-2.5 wrap-anywhere"
             >
               <p
                 id={titleId}
                 className={cn(
-                  "text-sm font-semibold leading-tight",
+                  "text-sm leading-tight font-semibold",
                   visual.titleClass
                 )}
               >
                 {n.title}
               </p>
               {detail && (
-                <p className="mt-0.5 text-sm leading-snug text-foreground/80">
+                <p className="text-foreground/80 mt-0.5 text-sm leading-snug">
                   {detail}
                 </p>
               )}
@@ -133,7 +133,7 @@ export function NotificationBanner() {
                 variant="outline"
                 aria-describedby={titleId}
                 onClick={() => handleAction(service)}
-                className="col-start-2 row-start-2 min-h-9 justify-self-start whitespace-normal text-left text-xs @sm/notices:col-start-3 @sm/notices:row-start-1"
+                className="col-start-2 row-start-2 min-h-9 justify-self-start text-left text-xs whitespace-normal @sm/notices:col-start-3 @sm/notices:row-start-1"
               >
                 {n.action_label}
                 <ArrowRight
@@ -150,7 +150,7 @@ export function NotificationBanner() {
               aria-describedby={titleId}
               onClick={() => snooze(n.id, 1)}
               className={cn(
-                "col-start-3 row-start-1 size-9 text-muted-foreground",
+                "text-muted-foreground col-start-3 row-start-1 size-9",
                 showActionButton && "@sm/notices:col-start-4"
               )}
             >

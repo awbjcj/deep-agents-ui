@@ -1,7 +1,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-BlackItalic.eot");
-  src: local("Formular Black Italic"), local("Formular-BlackItalic"),
+  src:
+    local("Formular Black Italic"),
+    local("Formular-BlackItalic"),
     url("Formular-BlackItalic.eot?#iefix") format("embedded-opentype"),
     url("Formular-BlackItalic.woff2") format("woff2"),
     url("Formular-BlackItalic.woff") format("woff"),
@@ -13,7 +15,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-MediumItalic.eot");
-  src: local("Formular Medium Italic"), local("Formular-MediumItalic"),
+  src:
+    local("Formular Medium Italic"),
+    local("Formular-MediumItalic"),
     url("Formular-MediumItalic.eot?#iefix") format("embedded-opentype"),
     url("Formular-MediumItalic.woff2") format("woff2"),
     url("Formular-MediumItalic.woff") format("woff"),
@@ -25,7 +29,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-Italic.eot");
-  src: local("Formular Italic"), local("Formular-Italic"),
+  src:
+    local("Formular Italic"),
+    local("Formular-Italic"),
     url("Formular-Italic.eot?#iefix") format("embedded-opentype"),
     url("Formular-Italic.woff2") format("woff2"),
     url("Formular-Italic.woff") format("woff"),
@@ -37,7 +43,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-LightItalic.eot");
-  src: local("Formular Light Italic"), local("Formular-LightItalic"),
+  src:
+    local("Formular Light Italic"),
+    local("Formular-LightItalic"),
     url("Formular-LightItalic.eot?#iefix") format("embedded-opentype"),
     url("Formular-LightItalic.woff2") format("woff2"),
     url("Formular-LightItalic.woff") format("woff"),
@@ -49,7 +57,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-Black.eot");
-  src: local("Formular Black"), local("Formular-Black"),
+  src:
+    local("Formular Black"),
+    local("Formular-Black"),
     url("Formular-Black.eot?#iefix") format("embedded-opentype"),
     url("Formular-Black.woff2") format("woff2"),
     url("Formular-Black.woff") format("woff"),
@@ -61,7 +71,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-Light.eot");
-  src: local("Formular Light"), local("Formular-Light"),
+  src:
+    local("Formular Light"),
+    local("Formular-Light"),
     url("Formular-Light.eot?#iefix") format("embedded-opentype"),
     url("Formular-Light.woff2") format("woff2"),
     url("Formular-Light.woff") format("woff"),
@@ -73,8 +85,11 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular.eot");
-  src: local("Formular"), url("Formular.eot?#iefix") format("embedded-opentype"),
-    url("Formular.woff2") format("woff2"), url("Formular.woff") format("woff"),
+  src:
+    local("Formular"),
+    url("Formular.eot?#iefix") format("embedded-opentype"),
+    url("Formular.woff2") format("woff2"),
+    url("Formular.woff") format("woff"),
     url("Formular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
@@ -83,7 +98,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-Medium.eot");
-  src: local("Formular Medium"), local("Formular-Medium"),
+  src:
+    local("Formular Medium"),
+    local("Formular-Medium"),
     url("Formular-Medium.eot?#iefix") format("embedded-opentype"),
     url("Formular-Medium.woff2") format("woff2"),
     url("Formular-Medium.woff") format("woff"),
@@ -95,7 +112,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-BoldItalic.eot");
-  src: local("Formular Bold Italic"), local("Formular-BoldItalic"),
+  src:
+    local("Formular Bold Italic"),
+    local("Formular-BoldItalic"),
     url("Formular-BoldItalic.eot?#iefix") format("embedded-opentype"),
     url("Formular-BoldItalic.woff2") format("woff2"),
     url("Formular-BoldItalic.woff") format("woff"),
@@ -107,7 +126,9 @@
 @font-face {
   font-family: "Formular";
   src: url("Formular-Bold.eot");
-  src: local("Formular Bold"), local("Formular-Bold"),
+  src:
+    local("Formular Bold"),
+    local("Formular-Bold"),
     url("Formular-Bold.eot?#iefix") format("embedded-opentype"),
     url("Formular-Bold.woff2") format("woff2"),
     url("Formular-Bold.woff") format("woff"),

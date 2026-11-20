@@ -1,3 +1,21 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+/** Compile the app stylesheet and fixture classes using its Tailwind 4 setup. */
+export async function compileBrowserStyles({ omitFontFaces = false } = {}) {
+  const root = resolve(import.meta.dirname, "..");
+  const stylesheet = resolve(root, "src/app/globals.css");
+  const { default: postcss } = await import("postcss");
+  const { default: tailwind } = await import("@tailwindcss/postcss");
+  let source = await readFile(stylesheet, "utf8");
+  if (omitFontFaces) source = source.replace(/@font-face\s*\{[^}]*\}/g, "");
+  // Fixture markup is embedded in tests rather than in the app's source tree.
+  source += '\n@source "../../tests";\n';
+  return postcss([tailwind({ base: root })]).process(source, {
+    from: stylesheet,
+  });
+}
+
 /**
  * Shared helpers for the opt-in browser suites.
  *

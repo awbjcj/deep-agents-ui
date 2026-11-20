@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
+const EFFORTS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 test(
   "settings preserve edits, failed autosaves stop, and task/motion states remain accurate",
@@ -15,13 +16,8 @@ test(
     const { chromium } = await loadPlaywright(
       process.env.CHAT_PLAYWRIGHT_MODULE
     );
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
-    const { default: config } = await import("../tailwind.config.mjs");
-    const css = await postcss([tailwind(config)]).process(
-      await readFile(join(ROOT, "src/app/globals.css"), "utf8"),
-      { from: join(ROOT, "src/app/globals.css") }
-    );
+
+    const css = await compileBrowserStyles();
     const bundle = await build({
       absWorkingDir: ROOT,
       stdin: {
@@ -58,7 +54,7 @@ test(
               const effective = {provider: "test", model: "example", effort: "low", thinking: false, max_tokens: Number(new URLSearchParams(location.search).get("cap")) || 4096};
               export const apiGetUserModel = async () => ({effective, preset: null});
               const linked = new URLSearchParams(location.search).has("linked");
-              const entry = {...effective, supports_effort: true, efforts: ["none", "minimal", "low", "medium", "high", "xhigh", "max"], supports_thinking: true, thinking_required: false, disabled_thinking_efforts: ["none", "minimal", "low", "medium", "high"]};
+              const entry = {...effective, supports_effort: true, efforts: ${JSON.stringify(EFFORTS)}, supports_thinking: true, thinking_required: false, disabled_thinking_efforts: ["none", "minimal", "low", "medium", "high"]};
               const defaults = [{effort: "low", thinking: false, max_tokens: 8192}, {effort: "low", thinking: true, max_tokens: 12288}, {effort: "xhigh", thinking: true, max_tokens: 40960}];
               export const apiGetAllowedModels = async () => ({models: linked ? [{...entry, control_defaults: defaults}, {...entry, model: "alternative", recommended_effort: "medium", recommended_thinking: true, recommended_max_tokens: 16384, control_defaults: [{effort: "medium", thinking: true, max_tokens: 16384}]}] : [entry]});
               window.modelSaves = [];
@@ -160,6 +156,10 @@ test(
       const page = await browser.newPage({
         viewport: { width: 420, height: 900 },
       });
+      const effort = page.getByRole("slider", { name: "Reasoning effort" });
+      const chooseEffort = async (name) => {
+        await effort.fill(String(EFFORTS.indexOf(name)));
+      };
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(`${url}?view=model&linked=1`);
@@ -168,7 +168,8 @@ test(
       await page.evaluate(() => {
         window.modelSaveSucceeds = true;
       });
-      await page.getByRole("button", { name: "xhigh", exact: true }).click();
+      await chooseEffort("xhigh");
+      assert.equal(await effort.getAttribute("aria-valuetext"), "Extra high");
       const linkedThinking = page.getByRole("switch", {
         name: "Adaptive thinking",
       });
@@ -184,8 +185,9 @@ test(
         effort: "xhigh",
         thinking: true,
         max_tokens: 40960,
+        task_budget: null,
       });
-      await page.getByRole("button", { name: "low", exact: true }).click();
+      await chooseEffort("low");
       assert.equal(
         await linkedSlider.getAttribute("aria-valuetext"),
         "12,288 tokens"
@@ -204,6 +206,7 @@ test(
         effort: "low",
         thinking: false,
         max_tokens: 8192,
+        task_budget: null,
       });
       await page.getByRole("combobox", { name: "Model" }).click();
       // Options show product names (src/lib/model-names.ts), not raw IDs.
@@ -220,6 +223,7 @@ test(
         effort: "medium",
         thinking: true,
         max_tokens: 16384,
+        task_budget: null,
       });
       await page.goto(`${url}?view=model`);
       const slider = page.getByRole("slider", { name: "Output cap" });
@@ -338,11 +342,11 @@ test(
         "32,768 tokens",
         "Dragging snaps to a common cap"
       );
-      await page.getByRole("button", { name: "xhigh", exact: true }).click();
+      await chooseEffort("xhigh");
       const thinking = page.getByRole("switch", { name: "Adaptive thinking" });
       assert.equal(await thinking.getAttribute("aria-checked"), "true");
       assert.equal(await thinking.isDisabled(), true);
-      await page.getByRole("button", { name: "low", exact: true }).click();
+      await chooseEffort("low");
       assert.equal(await thinking.isEnabled(), true);
 
       await page.evaluate(() => {
@@ -399,9 +403,9 @@ test(
             "The settings scroll area must not hide overflow beyond the viewport"
           );
           assert.equal(
-            await page
-              .getByRole("button", { name: "xhigh", exact: true })
-              .evaluate((button) => button.scrollWidth <= button.clientWidth),
+            await effort.evaluate(
+              (control) => control.scrollWidth <= control.clientWidth
+            ),
             true
           );
           if (evidence)
@@ -474,7 +478,11 @@ test(
         const styles = await dialog.evaluate((el) => ({
           name: getComputedStyle(el).animationName,
           easing: getComputedStyle(el).animationTimingFunction,
+          token: getComputedStyle(document.documentElement)
+            .getPropertyValue("--ease-out")
+            .trim(),
         }));
+        assert.equal(styles.token, "cubic-bezier(0.23, 1, 0.32, 1)");
         assert.equal(
           styles.name,
           reducedMotion === "reduce" ? "none" : "enter"

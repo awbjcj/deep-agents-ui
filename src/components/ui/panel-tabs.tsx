@@ -28,10 +28,11 @@ export interface PanelTabDef<Id extends string = string> {
 /**
  * `underline` is panel chrome — a full-width strip sitting on the header's
  * bottom border, with the Aptiv accent rail marking the active tab.
+ * `soft` uses a quiet filled selection for settings navigation.
  * `segmented` is an in-section switch — an enclosed pill group used to flip
  * between views inside a section that already has its own heading.
  */
-type PanelTabsVariant = "underline" | "segmented";
+type PanelTabsVariant = "underline" | "soft" | "segmented";
 
 /**
  * Automatic activation selects a tab as soon as it receives focus; manual
@@ -114,8 +115,10 @@ export function PanelTabs<Id extends string>({
   );
 
   const isUnderline = variant === "underline";
-  const isTwoRow = isUnderline && layout === "two-row";
-  const isRail = isUnderline && layout === "rail";
+  const isPanel = variant !== "segmented";
+  const isSoft = variant === "soft";
+  const isTwoRow = isPanel && layout === "two-row";
+  const isRail = isPanel && layout === "rail";
 
   return (
     <div
@@ -131,13 +134,13 @@ export function PanelTabs<Id extends string>({
           : undefined
       }
       className={cn(
-        isUnderline
+        isPanel
           ? isRail
             ? "flex min-w-0 flex-col gap-1 px-3"
             : isTwoRow
-            ? "grid min-w-0 items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
-            : "flex min-w-0 items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          : "grid auto-cols-fr grid-flow-col rounded-md border border-border bg-muted/35 p-1",
+              ? "grid min-w-0 auto-rows-fr items-stretch gap-1 overflow-x-auto overscroll-x-contain px-2 pb-1"
+              : "flex min-w-0 scrollbar-none items-end gap-1.5 overflow-x-auto overscroll-x-contain px-4 [&::-webkit-scrollbar]:hidden"
+          : "border-border bg-muted/35 grid auto-cols-fr grid-flow-col rounded-md border p-1",
         className
       )}
     >
@@ -166,28 +169,31 @@ export function PanelTabs<Id extends string>({
             }}
             onKeyDown={(event) => onKeyDown(event, index)}
             className={cn(
-              "group relative inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-center font-medium transition-colors motion-reduce:transition-none",
-              "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2",
-              isUnderline
+              "group relative inline-flex items-center justify-center gap-1.5 text-center font-medium whitespace-nowrap transition-colors motion-reduce:transition-none",
+              "focus-visible:ring-primary/40 focus-visible:ring-2 focus-visible:outline-none",
+              isPanel
                 ? cn(
-                    "min-h-touch shrink-0 rounded-t-md px-3 py-2.5 text-xs normal-case tracking-normal @[480px]/panel:text-sm",
+                    "min-h-touch shrink-0 rounded-t-md px-3 py-2.5 text-xs tracking-normal normal-case @[480px]/panel:text-sm",
                     isTwoRow &&
                       "w-full min-w-0 flex-col gap-1 px-0.5 py-2 text-xs @[440px]/panel:flex-row @[440px]/panel:px-1",
                     isRail &&
                       "w-full justify-start gap-2 rounded-md px-3 text-sm"
                   )
                 : "h-8 justify-center rounded-sm px-3 text-xs",
+              isSoft && "rounded-lg",
               isActive
-                ? isRail
+                ? isSoft
                   ? "bg-primary/10 text-primary"
-                  : isUnderline
-                  ? "bg-background/60 text-foreground"
-                  : "bg-card text-foreground shadow-sm"
-                : isUnderline
-                ? "text-muted-foreground hover:bg-background/30 hover:text-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                  : isRail
+                    ? "bg-primary/10 text-primary"
+                    : isUnderline
+                      ? "bg-background/60 text-foreground"
+                      : "bg-card text-foreground shadow-sm"
+                : isPanel
+                  ? "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               tab.disabled &&
-                "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground"
+                "hover:text-muted-foreground cursor-not-allowed opacity-40 hover:bg-transparent"
             )}
           >
             {Icon ? (
@@ -199,7 +205,7 @@ export function PanelTabs<Id extends string>({
             <span
               data-slot="panel-tab-label"
               className={cn(
-                "min-w-0 whitespace-normal break-words",
+                "min-w-0 wrap-break-word whitespace-normal",
                 isRail ? "text-left" : "text-center"
               )}
             >
@@ -208,7 +214,7 @@ export function PanelTabs<Id extends string>({
             {tab.count !== undefined ? (
               <span
                 className={cn(
-                  "min-w-[1.5ch] shrink-0 text-center font-mono text-[10px] tabular-nums",
+                  "min-w-[1.5ch] shrink-0 text-center font-mono text-xs tabular-nums",
                   isActive ? "text-foreground/70" : "text-muted-foreground"
                 )}
               >
@@ -219,7 +225,7 @@ export function PanelTabs<Id extends string>({
               <span
                 aria-hidden="true"
                 className={cn(
-                  "absolute -bottom-px left-0 right-0 h-[2.5px] rounded-t-full transition-opacity motion-reduce:transition-none",
+                  "absolute right-0 -bottom-px left-0 h-[2.5px] rounded-t-full transition-opacity motion-reduce:transition-none",
                   isActive ? "opacity-100" : "opacity-0"
                 )}
                 style={{ background: "var(--aptiv-orange)" }}

@@ -40,9 +40,9 @@ const SECTION_LABEL =
   "text-xxs font-semibold uppercase tracking-wide text-muted-foreground";
 
 const DESCRIPTION_PROSE_OVERRIDES =
-  "text-sm leading-6 [&_p]:!mb-2 [&_p:last-child]:!mb-0 [&_ul]:!my-2 [&_ol]:!my-2 " +
-  "[&_pre]:!my-2 [&_pre]:!rounded-md [&_h1]:!text-base [&_h2]:!text-sm [&_h3]:!text-sm " +
-  "[&_h1]:!mt-0 [&_h2]:!mt-0 [&_h3]:!mt-0 [&_h1]:!mb-2 [&_h2]:!mb-2 [&_h3]:!mb-2";
+  "text-sm leading-6 [&_p]:mb-2! [&_p:last-child]:mb-0! [&_ul]:my-2! [&_ol]:my-2! " +
+  "[&_pre]:my-2! [&_pre]:rounded-md! [&_h1]:text-base! [&_h2]:text-sm! [&_h3]:text-sm! " +
+  "[&_h1]:mt-0! [&_h2]:mt-0! [&_h3]:mt-0! [&_h1]:mb-2! [&_h2]:mb-2! [&_h3]:mb-2!";
 
 export function ToolApprovalInterrupt({
   actionRequest,
@@ -153,7 +153,7 @@ export function ToolApprovalInterrupt({
 
   const handleReject = () => {
     setRejectionMessage(
-      currentDecision?.type === "reject" ? currentDecision.message ?? "" : ""
+      currentDecision?.type === "reject" ? (currentDecision.message ?? "") : ""
     );
     setMode("reject");
   };
@@ -207,7 +207,7 @@ export function ToolApprovalInterrupt({
     <article
       aria-label={`Approval for ${actionRequest.name}`}
       className={cn(
-        "w-full min-w-0 rounded-xl border p-3 text-foreground sm:p-4",
+        "text-foreground w-full min-w-0 rounded-xl border p-3 sm:p-4",
         embedded ? "border-border bg-background" : "border-warning bg-card"
       )}
     >
@@ -216,7 +216,7 @@ export function ToolApprovalInterrupt({
           {!embedded && (
             <span
               aria-hidden="true"
-              className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-warning-primary text-warning"
+              className="bg-warning-primary text-warning mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md"
             >
               <ShieldAlert
                 size={15}
@@ -226,16 +226,16 @@ export function ToolApprovalInterrupt({
           )}
           <div className="flex min-w-0 flex-col gap-0.5">
             {!embedded && (
-              <span className="text-sm font-semibold leading-5">
+              <span className="text-sm leading-5 font-semibold">
                 Approval required
               </span>
             )}
             <code
               className={cn(
-                "w-fit min-w-0 max-w-full break-words font-mono [overflow-wrap:anywhere]",
+                "w-fit max-w-full min-w-0 font-mono wrap-anywhere wrap-break-word",
                 embedded
-                  ? "text-sm font-semibold text-foreground"
-                  : "text-xs text-muted-foreground"
+                  ? "text-foreground text-sm font-semibold"
+                  : "text-muted-foreground text-xs"
               )}
             >
               {actionRequest.name}
@@ -270,7 +270,7 @@ export function ToolApprovalInterrupt({
       </header>
 
       {actionRequest.description ? (
-        <div className="mb-3 break-words text-foreground">
+        <div className="text-foreground mb-3 wrap-break-word">
           <MarkdownContent
             content={actionRequest.description}
             className={DESCRIPTION_PROSE_OVERRIDES}
@@ -280,13 +280,13 @@ export function ToolApprovalInterrupt({
 
       <section
         ref={argumentSection}
-        className="min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
+        className="border-border bg-muted/30 min-w-0 overflow-hidden rounded-lg border"
       >
         <header
           className={cn(
-            "flex min-h-touch items-center justify-between gap-2 px-3",
+            "min-h-touch flex items-center justify-between gap-2 px-3",
             (isEditing || (argFieldCount > 0 && argsExpanded)) &&
-              "border-b border-border"
+              "border-border border-b"
           )}
         >
           <div className="flex min-w-0 items-center gap-2">
@@ -294,10 +294,10 @@ export function ToolApprovalInterrupt({
               {isEditing
                 ? "Edit arguments"
                 : currentDecision?.type === "edit"
-                ? "Edited arguments"
-                : "Arguments"}
+                  ? "Edited arguments"
+                  : "Arguments"}
             </span>
-            <span className="font-mono text-xxs text-muted-foreground">
+            <span className="text-xxs text-muted-foreground font-mono">
               {argFieldCount} field{argFieldCount === 1 ? "" : "s"}
             </span>
           </div>
@@ -308,7 +308,7 @@ export function ToolApprovalInterrupt({
               aria-expanded={argsExpanded}
               aria-controls={argsId}
               aria-label={argsExpanded ? "Hide arguments" : "Show arguments"}
-              className="-mr-1.5 inline-flex min-h-touch shrink-0 items-center gap-1 rounded-md px-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+              className="min-h-touch text-muted-foreground hover:text-foreground focus-visible:ring-ring -mr-1.5 inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 text-xs transition-colors focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none"
             >
               {argsExpanded ? "Hide" : "Show"}
               <ChevronDown
@@ -342,7 +342,7 @@ export function ToolApprovalInterrupt({
             aria-label="Action arguments"
             tabIndex={0}
             hidden={!argsExpanded}
-            className="m-0 max-h-64 overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-none border-0 bg-transparent p-3 font-mono text-xs leading-relaxed [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="focus-visible:ring-ring m-0 max-h-64 overflow-auto overscroll-contain rounded-none border-0 bg-transparent p-3 font-mono text-xs leading-relaxed wrap-anywhere wrap-break-word whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
           >
             {argsAsJson}
           </pre>
@@ -353,10 +353,10 @@ export function ToolApprovalInterrupt({
         <div className="mt-3 space-y-1.5">
           <label
             htmlFor={noteId}
-            className="block text-xs font-medium text-foreground"
+            className="text-foreground block text-xs font-medium"
           >
             Why are you rejecting this?{" "}
-            <span className="font-normal text-muted-foreground">
+            <span className="text-muted-foreground font-normal">
               (optional)
             </span>
           </label>
@@ -366,13 +366,13 @@ export function ToolApprovalInterrupt({
             value={rejectionMessage}
             onChange={(e) => setRejectionMessage(e.target.value)}
             aria-describedby={`${noteId}-hint`}
-            className="min-h-[4.5rem] text-sm focus-visible:ring-destructive/40"
+            className="focus-visible:ring-destructive/40 min-h-18 text-sm"
             rows={2}
             disabled={isLoading}
           />
           <p
             id={`${noteId}-hint`}
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
           >
             The agent receives this note with the rejection.
           </p>
@@ -401,8 +401,8 @@ export function ToolApprovalInterrupt({
               {isLoading
                 ? "Saving..."
                 : onDecisionChange
-                ? "Mark edited action"
-                : "Save & approve"}
+                  ? "Mark edited action"
+                  : "Save & approve"}
             </Button>
           </>
         ) : showRejectionInput ? (

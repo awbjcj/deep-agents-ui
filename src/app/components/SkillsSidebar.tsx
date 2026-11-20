@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent } from "./settings/SettingsLayout";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useEffect, useRef } from "react";
@@ -54,8 +56,8 @@ function AccountSkills({
   const mode = skills.draft
     ? "editor"
     : skills.selected
-    ? "details"
-    : "catalog";
+      ? "details"
+      : "catalog";
   const previousMode = useRef(mode);
   useEffect(() => {
     if (mode !== "editor") return;
@@ -85,9 +87,9 @@ function AccountSkills({
   return (
     <div
       ref={scrollArea}
-      className="absolute inset-0 flex scroll-pb-28 flex-col overflow-y-auto overscroll-contain p-4 @container"
+      className="@container absolute inset-0 flex scroll-pb-28 flex-col overflow-y-auto overscroll-contain"
     >
-      <div className="flex min-h-full min-w-0 flex-1 flex-col gap-4">
+      <SettingsContent className="flex min-h-full flex-1 flex-col gap-4 space-y-0">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           {mode !== "catalog" ? (
             <Button
@@ -138,7 +140,7 @@ function AccountSkills({
         {skills.error && (
           <div
             role="alert"
-            className="space-y-2 rounded-lg border border-destructive/40 p-3 text-sm"
+            className="border-destructive/40 space-y-2 rounded-lg border p-3 text-sm"
           >
             <p>{skills.error}</p>
             <SkillDiagnostics diagnostics={skills.diagnostics} />
@@ -147,7 +149,7 @@ function AccountSkills({
         {skills.catalogError && (
           <div
             role="alert"
-            className="space-y-2 rounded-lg border border-destructive/40 p-3 text-sm"
+            className="border-destructive/40 space-y-2 rounded-lg border p-3 text-sm"
           >
             <p>{skills.catalogError}</p>
             <Button
@@ -162,7 +164,7 @@ function AccountSkills({
         {skills.success && (
           <p
             role="status"
-            className="border-success/30 bg-success/5 flex items-center gap-2 rounded-lg border p-3 text-sm text-success"
+            className="border-success/30 bg-success/5 text-success flex items-center gap-2 rounded-lg border p-3 text-sm"
           >
             <Check
               aria-hidden="true"
@@ -307,7 +309,7 @@ function AccountSkills({
             </Button>
           ) : null}
         </div>
-      </div>
+      </SettingsContent>
       <SkillImportDialog
         key={`${accountId}:${skills.importSession}`}
         open={skills.importOpen}

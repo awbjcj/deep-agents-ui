@@ -57,7 +57,10 @@ export type ChannelOverview = z.infer<typeof overviewSchema>;
 export type LinkCode = z.infer<typeof linkCodeSchema>;
 
 export class ChatChannelError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
     super(message);
     this.name = "ChatChannelError";
   }
@@ -139,10 +142,10 @@ export function isLinkComplete(
   const binding = overview.binding;
   return Boolean(
     binding &&
-      binding.transport === CHANNEL_TRANSPORT[channel] &&
-      binding.enabled &&
-      !binding.needs_reconnect &&
-      overview.channels.some((item) => item.id === channel && item.linked)
+    binding.transport === CHANNEL_TRANSPORT[channel] &&
+    binding.enabled &&
+    !binding.needs_reconnect &&
+    overview.channels.some((item) => item.id === channel && item.linked)
   );
 }
 

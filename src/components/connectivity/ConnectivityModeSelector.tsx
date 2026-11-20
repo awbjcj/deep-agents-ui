@@ -28,12 +28,12 @@ export function ConnectivityModeSelector({
       event.key === "Home"
         ? 0
         : event.key === "End"
-        ? last
-        : ["ArrowRight", "ArrowDown"].includes(event.key)
-        ? (index + 1) % (last + 1)
-        : ["ArrowLeft", "ArrowUp"].includes(event.key)
-        ? (index + last) % (last + 1)
-        : null;
+          ? last
+          : ["ArrowRight", "ArrowDown"].includes(event.key)
+            ? (index + 1) % (last + 1)
+            : ["ArrowLeft", "ArrowUp"].includes(event.key)
+              ? (index + last) % (last + 1)
+              : null;
     if (next === null) return;
     event.preventDefault();
     onValueChange(CONNECTION_MODES[next]!.id);
@@ -65,21 +65,19 @@ export function ConnectivityModeSelector({
               onKeyDown={(event) => navigate(event, index)}
               onClick={() => onValueChange(mode.id)}
               className={cn(
-                "relative min-w-0 rounded-md border p-3 text-left transition-[background-color,border-color] duration-150 motion-reduce:transition-none",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "relative min-w-0 rounded-lg border border-transparent p-3 text-left transition-[background-color,border-color] duration-150 motion-reduce:transition-none",
+                "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                 "focus-visible:active:scale-100 disabled:cursor-wait disabled:opacity-60 motion-safe:enabled:active:scale-[0.98]",
-                active
-                  ? "border-brand bg-primary/10"
-                  : "border-border bg-card hover:border-brand-subtle hover:bg-muted/50"
+                active ? "bg-primary/10" : "bg-card hover:bg-muted/50"
               )}
             >
               <span className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-foreground">
+                <span className="text-foreground text-xs font-semibold">
                   {mode.label}
                 </span>
                 <CheckCircle2
                   className={cn(
-                    "h-3.5 w-3.5 shrink-0 text-brand-primary",
+                    "text-brand-primary h-3.5 w-3.5 shrink-0",
                     !active && "invisible"
                   )}
                   aria-hidden="true"
@@ -87,7 +85,7 @@ export function ConnectivityModeSelector({
               </span>
               <span
                 id={`${id}-${mode.id}`}
-                className="mt-1 block text-xxs leading-relaxed text-muted-foreground"
+                className="text-xxs text-muted-foreground mt-1 block leading-relaxed"
               >
                 {mode.description}
               </span>

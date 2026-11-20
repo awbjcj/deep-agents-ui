@@ -3,15 +3,17 @@
 import { AuthBrandPanel } from "@/app/components/auth/AuthBrandPanel";
 import { AuthThemeToggle } from "@/app/components/auth/AuthThemeToggle";
 import { DepthField } from "@/app/components/auth/DepthField";
+import { cn } from "@/lib/utils";
 import { useEffect, useState, type ReactNode } from "react";
 
 interface AuthShellProps {
   /** Document title prefix; React hoists the `<title>` into `<head>`. */
   title: string;
+  className?: string;
   children: ReactNode;
 }
 
-export function AuthShell({ title, children }: AuthShellProps) {
+export function AuthShell({ title, className, children }: AuthShellProps) {
   const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export function AuthShell({ title, children }: AuthShellProps) {
   }, []);
 
   return (
-    <div className="auth-shell">
+    <div className={cn("auth-shell", className)}>
       <title>{`${title} · VSDA Deep Agent`}</title>
       <DepthField />
       <AuthBrandPanel />

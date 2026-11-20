@@ -72,16 +72,16 @@ export function TaskHistory({
       }}
     >
       <DialogContent
-        className="flex max-h-[90dvh] !animate-none flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none"
-        overlayClassName="!animate-none"
+        className="flex max-h-[90dvh] animate-none! flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl [&_button:focus-visible]:transform-none [&_button:focus-visible]:transition-none"
+        overlayClassName="animate-none!"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           returnFocus();
         }}
       >
-        <DialogHeader className="border-b border-border px-5 py-5 text-left">
+        <DialogHeader className="border-border border-b px-5 py-5 text-left">
           <DialogTitle>Execution history</DialogTitle>
-          <DialogDescription className="break-words">
+          <DialogDescription className="wrap-break-word">
             {task.name}
           </DialogDescription>
         </DialogHeader>
@@ -93,7 +93,7 @@ export function TaskHistory({
             <div className="py-4">
               <p
                 role="alert"
-                className="text-sm text-[var(--text-error)]"
+                className="text-sm text-(--text-error)"
               >
                 {actionError || error.message}
               </p>
@@ -112,17 +112,17 @@ export function TaskHistory({
           {isLoading && (
             <p
               role="status"
-              className="py-8 text-sm text-muted-foreground"
+              className="text-muted-foreground py-8 text-sm"
             >
               Loading history…
             </p>
           )}
           {data?.length === 0 && (
-            <p className="py-8 text-sm text-muted-foreground">
+            <p className="text-muted-foreground py-8 text-sm">
               No executions on this page.
             </p>
           )}
-          <ol className="divide-y divide-border">
+          <ol className="divide-border divide-y">
             {data?.map((run) => (
               <li
                 key={run.id}
@@ -133,13 +133,13 @@ export function TaskHistory({
                     {taskStatus[run.status]}
                   </span>
                   <Link
-                    className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline underline-offset-4"
+                    className="text-primary inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4"
                     href={chatHref(run.thread_id)}
                   >
                     Open chat
                   </Link>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Scheduled{" "}
                   {taskDate(
                     run.scheduled_at,
@@ -148,19 +148,19 @@ export function TaskHistory({
                   · {run.spec?.timezone ?? task.timezone}
                 </p>
                 {run.error && (
-                  <p className="break-words text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm wrap-break-word">
                     {run.error}
                   </p>
                 )}
                 {run.spec && (
                   <details className="text-sm">
-                    <summary className="cursor-pointer py-2 text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+                    <summary className="text-muted-foreground focus-visible:outline-ring cursor-pointer py-2 focus-visible:outline focus-visible:outline-2">
                       Prompt and execution details
                     </summary>
-                    <p className="mt-2 whitespace-pre-wrap break-words">
+                    <p className="mt-2 wrap-break-word whitespace-pre-wrap">
                       {run.spec.prompt}
                     </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-2 text-xs">
                       {run.spec.execution_mode === "autopilot"
                         ? "Autopilot"
                         : "Interactive"}{" "}
@@ -172,7 +172,7 @@ export function TaskHistory({
                     {run.dispatches?.map((dispatch, index) => (
                       <p
                         key={dispatch.run_id ?? index}
-                        className="mt-2 break-all text-xs text-muted-foreground"
+                        className="text-muted-foreground mt-2 text-xs break-all"
                       >
                         {dispatch.automatic_approvals
                           ? approvalLabel(
@@ -200,7 +200,7 @@ export function TaskHistory({
             ))}
           </ol>
         </section>
-        <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-5 py-3">
+        <footer className="border-border flex shrink-0 items-center justify-between gap-2 border-t px-5 py-3">
           <Button
             className="min-h-11"
             variant="ghost"

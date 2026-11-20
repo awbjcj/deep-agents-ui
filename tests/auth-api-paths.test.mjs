@@ -9,9 +9,8 @@ test("admin API helpers encode identifiers as single path segments", async () =>
     return new Response("[]", { status: 200 });
   };
   try {
-    const { apiGetUserUsage, apiListScopeMembers } = await import(
-      "../src/lib/auth.ts"
-    );
+    const { apiGetUserUsage, apiListScopeMembers } =
+      await import("../src/lib/auth.ts");
     await apiGetUserUsage("a/b?c#d");
     await apiListScopeMembers("team", "ops/../x");
     assert.match(urls[0], /\/admin\/token-usage\/users\/a%2Fb%3Fc%23d$/);

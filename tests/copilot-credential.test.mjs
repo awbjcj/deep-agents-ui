@@ -192,9 +192,8 @@ test("job display preserves the immutable Copilot policy snapshot", () => {
 test("credential form starts empty, masked and unavailable until status loads", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");
-  const { CopilotCredentialPanel } = await import(
-    "../src/app/components/CopilotCredentialPanel.tsx"
-  );
+  const { CopilotCredentialPanel } =
+    await import("../src/app/components/CopilotCredentialPanel.tsx");
   const html = renderToStaticMarkup(createElement(CopilotCredentialPanel));
   assert.match(html, /type="password"/);
   assert.match(html, /id="copilotToken"/);
@@ -210,9 +209,8 @@ test("credential form starts empty, masked and unavailable until status loads", 
 test("exhausted Copilot quota has a separate disabling status", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");
-  const { CopilotQuotaMeter } = await import(
-    "../src/app/components/CopilotQuotaMeter.tsx"
-  );
+  const { CopilotQuotaMeter } =
+    await import("../src/app/components/CopilotQuotaMeter.tsx");
   const html = renderToStaticMarkup(
     createElement(CopilotQuotaMeter, {
       quota: {
@@ -239,9 +237,8 @@ test("exhausted Copilot quota has a separate disabling status", async () => {
 test("unavailable credentials never render a stale account quota", async () => {
   const { createElement } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");
-  const { CopilotQuotaMeter } = await import(
-    "../src/app/components/CopilotQuotaMeter.tsx"
-  );
+  const { CopilotQuotaMeter } =
+    await import("../src/app/components/CopilotQuotaMeter.tsx");
   const html = renderToStaticMarkup(
     createElement(CopilotQuotaMeter, {
       quota: {

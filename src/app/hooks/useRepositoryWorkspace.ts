@@ -81,11 +81,11 @@ export function useRepositoryWorkspace(
   const targets = draftTargets.length
     ? draftTargets
     : resume && handles?.length === resume.targets.length
-    ? resume.targets.map((target, index) => ({
-        target,
-        target_handle: handles[index],
-      }))
-    : [];
+      ? resume.targets.map((target, index) => ({
+          target,
+          target_handle: handles[index],
+        }))
+      : [];
   const restoring = Boolean(
     (resume?.prepareId && !prepareJob) || (resume?.analysisId && !analysisJob)
   );
@@ -93,7 +93,7 @@ export function useRepositoryWorkspace(
     restoring ||
     Boolean(
       (prepareJob && shouldPoll(prepareJob.status)) ||
-        (analysisJob && shouldPoll(analysisJob.status))
+      (analysisJob && shouldPoll(analysisJob.status))
     );
   function remember(value: WorkspaceResume | null) {
     setResume(value);

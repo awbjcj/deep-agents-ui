@@ -8,6 +8,7 @@ const OUT = resolve(import.meta.dirname, "..", "out");
 
 export {
   OUT,
+  allToolIds,
   staticServer,
   authenticatedPage,
   makePolicyFixture,
@@ -423,7 +424,7 @@ async function authenticatedPage(browser, fixture, policy, role) {
   const consoleErrors = [];
   const seenRequests = [];
   await page.addInitScript(
-    ({ fixtureRole, accountId }) => {
+    ({ fixtureRole, accountId, fixtureAssistantId }) => {
       const payload = btoa(JSON.stringify({ exp: 4102444800 }))
         .replaceAll("+", "-")
         .replaceAll("/", "_")
@@ -440,12 +441,16 @@ async function authenticatedPage(browser, fixture, policy, role) {
       );
       localStorage.setItem(
         "deep-agent-config",
-        JSON.stringify({ assistantId: "mock-graph" })
+        JSON.stringify({ assistantId: fixtureAssistantId })
       );
       localStorage.setItem("vsda_workspace_tab", "tools");
       localStorage.setItem(`vsda_token_setup_dismissed_${accountId}`, "1");
     },
-    { fixtureRole: role, accountId: account.user_id }
+    {
+      fixtureRole: role,
+      accountId: account.user_id,
+      fixtureAssistantId: fixture.assistantId ?? "mock-graph",
+    }
   );
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("console", (message) => {

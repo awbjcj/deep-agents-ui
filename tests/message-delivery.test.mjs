@@ -8,7 +8,7 @@ import {
   MessageDeliveryError,
 } from "../src/lib/message-delivery.ts";
 
-test("queue is accepted by the server immediately with replayable output and no stale checkpoint", async () => {
+test("a queued draft uses reject to avoid overtaking an active run", async () => {
   let request;
   const run = { run_id: "queued", status: "pending" };
   const client = {
@@ -40,7 +40,7 @@ test("queue is accepted by the server immediately with replayable output and no 
   assert.equal(result, run);
   assert.deepEqual(request.slice(0, 2), ["thread", "assistant"]);
   const payload = request[2];
-  assert.equal(payload.multitaskStrategy, "enqueue");
+  assert.equal(payload.multitaskStrategy, "reject");
   assert.equal(payload.streamResumable, true);
   assert.equal(payload.checkpoint, undefined);
   assert.equal(payload.config.configurable.checkpoint_id, undefined);

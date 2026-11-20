@@ -54,8 +54,8 @@ export const FileContentView = React.memo(function FileContentView({
       }
       tabIndex={0}
       className={cn(
-        "code-block max-w-full overflow-auto rounded-md p-4 font-mono text-sm leading-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        isJson && "whitespace-pre-wrap [overflow-wrap:anywhere]"
+        "code-block focus-visible:ring-ring max-w-full overflow-auto rounded-md p-4 font-mono text-sm leading-6 focus-visible:ring-2 focus-visible:outline-none",
+        isJson && "wrap-anywhere whitespace-pre-wrap"
       )}
     >
       <code className={isJson ? "text-[length:inherit]" : undefined}>
@@ -93,7 +93,7 @@ export const FileContentView = React.memo(function FileContentView({
       {formattedJson?.invalid && (
         <p
           role="status"
-          className="mb-4 text-sm text-muted-foreground"
+          className="text-muted-foreground mb-4 text-sm"
         >
           This file contains incomplete or invalid JSON. Showing the original
           source.
@@ -102,7 +102,7 @@ export const FileContentView = React.memo(function FileContentView({
       {isTruncated && (
         <p
           role="status"
-          className="mb-4 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-muted-foreground"
+          className="border-border bg-secondary text-muted-foreground mb-4 rounded-md border px-3 py-2 text-sm"
         >
           {formattedJson
             ? "Preview is shortened."
@@ -124,7 +124,7 @@ export const FileContentView = React.memo(function FileContentView({
             customStyle={{
               margin: 0,
               borderRadius: "0.5rem",
-              fontSize: "0.875rem",
+              fontSize: "var(--font-size-xs)",
               textShadow: "none",
             }}
             codeTagProps={{

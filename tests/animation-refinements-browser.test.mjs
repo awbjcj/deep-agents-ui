@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const RUN = process.env.ANIMATION_REFINEMENTS_BROWSER_TEST === "1";
@@ -40,13 +40,8 @@ const tool = (status) => ({
 
 async function fixture() {
   const { build } = await import("esbuild");
-  const { default: postcss } = await import("postcss");
-  const { default: tailwind } = await import("tailwindcss");
-  const { default: config } = await import("../tailwind.config.mjs");
-  const css = await postcss([tailwind(config)]).process(
-    await readFile(join(ROOT, "src/app/globals.css"), "utf8"),
-    { from: join(ROOT, "src/app/globals.css") }
-  );
+
+  const css = await compileBrowserStyles();
   const bundle = await build({
     absWorkingDir: ROOT,
     stdin: {
@@ -146,15 +141,15 @@ async function fixture() {
       request.url === "/app.js"
         ? "text/javascript"
         : request.url === "/style.css"
-        ? "text/css"
-        : "text/html"
+          ? "text/css"
+          : "text/html"
     );
     response.end(
       request.url === "/app.js"
         ? bundle.outputFiles[0].text
         : request.url === "/style.css"
-        ? css.css
-        : '<!doctype html><html lang="en"><head><title>Motion refinements</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root" style="height:100dvh;display:flex;flex-direction:column"></div><script type="module" src="/app.js"></script></body></html>'
+          ? css.css
+          : '<!doctype html><html lang="en"><head><title>Motion refinements</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root" style="height:100dvh;display:flex;flex-direction:column"></div><script type="module" src="/app.js"></script></body></html>'
     );
   });
   await new Promise((done) => server.listen(0, "127.0.0.1", done));
@@ -547,24 +542,26 @@ test(
           });
           const before = await theme.locator("span").evaluate((el) => ({
             left: getComputedStyle(el).left,
-            transform: getComputedStyle(el).transform,
+            translate: getComputedStyle(el).translate,
           }));
           await theme.click();
           await page.waitForFunction((before) => {
             const el = document.querySelector('[title^="Switch to"] > span');
-            return getComputedStyle(el).transform !== before;
-          }, before.transform);
+            return getComputedStyle(el).translate !== before;
+          }, before.translate);
           assert.equal(
             await theme
               .locator("span")
               .evaluate((el) => getComputedStyle(el).left),
             before.left
           );
-          assert.equal(
-            await theme
-              .locator("span")
-              .evaluate((el) => getComputedStyle(el).transitionProperty),
-            "transform"
+          const transitionProperty = await theme
+            .locator("span")
+            .evaluate((el) => getComputedStyle(el).transitionProperty);
+          assert.match(transitionProperty, /(?:^|,\s*)translate(?:,|$)/);
+          assert.doesNotMatch(
+            transitionProperty,
+            /\b(?:left|top|width|height)\b/
           );
           await theme.focus();
           await theme.press("Enter");

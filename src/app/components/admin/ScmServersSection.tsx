@@ -1,5 +1,6 @@
 "use client";
 
+import { SETTINGS_WIDE_GRID } from "@/app/components/settings/SettingsLayout";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useEffect, useRef, useState } from "react";
@@ -176,7 +177,7 @@ export function ScmServersSection() {
         detailsRef={configurationRef}
       >
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <Server className="h-4 w-4 text-primary" />{" "}
+          <Server className="text-primary h-4 w-4" />{" "}
           {editingId ? `Edit server ${editingId}` : "Add server"}
         </div>
         <fieldset
@@ -216,8 +217,8 @@ export function ScmServersSection() {
                       field === "endpoint"
                         ? "https://scm.example"
                         : field === "auth_profile"
-                        ? "http_token"
-                        : undefined
+                          ? "http_token"
+                          : undefined
                     }
                   />
                 </div>
@@ -239,16 +240,16 @@ export function ScmServersSection() {
                     provider: event.target.value as ScmServerInput["provider"],
                   }))
                 }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                className="border-input bg-background flex h-10 w-full rounded-md border px-3 text-sm"
               >
                 <option value="gerrit">Gerrit</option>
                 <option value="plastic">Plastic SCM</option>
               </select>
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 sm:col-span-2">
+            <div className="border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2 sm:col-span-2">
               <div>
                 <Label htmlFor="scm-server-enabled">Enabled</Label>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Allow users to connect and start new work with this server.
                 </p>
               </div>
@@ -290,17 +291,17 @@ export function ScmServersSection() {
           <Loader2 className="h-4 w-4 animate-spin" />
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={SETTINGS_WIDE_GRID}>
           {active.map((server) => (
             <div
               key={server.id}
-              className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+              className="border-border flex items-center justify-between gap-3 rounded-md border p-3"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">
                   {server.display_name}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="text-muted-foreground truncate text-xs">
                   {server.id} · {server.provider} · enabled
                   {server.validation.ready === true && " · operator-verified"}
                   {editingId === server.id && " · editing"}
@@ -329,29 +330,29 @@ export function ScmServersSection() {
                   aria-label={`Disable ${server.display_name}`}
                   title="Disable (keeps report history)"
                 >
-                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  <Trash2 className="text-destructive h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
           ))}
           {!active.length && (
-            <p className="text-sm text-muted-foreground">No enabled servers.</p>
+            <p className="text-muted-foreground text-sm">No enabled servers.</p>
           )}
           {disabled.length > 0 && (
-            <div className="space-y-2 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="col-span-full grid grid-cols-1 items-start gap-3 pt-2 @5xl/panel:grid-cols-2">
+              <p className="text-muted-foreground col-span-full text-xs font-semibold tracking-wide uppercase">
                 Disabled servers
               </p>
               {disabled.map((server) => (
                 <div
                   key={server.id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border p-3 opacity-80"
+                  className="border-border flex items-center justify-between gap-3 rounded-md border border-dashed p-3 opacity-80"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
                       {server.display_name}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="text-muted-foreground truncate text-xs">
                       {server.id} · {server.provider} · disabled · hidden from
                       users
                     </p>
@@ -372,7 +373,7 @@ export function ScmServersSection() {
           )}
         </div>
       )}
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="text-muted-foreground text-xs leading-relaxed">
         Disabling hides a server from users and stops new work, but keeps its ID
         so existing reports stay traceable. Each user validates their own token
         through the Code Analyzer. Local and container analysis remain

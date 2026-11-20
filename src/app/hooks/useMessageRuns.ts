@@ -25,6 +25,8 @@ interface Options {
   threadId: string | null;
   loading: boolean;
   threadLoading: boolean;
+  paused?: boolean;
+  blockJoin?: boolean;
   joinStream: (runId: string) => Promise<void>;
   refreshThread: (isCurrent: () => boolean) => Promise<void>;
 }
@@ -68,6 +70,7 @@ export function useMessageRuns(options: Options) {
     session,
     checked: false,
     busy: false,
+    running: false,
   });
   const runs = state.session === session ? state.runs : EMPTY_RUNS;
   const stopping = state.session === session && state.stopping;
@@ -111,13 +114,15 @@ export function useMessageRuns(options: Options) {
         const busy = listed.some(
           (run) => run.status === "pending" || run.status === "running"
         );
+        const running = listed.some((run) => run.status === "running");
         idle = !busy && !found.length;
         setActivity((previous) =>
           previous.session === session &&
           previous.checked &&
-          previous.busy === busy
+          previous.busy === busy &&
+          previous.running === running
             ? previous
-            : { session, checked: true, busy }
+            : { session, checked: true, busy, running }
         );
         const connected = readStreamRunId(threadId!);
         setState((previous) => {
@@ -188,6 +193,7 @@ export function useMessageRuns(options: Options) {
     if (
       loading ||
       threadLoading ||
+      options.blockJoin ||
       stopping ||
       session.joining ||
       !runs.length ||
@@ -195,6 +201,9 @@ export function useMessageRuns(options: Options) {
     )
       return;
     const run = runs[0];
+    // A running follow-up can contain the active interrupt and must still be
+    // rejoined after a disconnect. Only pending successors wait for review.
+    if (options.paused && run.status === "pending") return;
     session.joining = run.run_id;
     const joinGeneration = ++session.joinGeneration;
     rememberStreamRunId(threadId, run.run_id);
@@ -272,7 +281,17 @@ export function useMessageRuns(options: Options) {
         );
       }, RETRY_DELAY);
     })();
-  }, [client, threadId, session, loading, threadLoading, stopping, runs]);
+  }, [
+    client,
+    threadId,
+    session,
+    loading,
+    threadLoading,
+    options.paused,
+    options.blockJoin,
+    stopping,
+    runs,
+  ]);
 
   const submit = useCallback(
     async (create: () => Promise<Run>, targetScope: string) => {
@@ -349,7 +368,12 @@ export function useMessageRuns(options: Options) {
         }
         if (current.current !== target) return false;
         target.joining = null;
-        setActivity({ session: target, checked: true, busy: false });
+        setActivity({
+          session: target,
+          checked: true,
+          busy: false,
+          running: false,
+        });
         setState({ session: target, runs: EMPTY_RUNS, stopping: false });
         return true;
       } catch {
@@ -380,6 +404,9 @@ export function useMessageRuns(options: Options) {
       activity.session !== session || !activity.checked || activity.busy,
     serverActive:
       activity.session === session && activity.checked && activity.busy,
+    serverRunning:
+      runs.some((run) => run.status === "running") ||
+      (activity.session === session && activity.checked && activity.running),
     stopping,
     queuedCount: runs.filter(
       (run) =>

@@ -36,7 +36,7 @@ export default function Error({
           : "Something went wrong"}
       </h1>
       {!isChunkError && error.message && (
-        <p className="max-w-md break-words text-sm text-muted-foreground">
+        <p className="text-muted-foreground max-w-md text-sm wrap-break-word">
           {error.message}
         </p>
       )}
@@ -45,7 +45,7 @@ export default function Error({
           <button
             type="button"
             onClick={reset}
-            className="min-h-touch rounded-full border border-border px-5 py-2 text-sm font-semibold transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-touch border-border hover:bg-accent focus-visible:ring-ring rounded-full border px-5 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
             Try again
           </button>
@@ -53,7 +53,7 @@ export default function Error({
         <button
           type="button"
           onClick={reloadBypassingCache}
-          className="min-h-touch rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-touch bg-primary text-primary-foreground focus-visible:ring-ring rounded-full px-5 py-2 text-sm font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none"
         >
           Reload app
         </button>

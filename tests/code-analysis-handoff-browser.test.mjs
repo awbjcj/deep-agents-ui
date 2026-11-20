@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const EVIDENCE =
@@ -14,8 +14,7 @@ test(
   { skip: process.env.ANALYSIS_BROWSER_TEST !== "1", timeout: 60_000 },
   async () => {
     const { build } = await import("esbuild");
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
+
     const { chromium } = await loadPlaywright();
     const bundle = await build({
       absWorkingDir: ROOT,
@@ -66,14 +65,7 @@ test(
       platform: "browser",
       define: { "process.env.NODE_ENV": '"production"' },
     });
-    const source = (
-      await readFile(resolve(ROOT, "src/app/globals.css"), "utf8")
-    )
-      .replace(/^@import.*;$/gm, "")
-      .replace(/@font-face\s*\{[^}]*\}/g, "");
-    const { css } = await postcss([
-      tailwind({ config: resolve(ROOT, "tailwind.config.mjs") }),
-    ]).process(source, { from: undefined });
+    const { css } = await compileBrowserStyles({ omitFontFaces: true });
     const preparation = {
       job_id: "prepare-1",
       thread_id: "thread-1",
@@ -125,15 +117,15 @@ test(
         url.pathname === "/app.js"
           ? "text/javascript"
           : url.pathname === "/style.css"
-          ? "text/css"
-          : "text/html"
+            ? "text/css"
+            : "text/html"
       );
       res.end(
         url.pathname === "/app.js"
           ? bundle.outputFiles[0].text
           : url.pathname === "/style.css"
-          ? css
-          : '<html lang="en"><head><title>Deep Agent background progress</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html lang="en"><head><title>Deep Agent background progress</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

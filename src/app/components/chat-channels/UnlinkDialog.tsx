@@ -54,7 +54,7 @@ export function UnlinkDialog({
           </DialogClose>
           <Button
             variant="outline"
-            className="min-h-11 border-error-strong text-error hover:border-error-strong hover:bg-error-secondary hover:text-error"
+            className="border-error-strong text-error hover:border-error-strong hover:bg-error-secondary hover:text-error min-h-11"
             onClick={onConfirm}
           >
             <Unlink aria-hidden="true" />

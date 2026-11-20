@@ -206,8 +206,8 @@ export function NewsletterSection() {
         current === null
           ? [role]
           : current.includes(role)
-          ? current.filter((item) => item !== role)
-          : [...current, role];
+            ? current.filter((item) => item !== role)
+            : [...current, role];
       return next.length === 0 || next.length === ROLES.length ? null : next;
     });
   };
@@ -337,7 +337,7 @@ export function NewsletterSection() {
   return (
     <div className="space-y-5">
       <section
-        className="aptiv-glass-soft grid grid-cols-3 gap-2 rounded-lg p-3 shadow-sm"
+        className="settings-surface grid grid-cols-3 gap-2 p-3"
         aria-label="Newsletter status summary"
       >
         <Metric
@@ -394,9 +394,9 @@ export function NewsletterSection() {
                   key={starter.label}
                   type="button"
                   onClick={() => applyStarter(starter)}
-                  className="hover:border-[var(--aptiv-orange)]/50 group rounded-lg border border-border bg-card p-3 text-left shadow-sm transition-[border-color,transform,box-shadow] duration-150 ease-out hover:shadow-md active:scale-[.98]"
+                  className="group border-border bg-card rounded-lg border p-3 text-left shadow-sm transition-[border-color,transform,box-shadow] duration-150 ease-out hover:border-(--aptiv-orange)/50 hover:shadow-md active:scale-[.98]"
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-[var(--aptiv-orange)]" />
+                  <Sparkles className="h-3.5 w-3.5 text-(--aptiv-orange)" />
                   <span className="mt-2 block text-xs font-semibold">
                     {starter.label}
                   </span>
@@ -405,7 +405,7 @@ export function NewsletterSection() {
             </div>
           )}
 
-          <div className="aptiv-glass-soft overflow-hidden rounded-xl shadow-sm">
+          <div className="settings-surface overflow-hidden">
             <PanelTabs
               tabs={[
                 { id: "write" as const, label: "Write", icon: Pencil },
@@ -423,52 +423,54 @@ export function NewsletterSection() {
               idPrefix="newsletter-composer"
               label="Composer view"
               variant="segmented"
-              className="rounded-none border-0 border-b border-border bg-muted/30 p-1.5"
+              className="border-border bg-muted/30 rounded-none border-0 border-b p-1.5"
             />
 
             {composerView === "write" ? (
               <div
                 {...panelTabPanelProps("newsletter-composer", "write")}
-                className="space-y-4 p-4 focus-visible:outline-none"
+                className="grid gap-4 p-4 focus-visible:outline-none @5xl/panel:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
               >
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="newsletter-subject"
-                    className="text-xs"
-                  >
-                    Subject
-                  </Label>
-                  <Input
-                    id="newsletter-subject"
-                    value={subject}
-                    maxLength={180}
-                    onChange={(event) => setSubject(event.target.value)}
-                    placeholder="A clear, useful subject line"
-                    className="h-10"
-                  />
-                  <p className="text-right text-[10px] tabular-nums text-muted-foreground">
-                    {subject.length}/180
-                  </p>
-                </div>
-
-                <fieldset className="space-y-2">
-                  <legend className="text-xs font-medium">Audience</legend>
-                  <div className="flex flex-wrap gap-1.5">
-                    <AudienceButton
-                      label="Everyone"
-                      selected={targetTiers === null}
-                      onClick={() => setTargetTiers(null)}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="newsletter-subject"
+                      className="text-xs"
+                    >
+                      Subject
+                    </Label>
+                    <Input
+                      id="newsletter-subject"
+                      value={subject}
+                      maxLength={180}
+                      onChange={(event) => setSubject(event.target.value)}
+                      placeholder="A clear, useful subject line"
+                      className="h-10"
                     />
-                    {ROLES.map((role) => (
-                      <AudienceButton
-                        key={role}
-                        label={`${role[0]?.toUpperCase()}${role.slice(1)}`}
-                        selected={targetTiers?.includes(role) ?? false}
-                        onClick={() => toggleTier(role)}
-                      />
-                    ))}
+                    <p className="text-muted-foreground text-right text-xs tabular-nums">
+                      {subject.length}/180
+                    </p>
                   </div>
-                </fieldset>
+
+                  <fieldset className="space-y-2">
+                    <legend className="text-xs font-medium">Audience</legend>
+                    <div className="flex flex-wrap gap-1.5">
+                      <AudienceButton
+                        label="Everyone"
+                        selected={targetTiers === null}
+                        onClick={() => setTargetTiers(null)}
+                      />
+                      {ROLES.map((role) => (
+                        <AudienceButton
+                          key={role}
+                          label={`${role[0]?.toUpperCase()}${role.slice(1)}`}
+                          selected={targetTiers?.includes(role) ?? false}
+                          onClick={() => toggleTier(role)}
+                        />
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-end justify-between gap-2">
@@ -478,7 +480,7 @@ export function NewsletterSection() {
                     >
                       Message
                     </Label>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       Markdown supported
                     </span>
                   </div>
@@ -487,9 +489,9 @@ export function NewsletterSection() {
                     value={body}
                     onChange={(event) => setBody(event.target.value)}
                     placeholder={"Hello team,\n\nShare your update…"}
-                    className="min-h-[260px] resize-y font-mono text-[13px] leading-relaxed"
+                    className="min-h-[260px] resize-y font-mono text-xs leading-relaxed"
                   />
-                  <p className="text-[10px] leading-relaxed text-muted-foreground">
+                  <p className="text-muted-foreground text-xs leading-relaxed">
                     Use <strong>**bold**</strong>, headings with{" "}
                     <strong>##</strong>, and lists with <strong>-</strong>. Raw
                     HTML is escaped for safety.
@@ -500,7 +502,7 @@ export function NewsletterSection() {
                   type="button"
                   onClick={saveDraft}
                   disabled={isSaving || !subject.trim() || !body.trim()}
-                  className="w-full"
+                  className="w-full @5xl/panel:col-span-full"
                 >
                   {isSaving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -517,7 +519,7 @@ export function NewsletterSection() {
                 {...panelTabPanelProps("newsletter-composer", "preview")}
                 className="space-y-3 p-3 focus-visible:outline-none"
               >
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
+                <div className="border-border bg-card flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5">
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                       <Users className="h-3.5 w-3.5" />
@@ -526,14 +528,14 @@ export function NewsletterSection() {
                       <p className="text-xs font-semibold">
                         {recipientCount ?? 0} recipients
                       </p>
-                      <p className="truncate text-[10px] text-muted-foreground">
+                      <p className="text-muted-foreground truncate text-xs">
                         {audienceLabel(targetTiers)}
                       </p>
                     </div>
                   </div>
                   <StatusBadge status="draft" />
                 </div>
-                <div className="overflow-hidden rounded-lg border border-border bg-[#eef1f3] shadow-inner">
+                <div className="border-border overflow-hidden rounded-lg border bg-[#eef1f3] shadow-inner">
                   <iframe
                     title="Newsletter email preview"
                     srcDoc={previewHtml}
@@ -613,7 +615,7 @@ function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
-      <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+      <p className="text-muted-foreground text-xs font-bold tracking-[0.16em] uppercase">
         {label}
       </p>
     </div>
@@ -635,7 +637,7 @@ function AudienceButton({
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-[border-color,background-color,color,transform] duration-150 ease-out active:scale-[.97]",
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-[border-color,background-color,color,transform] duration-150 ease-out active:scale-[.97]",
         selected
           ? "border-primary/50 bg-primary/10 text-primary"
           : "border-border bg-card text-muted-foreground hover:text-foreground"
@@ -652,12 +654,12 @@ function StatusBadge({ status }: { status: string }) {
     status === "sent"
       ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
       : status === "sending"
-      ? "bg-sky-500/12 text-sky-600 dark:text-sky-400"
-      : "bg-amber-500/12 text-amber-700 dark:text-amber-400";
+        ? "bg-sky-500/12 text-sky-600 dark:text-sky-400"
+        : "bg-amber-500/12 text-amber-700 dark:text-amber-400";
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+        "rounded-full px-2 py-0.5 text-xs font-bold tracking-[0.12em] uppercase",
         styles
       )}
     >
@@ -698,20 +700,20 @@ function HistoryView({
   if (isLoading)
     return (
       <div className="flex justify-center py-10">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
       </div>
     );
   if (newsletters.length === 0)
     return (
-      <div className="rounded-xl border border-dashed border-border bg-muted/20 px-5 py-10 text-center">
-        <Mail className="mx-auto h-6 w-6 text-muted-foreground" />
+      <div className="border-border bg-muted/20 rounded-xl border border-dashed px-5 py-10 text-center">
+        <Mail className="text-muted-foreground mx-auto h-6 w-6" />
         <p className="mt-3 text-sm font-semibold">No newsletters yet</p>
       </div>
     );
   return (
-    <div className="space-y-2">
-      <div className="flex items-end justify-between gap-3">
-        <p className="text-xs tabular-nums text-muted-foreground">
+    <div className="grid grid-cols-1 items-start gap-2 @5xl/panel:grid-cols-2">
+      <div className="col-span-full flex items-end justify-between gap-3">
+        <p className="text-muted-foreground text-xs tabular-nums">
           {newsletters.length}{" "}
           {newsletters.length === 1 ? "newsletter" : "newsletters"}
         </p>
@@ -721,9 +723,9 @@ function HistoryView({
           key={item.id}
           type="button"
           onClick={() => onSelect(item)}
-          className="hover:border-[var(--aptiv-orange)]/35 group flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-[border-color,box-shadow,transform] duration-150 ease-out hover:shadow-md active:scale-[.99]"
+          className="group border-border bg-card flex w-full items-center gap-3 rounded-xl border p-3 text-left shadow-sm transition-[border-color,box-shadow,transform] duration-150 ease-out hover:border-(--aptiv-orange)/35 hover:shadow-md active:scale-[.99]"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-[var(--aptiv-orange)]">
+          <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg group-hover:text-(--aptiv-orange)">
             <Mail className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1">
@@ -733,11 +735,11 @@ function HistoryView({
               </span>
               <StatusBadge status={item.status} />
             </span>
-            <span className="mt-1 block text-[10px] text-muted-foreground">
+            <span className="text-muted-foreground mt-1 block text-xs">
               {formatDate(item.created_at)} · {item.total_recipients} recipients
             </span>
           </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-hover:translate-x-0.5" />
+          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-150 ease-out group-hover:translate-x-0.5" />
         </button>
       ))}
     </div>
@@ -763,23 +765,23 @@ function NewsletterDetailView({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         All newsletters
       </button>
-      <div className="aptiv-glass-soft rounded-xl p-4 shadow-sm">
+      <div className="settings-surface p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="break-words text-lg font-semibold leading-tight tracking-tight">
+            <h3 className="text-lg leading-tight font-semibold tracking-tight wrap-break-word">
               {newsletter.subject}
             </h3>
           </div>
           <StatusBadge status={newsletter.status} />
         </div>
-        <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 text-xs">
+        <dl className="border-border mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs">
           <div>
-            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <dt className="text-muted-foreground text-xs tracking-wider uppercase">
               Audience
             </dt>
             <dd className="mt-1 font-semibold">
@@ -787,7 +789,7 @@ function NewsletterDetailView({
             </dd>
           </div>
           <div>
-            <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <dt className="text-muted-foreground text-xs tracking-wider uppercase">
               Created
             </dt>
             <dd className="mt-1 font-semibold">
@@ -797,15 +799,15 @@ function NewsletterDetailView({
         </dl>
         {newsletter.status !== "draft" && (
           <div className="mt-4 space-y-2">
-            <div className="flex justify-between text-[10px]">
+            <div className="flex justify-between text-xs">
               <span className="font-semibold">Delivery progress</span>
-              <span className="tabular-nums text-muted-foreground">
+              <span className="text-muted-foreground tabular-nums">
                 {progress}%
               </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="bg-muted h-1.5 overflow-hidden rounded-full">
               <div
-                className="h-full rounded-full bg-[var(--aptiv-orange)] transition-[width] duration-200 ease-out"
+                className="h-full rounded-full bg-(--aptiv-orange) transition-[width] duration-200 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -827,7 +829,7 @@ function NewsletterDetailView({
           </div>
         )}
       </div>
-      <div className="overflow-hidden rounded-lg border border-border bg-[#eef1f3] shadow-inner">
+      <div className="border-border overflow-hidden rounded-lg border bg-[#eef1f3] shadow-inner">
         <iframe
           title={`Preview of ${newsletter.subject}`}
           srcDoc={newsletter.body_html}
@@ -862,7 +864,7 @@ function NewsletterDetailView({
         </div>
       )}
       {newsletter.failed > 0 && (
-        <div className="bg-amber-500/8 flex gap-2 rounded-lg border border-amber-500/25 p-3 text-xs text-amber-800 dark:text-amber-300">
+        <div className="flex gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8 p-3 text-xs text-amber-800 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             {newsletter.failed} delivery{" "}
@@ -885,7 +887,7 @@ function DeliveryMetric({
   warning?: boolean;
 }) {
   return (
-    <div className="rounded-md bg-muted/50 px-2 py-2">
+    <div className="bg-muted/50 rounded-md px-2 py-2">
       <p
         className={cn(
           "text-sm font-semibold tabular-nums",
@@ -894,7 +896,7 @@ function DeliveryMetric({
       >
         {value}
       </p>
-      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </p>
     </div>

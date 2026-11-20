@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
+
 import {
   SettingsLoading,
   SettingsLoadError,
@@ -51,6 +53,7 @@ import {
   AdaptiveThinkingControl,
   OutputTokenControl,
   ReasoningEffortControl,
+  TaskBudgetControl,
 } from "@/app/components/ModelInferenceControls";
 import {
   nextModelDraft,
@@ -136,6 +139,7 @@ function draftFromEffective(eff: EffectiveModelSelection): DraftState {
     effort: eff.effort,
     thinking: eff.thinking,
     max_tokens: eff.max_tokens,
+    task_budget: eff.task_budget ?? null,
   };
 }
 
@@ -145,15 +149,16 @@ function draftsEqual(a: DraftState, b: DraftState): boolean {
     a.model === b.model &&
     (a.effort ?? null) === (b.effort ?? null) &&
     (a.thinking ?? null) === (b.thinking ?? null) &&
-    a.max_tokens === b.max_tokens
+    a.max_tokens === b.max_tokens &&
+    (a.task_budget ?? null) === (b.task_budget ?? null)
   );
 }
 
 function usageBarClass(pct: number, isUnlimited: boolean): string {
   if (isUnlimited) return "bg-muted-foreground/50";
   if (pct >= 100) return "bg-destructive";
-  if (pct >= 80) return "bg-[var(--color-warning)]";
-  return "bg-[var(--color-success)]";
+  if (pct >= 80) return "bg-(--color-warning)";
+  return "bg-(--color-success)";
 }
 
 type UsageMeterProps = {
@@ -184,22 +189,22 @@ function UsageMeter({
         dimension
       )}`;
   return (
-    <div className="aptiv-glass-soft rounded-lg p-3 shadow-sm">
+    <div className="settings-surface p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Gauge className="h-4 w-4 flex-shrink-0 text-[var(--color-primary)]" />
+          <Gauge className="h-4 w-4 shrink-0 text-(--color-primary)" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-foreground text-sm font-semibold">
                 {label}
               </span>
             </div>
-            <div className="truncate text-xs tabular-nums text-muted-foreground">
+            <div className="text-muted-foreground truncate text-xs tabular-nums">
               {detail}
             </div>
           </div>
         </div>
-        <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+        <span className="text-foreground font-mono text-sm font-semibold tabular-nums">
           {isUnlimited ? "∞" : `${Math.round(pct)}%`}
         </span>
       </div>
@@ -210,7 +215,7 @@ function UsageMeter({
         aria-valuemax={100}
         aria-valuenow={isUnlimited ? undefined : Math.round(clampedPct)}
         aria-valuetext={isUnlimited ? "Unlimited" : `${Math.round(pct)}% used`}
-        className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted/70"
+        className="bg-muted/70 mt-2.5 h-1.5 overflow-hidden rounded-full"
       >
         <div
           className={[
@@ -221,12 +226,12 @@ function UsageMeter({
         />
       </div>
       {!isUnlimited && pct >= 80 && (
-        <div className="mt-2 flex items-center justify-end text-[11px]">
+        <div className="mt-2 flex items-center justify-end text-xs">
           <span
             className={
               pct >= 100
-                ? "font-semibold text-destructive"
-                : "font-semibold text-[var(--color-warning)]"
+                ? "text-destructive font-semibold"
+                : "font-semibold text-(--color-warning)"
             }
           >
             {pct >= 100 ? "Limit reached" : "Approaching limit"}
@@ -352,6 +357,7 @@ export function ModelSidebar() {
         effort: draft.effort,
         thinking: draft.thinking,
         max_tokens: draft.max_tokens,
+        task_budget: draft.task_budget ?? null,
       })
         .then((result) => {
           setSelection(result);
@@ -470,8 +476,8 @@ export function ModelSidebar() {
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Navigation and section context are supplied by WorkspacePanel. */}
-      <ScrollArea className="h-0 flex-1">
-        <div className="space-y-6 p-4">
+      <ScrollArea className="h-0 flex-1 [&_[data-slot=scroll-area-viewport]>div]:block!">
+        <SettingsContent>
           {usage && (
             <section
               className="space-y-2.5"
@@ -480,12 +486,12 @@ export function ModelSidebar() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <span
-                    className="text-sm font-semibold text-foreground"
+                    className="text-foreground text-sm font-semibold"
                     id="usage-section-heading"
                   >
                     Usage
                   </span>
-                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  <span className="text-muted-foreground mt-0.5 block truncate text-xs">
                     {resetLabel}
                   </span>
                 </div>
@@ -500,8 +506,8 @@ export function ModelSidebar() {
                   primary.dimension === "calls"
                     ? "Weekly call budget"
                     : primary.dimension === "cost"
-                    ? "Weekly cost budget"
-                    : "Weekly token budget";
+                      ? "Weekly cost budget"
+                      : "Weekly token budget";
                 return (
                   <UsageMeter
                     label={label}
@@ -525,7 +531,7 @@ export function ModelSidebar() {
               onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
             />
           ) : !draft || allowed.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
+            <div className="border-border bg-muted/30 text-muted-foreground rounded-md border border-dashed px-3 py-6 text-center text-sm">
               No models are available for your account.
             </div>
           ) : (
@@ -568,26 +574,20 @@ export function ModelSidebar() {
                         onClick={handleClick}
                         disabled={isSaving}
                         className={[
-                          "aptiv-glass-soft group relative flex min-h-11 items-center gap-2 rounded-md py-2 pl-2.5 pr-5 text-left transition-colors duration-150",
-                          "focus-visible:ring-[var(--aptiv-orange)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
+                          "group min-h-touch relative flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-left text-sm transition-colors duration-150",
+                          "focus-visible:ring-primary/40 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent focus-visible:outline-none",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
-                            ? "!border-[var(--aptiv-orange)]/55 !bg-[var(--aptiv-orange)]/10 shadow-[0_2px_10px_-4px_color-mix(in_srgb,var(--aptiv-orange)_30%,transparent)]"
-                            : "hover:!border-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--color-primary)_5%,transparent)]",
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted/40 hover:bg-muted/70",
                         ].join(" ")}
                       >
-                        {active && (
-                          <span
-                            aria-hidden="true"
-                            className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--aptiv-orange)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--aptiv-orange)_25%,transparent)]"
-                          />
-                        )}
                         <span
                           className={[
                             "inline-flex h-4 w-4 items-center justify-center transition-colors",
                             active
-                              ? "text-[var(--aptiv-orange)]"
-                              : "text-[var(--color-text-tertiary)] group-hover:text-[var(--color-primary)]",
+                              ? "text-primary"
+                              : "text-(--color-text-tertiary) group-hover:text-(--color-primary)",
                           ].join(" ")}
                         >
                           {loading ? (
@@ -599,25 +599,26 @@ export function ModelSidebar() {
                             <Icon className="h-3.5 w-3.5" />
                           )}
                         </span>
-                        <span className="min-w-0 break-words text-xs font-semibold leading-tight text-foreground">
+                        <span className="text-foreground min-w-0 flex-1 text-sm leading-tight font-medium wrap-break-word">
                           {option.label}
                         </span>
+                        {active && (
+                          <CheckCircle
+                            className="text-primary size-4 shrink-0"
+                            aria-hidden="true"
+                          />
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </section>
 
-              <div className="border-t border-border pt-4">
+              <div className="border-border border-t pt-4">
                 <RunLimitSettings />
               </div>
               <section className="space-y-2">
-                <Label
-                  htmlFor="model-select"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Model
-                </Label>
+                <Label htmlFor="model-select">Model</Label>
                 <Select
                   value={modelKey(draft.provider, draft.model)}
                   onValueChange={handleModelChange}
@@ -625,7 +626,7 @@ export function ModelSidebar() {
                 >
                   <SelectTrigger
                     id="model-select"
-                    className="aptiv-glass-soft h-11 rounded-lg"
+                    className="h-11 rounded-lg"
                   >
                     <SelectValue placeholder="Choose a model" />
                   </SelectTrigger>
@@ -640,7 +641,7 @@ export function ModelSidebar() {
                         <span className="text-sm">
                           {modelDisplayName(m.model)}
                         </span>
-                        <span className="ml-1.5 text-xs text-muted-foreground">
+                        <span className="text-muted-foreground ml-1.5 text-xs">
                           {providerDisplayName(m.provider)}
                         </span>
                       </SelectItem>
@@ -652,6 +653,7 @@ export function ModelSidebar() {
               <ReasoningEffortControl
                 options={effortOptions}
                 value={draft.effort}
+                recommended={currentModelEntry?.recommended_effort}
                 supported={!!currentModelEntry?.supports_effort}
                 disabled={isSaving}
                 onChange={(effort) => updateDraft({ effort })}
@@ -669,38 +671,61 @@ export function ModelSidebar() {
                       ? "Always on for this model; choose effort to adjust depth"
                       : "Required at this effort; choose a lower effort to turn it off"
                     : currentModelEntry?.supports_thinking
-                    ? "Let the model take longer on hard prompts"
-                    : "Not supported by this model"
+                      ? "Let the model take longer on hard prompts"
+                      : "Not supported by this model"
                 }
                 onChange={(thinking) => updateDraft({ thinking })}
               />
               <OutputTokenControl
                 value={draft.max_tokens}
                 disabled={isSaving}
+                allowUnlimited={!!currentModelEntry?.supports_unlimited_output}
+                recommended={currentModelEntry?.recommended_max_tokens ?? 65536}
                 onChange={(max_tokens) => updateDraft({ max_tokens })}
               />
+              {currentModelEntry?.supports_task_budget && (
+                <TaskBudgetControl
+                  value={draft.task_budget ?? null}
+                  disabled={isSaving}
+                  onChange={(task_budget) => updateDraft({ task_budget })}
+                />
+              )}
+              {!currentModelEntry?.supports_task_budget &&
+                draft.task_budget != null && (
+                  <div className="text-muted-foreground text-xs">
+                    Saved task budget is inactive on this connection.{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      disabled={isSaving}
+                      onClick={() => updateDraft({ task_budget: null })}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
             </>
           )}
-        </div>
+        </SettingsContent>
       </ScrollArea>
       {!isLoading && draft && allowed.length > 0 && (
-        <div className="flex-shrink-0 border-t border-border bg-card p-4">
+        <SettingsFooter>
           <p
             role="status"
-            className="mb-3 text-xs text-muted-foreground"
+            className="text-muted-foreground m-0 text-xs @max-[18rem]/panel:sr-only"
           >
             {isSaving
               ? "Saving model preferences…"
               : dirty
-              ? "Changes save automatically. Use Save to retry immediately."
-              : saved
-              ? "Model preferences saved."
-              : "Model changes save automatically. Step limits use Save limit."}
+                ? "Changes save automatically. Use Save to retry immediately."
+                : saved
+                  ? "Model preferences saved."
+                  : "Model changes save automatically. Step limits use Save limit."}
           </p>
           <Button
             onClick={() => handleSave()}
             disabled={isSaving || !dirty || !draft.provider || !draft.model}
-            className="w-full"
+            className="min-h-touch h-auto w-full whitespace-normal"
           >
             {isSaving ? (
               <>
@@ -719,7 +744,7 @@ export function ModelSidebar() {
               </>
             )}
           </Button>
-        </div>
+        </SettingsFooter>
       )}
     </div>
   );

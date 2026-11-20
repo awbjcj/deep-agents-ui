@@ -167,8 +167,8 @@ export function useQueuedMessages({
               result === true || result === "accepted"
                 ? "accepted"
                 : result === false
-                ? "rejected"
-                : result
+                  ? "rejected"
+                  : result
             ),
           () => settle(id, "unknown")
         );

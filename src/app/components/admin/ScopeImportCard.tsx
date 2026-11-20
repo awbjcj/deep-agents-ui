@@ -91,18 +91,18 @@ export function ScopeImportCard({
 
       {(fileName || error) && (
         <div
-          className="rounded-lg border border-border bg-card/60 p-3"
+          className="border-border bg-card/60 rounded-lg border p-3"
           role={error ? "alert" : "status"}
         >
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold">{fileName}</p>
               {error ? (
-                <p className="mt-1 text-[11px] leading-relaxed text-destructive">
+                <p className="text-destructive mt-1 text-xs leading-relaxed">
                   {error}
                 </p>
               ) : (
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="text-muted-foreground mt-1 text-xs">
                   {entries.length} scope{entries.length === 1 ? "" : "s"}
                   {memberCount > 0
                     ? ` and ${memberCount} explicit member grant${

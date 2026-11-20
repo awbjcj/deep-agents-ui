@@ -45,7 +45,7 @@ export function SourceResults({
   return (
     <section
       aria-label={resourceLabels[query.resource]}
-      className="mt-4 space-y-3 border-t border-border pt-4"
+      className="border-border mt-4 space-y-3 border-t pt-4"
     >
       <div className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
@@ -57,7 +57,7 @@ export function SourceResults({
             {resourceLabels[query.resource]}
           </h4>
           {query.ref && (
-            <p className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+            <p className="text-muted-foreground mt-1 text-xs wrap-anywhere">
               {query.ref.repository}
               {external && " · declared dependencies"}
             </p>
@@ -81,7 +81,7 @@ export function SourceResults({
         onChange={(event) => setFilter(event.target.value)}
         placeholder="Filter loaded results"
       />
-      <ul className="m-0 list-none divide-y divide-border p-0">
+      <ul className="divide-border m-0 list-none divide-y p-0">
         {choices.map((choice, index) => {
           const selectable = external
             ? Boolean(choice.serverId && choice.repository && choice.selector)
@@ -93,14 +93,14 @@ export function SourceResults({
             >
               <button
                 type="button"
-                className="group flex min-h-touch w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring enabled:cursor-pointer enabled:hover:bg-muted disabled:text-muted-foreground"
+                className="group min-h-touch focus-visible:ring-ring enabled:hover:bg-muted disabled:text-muted-foreground flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-sm focus-visible:ring-2 focus-visible:outline-none enabled:cursor-pointer"
                 disabled={disabled || !selectable}
                 onClick={() => onChoose(choice)}
               >
-                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                <span className="min-w-0 flex-1 wrap-anywhere">
                   <span className="block font-medium">{choice.label}</span>
                   {choice.detail && (
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                    <span className="text-muted-foreground mt-0.5 block text-xs">
                       {choice.detail}
                     </span>
                   )}
@@ -109,12 +109,12 @@ export function SourceResults({
                   (external ? (
                     <Plus
                       aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground"
+                      className="text-muted-foreground size-4 shrink-0"
                     />
                   ) : (
                     <ArrowRight
                       aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground"
+                      className="text-muted-foreground size-4 shrink-0"
                     />
                   ))}
               </button>
@@ -123,21 +123,21 @@ export function SourceResults({
         })}
       </ul>
       {!choices.length && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {filter
             ? "No matches in the loaded results."
             : "No results returned."}
         </p>
       )}
       {page.completeness === "partial" && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           This list is incomplete.
         </p>
       )}
       {page.warnings.map((warning, index) => (
         <p
           key={index}
-          className="text-xs text-muted-foreground [overflow-wrap:anywhere]"
+          className="text-muted-foreground text-xs wrap-anywhere"
         >
           {warning}
         </p>

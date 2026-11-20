@@ -18,9 +18,11 @@ export const TRIGGER_TONE = {
   neutral:
     "text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground dark:hover:bg-accent/60 dark:data-[state=open]:bg-accent/60",
   primary:
-    "text-[var(--color-primary)] hover:bg-primary/10 data-[state=open]:bg-primary/10",
+    "text-(--color-primary) hover:bg-primary/10 data-[state=open]:bg-primary/10",
   destructive:
     "text-destructive hover:bg-destructive/10 data-[state=open]:bg-destructive/10",
+  warning:
+    "text-warning hover:bg-warning-primary data-[state=open]:bg-warning-primary",
 } as const;
 
 /** Select row: no resting fill, tinted while hovered or keyboard-highlighted. */
@@ -35,7 +37,7 @@ export const OPTION_TILE_TONE = {
   neutral:
     "bg-muted text-muted-foreground group-[[data-highlighted][data-state=unchecked]]:text-foreground group-data-[state=checked]:bg-foreground group-data-[state=checked]:text-background",
   primary:
-    "bg-primary/10 text-[var(--color-primary)] group-[[data-highlighted][data-state=unchecked]]:bg-primary/15 group-data-[state=checked]:bg-[var(--color-primary)] group-data-[state=checked]:text-white",
+    "bg-primary/10 text-(--color-primary) group-[[data-highlighted][data-state=unchecked]]:bg-primary/15 group-data-[state=checked]:bg-(--color-primary) group-data-[state=checked]:text-white",
   destructive:
     "bg-destructive/10 text-destructive group-[[data-highlighted][data-state=unchecked]]:bg-destructive/15 group-data-[state=checked]:bg-destructive group-data-[state=checked]:text-destructive-foreground",
 } as const;
@@ -64,10 +66,10 @@ export function ComposerMenuOption({
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0 pt-px">
-        <span className="block text-sm font-medium leading-5 text-foreground">
+        <span className="text-foreground block text-sm leading-5 font-medium">
           {label}
         </span>
-        <span className="block text-xs leading-[1.125rem] text-muted-foreground">
+        <span className="text-muted-foreground block text-xs leading-4.5">
           {summary}
         </span>
       </span>

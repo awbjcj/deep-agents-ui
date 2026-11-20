@@ -121,12 +121,12 @@ export function TaskScheduleFields({
       </datalist>
       <div
         id="task-preview"
-        className="border-l-2 border-primary bg-muted/30 px-4 py-3 text-sm"
+        className="border-primary bg-muted/30 border-l-2 px-4 py-3 text-sm"
         aria-live="polite"
         aria-busy={preview.busy}
       >
         <p className="font-medium">Next run</p>
-        <p className="mt-1 text-muted-foreground">
+        <p className="text-muted-foreground mt-1">
           {preview.busy
             ? "Calculating…"
             : preview.error ||
@@ -135,8 +135,8 @@ export function TaskScheduleFields({
                 : "No future occurrence. Choose a later time.")}
         </p>
       </div>
-      <details className="text-xs leading-relaxed text-muted-foreground">
-        <summary className="cursor-pointer py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+      <details className="text-muted-foreground text-xs leading-relaxed">
+        <summary className="focus-visible:outline-ring cursor-pointer py-2 focus-visible:outline focus-visible:outline-2">
           Missed runs and daylight saving time
         </summary>
         <p className="pt-2">

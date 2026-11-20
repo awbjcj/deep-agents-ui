@@ -34,20 +34,30 @@ export function SettingsPanel<Id extends string>({
   const [wide, setWide] = useState(false);
   useEffect(() => {
     if (!panel.current) return;
+    const shortViewport = window.matchMedia("(max-height: 540px)");
+    let width = panel.current.getBoundingClientRect().width;
+    const updateLayout = () =>
+      setWide(width >= 720 || (width >= 560 && shortViewport.matches));
     const observer = new ResizeObserver(([entry]) => {
-      setWide(entry.contentRect.width >= 720);
+      width = entry.contentRect.width;
+      updateLayout();
     });
+    updateLayout();
     observer.observe(panel.current);
-    return () => observer.disconnect();
+    shortViewport.addEventListener("change", updateLayout);
+    return () => {
+      observer.disconnect();
+      shortViewport.removeEventListener("change", updateLayout);
+    };
   }, []);
   const section = tabs.find((tab) => tab.id === active);
 
   return (
     <div
       ref={panel}
-      className="absolute inset-0 flex min-w-0 flex-col bg-background @container/panel"
+      className="bg-background @container/panel absolute inset-0 flex min-w-0 flex-col"
     >
-      <header className="flex min-h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4">
+      <header className="border-border bg-card flex min-h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
         <h2 className="text-base font-semibold tracking-tight">{title}</h2>
         <div className="flex shrink-0 items-center gap-1">
           {onToggleExpanded && (
@@ -84,10 +94,10 @@ export function SettingsPanel<Id extends string>({
       <div className={cn("flex min-h-0 flex-1", !wide && "flex-col")}>
         <div
           className={cn(
-            "shrink-0 bg-card",
+            "bg-card shrink-0",
             wide
-              ? "w-52 overflow-y-auto border-r border-border py-3"
-              : "border-b border-border px-1"
+              ? "border-border w-52 overflow-y-auto border-r py-3"
+              : "border-border/50 border-b px-1 py-2"
           )}
         >
           <PanelTabs
@@ -96,6 +106,7 @@ export function SettingsPanel<Id extends string>({
             onValueChange={onSelect}
             idPrefix={idPrefix}
             label={navigationLabel}
+            variant="soft"
             activation="manual"
             layout={wide ? "rail" : "two-row"}
             columns={tabs.length > 6 ? 4 : 3}
@@ -103,9 +114,11 @@ export function SettingsPanel<Id extends string>({
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {section?.description && (
-            <p className="shrink-0 border-b border-border/60 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-              {section.description}
-            </p>
+            <div className="border-border/50 shrink-0 border-b @max-[18rem]/panel:sr-only [@media(max-height:540px)]:sr-only">
+              <p className="text-muted-foreground mx-auto w-full max-w-3xl px-4 py-3 text-sm leading-relaxed @lg/panel:px-6 @4xl/panel:max-w-5xl @6xl/panel:max-w-7xl @6xl/panel:px-8">
+                {section.description}
+              </p>
+            </div>
           )}
           <div className="relative flex min-h-0 flex-1 flex-col">
             {children}

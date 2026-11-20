@@ -1,6 +1,6 @@
 /**
- * Human-readable names for provider model IDs, for display only. API calls,
- * saved settings, and admin allowlists keep the exact IDs.
+ * Human-readable names for models, providers, and reasoning levels. API calls
+ * and saved settings keep the exact identifiers.
  */
 
 const PROVIDER_NAMES: Record<string, string> = {
@@ -29,6 +29,13 @@ function titleCase(token: string): string {
 /** `anthropic` → `Anthropic`; unknown providers are title-cased. */
 export function providerDisplayName(provider: string): string {
   return PROVIDER_NAMES[provider.toLowerCase()] ?? titleCase(provider);
+}
+
+/** Format provider effort values for people reading or hearing the controls. */
+export function effortDisplayName(effort: string): string {
+  if (effort === "xhigh") return "Extra high";
+  if (effort === "none") return "Off";
+  return titleCase(effort);
 }
 
 /**

@@ -32,7 +32,7 @@ import { FileSuggestions, SkillSuggestions } from "./ReferenceSuggestions";
 import { SuggestionPanel } from "./SuggestionPanel";
 
 const textLayout =
-  "w-full whitespace-pre-wrap break-words px-4 py-4 text-base leading-6";
+  "w-full whitespace-pre-wrap wrap-break-word px-4 py-4 text-base leading-6";
 
 export interface ReferenceInsertion {
   text: string;
@@ -120,8 +120,8 @@ export function ReferenceInput({
     skillQuery && (!fileQuery || skillQuery.start > fileQuery.start)
       ? "skill"
       : fileQuery
-      ? "file"
-      : null;
+        ? "file"
+        : null;
   const skillMatches =
     mode === "skill" && skillQuery
       ? searchSkills(skillCatalog, skillQuery.query)
@@ -140,8 +140,8 @@ export function ReferenceInput({
     mode === "skill"
       ? `skill:${skillQuery?.query}`
       : mode === "file"
-      ? `file:${fileQuery?.query}`
-      : "";
+        ? `file:${fileQuery?.query}`
+        : "";
   const referencedSkillCount = new Set(
     skillReferences.map((ref) => `${ref.origin}:${ref.id}`)
   ).size;
@@ -276,8 +276,8 @@ export function ReferenceInput({
             loading
               ? "Loading skills"
               : error
-              ? "Skills could not be loaded"
-              : `${skillMatches.length} skills found`
+                ? "Skills could not be loaded"
+                : `${skillMatches.length} skills found`
           }
           busy={loading}
           maxHeight={panelHeight}
@@ -359,7 +359,7 @@ export function ReferenceInput({
         placeholder={isLoading ? "Add a follow-up…" : "Enter your message…"}
         className={cn(
           textLayout,
-          "relative block max-h-[32dvh] min-h-20 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:ring-0"
+          "text-foreground placeholder:text-muted-foreground relative block max-h-[32dvh] min-h-20 shrink-0 resize-none overflow-y-auto overscroll-contain border-0 bg-transparent outline-none focus:border-transparent focus:ring-0"
         )}
         rows={1}
       />
@@ -383,14 +383,14 @@ export function ReferenceInput({
       {!mode && (error || skillReferences.length > 0) && (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-2 px-4 pb-2 text-xs text-muted-foreground"
+          className="text-muted-foreground flex flex-wrap items-center gap-2 px-4 pb-2 text-xs"
         >
           {error ? (
             <>
               <span>Skill matching unavailable.</span>
               <button
                 type="button"
-                className="rounded underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="focus-visible:ring-ring rounded underline underline-offset-2 focus-visible:ring-2 focus-visible:outline-none"
                 onClick={onRefreshSkills}
               >
                 Retry skills

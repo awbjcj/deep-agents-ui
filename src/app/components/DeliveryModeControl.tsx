@@ -57,7 +57,7 @@ export function DeliveryModeControl({
       <SelectContent
         side="top"
         align="end"
-        className="w-64 !animate-none rounded-xl"
+        className="w-64 animate-none! rounded-xl"
       >
         {(Object.keys(OPTIONS) as MessageDelivery[]).map((option) => (
           <SelectItem

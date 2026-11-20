@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -56,10 +58,12 @@ function sourcePolicyDescription(
     : "Documents";
   const scope =
     policy.default_scope === "all"
-      ? "All by default"
-      : policy.allow_all
-      ? "Embedded · all on request"
-      : "Embedded only";
+      ? "Embedded + attachments"
+      : policy.default_scope === "attachments"
+        ? "Attachments only"
+        : policy.allow_all
+          ? "Embedded · attachments on request"
+          : "Embedded only";
   return `${types} · ${scope}`;
 }
 
@@ -306,7 +310,7 @@ export function ConnectivitySidebar() {
           only owns its content. Keeping the close button out avoids a
           double X next to the parent's. */}
       <ScrollArea className="h-0 flex-1">
-        <div className="space-y-5 p-4">
+        <SettingsContent>
           {isLoading ? (
             <ConnectivityLoadingState />
           ) : !data ? (
@@ -318,23 +322,23 @@ export function ConnectivitySidebar() {
             <>
               <h3 className="text-sm font-semibold tracking-tight">Run mode</h3>
 
-              <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
+              <div className="settings-surface space-y-3 p-4">
                 <ConnectivityModeSelector
                   value={pendingMode}
                   onValueChange={selectMode}
                 />
 
                 {data && (
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+                  <div className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
                     <Clock className="h-3 w-3" />
-                    <span className="font-semibold uppercase tracking-wider">
+                    <span className="font-semibold tracking-wider uppercase">
                       System default
                     </span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums">
+                    <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums">
                       {data.default_run_mode}
                     </span>
                     {data.run_mode_source === "user" && (
-                      <span className="text-[var(--color-primary)]">
+                      <span className="text-(--color-primary)">
                         &middot; Your override active
                       </span>
                     )}
@@ -343,11 +347,11 @@ export function ConnectivitySidebar() {
               </div>
 
               {pendingMode === "proxy" && (
-                <div className="space-y-2 border-t border-border/40 pt-4">
+                <div className="border-border/40 space-y-2 border-t pt-4">
                   <header className="space-y-1">
                     <Label
                       htmlFor="user-proxy-url"
-                      className="text-xs font-semibold text-foreground"
+                      className="text-foreground text-xs font-semibold"
                     >
                       Proxy base URL
                     </Label>
@@ -362,17 +366,17 @@ export function ConnectivitySidebar() {
                     placeholder="System proxy when blank"
                     className={cn(
                       "h-10 rounded-md font-mono text-lg sm:text-xs",
-                      proxyUrl ? "border-[var(--color-primary)]/40" : ""
+                      proxyUrl ? "border-(--color-primary)/40" : ""
                     )}
                   />
                 </div>
               )}
 
               {imageFetchingLoaded && (
-                <div className="space-y-3 border-t border-border/40 pt-4">
-                  <div className="aptiv-glass-soft overflow-hidden rounded-lg shadow-sm">
+                <div className="border-border/40 space-y-3 border-t pt-4">
+                  <div className="settings-surface overflow-hidden">
                     <div className="flex items-start gap-3 p-3.5">
-                      <span className="bg-[var(--color-primary)]/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--color-primary)]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-(--color-primary)/10 text-(--color-primary)">
                         <ImageIcon
                           className="h-4 w-4"
                           aria-hidden="true"
@@ -381,27 +385,27 @@ export function ConnectivitySidebar() {
                       <div className="min-w-0 flex-1 space-y-1">
                         <label
                           htmlFor="source-image-attachments"
-                          className="text-sm font-semibold text-foreground"
+                          className="text-foreground text-sm font-semibold"
                         >
                           Include source images
                         </label>
                         <p
                           id="source-image-attachments-description"
-                          className="text-xs leading-relaxed text-muted-foreground"
+                          className="text-muted-foreground text-xs leading-relaxed"
                         >
                           {imageFetchingError
                             ? "Status unavailable. Retry before changing this preference."
                             : isLoadingImageFetching
-                            ? "Checking your source image preference…"
-                            : imageFetchingDisabledByAdmin
-                            ? "Unavailable because no connected source is enabled for your tier."
-                            : "Controls images from connected sources. Chat uploads and document access use separate settings."}
+                              ? "Checking your source image preference…"
+                              : imageFetchingDisabledByAdmin
+                                ? "Unavailable because no connected source is enabled for your tier."
+                                : "Controls images from connected sources. Chat uploads and document access use separate settings."}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2 pt-0.5">
                         {isSavingImageFetching && (
                           <Loader2
-                            className="h-3.5 w-3.5 animate-spin text-muted-foreground motion-reduce:animate-none"
+                            className="text-muted-foreground h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
                             aria-hidden="true"
                           />
                         )}
@@ -425,11 +429,11 @@ export function ConnectivitySidebar() {
                       </div>
                     </div>
                     {sourceImagePolicies && (
-                      <div className="border-t border-border/60 bg-muted/20 px-3.5 py-2.5">
-                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      <div className="border-border/60 bg-muted/20 border-t px-3.5 py-2.5">
+                        <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-[0.14em] uppercase">
                           Effective access
                         </p>
-                        <div className="divide-y divide-border/50">
+                        <div className="divide-border/50 divide-y">
                           {SOURCE_IMAGE_SOURCES.map((source) => {
                             const policy = sourceImagePolicies[source];
                             if (!policy) return null;
@@ -440,18 +444,18 @@ export function ConnectivitySidebar() {
                               >
                                 <span
                                   className={cn(
-                                    "h-1.5 w-1.5 shrink-0 rounded-full ring-2 ring-background",
+                                    "ring-background h-1.5 w-1.5 shrink-0 rounded-full ring-2",
                                     policy.effective_enabled ||
                                       policy.documents_enabled
-                                      ? "bg-[var(--color-primary)]"
+                                      ? "bg-(--color-primary)"
                                       : "bg-muted-foreground/35"
                                   )}
                                   aria-hidden="true"
                                 />
-                                <span className="min-w-0 flex-1 text-xs font-semibold text-foreground">
+                                <span className="text-foreground min-w-0 flex-1 text-xs font-semibold">
                                   {SOURCE_IMAGE_LABELS[source]}
                                 </span>
-                                <span className="max-w-[58%] text-right text-xs leading-relaxed text-muted-foreground">
+                                <span className="text-muted-foreground max-w-[58%] text-right text-xs leading-relaxed">
                                   {sourcePolicyDescription(
                                     policy,
                                     imageFetching
@@ -466,14 +470,14 @@ export function ConnectivitySidebar() {
                     {imageFetchingError && (
                       <div
                         role="alert"
-                        className="flex items-start gap-2 border-t border-destructive/25 bg-destructive/5 px-3.5 py-3"
+                        className="border-destructive/25 bg-destructive/5 flex items-start gap-2 border-t px-3.5 py-3"
                       >
                         <AlertCircle
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive"
+                          className="text-destructive mt-0.5 h-3.5 w-3.5 shrink-0"
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs leading-relaxed text-destructive">
+                          <p className="text-destructive text-xs leading-relaxed">
                             {imageFetchingError}
                           </p>
                           <Button
@@ -494,14 +498,14 @@ export function ConnectivitySidebar() {
               )}
             </>
           )}
-        </div>
+        </SettingsContent>
       </ScrollArea>
       {!isLoading && data && (
-        <div className="flex-shrink-0 border-t border-border bg-card p-4">
-          <div className="flex flex-col gap-2">
+        <SettingsFooter>
+          <div className="grid grid-cols-2 gap-2">
             <p
               role="status"
-              className="text-xs leading-relaxed text-muted-foreground"
+              className="text-muted-foreground col-span-2 m-0 text-xs leading-relaxed"
             >
               Connection mode saves automatically. Save proxy URL changes below.
             </p>
@@ -509,12 +513,12 @@ export function ConnectivitySidebar() {
               type="button"
               onClick={handleSave}
               disabled={isSaving || !dirty}
-              className="h-10 w-full"
+              className="min-h-touch h-auto min-w-0 whitespace-normal"
             >
               {isSaving ? (
                 <>
                   <Loader2
-                    className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
                     aria-hidden="true"
                   />
                   Saving…
@@ -522,14 +526,14 @@ export function ConnectivitySidebar() {
               ) : saved && !dirty ? (
                 <>
                   <CheckCircle
-                    className="mr-2 h-4 w-4"
+                    className="h-4 w-4"
                     aria-hidden="true"
                   />
                   Saved
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="h-4 w-4" />
                   Save connectivity
                 </>
               )}
@@ -540,13 +544,13 @@ export function ConnectivitySidebar() {
               variant="ghost"
               onClick={handleReset}
               disabled={isSaving}
-              className="h-10 w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground min-h-touch h-auto min-w-0 whitespace-normal"
             >
               <RotateCcw className="h-3 w-3" />
-              Reset to system defaults
+              Reset defaults
             </Button>
           </div>
-        </div>
+        </SettingsFooter>
       )}
     </div>
   );

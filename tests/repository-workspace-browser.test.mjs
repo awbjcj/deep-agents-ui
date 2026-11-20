@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const EVIDENCE =
@@ -17,8 +17,7 @@ test(
   },
   async () => {
     const { build } = await import("esbuild");
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
+
     const { chromium } = await loadPlaywright();
     const bundle = await build({
       absWorkingDir: ROOT,
@@ -70,12 +69,7 @@ test(
       platform: "browser",
       define: { "process.env.NODE_ENV": '"production"' },
     });
-    const source = (
-      await readFile(resolve(ROOT, "src/app/globals.css"), "utf8")
-    ).replace(/^@import.*;$/gm, "");
-    const { css } = await postcss([
-      tailwind({ config: resolve(ROOT, "tailwind.config.mjs") }),
-    ]).process(source, { from: undefined });
+    const { css } = await compileBrowserStyles();
     const projects = [
       { repository: "team/platform" },
       { repository: "team/consumer" },
@@ -195,8 +189,8 @@ test(
             body.ref.repository === projects[0].repository
               ? 1
               : body.ref.repository === projects[1].repository
-              ? 2
-              : 3;
+                ? 2
+                : 3;
           const result = {
             target_handle: `opaque-target-${index}`,
             target: {
@@ -281,15 +275,15 @@ test(
           url.pathname === "/app.js"
             ? "text/javascript"
             : url.pathname === "/style.css"
-            ? "text/css"
-            : "text/html",
+              ? "text/css"
+              : "text/html",
       });
       res.end(
         url.pathname === "/app.js"
           ? bundle.outputFiles[0].text
           : url.pathname === "/style.css"
-          ? css
-          : '<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));

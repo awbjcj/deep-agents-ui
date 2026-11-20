@@ -114,7 +114,7 @@ export function SourcePicker({
             ["missing", "reconnect_required"].includes(
               server.credential_state ?? ""
             ) && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Connect this server in Workspace → Tokens before looking up
                 source.
               </p>
@@ -175,7 +175,7 @@ export function SourcePicker({
           />
           <p
             id={`${id}-hint`}
-            className="text-xs leading-relaxed text-muted-foreground"
+            className="text-muted-foreground text-xs leading-relaxed"
           >
             {isPlastic
               ? "Branch (br:), label (lb:), or changeset (cs:)."
@@ -223,7 +223,7 @@ export function SourcePicker({
             id={`${id}-error`}
             role="alert"
             tabIndex={-1}
-            className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive outline-none [overflow-wrap:anywhere]"
+            className="border-destructive/30 bg-destructive/5 text-destructive rounded-md border p-3 text-sm wrap-anywhere outline-none"
           >
             {error}
           </p>
@@ -231,7 +231,7 @@ export function SourcePicker({
         <Button
           type="submit"
           variant="outline"
-          className="h-auto min-h-touch w-full min-w-0 whitespace-normal py-2"
+          className="min-h-touch h-auto w-full min-w-0 py-2 whitespace-normal"
           disabled={
             locked || !server || !ref.repository || !draft.selector.trim()
           }
@@ -250,7 +250,7 @@ export function SourcePicker({
       {loading === "browse" && (
         <p
           role="status"
-          className="mt-4 text-sm text-muted-foreground"
+          className="text-muted-foreground mt-4 text-sm"
         >
           Looking up source…
         </p>

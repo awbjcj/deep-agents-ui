@@ -38,10 +38,10 @@ export function parseArgumentDrafts(
         value === null
           ? "null value"
           : Array.isArray(value)
-          ? "JSON array"
-          : typeof value === "object"
-          ? "JSON object"
-          : typeof value
+            ? "JSON array"
+            : typeof value === "object"
+              ? "JSON object"
+              : typeof value
       }.`;
     }
   }

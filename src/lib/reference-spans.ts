@@ -42,8 +42,8 @@ export function shiftSpans<T extends TextSpan>(
       span.end <= start
         ? span
         : span.start >= oldEnd
-        ? { ...span, start: span.start + delta, end: span.end + delta }
-        : null;
+          ? { ...span, start: span.start + delta, end: span.end + delta }
+          : null;
     return next && intact(after, next) ? [next] : [];
   });
 }

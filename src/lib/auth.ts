@@ -304,7 +304,7 @@ async function extractApiErrorMessage(
       const parts = detail
         .map((e: { loc?: unknown[]; msg?: string }) => {
           const field = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
-          return field ? `${field}: ${e.msg ?? ""}` : e.msg ?? "";
+          return field ? `${field}: ${e.msg ?? ""}` : (e.msg ?? "");
         })
         .filter(Boolean);
       if (parts.length) return parts.join("; ");
@@ -476,6 +476,8 @@ export interface ModelEntry extends TierModelEntry {
   supports_effort: boolean;
   efforts: string[];
   supports_thinking: boolean;
+  supports_task_budget?: boolean;
+  supports_unlimited_output?: boolean;
   thinking_required: boolean;
   disabled_thinking_efforts?: string[];
   recommended_effort?: string | null;
@@ -610,6 +612,7 @@ export interface EffectiveModelSelection {
   effort: string | null;
   thinking: boolean | null;
   max_tokens: number;
+  task_budget?: number | null;
 }
 
 export interface UserModelSelection extends EffectiveModelSelection {
@@ -640,6 +643,7 @@ export async function apiSetUserModel(payload: {
   effort?: string | null;
   thinking?: boolean | null;
   max_tokens?: number | null;
+  task_budget?: number | null;
 }): Promise<UserModelSelection>;
 export async function apiSetUserModel(
   provider: string,
@@ -657,6 +661,7 @@ export async function apiSetUserModel(
         effort?: string | null;
         thinking?: boolean | null;
         max_tokens?: number | null;
+        task_budget?: number | null;
       },
   model?: string
 ): Promise<UserModelSelection> {
@@ -1535,10 +1540,10 @@ export async function apiSetAdminConnectivity(
       (typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-        ? detail
-            .map((error) => `${error.loc?.at(-1) ?? "Setting"}: ${error.msg}`)
-            .join("; ")
-        : "") || "Failed to update connectivity settings"
+          ? detail
+              .map((error) => `${error.loc?.at(-1) ?? "Setting"}: ${error.msg}`)
+              .join("; ")
+          : "") || "Failed to update connectivity settings"
     );
   }
   const result: AdminConnectivityResponse = await res.json();

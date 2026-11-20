@@ -111,7 +111,7 @@ export function FilesPopover({
     <>
       {Object.keys(files).length === 0 ? (
         <div className="flex h-full items-center justify-center p-4 text-center">
-          <p className="text-xs text-muted-foreground">No files created yet</p>
+          <p className="text-muted-foreground text-xs">No files created yet</p>
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,256px),1fr))] gap-2">
@@ -139,34 +139,34 @@ export function FilesPopover({
                   onClick={() => setSelectedPath(filePath)}
                   title={filePath}
                   className={cn(
-                    "flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border px-2 py-3 shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                    "focus-visible:ring-ring flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border px-2 py-3 shadow-sm transition-[border-color,background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none",
                     sourceRecord
-                      ? "border-primary/20 hover:border-primary/45 bg-primary/[0.035] hover:bg-primary/[0.06] hover:shadow-md"
-                      : "hover:border-primary/40 border-border bg-[var(--color-file-button)] hover:bg-[var(--color-file-button-hover)] hover:shadow-md"
+                      ? "border-primary/20 hover:border-primary/45 bg-primary/[0.035] hover:bg-primary/6 hover:shadow-md"
+                      : "hover:border-primary/40 border-border bg-(--color-file-button) hover:bg-(--color-file-button-hover) hover:shadow-md"
                   )}
                 >
                   {thumbnailSrc ? (
                     <img
                       src={thumbnailSrc}
                       alt={label}
-                      className="h-16 w-16 rounded-lg object-cover ring-1 ring-border"
+                      className="ring-border h-16 w-16 rounded-lg object-cover ring-1"
                     />
                   ) : (
-                    <span className="text-primary/70 flex h-16 w-16 items-center justify-center rounded-md bg-primary/5">
+                    <span className="text-primary/70 bg-primary/5 flex h-16 w-16 items-center justify-center rounded-md">
                       <FileText size={22} />
                     </span>
                   )}
-                  <span className="block w-full truncate break-words text-center text-sm leading-relaxed text-foreground">
+                  <span className="text-foreground block w-full truncate text-center text-sm leading-relaxed wrap-break-word">
                     {label}
                   </span>
                   {sourceRecord && (
-                    <span className="bg-primary/8 rounded-full px-2 py-0.5 text-[9px] font-semibold text-[var(--color-primary)]">
+                    <span className="bg-primary/8 rounded-full px-2 py-0.5 text-xs font-semibold text-(--color-primary)">
                       {SOURCE_IMAGE_LABELS[sourceRecord.source]} source image
                     </span>
                   )}
                   {pending && (
                     <span
-                      className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground"
+                      className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-semibold"
                       title="Saved by a running agent step; it joins the conversation when that step finishes."
                     >
                       Saving
@@ -178,7 +178,7 @@ export function FilesPopover({
                     href={sourcePageUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1 flex items-center justify-center gap-1 rounded-md py-1 text-[10px] text-muted-foreground hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="text-muted-foreground hover:bg-card hover:text-foreground focus-visible:ring-ring mt-1 flex items-center justify-center gap-1 rounded-md py-1 text-xs focus-visible:ring-2 focus-visible:outline-none"
                     aria-label={`Open source page for ${label}`}
                   >
                     Open source
@@ -198,7 +198,7 @@ export function FilesPopover({
                       void handleDeleteFile(filePath);
                     }}
                     className={cn(
-                      "absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-card/90 text-muted-foreground shadow-xs transition-[color,background-color,border-color,opacity] duration-150 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none",
+                      "border-border/60 bg-card/90 text-muted-foreground hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-ring absolute top-1.5 right-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-xs transition-[color,background-color,border-color,opacity] duration-150 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none",
                       !sourceRecord &&
                         "[@media(hover:hover)_and_(pointer:fine)]:opacity-0"
                     )}

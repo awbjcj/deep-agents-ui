@@ -1,5 +1,6 @@
 "use client";
 
+import { SETTINGS_WIDE_GRID } from "@/app/components/settings/SettingsLayout";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import {
@@ -292,8 +293,8 @@ export function ScopesSection() {
         </Button>
       </div>
 
-      <div className="aptiv-glass-soft space-y-2 rounded-lg p-3">
-        <p className="text-xs leading-relaxed text-muted-foreground">
+      <div className="settings-surface space-y-2 p-3">
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Role access grants read to users and write to developers/admins.
           Existing custom write grants are preserved, and future users inherit
           access by role.
@@ -331,14 +332,14 @@ export function ScopesSection() {
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: scopeTypeColor(type) }}
                   />
-                  <h4 className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  <h4 className="text-muted-foreground text-xs font-bold tracking-[0.18em] uppercase">
                     {type}
-                    <span className="ml-1.5 font-mono normal-case tabular-nums tracking-normal text-muted-foreground/60">
+                    <span className="text-muted-foreground/60 ml-1.5 font-mono tracking-normal normal-case tabular-nums">
                       {items.length}
                     </span>
                   </h4>
                 </div>
-                <div className="space-y-1.5">
+                <div className={SETTINGS_WIDE_GRID}>
                   {items.map((scope) => {
                     const key = scopeKey(scope);
                     const isOpen = expanded === key;
@@ -434,13 +435,13 @@ function CreateScopeCard({
   };
 
   return (
-    <div className="aptiv-glass-soft space-y-3 rounded-lg p-4 shadow-sm">
+    <div className="settings-surface space-y-3 p-4">
       <h4 className="text-sm font-semibold">New scope</h4>
       <div className="grid grid-cols-[110px_1fr] gap-2">
         <div className="space-y-1.5">
           <Label
             htmlFor={`${formId}-type`}
-            className="text-xs font-medium text-muted-foreground"
+            className="text-muted-foreground text-xs font-medium"
           >
             Type
           </Label>
@@ -469,7 +470,7 @@ function CreateScopeCard({
         <div className="space-y-1.5">
           <Label
             htmlFor={`${formId}-id`}
-            className="text-xs font-medium text-muted-foreground"
+            className="text-muted-foreground text-xs font-medium"
           >
             ID
           </Label>
@@ -486,10 +487,10 @@ function CreateScopeCard({
       <div className="space-y-1.5">
         <Label
           htmlFor={`${formId}-name`}
-          className="text-xs font-medium text-muted-foreground"
+          className="text-muted-foreground text-xs font-medium"
         >
           Display name{" "}
-          <span className="font-normal normal-case text-muted-foreground/60">
+          <span className="text-muted-foreground/60 font-normal normal-case">
             (optional)
           </span>
         </Label>
@@ -504,10 +505,10 @@ function CreateScopeCard({
       <div className="space-y-1.5">
         <Label
           htmlFor={`${formId}-aliases`}
-          className="text-xs font-medium text-muted-foreground"
+          className="text-muted-foreground text-xs font-medium"
         >
           Aliases{" "}
-          <span className="font-normal normal-case text-muted-foreground/60">
+          <span className="text-muted-foreground/60 font-normal normal-case">
             (comma-separated)
           </span>
         </Label>
@@ -522,7 +523,7 @@ function CreateScopeCard({
       <div className="space-y-1.5">
         <Label
           htmlFor={`${formId}-access`}
-          className="text-xs font-medium text-muted-foreground"
+          className="text-muted-foreground text-xs font-medium"
         >
           Default access
         </Label>
@@ -747,36 +748,36 @@ function ScopeCard({
   return (
     <article
       className={cn(
-        "rounded-lg border bg-card/60 transition-colors",
+        "bg-card/60 rounded-lg border transition-colors",
         isOpen
-          ? "border-[var(--aptiv-orange)]/40 shadow-sm"
+          ? "col-span-full border-(--aptiv-orange)/40 shadow-sm"
           : "hover:border-primary/30 border-border"
       )}
     >
       <button
         type="button"
         onClick={onToggle}
-        className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+        className="group hover:bg-muted/40 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors"
         aria-expanded={isOpen}
       >
         <span
-          className="h-7 w-1 flex-shrink-0 rounded-full"
+          className="h-7 w-1 shrink-0 rounded-full"
           style={{ background: scopeTypeColor(scope.scope_type) }}
           aria-hidden="true"
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="truncate font-mono text-sm font-semibold tracking-tight text-foreground">
+            <span className="text-foreground truncate font-mono text-sm font-semibold tracking-tight">
               {scope.scope_id}
             </span>
             {scope.display_name && (
-              <span className="truncate text-xs text-muted-foreground">
+              <span className="text-muted-foreground truncate text-xs">
                 {scope.display_name}
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="font-semibold uppercase tracking-wider">
+          <div className="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
+            <span className="font-semibold tracking-wider uppercase">
               {scope.member_count ?? 0} member
               {(scope.member_count ?? 0) === 1 ? "" : "s"}
             </span>
@@ -794,7 +795,7 @@ function ScopeCard({
         </div>
         <ChevronRight
           className={cn(
-            "h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform",
+            "text-muted-foreground h-4 w-4 shrink-0 transition-transform",
             isOpen && "rotate-90"
           )}
           aria-hidden="true"
@@ -802,7 +803,7 @@ function ScopeCard({
       </button>
 
       {isOpen && (
-        <div className="space-y-4 border-t border-border/60 px-3 py-3">
+        <div className="border-border/60 space-y-4 border-t px-3 py-3">
           {!editing ? (
             <div className="flex gap-2">
               <Button
@@ -819,7 +820,7 @@ function ScopeCard({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="flex-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive flex-1"
                 onClick={onDelete}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -831,7 +832,7 @@ function ScopeCard({
               <div className="space-y-1.5">
                 <Label
                   htmlFor={`${formId}-name`}
-                  className="text-xs font-medium text-muted-foreground"
+                  className="text-muted-foreground text-xs font-medium"
                 >
                   Display name
                 </Label>
@@ -845,7 +846,7 @@ function ScopeCard({
               <div className="space-y-1.5">
                 <Label
                   htmlFor={`${formId}-aliases`}
-                  className="text-xs font-medium text-muted-foreground"
+                  className="text-muted-foreground text-xs font-medium"
                 >
                   Aliases
                 </Label>
@@ -860,7 +861,7 @@ function ScopeCard({
               <div className="space-y-1.5">
                 <Label
                   htmlFor={`${formId}-access`}
-                  className="text-xs font-medium text-muted-foreground"
+                  className="text-muted-foreground text-xs font-medium"
                 >
                   Default access
                 </Label>
@@ -927,7 +928,7 @@ function ScopeCard({
             {membersLoading ? (
               <LoadingRow compact />
             ) : members.length === 0 ? (
-              <p className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-3 text-center text-xs text-muted-foreground">
+              <p className="border-border bg-muted/30 text-muted-foreground rounded-md border border-dashed px-3 py-3 text-center text-xs">
                 No members yet. Add one below.
               </p>
             ) : (
@@ -937,7 +938,7 @@ function ScopeCard({
                   return (
                     <li
                       key={m.username}
-                      className="flex items-center gap-2 rounded-md border border-border/60 bg-card/40 px-2.5 py-1.5"
+                      className="border-border/60 bg-card/40 flex items-center gap-2 rounded-md border px-2.5 py-1.5"
                     >
                       <RoleBadge role={role} />
                       <span className="flex-1 truncate text-xs font-medium">
@@ -979,7 +980,7 @@ function ScopeCard({
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(m.username)}
-                        className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-md p-1 transition-colors"
                         aria-label={`Remove ${m.username}`}
                       >
                         <X className="h-3.5 w-3.5" />

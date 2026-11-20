@@ -126,18 +126,18 @@ export function SkillDetails({
   return (
     <section
       aria-label="Skill details"
-      className="flex min-w-0 flex-1 flex-col gap-4 @container"
+      className="@container flex min-w-0 flex-1 flex-col gap-4"
       aria-busy={loading || busy}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
+          <p className="text-muted-foreground mb-1 text-xs font-medium">
             {system
               ? "System · read only"
               : `Personal · revision ${skill.revision}`}
           </p>
-          <h3 className="break-all text-lg font-semibold">{skill.name}</h3>
-          <p className="mt-1 break-words text-sm text-muted-foreground">
+          <h3 className="text-lg font-semibold break-all">{skill.name}</h3>
+          <p className="text-muted-foreground mt-1 text-sm wrap-break-word">
             {skill.description}
           </p>
         </div>
@@ -181,7 +181,7 @@ export function SkillDetails({
         </p>
       )}
       <SkillDiagnostics diagnostics={detailDiagnostics} />
-      <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(25rem,1fr)] gap-4 @[36rem]:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @[36rem]:grid-rows-[minmax(25rem,1fr)]">
+      <div className="grid min-w-0 flex-1 grid-rows-[auto_minmax(25rem,1fr)] gap-4 @xl:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] @xl:grid-rows-[minmax(25rem,1fr)]">
         <SkillFileList
           files={resources}
           selectedPath={selectedPath}
@@ -193,9 +193,9 @@ export function SkillDetails({
         />
         <div className="flex min-h-0 min-w-0 flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="break-all font-mono text-xs">{selectedPath}</span>
+            <span className="font-mono text-xs break-all">{selectedPath}</span>
             <div
-              className="flex gap-1 rounded-lg border bg-muted/30 p-0.5"
+              className="bg-muted/30 flex gap-1 rounded-lg border p-0.5"
               role="group"
               aria-label="File view"
             >
@@ -230,18 +230,18 @@ export function SkillDetails({
           ) : (
             <p
               role="status"
-              className="rounded-lg border p-4 text-sm text-muted-foreground"
+              className="text-muted-foreground rounded-lg border p-4 text-sm"
             >
               {loading
                 ? "Loading file…"
                 : resources.find(
-                    (resource) =>
-                      resource.path === selectedPath &&
-                      "copyable" in resource &&
-                      !resource.copyable
-                  )
-                ? "This resource is unavailable as text. See its diagnostics above."
-                : "Select a file to read its contents."}
+                      (resource) =>
+                        resource.path === selectedPath &&
+                        "copyable" in resource &&
+                        !resource.copyable
+                    )
+                  ? "This resource is unavailable as text. See its diagnostics above."
+                  : "Select a file to read its contents."}
             </p>
           )}
         </div>
@@ -253,7 +253,7 @@ export function SkillDetails({
             if (validName && !copyBlockers.length && !busy && !loading)
               onCopy(copyName);
           }}
-          className="space-y-2 rounded-lg border bg-muted/20 p-3"
+          className="bg-muted/20 space-y-2 rounded-lg border p-3"
         >
           <label
             htmlFor={`${id}-copy-name`}
@@ -263,7 +263,7 @@ export function SkillDetails({
           </label>
           <p
             id={`${id}-copy-help`}
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
           >
             Choose a distinct name. Copying changes only the name in SKILL.md;
             other metadata and resources keep their source. Review before
@@ -271,7 +271,7 @@ export function SkillDetails({
           </p>
           {referenceWarnings.length > 0 && (
             <>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 This skill links to files outside its package. Those files would
                 be missing from a personal copy. This restriction only applies
                 to copying.
@@ -283,7 +283,7 @@ export function SkillDetails({
               />
             </>
           )}
-          <div className="flex flex-col gap-2 @[28rem]:flex-row">
+          <div className="flex flex-col gap-2 @md:flex-row">
             <Input
               id={`${id}-copy-name`}
               aria-describedby={`${id}-copy-help`}
@@ -305,7 +305,7 @@ export function SkillDetails({
           {copyName && !validName && (
             <p
               role="status"
-              className="text-xs text-destructive"
+              className="text-destructive text-xs"
             >
               Use a different name with up to {limits.name_characters} lowercase
               letters, digits, and single internal hyphens.

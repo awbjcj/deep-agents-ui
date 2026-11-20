@@ -27,8 +27,9 @@ interface ApprovalModeOptions {
   pending: readonly AutopilotInterrupt[];
   submit: (
     resume: Record<string, ResumeInterruptValue>,
-    mode: AutomaticApprovalMode
-  ) => Promise<void>;
+    mode: AutomaticApprovalMode,
+    signal: AbortSignal
+  ) => Promise<boolean | readonly string[] | void>;
 }
 
 interface ModeState {
@@ -36,6 +37,18 @@ interface ModeState {
   connection?: object;
   mode: ApprovalMode;
   checking: AutomaticApprovalMode | null;
+}
+
+/**
+ * A notice explaining why automation is off or a mode change was refused.
+ *
+ * `resolves` notices describe a blocking condition (a run error or an
+ * unconfirmed automatic approval) and clear by themselves once it is gone.
+ * Other notices stay until the user picks a mode or decides manually.
+ */
+interface ModeNotice {
+  message: string;
+  resolves: boolean;
 }
 
 const label = (mode: AutomaticApprovalMode) => APPROVAL_MODE_COPY[mode].label;
@@ -58,6 +71,11 @@ async function checkAutopilotAccess(signal: AbortSignal, accountId?: string) {
  * reviews whose actions are all server-classified read tools; everything else
  * stays pending for the user. Autopilot re-verifies the account's role before
  * each batch. Any failure returns to Interactive, and no request is retried.
+ *
+ * An automatic approval whose outcome was not confirmed stays claimed: while
+ * it is still pending, neither automatic mode can be turned on again until
+ * the user resolves it manually. The resulting notice clears on its own once
+ * the claimed review and any run error are gone.
  */
 export function useApprovalMode(options: ApprovalModeOptions) {
   const latest = useRef(options);
@@ -68,7 +86,12 @@ export function useApprovalMode(options: ApprovalModeOptions) {
     mode: "interactive",
     checking: null,
   });
-  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<ModeNotice | null>(null);
+  const setError = useCallback(
+    (message: string | null, resolves = false) =>
+      setNotice(message === null ? null : { message, resolves }),
+    []
+  );
   const generation = useRef(0);
   const request = useRef<AbortController | null>(null);
   const selection = useRef<AbortController | null>(null);
@@ -128,7 +151,21 @@ export function useApprovalMode(options: ApprovalModeOptions) {
       selection.current?.abort();
       abortAutomation();
     };
-  }, [options.scope, options.connection, canAutopilot, reset, abortAutomation]);
+  }, [
+    options.scope,
+    options.connection,
+    canAutopilot,
+    reset,
+    abortAutomation,
+    setError,
+  ]);
+
+  /** Whether an unconfirmed automatic approval is still awaiting review. */
+  const hasUnconfirmed = useCallback(
+    (pending: readonly AutopilotInterrupt[]) =>
+      pending.some((item) => item.id && submitted.current.has(item.id)),
+    []
+  );
 
   const select = useCallback(
     async (next: ApprovalMode) => {
@@ -153,17 +190,17 @@ export function useApprovalMode(options: ApprovalModeOptions) {
         setError(
           `Resolve the conversation error before turning on ${label(
             next
-          )}. Manual approval remains on.`
+          )}. Manual approval remains on.`,
+          true
         );
         return false;
       }
-      if (
-        start.pending.some((item) => item.id && submitted.current.has(item.id))
-      ) {
+      if (hasUnconfirmed(start.pending)) {
         setError(
           `An earlier automatic approval is still pending. Review it manually before turning on ${label(
             next
-          )}.`
+          )}.`,
+          true
         );
         return false;
       }
@@ -213,28 +250,51 @@ export function useApprovalMode(options: ApprovalModeOptions) {
         return false;
       }
     },
-    [apply, reset]
+    [apply, reset, setError, hasUnconfirmed]
   );
 
   /**
    * A manual decision ends Autopilot; Allow reads keeps covering reads.
+   * The user now owns the reviewed IDs, so they no longer block automation.
    * Returns the mode in effect for the run that carries the decision.
    */
-  const onManualResume = useCallback((): ApprovalMode => {
-    if (modeRef.current === "autopilot") {
-      reset();
-      return "interactive";
-    }
-    abortAutomation();
-    return modeRef.current;
-  }, [abortAutomation, reset]);
+  const onManualResume = useCallback(
+    (ids: readonly string[] = []): ApprovalMode => {
+      ids.forEach((id) => submitted.current.delete(id));
+      setError(null);
+      if (selection.current) {
+        selection.current.abort();
+        selection.current = null;
+        setState((previous) => ({ ...previous, checking: null }));
+      }
+      if (modeRef.current === "autopilot") {
+        reset();
+        return "interactive";
+      }
+      abortAutomation();
+      return modeRef.current;
+    },
+    [abortAutomation, reset, setError]
+  );
 
   const automatic: AutomaticApprovalMode | null =
     mode === "interactive" ? null : mode;
 
   // Depend on the payload, not the SDK array identity, to avoid postponing the
-  // same approval on unrelated renders. IDs stay claimed until the scope ends.
+  // same approval on unrelated renders. IDs stay claimed until the scope ends
+  // or the user decides them manually.
   const pendingKey = JSON.stringify(options.pending);
+
+  // Clear a condition notice once the run error and unconfirmed review are gone.
+  useEffect(() => {
+    if (
+      notice?.resolves &&
+      !options.failed &&
+      !hasUnconfirmed(latest.current.pending)
+    )
+      setNotice(null);
+  }, [notice, options.failed, pendingKey, hasUnconfirmed]);
+
   useEffect(() => {
     if (!automatic) return;
     if (options.failed) {
@@ -242,7 +302,8 @@ export function useApprovalMode(options: ApprovalModeOptions) {
       setError(
         `${label(
           automatic
-        )} stopped after an error. Review the conversation before turning it on again.`
+        )} stopped after an error. Review the conversation before turning it on again.`,
+        true
       );
       return;
     }
@@ -287,7 +348,17 @@ export function useApprovalMode(options: ApprovalModeOptions) {
           return;
         Object.keys(resume).forEach((id) => submitted.current.add(id));
         didSubmit = true;
-        await latest.current.submit(resume, automatic);
+        const dispatched = await latest.current.submit(
+          resume,
+          automatic,
+          controller.signal
+        );
+        if (dispatched === false || Array.isArray(dispatched)) {
+          Object.keys(resume).forEach((id) => {
+            if (!Array.isArray(dispatched) || !dispatched.includes(id))
+              submitted.current.delete(id);
+          });
+        }
       } catch (cause) {
         if (
           version === generation.current &&
@@ -296,17 +367,22 @@ export function useApprovalMode(options: ApprovalModeOptions) {
           (didSubmit || !controller.signal.aborted)
         ) {
           reset();
+          // A dispatched approval keeps its claim, so its notice lasts until
+          // that review is resolved; a refusal before dispatch stays visible.
           setError(
             cause instanceof Error
               ? cause.message
-              : `Automatic approval failed. ${label(automatic)} is off.`
+              : `Automatic approval failed. ${label(automatic)} is off.`,
+            didSubmit
           );
         }
+      } finally {
+        if (request.current === controller) request.current = null;
       }
     }, 600);
     return () => {
       clearTimeout(timer);
-      controller.abort();
+      if (!didSubmit) controller.abort();
     };
   }, [
     automatic,
@@ -317,8 +393,10 @@ export function useApprovalMode(options: ApprovalModeOptions) {
     options.failed,
     pendingKey,
     reset,
+    setError,
   ]);
 
+  const error = notice?.message ?? null;
   return useMemo(
     () => ({
       mode,

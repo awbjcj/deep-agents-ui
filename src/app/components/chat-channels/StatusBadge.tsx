@@ -44,7 +44,7 @@ export function StatusBadge({
       className={cn(
         // Arbitrary size: tailwind-merge treats the custom `text-xxs` as a color
         // and would drop it in favor of `text-foreground`.
-        "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.75rem] font-medium leading-[1.125rem] text-foreground",
+        "text-foreground inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs leading-4.5 font-medium whitespace-nowrap",
         TONE[status.tone].badge,
         className
       )}

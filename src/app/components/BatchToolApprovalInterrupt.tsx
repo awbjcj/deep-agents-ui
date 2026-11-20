@@ -15,6 +15,7 @@ import type {
 interface BatchToolApprovalInterruptProps {
   actionRequests: ActionRequest[];
   reviewConfigsMap?: Map<string, ReviewConfig>;
+  reviewConfigs?: Array<ReviewConfig | undefined>;
   onResume: (value: ResumeInterruptValue) => void;
   isLoading?: boolean;
 }
@@ -26,6 +27,7 @@ const isHumanDecision = (
 export function BatchToolApprovalInterrupt({
   actionRequests,
   reviewConfigsMap,
+  reviewConfigs,
   onResume,
   isLoading,
 }: BatchToolApprovalInterruptProps) {
@@ -62,13 +64,13 @@ export function BatchToolApprovalInterrupt({
   return (
     <section
       aria-labelledby={`${hintId}-title`}
-      className="mt-4 flex w-full min-w-0 flex-col gap-3 rounded-xl border border-warning bg-card p-2 text-foreground sm:p-4"
+      className="border-warning bg-card text-foreground mt-4 flex w-full min-w-0 flex-col gap-3 rounded-xl border p-2 sm:p-4"
     >
       <header className="flex flex-wrap items-start justify-between gap-2 px-1 pt-1 sm:px-0 sm:pt-0">
         <div className="flex min-w-0 items-start gap-2.5">
           <span
             aria-hidden="true"
-            className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-warning-primary text-warning"
+            className="bg-warning-primary text-warning mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md"
           >
             <ShieldAlert
               size={15}
@@ -78,11 +80,11 @@ export function BatchToolApprovalInterrupt({
           <div className="min-w-0">
             <h3
               id={`${hintId}-title`}
-              className="text-sm font-semibold leading-5 tracking-tight"
+              className="text-sm leading-5 font-semibold tracking-tight"
             >
               Review pending actions
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               Choose a decision for each action, then continue.
             </p>
           </div>
@@ -112,7 +114,10 @@ export function BatchToolApprovalInterrupt({
           <li key={`${actionRequest.name}-${index}`}>
             <ToolApprovalInterrupt
               actionRequest={actionRequest}
-              reviewConfig={reviewConfigsMap?.get(actionRequest.name)}
+              reviewConfig={
+                reviewConfigs?.[index] ??
+                reviewConfigsMap?.get(actionRequest.name)
+              }
               onDecisionChange={(decision) =>
                 handleDecisionChange(index, decision)
               }
@@ -128,7 +133,7 @@ export function BatchToolApprovalInterrupt({
         {!canSubmit && (
           <p
             id={`${hintId}-hint`}
-            className="text-xs text-muted-foreground"
+            className="text-muted-foreground text-xs"
           >
             {remaining} {remaining === 1 ? "action needs" : "actions need"} a
             decision

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const EVIDENCE = "/tmp/conversation-ui-lifecycle";
+const EVIDENCE =
+  process.env.ANALYSIS_EVIDENCE_DIR ?? "/tmp/conversation-ui-lifecycle";
 
 test(
   "conversation UI reconciles late, repeated and removed jobs and clears scoped dialogs",
@@ -14,8 +15,7 @@ test(
   async () => {
     const { build } = await import("esbuild");
     const { chromium } = await loadPlaywright();
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
+
     const bundle = await build({
       absWorkingDir: ROOT,
       stdin: {
@@ -52,8 +52,8 @@ test(
                   threadId:'thread-1', createdThreadId:'thread-1',
                   processedMessages:[], messages:[], todos:[], files:{}, ui:[],
                   pendingFilePaths:new Set(), sourceImageAttachments:{}, sourceAttachmentRecords:{},
-                  isLoading:false, isThreadLoading:false, approvals:[],
-                  setFiles:async()=>{}, refreshFiles:async()=>{}, resumeInterrupt:async()=>{}
+                  isLoading:false, approvalSubmittingIds:[], isThreadLoading:false, approvals:[],
+                  setFiles:async()=>{}, refreshFiles:async()=>{}, resumeInterrupt:async(_value,id)=>{ window.approvalClicks = (window.approvalClicks ?? 0) + 1; window.lastApprovalId = id; }
                 };
                 export const FixtureContext = createContext(initialChat);
                 export const useChatContext = () => useContext(FixtureContext);
@@ -87,14 +87,7 @@ test(
       format: "esm",
       define: { "process.env.NODE_ENV": '"development"' },
     });
-    const source = (
-      await readFile(resolve(ROOT, "src/app/globals.css"), "utf8")
-    )
-      .replace(/^@import.*;$/gm, "")
-      .replace(/@font-face\s*\{[^}]*\}/g, "");
-    const { css } = await postcss([
-      tailwind({ config: resolve(ROOT, "tailwind.config.mjs") }),
-    ]).process(source, { from: undefined });
+    const { css } = await compileBrowserStyles({ omitFontFaces: true });
     const job = {
       job_id: "job-1",
       thread_id: "thread-1",
@@ -146,15 +139,15 @@ test(
         url.pathname === "/app.js"
           ? "text/javascript"
           : url.pathname === "/style.css"
-          ? "text/css"
-          : "text/html"
+            ? "text/css"
+            : "text/html"
       );
       res.end(
         url.pathname === "/app.js"
           ? bundle.outputFiles[0].text
           : url.pathname === "/style.css"
-          ? css
-          : '<html lang="en"><head><title>Conversation lifecycle</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main id="root" style="height:100dvh;display:flex;flex-direction:column"></main><script type="module" src="/app.js"></script></body></html>'
+            ? css
+            : '<html lang="en"><head><title>Conversation lifecycle</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><main id="root" style="height:100dvh;display:flex;flex-direction:column"></main><script type="module" src="/app.js"></script></body></html>'
       );
     });
     await new Promise((done) => server.listen(0, "127.0.0.1", done));
@@ -173,6 +166,80 @@ test(
       const cards = page.getByRole("region", {
         name: "Code analysis progress",
       });
+      await welcome.waitFor();
+      // Queued/active conversation work must not lock a pending human review.
+      await page.evaluate(() =>
+        window.updateChat({
+          isLoading: true,
+          serverQueuedCount: 1,
+          interrupt: {
+            id: "human-review",
+            value: {
+              action_requests: [{ name: "send_email", args: {} }],
+            },
+          },
+        })
+      );
+      const approve = page.getByRole("button", {
+        name: "Approve",
+        exact: true,
+      });
+      await approve.waitFor();
+      assert.equal(await approve.isEnabled(), true);
+      await approve.click();
+      assert.equal(await page.evaluate(() => window.approvalClicks), 1);
+      await page.evaluate(() =>
+        window.updateChat({ approvalSubmittingIds: ["human-review"] })
+      );
+      const submitting = page.getByRole("button", {
+        name: "Approving...",
+        exact: true,
+      });
+      await submitting.waitFor();
+      assert.equal(await submitting.isDisabled(), true);
+      await page.evaluate(() =>
+        window.updateChat({ approvalSubmittingIds: [] })
+      );
+      await approve.waitFor();
+      assert.equal(await approve.isEnabled(), true);
+      await page.evaluate(() =>
+        window.updateChat({
+          interrupts: [
+            {
+              id: "human-review",
+              value: { action_requests: [{ name: "send_email", args: {} }] },
+            },
+            {
+              id: "other-agent",
+              value: {
+                action_requests: [{ name: "create_jira_ticket", args: {} }],
+              },
+            },
+          ],
+          approvalSubmittingIds: ["human-review"],
+        })
+      );
+      await submitting.waitFor();
+      assert.equal(await submitting.isDisabled(), true);
+      const otherApprove = page
+        .getByRole("article", { name: "Approval for create_jira_ticket" })
+        .getByRole("button", { name: "Approve", exact: true });
+      await otherApprove.waitFor();
+      assert.equal(await otherApprove.isEnabled(), true);
+      await otherApprove.click();
+      assert.equal(
+        await page.evaluate(() => window.lastApprovalId),
+        "other-agent"
+      );
+      await page.evaluate(() =>
+        window.updateChat({
+          isLoading: false,
+          serverQueuedCount: 0,
+          interrupt: undefined,
+          interrupts: undefined,
+          approvalSubmittingIds: [],
+        })
+      );
       await welcome.waitFor();
       // Idle discovery must find a delegated job even after chat has settled.
       jobs = [job, job];

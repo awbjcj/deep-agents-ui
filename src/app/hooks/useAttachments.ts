@@ -8,6 +8,7 @@ import {
   SUPPORTED_DOC_EXTS,
   SUPPORTED_IMAGE_EXTS,
   UPLOAD_MAX_BYTES,
+  UPLOAD_MAX_MIB,
   UPLOAD_MAX_PER_SEND,
   deleteUpload,
   uploadFile,
@@ -114,6 +115,7 @@ export function useAttachments({
   const previousThreadId = useRef<string | null>(null);
   const itemsRef = useRef<AttachmentState[]>([]);
   const reserved = useRef(new Set<string>());
+  const uploadQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     itemsRef.current = items;
@@ -196,7 +198,16 @@ export function useAttachments({
     async (item: { localId: string; file: File }) => {
       const controller = new AbortController();
       aborters.current.set(item.localId, controller);
+      // Each upload stores through an exclusive thread maintenance run.
+      // Register cancellation before waiting so queued chips remain removable.
+      const previous = uploadQueue.current;
+      let release!: () => void;
+      uploadQueue.current = new Promise<void>((resolve) => {
+        release = resolve;
+      });
       try {
+        await previous;
+        if (controller.signal.aborted) return;
         const uploadThreadId = threadId ?? (await ensureThreadId());
         if (controller.signal.aborted) return;
         if (!uploadThreadId) {
@@ -226,6 +237,7 @@ export function useAttachments({
         toast.error(`Upload failed: ${item.file.name}`, { description: msg });
       } finally {
         aborters.current.delete(item.localId);
+        release();
       }
     },
     [ensureThreadId, onFilesChanged, threadId, update]
@@ -252,7 +264,7 @@ export function useAttachments({
           continue;
         }
         if (file.size > UPLOAD_MAX_BYTES) {
-          toast.error(`Too large (>25 MB): ${file.name}`);
+          toast.error(`Too large (>${UPLOAD_MAX_MIB} MiB): ${file.name}`);
           continue;
         }
         const localId = uuidv4();
@@ -285,10 +297,10 @@ export function useAttachments({
           it.phase === "reference"
             ? [it.path]
             : it.phase === "ready"
-            ? [it.meta.artifact_path, it.meta.state_files_key].filter(
-                (path): path is string => !!path
-              )
-            : []
+              ? [it.meta.artifact_path, it.meta.state_files_key].filter(
+                  (path): path is string => !!path
+                )
+              : []
         )
       );
       const attached = refs
@@ -452,7 +464,7 @@ export function useAttachments({
         filename: it.filename,
         kind: it.kind,
         detail: undefined,
-        imageUrl: it.kind === "image" ? it.thumb ?? null : null,
+        imageUrl: it.kind === "image" ? (it.thumb ?? null) : null,
         source_image_ref: it.source_image_ref,
       });
     });

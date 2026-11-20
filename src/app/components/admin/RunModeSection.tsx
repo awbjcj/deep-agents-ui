@@ -92,7 +92,7 @@ export function RunModeSection() {
           onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
         />
       ) : (
-        <div className="aptiv-glass-soft space-y-4 rounded-lg p-4 shadow-sm">
+        <div className="settings-surface space-y-4 p-4">
           <ConnectivityModeSelector
             value={pending}
             label="Modes"
@@ -103,12 +103,12 @@ export function RunModeSection() {
             }}
           />
           {info && info.run_mode_updated_at !== "Unknown" ? (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xxs text-muted-foreground">
+            <div className="text-xxs text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <Clock
                 className="h-3 w-3"
                 aria-hidden="true"
               />
-              <span className="font-semibold uppercase tracking-wider">
+              <span className="font-semibold tracking-wider uppercase">
                 Updated
               </span>
               <time

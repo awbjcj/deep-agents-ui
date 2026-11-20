@@ -46,7 +46,7 @@ export function SkillCatalog({
   );
   return (
     <section
-      className="min-w-0 space-y-4 @container"
+      className="@container min-w-0 space-y-4"
       aria-label="Skill catalog"
       aria-busy={loading}
     >
@@ -78,7 +78,7 @@ export function SkillCatalog({
           </label>
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground"
+            className="text-muted-foreground pointer-events-none absolute top-3 left-3 size-4"
           />
           <Input
             id={`${id}-search`}
@@ -100,7 +100,7 @@ export function SkillCatalog({
             id={`${id}-origin`}
             value={origin}
             onChange={(event) => setOrigin(event.target.value)}
-            className="h-10 w-full appearance-none rounded-lg border border-input bg-background bg-none pl-3 pr-10 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring @sm:w-32"
+            className="border-input bg-background focus-visible:ring-ring h-10 w-full appearance-none rounded-lg border bg-none pr-10 pl-3 text-sm outline-none focus-visible:ring-2 @sm:w-32"
           >
             <option value="all">All origins</option>
             <option value="personal">Personal</option>
@@ -108,14 +108,14 @@ export function SkillCatalog({
           </select>
           <ChevronDown
             aria-hidden="true"
-            className="pointer-events-none absolute right-3 top-3 size-4 text-muted-foreground"
+            className="text-muted-foreground pointer-events-none absolute top-3 right-3 size-4"
           />
         </div>
       </div>
       {!unavailable && matches.length > 0 && (
         <p
           role="status"
-          className="text-xs tabular-nums text-muted-foreground"
+          className="text-muted-foreground text-xs tabular-nums"
         >
           {loading
             ? "Updating library…"
@@ -131,12 +131,12 @@ export function SkillCatalog({
       {loading && !entries.length ? (
         <p
           role="status"
-          className="rounded-lg border p-6 text-sm text-muted-foreground"
+          className="text-muted-foreground rounded-lg border p-6 text-sm"
         >
           Loading skills…
         </p>
       ) : unavailable ? null : matches.length ? (
-        <ul className="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0">
+        <ul className="bg-card m-0 list-none divide-y overflow-hidden rounded-xl p-0">
           {matches.map((entry) => (
             <li key={`${entry.origin}:${entry.id}`}>
               <button
@@ -144,11 +144,11 @@ export function SkillCatalog({
                 onClick={() => onSelect(entry)}
                 aria-pressed={selectedKey === `${entry.origin}:${entry.id}`}
                 className={cn(
-                  "group flex w-full min-w-0 items-start gap-3 px-3 py-4 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-accent",
+                  "group hover:bg-accent/50 focus-visible:ring-ring active:bg-accent flex w-full min-w-0 items-start gap-3 px-3 py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset",
                   selectedKey === `${entry.origin}:${entry.id}` && "bg-accent"
                 )}
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
+                <span className="bg-background text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
                   {entry.origin === "personal" ? (
                     <LockKeyhole
                       aria-hidden="true"
@@ -163,29 +163,29 @@ export function SkillCatalog({
                 </span>
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="break-all text-sm font-medium">
+                    <span className="text-sm font-medium wrap-anywhere">
                       {entry.name}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       {entry.origin === "system"
                         ? "System · read only"
                         : "Personal"}
                     </span>
                     {entry.availability !== "available" && (
-                      <span className="text-xs text-destructive">
+                      <span className="text-destructive text-xs">
                         {entry.availability === "name_conflict"
                           ? "Name conflict"
                           : "Unavailable"}
                       </span>
                     )}
                   </div>
-                  <p className="m-0 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
+                  <p className="text-muted-foreground m-0 line-clamp-2 text-sm leading-relaxed wrap-break-word">
                     {entry.description}
                   </p>
                 </div>
                 <ChevronRight
                   aria-hidden="true"
-                  className="mt-1.5 size-4 shrink-0 text-muted-foreground"
+                  className="text-muted-foreground mt-1.5 size-4 shrink-0"
                 />
               </button>
             </li>
@@ -194,7 +194,7 @@ export function SkillCatalog({
       ) : (
         <div
           role="status"
-          className="space-y-3 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground"
+          className="text-muted-foreground space-y-3 rounded-xl border border-dashed p-6 text-center text-sm"
         >
           <Search
             aria-hidden="true"

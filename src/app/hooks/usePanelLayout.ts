@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ImperativePanelHandle } from "react-resizable-panels";
+import type { PanelImperativeHandle } from "react-resizable-panels";
 import { getPanelLayout, PANEL_WIDTHS } from "@/lib/panel-layout";
 
 /** Coordinate column budgets and the shared, header-aligned settings default. */
@@ -17,8 +17,8 @@ export function usePanelLayout({
   const boundaryRef = useRef<HTMLSpanElement>(null);
   const headerActionsRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<ImperativePanelHandle>(null);
-  const threadsRef = useRef<ImperativePanelHandle>(null);
+  const settingsRef = useRef<PanelImperativeHandle>(null);
+  const threadsRef = useRef<PanelImperativeHandle>(null);
   const [geometry, setGeometry] = useState({
     width: 1440,
     alignedWidth: 640,
@@ -74,20 +74,26 @@ export function usePanelLayout({
     }
     const arrangement = `${openPanel}|${threadsOpen}`;
     if (appliedArrangement.current === arrangement) return;
-    // Preserve the current history width when opening a settings panel, while
-    // reserving enough room for the conversation and its composer.
-    const threadSize = threadsOpen ? threadsRef.current?.getSize() ?? 0 : 0;
-    const available =
-      100 - threadSize - (PANEL_WIDTHS.chat.min / layout.availableWidth) * 100;
-    settingsRef.current?.resize(
-      Math.max(
-        layout.settings.minSize,
-        Math.min(layout.settings.defaultSize, available)
-      )
-    );
-    // Re-apply once measurement reflects this arrangement's column budgets.
-    if (geometry.settingsOpen && geometry.threadsOpen === threadsOpen)
-      appliedArrangement.current = arrangement;
+    // Wait for the panel library to register the newly mounted panel and its
+    // constraints before applying the header-aligned default.
+    const frame = requestAnimationFrame(() => {
+      const threadSize = threadsOpen
+        ? (threadsRef.current?.getSize().asPercentage ?? 0)
+        : 0;
+      const available =
+        100 -
+        threadSize -
+        (PANEL_WIDTHS.chat.min / layout.availableWidth) * 100;
+      settingsRef.current?.resize(
+        `${Math.max(
+          layout.settings.minSize,
+          Math.min(layout.settings.defaultSize, available)
+        )}%`
+      );
+      if (geometry.settingsOpen && geometry.threadsOpen === threadsOpen)
+        appliedArrangement.current = arrangement;
+    });
+    return () => cancelAnimationFrame(frame);
   }, [openPanel, compact, threadsOpen, layout, geometry]);
 
   return {

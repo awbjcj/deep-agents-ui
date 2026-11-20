@@ -41,22 +41,22 @@ export function ContextSummaryCard({ summary }: { summary: ContextSummary }) {
           aria-label={label}
           className="min-w-0"
         >
-          <h3 className="mb-2 flex items-baseline gap-2 font-sans text-sm font-medium leading-5 tracking-normal">
+          <h3 className="mb-2 flex items-baseline gap-2 font-sans text-sm leading-5 font-medium tracking-normal">
             {label}
             {items.length > 0 && (
-              <span className="text-xs font-normal tabular-nums text-muted-foreground">
+              <span className="text-muted-foreground text-xs font-normal tabular-nums">
                 {items.length} {items.length === 1 ? "item" : "items"}
               </span>
             )}
           </h3>
           {items.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No items</p>
+            <p className="text-muted-foreground text-xs">No items</p>
           ) : (
             <ul className="mb-0 list-none space-y-2 pl-0">
               {items.map((item, index) => (
                 <li
                   key={index}
-                  className="whitespace-pre-wrap break-words leading-relaxed [overflow-wrap:anywhere]"
+                  className="leading-relaxed wrap-anywhere wrap-break-word whitespace-pre-wrap"
                 >
                   <ClampedEntry text={item} />
                 </li>

@@ -108,7 +108,7 @@ export function WorkspaceFlow({
     summary = "Wait for the current chat turn before changing source.";
   return (
     <WorkspaceDialog>
-      <div className="flex min-w-0 shrink-0 items-center justify-between border-b border-border bg-card pr-2 @container/panel">
+      <div className="border-border bg-card @container/panel flex min-w-0 shrink-0 items-center justify-between border-b pr-2">
         <PanelTabs
           tabs={[
             { id: "repositories", label: "Repositories", icon: FolderGit2 },
@@ -119,7 +119,7 @@ export function WorkspaceFlow({
           idPrefix={id}
           label="Repository workspace sections"
           activation="manual"
-          className="grid max-w-sm flex-1 grid-cols-2 px-2 [&>button]:min-w-0 [&>button]:flex-wrap [&>button]:whitespace-normal [&>button]:px-2"
+          className="grid max-w-sm flex-1 grid-cols-2 px-2 [&>button]:min-w-0 [&>button]:flex-wrap [&>button]:px-2 [&>button]:whitespace-normal"
         />
         {state.prepareJob && (
           <Button
@@ -127,7 +127,7 @@ export function WorkspaceFlow({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-touch shrink-0 text-muted-foreground"
+            className="size-touch text-muted-foreground shrink-0"
             aria-label="Release conversation checkout"
             title="Release conversation checkout"
             disabled={locked}
@@ -143,10 +143,10 @@ export function WorkspaceFlow({
         id={`${id}-panel-${tab}`}
         aria-labelledby={`${id}-tab-${tab}`}
         tabIndex={0}
-        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="focus-visible:ring-ring min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
         {state.restoring && (
-          <div className="space-y-2 border-b border-border bg-muted/30 px-4 py-3 text-sm sm:px-6">
+          <div className="border-border bg-muted/30 space-y-2 border-b px-4 py-3 text-sm sm:px-6">
             <p role="status">
               {state.prepareStatus.error || state.analysisStatus.error
                 ? "Couldn’t reconnect to the checkout. Retrying…"
@@ -175,11 +175,11 @@ export function WorkspaceFlow({
           />
         ) : (
           <div className="grid min-w-0 grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <div className="min-w-0 space-y-4 border-b border-border p-4 sm:p-6 md:border-b-0 md:border-r">
+            <div className="border-border min-w-0 space-y-4 border-b p-4 sm:p-6 md:border-r md:border-b-0">
               {!state.workspaceReady && (
                 <p
                   role="status"
-                  className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground"
+                  className="border-border bg-muted/30 text-muted-foreground rounded-lg border p-3 text-sm"
                 >
                   Prepare source in Repositories before running an analysis.
                   Your question stays here while you choose revisions.
@@ -197,7 +197,7 @@ export function WorkspaceFlow({
                 onAnalyze={state.analyze}
               />
             </div>
-            <div className="min-w-0 bg-muted/20 p-4 sm:p-6">
+            <div className="bg-muted/20 min-w-0 p-4 sm:p-6">
               <SelectedRevisions
                 targets={state.targets}
                 servers={state.servers}
@@ -282,15 +282,15 @@ export function WorkspaceFlow({
             {state.busy === "prepare"
               ? "Starting checkout…"
               : state.prepareJob &&
-                ["queued", "running", "cancel_requested"].includes(
-                  state.prepareJob.status
-                )
-              ? "Checkout in progress"
-              : state.targets.length
-              ? `Prepare ${state.targets.length} ${
-                  state.targets.length === 1 ? "revision" : "revisions"
-                }`
-              : "Prepare workspace"}
+                  ["queued", "running", "cancel_requested"].includes(
+                    state.prepareJob.status
+                  )
+                ? "Checkout in progress"
+                : state.targets.length
+                  ? `Prepare ${state.targets.length} ${
+                      state.targets.length === 1 ? "revision" : "revisions"
+                    }`
+                  : "Prepare workspace"}
           </Button>
         )}
       </WorkspaceFooter>

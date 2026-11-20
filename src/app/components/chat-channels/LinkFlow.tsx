@@ -40,15 +40,15 @@ export function LinkFlow({
 
   if (blocking && link.phase === "idle" && !link.code) {
     return (
-      <div className="space-y-3 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+      <div className="border-border bg-muted/40 space-y-3 rounded-lg border p-4 text-sm">
         <p className="flex items-center gap-2 font-semibold">
           <Info
             aria-hidden="true"
-            className="size-4 text-brand-primary"
+            className="text-brand-primary size-4"
           />
           {blocking.label} is on
         </p>
-        <p className="leading-relaxed text-muted-foreground">
+        <p className="text-muted-foreground leading-relaxed">
           Linking {meta.label} turns {blocking.label} off and moves your VSDA
           conversation to {meta.short}. Tasks already running keep going and
           report to {meta.short}.
@@ -81,14 +81,14 @@ export function LinkFlow({
       {link.error && (
         <p
           role="alert"
-          className="break-words rounded-md border border-error bg-error-secondary px-3 py-2 text-sm"
+          className="border-error bg-error-secondary rounded-md border px-3 py-2 text-sm wrap-break-word"
         >
           {link.error}
         </p>
       )}
       {waiting && link.code ? (
         <>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-sm leading-relaxed">
             {link.code.code_prefilled && link.code.open_url
               ? meta.sendPrefilled
               : meta.sendManual}
@@ -122,7 +122,7 @@ export function LinkFlow({
           </div>
           <p
             role="status"
-            className="flex items-center gap-2 text-sm text-muted-foreground"
+            className="text-muted-foreground flex items-center gap-2 text-sm"
           >
             <Loader2
               aria-hidden="true"
@@ -146,8 +146,8 @@ export function LinkFlow({
           {link.phase === "issuing"
             ? "Creating code…"
             : link.phase === "expired"
-            ? "Get a new code"
-            : "Get link code"}
+              ? "Get a new code"
+              : "Get link code"}
         </Button>
       )}
     </div>
@@ -169,7 +169,7 @@ function LinkSteps({ meta }: { meta: ChannelMeta }) {
         >
           <span
             aria-hidden="true"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-xxs font-semibold tabular-nums"
+            className="border-border bg-muted text-xxs flex size-6 shrink-0 items-center justify-center rounded-full border font-semibold tabular-nums"
           >
             {index + 1}
           </span>
@@ -209,9 +209,9 @@ function CodeTicket({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-3 motion-safe:duration-200 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95">
+    <div className="border-border bg-muted/30 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 rounded-lg border p-3 motion-safe:duration-200">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xxs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-xxs text-muted-foreground font-semibold tracking-wide uppercase">
           {expired ? "Code expired" : `Send this in ${meta.short}`}
         </p>
         <Button
@@ -228,7 +228,7 @@ function CodeTicket({
       </div>
       <code
         className={
-          "mt-2 block select-all break-all rounded-md border border-border bg-card px-3 py-2 font-mono text-sm " +
+          "border-border bg-card mt-2 block rounded-md border px-3 py-2 font-mono text-sm break-all select-all " +
           (expired ? "text-muted-foreground line-through" : "text-foreground")
         }
       >
@@ -237,14 +237,14 @@ function CodeTicket({
       <div className="mt-3 flex items-center gap-3">
         <div
           aria-hidden="true"
-          className="h-1 flex-1 overflow-hidden rounded-full bg-border"
+          className="bg-border h-1 flex-1 overflow-hidden rounded-full"
         >
           <div
-            className="h-full origin-left rounded-full bg-primary motion-safe:transition-transform motion-safe:duration-1000 motion-safe:ease-linear"
+            className="bg-primary h-full origin-left rounded-full motion-safe:transition-transform motion-safe:duration-1000 motion-safe:ease-linear"
             style={{ transform: `scaleX(${fraction})` }}
           />
         </div>
-        <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        <p className="text-muted-foreground shrink-0 text-xs tabular-nums">
           {expired ? "Expired" : `Expires in ${formatRemaining(remaining)}`}
         </p>
       </div>
@@ -255,8 +255,8 @@ function CodeTicket({
         {copied
           ? "Link command copied."
           : expired
-          ? "The link code expired."
-          : ""}
+            ? "The link code expired."
+            : ""}
       </p>
     </div>
   );

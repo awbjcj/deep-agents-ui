@@ -111,9 +111,18 @@ test(
         new URL(page.url()).searchParams.get("threadId"),
         "recovery"
       );
-      let navigations = 0;
-      page.on("framenavigated", (frame) => {
-        if (frame === page.mainFrame()) navigations++;
+      const documentRequests = [];
+      page.on("request", (request) => {
+        if (
+          request.isNavigationRequest() &&
+          request.frame() === page.mainFrame()
+        )
+          documentRequests.push(request.url());
+      });
+      // Same-document URL updates are not reloads; a new document would lose
+      // this marker and create a navigation request.
+      await page.evaluate(() => {
+        window.__recoveryDocumentMarker = "original";
       });
       fail = false;
       await page
@@ -130,7 +139,11 @@ test(
           .count(),
         0
       );
-      assert.equal(navigations, 0);
+      assert.deepEqual(documentRequests, []);
+      assert.equal(
+        await page.evaluate(() => window.__recoveryDocumentMarker),
+        "original"
+      );
       assert(reads >= 2);
       assert.deepEqual(pageErrors, []);
       await mkdir("docs/evidence/chat-recovery", { recursive: true });

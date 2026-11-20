@@ -29,7 +29,7 @@ function DataValue({
     return <span className="text-muted-foreground">null</span>;
   if (typeof value !== "object")
     return (
-      <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      <span className="wrap-anywhere wrap-break-word whitespace-pre-wrap">
         {value === "" ? '""' : String(value)}
       </span>
     );
@@ -55,9 +55,9 @@ function DataValue({
       {visible.map(([key, item]) => (
         <div
           key={key}
-          className="min-w-0 rounded-md border border-border/60 px-3 py-2"
+          className="border-border/60 min-w-0 rounded-md border px-3 py-2"
         >
-          <div className="mb-1 break-words text-xs font-medium text-muted-foreground [overflow-wrap:anywhere]">
+          <div className="text-muted-foreground mb-1 text-xs font-medium wrap-anywhere wrap-break-word">
             {Array.isArray(value) ? `Item ${Number(key) + 1}` : key}
           </div>
           <DataValue
@@ -68,7 +68,7 @@ function DataValue({
         </div>
       ))}
       {entries.length > visible.length && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Showing {visible.length} of {entries.length} entries. The raw result
           contains every returned entry.
         </p>
@@ -103,7 +103,7 @@ function ArtifactText({
             type="button"
             title={`Open ${attachmentDisplayName(part.path)}`}
             onClick={() => opener.open(part.path)}
-            className="inline text-left text-primary underline underline-offset-2 [font:inherit] [overflow-wrap:anywhere] hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="text-primary focus-visible:ring-ring inline text-left wrap-anywhere underline underline-offset-2 [font:inherit] hover:no-underline focus-visible:ring-2 focus-visible:outline-none"
           >
             {part.raw}
           </button>
@@ -131,7 +131,7 @@ export function ReadableToolResult({
       className="min-w-0 pt-4 text-sm leading-6"
     >
       {result.kind === "preview" && (
-        <p className="mb-2 text-xs text-muted-foreground">
+        <p className="text-muted-foreground mb-2 text-xs">
           Preview is shortened. Open Raw result to see the complete output.
         </p>
       )}
@@ -147,8 +147,8 @@ export function ReadableToolResult({
         <pre
           aria-label="Tool result text"
           className={cn(
-            "m-0 overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-md bg-muted/30 p-3 [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-            result.kind === "preview" ? "max-h-40" : "max-h-[32rem]",
+            "bg-muted/30 focus-visible:ring-ring m-0 overflow-auto overscroll-contain rounded-md p-3 wrap-anywhere wrap-break-word whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
+            result.kind === "preview" ? "max-h-40" : "max-h-128",
             result.monospace ? "font-mono text-xs" : "font-sans text-sm"
           )}
           role="region"
@@ -160,7 +160,7 @@ export function ReadableToolResult({
           />
         </pre>
       ) : (
-        <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <div className="wrap-anywhere wrap-break-word whitespace-pre-wrap">
           <ArtifactText
             text={result.text}
             files={files}
@@ -179,7 +179,7 @@ export function RawToolResult({ result }: { result: unknown }) {
       className="group/raw mt-4"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary className="flex min-h-touch cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-muted/50 [&::-webkit-details-marker]:hidden">
+      <summary className="min-h-touch text-muted-foreground hover:bg-muted/35 hover:text-foreground focus-visible:ring-ring active:bg-muted/50 flex cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2.5 text-xs font-semibold focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset [&::-webkit-details-marker]:hidden">
         <span>Raw result</span>
         <ChevronDown
           aria-hidden="true"
@@ -189,7 +189,7 @@ export function RawToolResult({ result }: { result: unknown }) {
       {expanded && (
         <pre
           aria-label="Raw tool result"
-          className="m-0 mt-1 max-h-[min(32rem,50dvh)] overflow-auto overscroll-contain whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 p-3 font-mono text-xs leading-6 text-foreground [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          className="border-border bg-muted/40 text-foreground focus-visible:ring-ring m-0 mt-1 max-h-[min(32rem,50dvh)] overflow-auto overscroll-contain rounded-md border p-3 font-mono text-xs leading-6 wrap-anywhere wrap-break-word whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
           role="region"
           tabIndex={0}
         >

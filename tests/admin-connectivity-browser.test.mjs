@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -15,14 +15,8 @@ test(
     const { chromium } = await loadPlaywright(
       process.env.ADMIN_CONNECTIVITY_PLAYWRIGHT_MODULE
     );
-    const { default: postcss } = await import("postcss");
-    const { default: tailwind } = await import("tailwindcss");
-    const { default: loadConfig } = await import("tailwindcss/loadConfig.js");
-    const config = loadConfig(join(ROOT, "tailwind.config.mjs"));
-    const css = await postcss([tailwind(config)]).process(
-      await readFile(join(ROOT, "src/app/globals.css"), "utf8"),
-      { from: join(ROOT, "src/app/globals.css") }
-    );
+
+    const css = await compileBrowserStyles();
     const bundle = await build({
       absWorkingDir: ROOT,
       stdin: {
