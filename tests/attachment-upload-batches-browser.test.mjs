@@ -5,10 +5,11 @@ import { resolve } from "node:path";
 import { loadPlaywright } from "./browser-fixtures.mjs";
 
 test(
-  "attachment batches serialize storage and skip cancelled files",
+  "attachment batches validate files, serialize storage, and skip cancelled files",
   { skip: process.env.MESSAGE_RUNS_BROWSER_TEST !== "1", timeout: 30000 },
   async () => {
     const { build } = await import("esbuild");
+    const uploads = await import("../src/lib/uploads.ts");
     const { chromium } = await loadPlaywright(
       process.env.CHAT_PLAYWRIGHT_MODULE
     );
@@ -43,11 +44,12 @@ test(
             build.onLoad({ filter: /[\\/]lib[\\/]uploads\.ts$/ }, () => ({
               loader: "ts",
               contents: `
-              export const ACCEPT_ATTR = '.png';
-              export const SUPPORTED_DOC_EXTS = ['txt'];
-              export const SUPPORTED_IMAGE_EXTS = ['png'];
-              export const UPLOAD_MAX_BYTES = 10000;
-              export const UPLOAD_MAX_PER_SEND = 5;
+              export const ACCEPT_ATTR = ${JSON.stringify(uploads.ACCEPT_ATTR)};
+              export const SUPPORTED_DOC_EXTS = ${JSON.stringify(uploads.SUPPORTED_DOC_EXTS)};
+              export const SUPPORTED_IMAGE_EXTS = ${JSON.stringify(uploads.SUPPORTED_IMAGE_EXTS)};
+              export const UPLOAD_MAX_BYTES = ${uploads.UPLOAD_MAX_BYTES};
+              export const UPLOAD_MAX_MIB = ${uploads.UPLOAD_MAX_MIB};
+              export const UPLOAD_MAX_PER_SEND = ${uploads.UPLOAD_MAX_PER_SEND};
               export async function uploadFile(thread, file, signal) {
                 window.started.push([thread, file.name]);
                 if (window.pending.length) {
@@ -211,6 +213,30 @@ test(
         ["B", "new.png"],
       ]);
       assert.deepEqual(await page.evaluate(() => window.rejected), []);
+
+      await reset();
+      assert.ok(uploads.ACCEPT_ATTR.split(",").includes(".csv"));
+      await page.evaluate(() => {
+        const pdf = new Uint8Array(30 * 1024 * 1024);
+        window.attachments.addFiles([
+          new File(["Name,Value\nExample,1"], "report.csv"),
+          new File([pdf], "at-limit.pdf"),
+          new File([pdf, "x"], "over-limit.pdf"),
+        ]);
+      });
+      for (const filename of ["report.csv", "at-limit.pdf"]) {
+        await page.waitForFunction(
+          (name) =>
+            window.pending.length === 1 && window.started.at(-1)?.[1] === name,
+          filename
+        );
+        await settle();
+      }
+      await page.waitForFunction(() => !window.attachments.hasUploading);
+      assert.deepEqual(await page.evaluate(() => window.started), [
+        ["A", "report.csv"],
+        ["A", "at-limit.pdf"],
+      ]);
       assert.deepEqual(errors, []);
     } finally {
       await browser.close();

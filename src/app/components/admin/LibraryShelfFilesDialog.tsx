@@ -29,8 +29,9 @@ import {
   type LibraryJob,
 } from "@/lib/library-admin";
 import { sortLibraryFiles } from "@/lib/library-file-view";
+import { SUPPORTED_DOC_EXTS, UPLOAD_MAX_MIB } from "@/lib/uploads";
 
-const ACCEPTED_FILES = ".pdf,.docx,.pptx,.xlsx,.html,.htm,.txt,.md,.msg";
+const ACCEPTED_FILES = SUPPORTED_DOC_EXTS.map((ext) => `.${ext}`).join(",");
 const PENDING_REFRESH_MS = 5000;
 
 interface LibraryShelfFilesDialogProps {
@@ -202,8 +203,8 @@ export function LibraryShelfFilesDialog({
             {uploading ? "Uploading files" : "Upload documents"}
           </Button>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            PDF, Word, PowerPoint, Excel, HTML, Markdown, text, and Outlook
-            message files are supported. Up to 20 files per upload, 25 MB each.
+            PDF, Word, PowerPoint, Excel, CSV, HTML, Markdown, text, and Outlook
+            message files are supported. Up to 20 files per upload, {UPLOAD_MAX_MIB} MiB each.
           </p>
 
           <LibraryShelfFileList

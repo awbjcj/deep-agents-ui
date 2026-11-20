@@ -8,6 +8,7 @@ import {
   SUPPORTED_DOC_EXTS,
   SUPPORTED_IMAGE_EXTS,
   UPLOAD_MAX_BYTES,
+  UPLOAD_MAX_MIB,
   UPLOAD_MAX_PER_SEND,
   deleteUpload,
   uploadFile,
@@ -263,7 +264,7 @@ export function useAttachments({
           continue;
         }
         if (file.size > UPLOAD_MAX_BYTES) {
-          toast.error(`Too large (>25 MB): ${file.name}`);
+          toast.error(`Too large (>${UPLOAD_MAX_MIB} MiB): ${file.name}`);
           continue;
         }
         const localId = uuidv4();
