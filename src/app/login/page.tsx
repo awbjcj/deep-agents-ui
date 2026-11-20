@@ -200,7 +200,10 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthShell title={headline}>
+    <AuthShell
+      title={headline}
+      className="auth-shell--login"
+    >
       <div
         key={mode}
         className={hasSwitchedMode ? "auth-swap" : undefined}

@@ -1161,6 +1161,15 @@
   );
 }
 
+.auth-shell--login .depth-field__art {
+  mask-image: radial-gradient(
+    ellipse at 18% 43%,
+    transparent 7%,
+    rgba(0, 0, 0, 0.12) 22%,
+    #000 49%
+  );
+}
+
 .depth-field__contours,
 .depth-field__branches {
   fill: none;
@@ -1199,6 +1208,10 @@
   .depth-field__art {
     opacity: 0.5;
     mask-image: linear-gradient(#000, transparent 45%, #000);
+  }
+
+  .auth-shell--login .depth-field__art {
+    mask-image: linear-gradient(#000 26%, transparent 45%, #000 64%);
   }
 }
 
