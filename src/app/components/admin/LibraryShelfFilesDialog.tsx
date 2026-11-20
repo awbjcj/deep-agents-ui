@@ -204,7 +204,8 @@ export function LibraryShelfFilesDialog({
           </Button>
           <p className="text-muted-foreground text-xs leading-relaxed">
             PDF, Word, PowerPoint, Excel, CSV, HTML, Markdown, text, and Outlook
-            message files are supported. Up to 20 files per upload, {UPLOAD_MAX_MIB} MiB each.
+            message files are supported. Up to 20 files per upload,{" "}
+            {UPLOAD_MAX_MIB} MiB each.
           </p>
 
           <LibraryShelfFileList

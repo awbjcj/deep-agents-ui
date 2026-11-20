@@ -304,7 +304,7 @@ async function extractApiErrorMessage(
       const parts = detail
         .map((e: { loc?: unknown[]; msg?: string }) => {
           const field = Array.isArray(e.loc) ? e.loc.slice(1).join(".") : "";
-          return field ? `${field}: ${e.msg ?? ""}` : e.msg ?? "";
+          return field ? `${field}: ${e.msg ?? ""}` : (e.msg ?? "");
         })
         .filter(Boolean);
       if (parts.length) return parts.join("; ");
@@ -1540,10 +1540,10 @@ export async function apiSetAdminConnectivity(
       (typeof detail === "string"
         ? detail
         : Array.isArray(detail)
-        ? detail
-            .map((error) => `${error.loc?.at(-1) ?? "Setting"}: ${error.msg}`)
-            .join("; ")
-        : "") || "Failed to update connectivity settings"
+          ? detail
+              .map((error) => `${error.loc?.at(-1) ?? "Setting"}: ${error.msg}`)
+              .join("; ")
+          : "") || "Failed to update connectivity settings"
     );
   }
   const result: AdminConnectivityResponse = await res.json();
