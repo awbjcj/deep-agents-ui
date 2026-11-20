@@ -166,6 +166,11 @@ export function useChat({
   const creatingThreadRef = useRef<Promise<string> | null>(null);
   const reportedHistoryErrorsRef = useRef(new Set<string>());
   const pendingSendRef = useRef<((accepted: boolean) => void) | null>(null);
+  const approvalStream = useRef<{
+    threadId: string;
+    connection: object;
+    signal: AbortSignal;
+  } | null>(null);
   const restoredValues = useRef<{
     values: StateType;
     interrupts?: { id: string; value?: unknown }[];
@@ -420,12 +425,29 @@ export function useChat({
   }, [onHistoryRevalidate]);
 
   const sourceHistory = thread ?? recoverableThread;
-  const history = useMemo(
-    () =>
-      verifiedApprovalHead?.threadId === threadId &&
-      verifiedApprovalHead.connection === client
-        ? { ...sourceHistory, data: [verifiedApprovalHead.state] }
-        : sourceHistory,
+  const history = useMemo<UseStreamThread<StateType>>(
+    () => ({
+      ...sourceHistory,
+      data:
+        verifiedApprovalHead?.threadId === threadId &&
+        verifiedApprovalHead.connection === client
+          ? [verifiedApprovalHead.state]
+          : sourceHistory.data,
+      mutate: async (requestedThreadId = threadId ?? undefined) => {
+        const resume = approvalStream.current;
+        // The approval path verifies the expanded head after the stream ends.
+        // Keep live messages until then, since an older history read would
+        // make the SDK discard the transcript it just streamed.
+        if (
+          resume &&
+          resume.threadId === requestedThreadId &&
+          resume.connection === client &&
+          !resume.signal.aborted
+        )
+          return undefined;
+        return sourceHistory.mutate(requestedThreadId);
+      },
+    }),
     [client, sourceHistory, threadId, verifiedApprovalHead]
   );
   // A resumed stream can start with only message deltas. Give the SDK its
@@ -547,10 +569,10 @@ export function useChat({
   const retryHistory = useCallback(() => {
     setSlowThreadId(null);
     if (threadId) reportedHistoryErrorsRef.current.delete(threadId);
-    void history.mutate(threadId ?? undefined).catch(() => {
+    void sourceHistory.mutate(threadId ?? undefined).catch(() => {
       // The history hook exposes the failure for the retry UI.
     });
-  }, [history, threadId]);
+  }, [sourceHistory, threadId]);
 
   const messageQueue = useQueuedMessages({
     scope: messageRunScope,
@@ -1276,6 +1298,12 @@ export function useChat({
             if (!ids.length) return;
             let streamError: unknown;
             let failedRun: { run_id: string; thread_id: string } | undefined;
+            const activeResume = {
+              threadId,
+              connection: client,
+              signal: actionSignal,
+            };
+            approvalStream.current = activeResume;
             try {
               await streamRef.current.submit(
                 null,
@@ -1306,6 +1334,9 @@ export function useChat({
               );
             } catch (error) {
               streamError = error;
+            } finally {
+              if (approvalStream.current === activeResume)
+                approvalStream.current = null;
             }
             if (streamError) {
               const status =

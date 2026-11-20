@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   staticServer,
   authenticatedPage,
+  deferred,
   makePolicyFixture,
 } from "./tool-permissions-browser-fixture.mjs";
 import { loadPlaywright } from "./browser-fixtures.mjs";
@@ -21,7 +22,7 @@ const review = (id, name) => ({
 
 async function fixture(
   t,
-  { old, current = old, noOp = false, staleHistory = false }
+  { old, current = old, noOp = false, staleHistory = false, priorTool = false }
 ) {
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({ headless: true });
@@ -35,9 +36,29 @@ async function fixture(
     notifyPostflight = resolve;
   });
   const submissions = [];
-  const state = (reviews) => ({
+  const verifyResume = deferred();
+  const human = { type: "human", id: "human", content: "Test" };
+  const messages = [human];
+  if (priorTool) {
+    messages.push(
+      {
+        type: "ai",
+        id: "lookup",
+        content: "",
+        tool_calls: [{ id: "call", name: "lookup_record", args: {} }],
+      },
+      {
+        type: "tool",
+        id: "result",
+        tool_call_id: "call",
+        name: "lookup_record",
+        content: "Previously retrieved record",
+      }
+    );
+  }
+  const state = (reviews, transcript = messages) => ({
     values: {
-      messages: [{ type: "human", id: "human", content: "Test" }],
+      messages: transcript,
       files: {},
       todos: [],
     },
@@ -70,12 +91,17 @@ async function fixture(
           available_modes: ["interactive", "allow_read", "autopilot"],
           read_tools: ["search_jira_tickets"],
         });
-      if (path.endsWith("/threads/reviews/history"))
+      if (path.endsWith("/threads/reviews/history")) {
+        if (priorTool && submissions.length) return json([state(old, [human])]);
         return json([state(staleHistory || !readCurrent ? old : pending)]);
+      }
       if (path.endsWith("/threads/reviews/state")) {
         readCurrent = true;
         stateReads += 1;
-        if (stateReads === 2) notifyPostflight();
+        if (stateReads === 2) {
+          notifyPostflight();
+          if (priorTool) await verifyResume.promise;
+        }
         return json(state(pending));
       }
       if (path.endsWith("/threads/reviews/runs/stream")) {
@@ -106,17 +132,58 @@ async function fixture(
   );
   page.setDefaultTimeout(8000);
   t.after(async () => {
+    verifyResume.resolve();
     await context.close();
     await browser.close();
     await server.close();
   });
-  return { page, submissions, pageErrors, postflight };
+  return { page, submissions, pageErrors, postflight, verifyResume };
 }
 
 const options = {
   skip: process.env.APPROVAL_CONCURRENCY_BROWSER_TEST !== "1",
   timeout: 30000,
 };
+
+for (const decision of ["Approve", "Reject"]) {
+  test(
+    `${decision} dismisses the review without dropping tool history`,
+    options,
+    async (t) => {
+      const { page, postflight, verifyResume } = await fixture(t, {
+        old: [review(firstId, "send_email")],
+        priorTool: true,
+      });
+      const tool = page.getByRole("button", {
+        name: "lookup_record",
+        exact: true,
+      });
+      const result = page.getByText("Previously retrieved record", {
+        exact: true,
+      });
+      await tool.click();
+      await result.waitFor();
+      const approval = page.getByRole("article", {
+        name: "Approval for send_email",
+      });
+      await approval
+        .getByRole("button", { name: decision, exact: true })
+        .click();
+      if (decision === "Reject")
+        await approval.getByRole("button", { name: "Confirm reject" }).click();
+
+      await postflight;
+      await approval.waitFor({ state: "detached" });
+      await result.waitFor();
+      assert.equal(await tool.getAttribute("aria-expanded"), "true");
+      verifyResume.resolve();
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .waitFor();
+      assert.equal(await result.isVisible(), true);
+    }
+  );
+}
 
 test(
   "review together sends independent decisions in one resume",
