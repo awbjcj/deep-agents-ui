@@ -5,6 +5,10 @@ import useSWR, { useSWRConfig } from "swr";
 import type { Client, ThreadState } from "@langchain/langgraph-sdk";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 
+// A single checkpoint includes the full transcript and attachment data.
+// Allow about 90 seconds for a 14 MB response at 150 KiB/s, plus headroom.
+const HISTORY_TIMEOUT_MS = 120_000;
+
 /**
  * Loads thread history through SWR so rejected history requests are observed
  * and handled instead of becoming unhandled promise rejections inside the SDK
@@ -41,7 +45,7 @@ export function useRecoverableThread<
       // and can lead the SDK's branch selection away from the newest head.
       return client.threads.getHistory<StateType>(threadId, {
         limit: 1,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(HISTORY_TIMEOUT_MS),
       });
     },
     {
@@ -68,7 +72,7 @@ export function useRecoverableThread<
           () =>
             client.threads.getHistory<StateType>(targetThreadId, {
               limit: 1,
-              signal: AbortSignal.timeout(15000),
+              signal: AbortSignal.timeout(HISTORY_TIMEOUT_MS),
             }),
           { revalidate: false }
         );

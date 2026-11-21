@@ -117,6 +117,28 @@ test("a stalled history refresh is bounded and preserves the last approval", asy
   }
 });
 
+test("a history refresh can finish after the former 15-second deadline", async () => {
+  const h = harness();
+  const current = h.render("current");
+  const snapshot = history("current", [approval]);
+  h.server.set("current", ({ limit, signal }) => {
+    assert.equal(limit, 1);
+    signal.throwIfAborted();
+    return snapshot;
+  });
+  const originalTimeout = AbortSignal.timeout;
+  AbortSignal.timeout = (milliseconds) =>
+    milliseconds <= 92_000
+      ? AbortSignal.abort(new DOMException("Timed out", "TimeoutError"))
+      : originalTimeout(milliseconds);
+  try {
+    assert.deepEqual(await current.mutate(), snapshot);
+    assert.deepEqual(h.cached("current"), snapshot);
+  } finally {
+    AbortSignal.timeout = originalTimeout;
+  }
+});
+
 test("late completion updates its own thread without replacing the newly selected conversation", async () => {
   const h = harness();
   const initial = h.render(null);
