@@ -1,5 +1,7 @@
 "use client";
 
+import { MeterFill } from "@/components/ui/meter-fill";
+
 import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
 
 import {
@@ -217,12 +219,9 @@ function UsageMeter({
         aria-valuetext={isUnlimited ? "Unlimited" : `${Math.round(pct)}% used`}
         className="bg-muted/70 mt-2.5 h-1.5 overflow-hidden rounded-full"
       >
-        <div
-          className={[
-            "h-full w-full origin-left rounded-full transition-transform duration-200 [transition-timing-function:var(--ease-out)] motion-reduce:transition-none",
-            usageBarClass(pct, isUnlimited),
-          ].join(" ")}
-          style={{ transform: `scaleX(${isUnlimited ? 1 : clampedPct / 100})` }}
+        <MeterFill
+          percent={isUnlimited ? 100 : pct}
+          className={usageBarClass(pct, isUnlimited)}
         />
       </div>
       {!isUnlimited && pct >= 80 && (

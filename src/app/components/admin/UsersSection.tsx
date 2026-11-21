@@ -1,5 +1,7 @@
 "use client";
 
+import { MeterFill } from "@/components/ui/meter-fill";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +34,6 @@ import {
   splitUsageByEnforcement,
   type UsageDimension,
 } from "@/lib/usage";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   ActionPill,
@@ -407,9 +408,9 @@ function UsageStrip({
   return (
     <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
       <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
-        <div
-          className={cn(
-            "h-full origin-left rounded-full transition-[width] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
+        <MeterFill
+          percent={primary.isUnlimited ? 100 : primary.pct}
+          className={
             primary.isUnlimited
               ? "bg-muted-foreground/40"
               : primary.pct >= 90
@@ -417,12 +418,7 @@ function UsageStrip({
                 : primary.pct >= 70
                   ? "bg-(--color-warning)"
                   : "bg-primary"
-          )}
-          style={{
-            width: primary.isUnlimited
-              ? "100%"
-              : `${Math.min(primary.pct, 100)}%`,
-          }}
+          }
         />
       </div>
       <span
