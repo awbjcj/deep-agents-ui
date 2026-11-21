@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement, isValidElement } from "react";
+import { prerender } from "react-dom/static";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { BatchToolApprovalInterrupt } from "../src/app/components/BatchToolApprovalInterrupt.tsx";
@@ -56,7 +57,7 @@ function approvalHarness(initialPending) {
     respondWith(nextPending) {
       pending = nextPending;
     },
-    renderSelected() {
+    async renderSelected() {
       const interrupt = selectPendingInterrupt(pending);
       const onResume = createInterruptResumeHandler({
         getPending: () => pending,
@@ -65,10 +66,12 @@ function approvalHarness(initialPending) {
         onStale: () => staleIds.push(interrupt?.id),
       });
       const panel = PendingToolApproval({ interrupt, onResume });
+      const { prelude } = await prerender(panel);
       return {
         interrupt,
         panel,
-        html: renderToStaticMarkup(panel),
+        // Hydratable output separates adjacent text nodes with comments.
+        html: (await new Response(prelude).text()).replaceAll("<!-- -->", ""),
       };
     },
   };
@@ -83,9 +86,9 @@ function singleApprovalElement(panel) {
   return approval;
 }
 
-test("same-named rendered writes advance by ID with fresh controls and deny stale callbacks", () => {
+test("same-named rendered writes advance by ID with fresh controls and deny stale callbacks", async () => {
   const h = approvalHarness(sameNamedWrites);
-  const first = h.renderSelected();
+  const first = await h.renderSelected();
   assert.equal(first.interrupt.id, "first-write");
   assert.match(
     first.html,
@@ -104,7 +107,7 @@ test("same-named rendered writes advance by ID with fresh controls and deny stal
   assert.deepEqual(h.submissions, [{ "first-write": rejection }]);
 
   h.respondWith([sameNamedWrites[1]]);
-  const second = h.renderSelected();
+  const second = await h.renderSelected();
   assert.equal(second.interrupt.id, "second-write");
   assert.notEqual(second.panel.key, first.panel.key);
   assert.match(
@@ -135,16 +138,16 @@ test("same-named rendered writes advance by ID with fresh controls and deny stal
   assert.deepEqual(h.submissions[1], { "second-write": edit });
 });
 
-test("the selected single panel routes approval only to its interrupt ID", () => {
+test("the selected single panel routes approval only to its interrupt ID", async () => {
   const h = approvalHarness(sameNamedWrites);
   h.respondWith([sameNamedWrites[1]]);
-  const second = h.renderSelected();
+  const second = await h.renderSelected();
   const approval = { decisions: [{ type: "approve" }] };
   singleApprovalElement(second.panel).props.onResume(approval);
   assert.deepEqual(h.submissions, [{ "second-write": approval }]);
 });
 
-test("the selected multi-action search interrupt renders the real ordered batch panel", () => {
+test("the selected multi-action search interrupt renders the real ordered batch panel", async () => {
   const batchInterrupt = {
     id: "search-batch",
     value: {
@@ -173,15 +176,15 @@ test("the selected multi-action search interrupt renders the real ordered batch 
     },
   };
   const h = approvalHarness([batchInterrupt]);
-  const rendered = h.renderSelected();
+  const rendered = await h.renderSelected();
   assert.ok(isValidElement(rendered.panel));
   assert.equal(rendered.panel.type, BatchToolApprovalInterrupt);
   h.respondWith([structuredClone(batchInterrupt)]);
-  assert.equal(h.renderSelected().panel.key, rendered.panel.key);
+  assert.equal((await h.renderSelected()).panel.key, rendered.panel.key);
   const updated = structuredClone(batchInterrupt);
   updated.value.action_requests[0].args.jql = "project = NEW";
   h.respondWith([updated]);
-  assert.notEqual(h.renderSelected().panel.key, rendered.panel.key);
+  assert.notEqual((await h.renderSelected()).panel.key, rendered.panel.key);
   h.respondWith([batchInterrupt]);
   assert.match(rendered.html, /Review pending actions/);
   assert.match(rendered.html, /0 of 2 reviewed/);

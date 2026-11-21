@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MarkdownContent } from "../src/app/components/MarkdownContent.tsx";
+import { MarkdownRenderer as MarkdownContent } from "../src/app/components/MarkdownRenderer.tsx";
 import { FileOpenerProvider } from "../src/app/components/FileOpener.tsx";
 import { ReadableToolResult } from "../src/app/components/ReadableToolResult.tsx";
 

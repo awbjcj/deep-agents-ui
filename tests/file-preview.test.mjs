@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
+import { prerender } from "react-dom/static";
 import React from "react";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
@@ -56,13 +57,14 @@ test("middleware paths select Markdown and source-code formats", () => {
   assert.equal(fileLanguage("/tools/Dockerfile"), "dockerfile");
 });
 
-test("large middleware documents are bounded before Markdown parsing", () => {
-  const html = renderToStaticMarkup(
+test("large middleware documents are bounded before Markdown parsing", async () => {
+  const { prelude } = await prerender(
     React.createElement(FileContentView, {
       path: "/_artifacts/user/thread/report.md",
       content: "# Report\n\n" + "Paragraph.\n\n".repeat(20000) + "DOCUMENT_END",
     })
   );
+  const html = await new Response(prelude).text();
   assert.match(html, /Preview is shortened/);
   assert.match(html, /<h1>Report<\/h1>/);
   assert.doesNotMatch(html, /DOCUMENT_END/);
