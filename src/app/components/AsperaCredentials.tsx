@@ -1,5 +1,7 @@
 "use client";
 
+import { SavedSetting } from "@/app/components/settings/SavedSetting";
+
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,7 @@ export function AsperaCredentials() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState<CredentialAction | null>(null);
+  const [revision, setRevision] = useState(0);
   const [completed, setCompleted] = useState<CredentialAction | null>(null);
   const [updateError, setUpdateError] = useState("");
   const usernameInput = useRef<HTMLInputElement>(null);
@@ -99,6 +102,7 @@ export function AsperaCredentials() {
       setUsername(saved.username ?? "");
       setPassword("");
       setCompleted(method);
+      setRevision((current) => current + 1);
     } catch {
       setUpdateError(
         method === "PUT"
@@ -133,85 +137,91 @@ export function AsperaCredentials() {
         Aspera
       </h3>
       {credential ? (
-        <form onSubmit={save}>
-          <fieldset
-            disabled={pending !== null}
-            className="min-w-0 space-y-3"
-          >
-            <p
-              role="status"
-              className="text-muted-foreground text-xs"
+        <SavedSetting
+          key={revision}
+          title="Aspera login"
+          status={credential.configured ? "Saved" : undefined}
+        >
+          <form onSubmit={save}>
+            <fieldset
+              disabled={pending !== null}
+              className="min-w-0 space-y-3"
             >
-              {status}
-            </p>
-            <div className="grid gap-3 @md/aspera:grid-cols-2">
-              <div className="min-w-0 space-y-2">
-                <Label htmlFor="aspera-username">Aspera username</Label>
-                <Input
-                  id="aspera-username"
-                  ref={usernameInput}
-                  className="border-muted-foreground/70"
-                  autoComplete="section-aspera username"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={username}
-                  onChange={(event) => {
-                    setUsername(event.target.value);
-                    setCompleted(null);
-                    setUpdateError("");
-                  }}
-                  required
-                  maxLength={200}
-                />
-              </div>
-              <div className="min-w-0 space-y-2">
-                <Label htmlFor="aspera-password">Aspera password</Label>
-                <Input
-                  id="aspera-password"
-                  className="border-muted-foreground/70"
-                  type="password"
-                  autoComplete="section-aspera current-password"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    setCompleted(null);
-                    setUpdateError("");
-                  }}
-                  required
-                  maxLength={8192}
-                />
-              </div>
-            </div>
-            {updateError && (
               <p
-                role="alert"
-                className="text-destructive text-sm"
+                role="status"
+                className="text-muted-foreground text-xs"
               >
-                {updateError}
+                {status}
               </p>
-            )}
-            <div className="grid gap-2 @sm/aspera:flex @sm/aspera:flex-wrap">
-              <Button
-                type="submit"
-                variant="default"
-                disabled={!username.trim() || !password}
-                className="min-h-touch"
-              >
-                Save Aspera login
-              </Button>
-              {credential.configured && (
+              <div className="grid gap-3 @md/aspera:grid-cols-2">
+                <div className="min-w-0 space-y-2">
+                  <Label htmlFor="aspera-username">Aspera username</Label>
+                  <Input
+                    id="aspera-username"
+                    ref={usernameInput}
+                    className="border-muted-foreground/70"
+                    autoComplete="section-aspera username"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={username}
+                    onChange={(event) => {
+                      setUsername(event.target.value);
+                      setCompleted(null);
+                      setUpdateError("");
+                    }}
+                    required
+                    maxLength={200}
+                  />
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <Label htmlFor="aspera-password">Aspera password</Label>
+                  <Input
+                    id="aspera-password"
+                    className="border-muted-foreground/70"
+                    type="password"
+                    autoComplete="section-aspera current-password"
+                    value={password}
+                    onChange={(event) => {
+                      setPassword(event.target.value);
+                      setCompleted(null);
+                      setUpdateError("");
+                    }}
+                    required
+                    maxLength={8192}
+                  />
+                </div>
+              </div>
+              {updateError && (
+                <p
+                  role="alert"
+                  className="text-destructive text-sm"
+                >
+                  {updateError}
+                </p>
+              )}
+              <div className="grid gap-2 @sm/aspera:flex @sm/aspera:flex-wrap">
                 <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => void update("DELETE")}
+                  type="submit"
+                  variant="default"
+                  disabled={!username.trim() || !password}
                   className="min-h-touch"
                 >
-                  Remove Aspera login
+                  Save Aspera login
                 </Button>
-              )}
-            </div>
-          </fieldset>
-        </form>
+                {credential.configured && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void update("DELETE")}
+                    className="min-h-touch"
+                  >
+                    Remove Aspera login
+                  </Button>
+                )}
+              </div>
+            </fieldset>
+          </form>
+        </SavedSetting>
       ) : loadError ? (
         <div
           role="alert"

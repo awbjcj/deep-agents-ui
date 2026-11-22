@@ -1,5 +1,7 @@
 "use client";
 
+import { SavedSetting } from "@/app/components/settings/SavedSetting";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useCallback, useEffect, useState } from "react";
@@ -26,6 +28,7 @@ export function ScmCredentials() {
   const [values, setValues] = useState<
     Record<string, { token: string; username: string }>
   >({});
+  const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<{
     serverId: string;
@@ -77,6 +80,10 @@ export function ScmCredentials() {
       setValues((current) => ({
         ...current,
         [serverId]: { token: "", username: "" },
+      }));
+      setRevisions((current) => ({
+        ...current,
+        [serverId]: (current[serverId] ?? 0) + 1,
       }));
       await load();
       toast.success("SCM credential saved");
@@ -162,125 +169,137 @@ export function ScmCredentials() {
           const needsUsername = scmRequiresUsername(server.provider);
           const state = credentialStateText(server.credential_state);
           return (
-            <form
-              key={server.id}
-              className="border-border bg-card space-y-2 rounded-lg border p-3"
-              aria-labelledby={`${fieldKey}:title`}
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!busy && value.token.trim()) void save(server);
-              }}
+            <SavedSetting
+              key={JSON.stringify([server.id, revisions[server.id]])}
+              title={server.display_name}
+              status={
+                server.credential_state === "validated"
+                  ? "Verified"
+                  : server.credential_state === "unvalidated"
+                    ? "Saved"
+                    : undefined
+              }
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 wrap-anywhere">
-                  <p
-                    id={`${fieldKey}:title`}
-                    className="text-sm font-medium"
-                  >
-                    {server.display_name}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {server.display_name !== providerName &&
-                      `${providerName} · `}
-                    {state.label}
-                  </p>
-                  {state.hint && (
-                    <p className="text-muted-foreground text-xs">
-                      {state.hint}
-                    </p>
-                  )}
-                </div>
-                {server.credential_state !== undefined &&
-                  server.credential_state !== "missing" && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-touch"
-                      onClick={() => void remove(server.id)}
-                      disabled={busy}
-                      aria-label={`Remove ${server.display_name} credential`}
+              <form
+                autoComplete="off"
+                className="border-border bg-card space-y-2 rounded-lg border p-3"
+                aria-labelledby={`${fieldKey}:title`}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!busy && value.token.trim()) void save(server);
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 wrap-anywhere">
+                    <p
+                      id={`${fieldKey}:title`}
+                      className="text-sm font-medium"
                     >
-                      {removing ? (
-                        <Loader2
-                          className="motion-safe:animate-spin"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <Trash2
-                          className="text-destructive"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </Button>
+                      {server.display_name}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {server.display_name !== providerName &&
+                        `${providerName} · `}
+                      {state.label}
+                    </p>
+                    {state.hint && (
+                      <p className="text-muted-foreground text-xs">
+                        {state.hint}
+                      </p>
+                    )}
+                  </div>
+                  {server.credential_state !== undefined &&
+                    server.credential_state !== "missing" && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-touch"
+                        onClick={() => void remove(server.id)}
+                        disabled={busy}
+                        aria-label={`Remove ${server.display_name} credential`}
+                      >
+                        {removing ? (
+                          <Loader2
+                            className="motion-safe:animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Trash2
+                            className="text-destructive"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </Button>
+                    )}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor={`${fieldKey}:token`}
+                      className="text-xs"
+                    >
+                      Personal access token
+                    </Label>
+                    <Input
+                      id={`${fieldKey}:token`}
+                      type="password"
+                      autoComplete="new-password"
+                      className="min-h-touch text-base sm:text-sm"
+                      value={value.token}
+                      disabled={busy}
+                      required
+                      onChange={(event) =>
+                        setValue(server.id, "token", event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor={`${fieldKey}:username`}
+                      className="text-xs"
+                    >
+                      {needsUsername
+                        ? `${providerName} login name (required)`
+                        : "Login name (if required)"}
+                    </Label>
+                    <Input
+                      id={`${fieldKey}:username`}
+                      autoComplete="off"
+                      className="min-h-touch text-base sm:text-sm"
+                      value={value.username}
+                      disabled={busy}
+                      required={needsUsername}
+                      onChange={(event) =>
+                        setValue(server.id, "username", event.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  className="min-h-touch"
+                  disabled={busy || !value.token.trim()}
+                >
+                  {saving ? (
+                    <Loader2
+                      className="motion-safe:animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Save aria-hidden="true" />
                   )}
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label
-                    htmlFor={`${fieldKey}:token`}
-                    className="text-xs"
-                  >
-                    Personal access token
-                  </Label>
-                  <Input
-                    id={`${fieldKey}:token`}
-                    type="password"
-                    autoComplete="off"
-                    className="min-h-touch text-base sm:text-sm"
-                    value={value.token}
-                    disabled={busy}
-                    required
-                    onChange={(event) =>
-                      setValue(server.id, "token", event.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label
-                    htmlFor={`${fieldKey}:username`}
-                    className="text-xs"
-                  >
-                    {needsUsername
-                      ? `${providerName} login name (required)`
-                      : "Login name (if required)"}
-                  </Label>
-                  <Input
-                    id={`${fieldKey}:username`}
-                    autoComplete="username"
-                    className="min-h-touch text-base sm:text-sm"
-                    value={value.username}
-                    disabled={busy}
-                    required={needsUsername}
-                    onChange={(event) =>
-                      setValue(server.id, "username", event.target.value)
-                    }
-                  />
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="min-h-touch"
-                disabled={busy || !value.token.trim()}
-              >
-                {saving ? (
-                  <Loader2
-                    className="motion-safe:animate-spin"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Save aria-hidden="true" />
-                )}
-                {saving ? "Saving credential…" : "Save credential"}
-              </Button>
-              <span
-                role="status"
-                className="sr-only"
-              >
-                {saving && "Saving credential…"}
-                {removing && "Removing credential…"}
-              </span>
-            </form>
+                  {saving ? "Saving credential…" : "Save credential"}
+                </Button>
+                <span
+                  role="status"
+                  className="sr-only"
+                >
+                  {saving && "Saving credential…"}
+                  {removing && "Removing credential…"}
+                </span>
+              </form>
+            </SavedSetting>
           );
         })
       )}

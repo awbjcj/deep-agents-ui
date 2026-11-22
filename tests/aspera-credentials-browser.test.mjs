@@ -147,6 +147,10 @@ test(
             const remove = page.getByRole("button", {
               name: "Remove Aspera login",
             });
+            const savedLogin = page.getByRole("button", {
+              name: "Aspera login Saved",
+            });
+            await savedLogin.click();
             await username.waitFor();
             assert.equal(await username.inputValue(), "previous-user");
             assert.equal(await password.inputValue(), "");
@@ -207,6 +211,10 @@ test(
             });
             assert.deepEqual(violations, []);
             await password.press("Enter");
+            await page
+              .locator('button[aria-expanded="false"]')
+              .filter({ hasText: "Aspera login" })
+              .click();
             await page
               .getByText("Aspera credentials saved", { exact: true })
               .waitFor();

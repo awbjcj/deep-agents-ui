@@ -242,7 +242,7 @@ test(
       });
       await save.waitFor();
       assert.equal(await save.isDisabled(), true);
-      assert.equal(await page.locator('input[type="password"]').count(), 9);
+      assert.equal(await page.locator('input[type="password"]').count(), 8);
       assert.equal(await page.locator('input[type="url"]').count(), 12);
       const url = page.getByRole("textbox", {
         name: "OpenAI gateway base URL",
@@ -257,10 +257,12 @@ test(
       await page
         .getByText("Connectivity overrides saved", { exact: true })
         .waitFor();
-      await page.waitForFunction(
-        () =>
-          document.querySelector("#runtime-openai_api_key_gateway").value === ""
-      );
+      const gateway = page
+        .locator('[data-connectivity-mode="gateway"]')
+        .first()
+        .getByRole("button", { name: /Saved/ });
+      await gateway.waitFor();
+      assert.equal(await token.count(), 0);
       assert.deepEqual(writes.at(-1), {
         openai_base_url_gateway: "https://custom.example/scoped/v1",
         openai_api_key_gateway: "test-gateway-secret",
@@ -269,6 +271,7 @@ test(
 
       await page.reload();
       await page.locator("summary").click();
+      await gateway.click();
       await token.waitFor();
       assert.equal(await token.inputValue(), "");
       assert.equal(await url.inputValue(), "https://custom.example/scoped/v1");
@@ -364,11 +367,11 @@ test(
         .filter({ hasText: "Failed to load connectivity settings" })
         .waitFor();
       await page.getByRole("button", { name: "Retry", exact: true }).click();
-      await token.waitFor();
+      await gateway.waitFor();
       assert.equal(await page.getByRole("alert").count(), 0);
       await page.goto(`http://127.0.0.1:${server.address().port}/?dark=1`);
       await page.locator("summary").click();
-      await token.waitFor();
+      await gateway.waitFor();
       await checkAccessibility();
       if (evidence) {
         await page

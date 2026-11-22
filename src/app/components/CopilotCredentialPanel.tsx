@@ -1,5 +1,7 @@
 "use client";
 
+import { SavedSetting } from "@/app/components/settings/SavedSetting";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -235,103 +237,111 @@ export function CopilotCredentialPanel() {
         error={quotaError}
         onRefresh={() => void refreshQuota()}
       />
-      <fieldset
-        disabled={busy || !status}
-        className="space-y-3 disabled:opacity-70"
+      <SavedSetting
+        key={status?.updated_at}
+        title="Copilot credential"
+        status={configured ? "Saved" : undefined}
       >
-        <div className="space-y-1.5">
-          <Label htmlFor="copilot-host">GitHub account hostname</Label>
-          <Input
-            id="copilot-host"
-            value={githubHost}
-            maxLength={253}
-            autoCapitalize="none"
-            spellCheck={false}
-            onChange={(event) => setGithubHost(event.target.value)}
-            aria-describedby="copilot-host-help"
-          />
-          <p
-            id="copilot-host-help"
-            className="text-muted-foreground text-xs leading-relaxed"
-          >
-            Use github.com or your exact company.ghe.com hostname.
-            {status?.configured && ` Saved account: ${status.github_host}.`}
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="copilotToken">
-            Fine-grained personal access token
-          </Label>
-          <Input
-            id="copilotToken"
-            type="password"
-            autoComplete="new-password"
-            value={token}
-            maxLength={8192}
-            onChange={(event) => setToken(event.target.value)}
-            aria-describedby="copilot-token-help"
-          />
-          <p
-            id="copilot-token-help"
-            className="text-muted-foreground text-xs leading-relaxed"
-          >
-            Enter a fine-grained token with the Copilot Requests account
-            permission and a Copilot license. Saved tokens are never shown.
-            Replacing or removing a token requests cancellation of analyses
-            using it; a request already sent to GitHub may finish.
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="copilot-expiry">Expiry (optional, local time)</Label>
-          <Input
-            id="copilot-expiry"
-            type="datetime-local"
-            value={expiry}
-            onChange={(event) => setExpiry(event.target.value)}
-          />
-          {status?.expires_at && (
-            <p className="text-muted-foreground text-xs">
-              Current expiry: {new Date(status.expires_at).toLocaleString()}
+        <fieldset
+          disabled={busy || !status}
+          className="space-y-3 disabled:opacity-70"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="copilot-host">GitHub account hostname</Label>
+            <Input
+              id="copilot-host"
+              value={githubHost}
+              maxLength={253}
+              autoCapitalize="none"
+              spellCheck={false}
+              onChange={(event) => setGithubHost(event.target.value)}
+              aria-describedby="copilot-host-help"
+            />
+            <p
+              id="copilot-host-help"
+              className="text-muted-foreground text-xs leading-relaxed"
+            >
+              Use github.com or your exact company.ghe.com hostname.
+              {status?.configured && ` Saved account: ${status.github_host}.`}
             </p>
-          )}
-        </div>
-        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-          <Button
-            type="button"
-            size="sm"
-            disabled={!token || busy}
-            onClick={() => void update(false)}
-            className="transition-[background-color,box-shadow,transform] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
-          >
-            {busy ? (
-              <Loader2
-                aria-hidden="true"
-                className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
-              />
-            ) : (
-              <KeyRound
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="copilotToken">
+              Fine-grained personal access token
+            </Label>
+            <Input
+              id="copilotToken"
+              type="password"
+              autoComplete="new-password"
+              value={token}
+              maxLength={8192}
+              onChange={(event) => setToken(event.target.value)}
+              aria-describedby="copilot-token-help"
+            />
+            <p
+              id="copilot-token-help"
+              className="text-muted-foreground text-xs leading-relaxed"
+            >
+              Enter a fine-grained token with the Copilot Requests account
+              permission and a Copilot license. Saved tokens are never shown.
+              Replacing or removing a token requests cancellation of analyses
+              using it; a request already sent to GitHub may finish.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="copilot-expiry">
+              Expiry (optional, local time)
+            </Label>
+            <Input
+              id="copilot-expiry"
+              type="datetime-local"
+              value={expiry}
+              onChange={(event) => setExpiry(event.target.value)}
+            />
+            {status?.expires_at && (
+              <p className="text-muted-foreground text-xs">
+                Current expiry: {new Date(status.expires_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+            <Button
+              type="button"
+              size="sm"
+              disabled={!token || busy}
+              onClick={() => void update(false)}
+              className="transition-[background-color,box-shadow,transform] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
+            >
+              {busy ? (
+                <Loader2
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <KeyRound
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5"
+                />
+              )}
+              {busy ? "Saving…" : "Save token"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!status?.configured || busy}
+              onClick={() => void update(true)}
+              className="text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2
                 aria-hidden="true"
                 className="h-3.5 w-3.5"
               />
-            )}
-            {busy ? "Saving…" : "Save token"}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!status?.configured || busy}
-            onClick={() => void update(true)}
-            className="text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-          >
-            <Trash2
-              aria-hidden="true"
-              className="h-3.5 w-3.5"
-            />
-            Remove token
-          </Button>
-        </div>
-      </fieldset>
+              Remove token
+            </Button>
+          </div>
+        </fieldset>
+      </SavedSetting>
       {error && (
         <div className="border-destructive/30 bg-destructive/5 text-destructive flex items-start gap-2 rounded-md border px-3 py-2 text-xs">
           <ShieldAlert

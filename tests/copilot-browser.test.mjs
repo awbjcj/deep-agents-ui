@@ -152,6 +152,9 @@ test(
         .waitFor();
       await section.getByText("86.0% remaining", { exact: true }).waitFor();
       assert.equal(quotaRequests, 1);
+      await section
+        .getByRole("button", { name: "Copilot credential Saved" })
+        .click();
       assert.equal(await input.inputValue(), "");
       assert.equal(
         await section.innerText().then((text) => text.includes("github_pat_")),

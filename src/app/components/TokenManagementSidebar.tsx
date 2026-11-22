@@ -1,5 +1,8 @@
 "use client";
 
+import { SavedSetting } from "@/app/components/settings/SavedSetting";
+
+import { flushSync } from "react-dom";
 import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
 
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
@@ -115,17 +118,24 @@ export function TokenManagementSidebar({
     const service =
       initialFocus === "polarion" ? "polarion_asux" : initialFocus;
     const targetId = `${service}Token`;
-    const el = document.getElementById(targetId) as HTMLInputElement | null;
-    if (el) {
-      el.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
-        block: "center",
-      });
-      el.focus({ preventScroll: true });
-    }
-    onFocusConsumed?.();
+    const frame = requestAnimationFrame(() => {
+      const trigger = document.getElementById(`${targetId}-edit`);
+      if (trigger?.getAttribute("aria-expanded") === "false")
+        flushSync(() => trigger.click());
+      const el = document.getElementById(targetId) as HTMLInputElement | null;
+      if (el) {
+        el.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
+        el.focus({ preventScroll: true });
+      }
+      onFocusConsumed?.();
+    });
+    return () => cancelAnimationFrame(frame);
   }, [initialFocus, isLoading, onFocusConsumed]);
 
   const handleSave = async () => {
@@ -397,57 +407,66 @@ function TokenField({
   const [show, setShow] = useState(false);
   const id = `${guide.key}Token`;
   return (
-    <section className="border-border space-y-2 border-t pt-4">
-      <Label
-        htmlFor={id}
-        className="text-sm font-medium"
-      >
-        {guide.label}
-      </Label>
-      {(preview || hasUpdatedAt(updatedAt)) && (
-        <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-          {preview && (
-            <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
-              {preview}
-            </code>
-          )}
-          {hasUpdatedAt(updatedAt) && (
-            <span>
-              Updated{" "}
-              <time dateTime={updatedAt}>{formatTimestamp(updatedAt)}</time>
-              {timeGap && <span> ({timeGap})</span>}
-            </span>
-          )}
-        </div>
-      )}
-      <div className="relative">
-        <Input
-          id={id}
-          type={show ? "text" : "password"}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          placeholder={preview ? "Enter a replacement token" : "Paste a token"}
-          className="pr-11"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`${show ? "Hide" : "Show"} ${guide.label}`}
-          aria-controls={id}
-          onClick={() => setShow((visible) => !visible)}
-          className="absolute top-1/2 right-0 size-10 -translate-y-1/2"
+    <SavedSetting
+      key={updatedAt}
+      title={guide.label}
+      triggerId={`${id}-edit`}
+      status={preview || hasUpdatedAt(updatedAt) ? "Saved" : undefined}
+    >
+      <section className="space-y-2">
+        <Label
+          htmlFor={id}
+          className="text-sm font-medium"
         >
-          {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-        </Button>
-      </div>
-      <TokenSetupGuide
-        guide={guide}
-        username={username}
-      />
-    </section>
+          {guide.label}
+        </Label>
+        {(preview || hasUpdatedAt(updatedAt)) && (
+          <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+            {preview && (
+              <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
+                {preview}
+              </code>
+            )}
+            {hasUpdatedAt(updatedAt) && (
+              <span>
+                Updated{" "}
+                <time dateTime={updatedAt}>{formatTimestamp(updatedAt)}</time>
+                {timeGap && <span> ({timeGap})</span>}
+              </span>
+            )}
+          </div>
+        )}
+        <div className="relative">
+          <Input
+            id={id}
+            type={show ? "text" : "password"}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder={
+              preview ? "Enter a replacement token" : "Paste a token"
+            }
+            className="pr-11"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={`${show ? "Hide" : "Show"} ${guide.label}`}
+            aria-controls={id}
+            onClick={() => setShow((visible) => !visible)}
+            className="absolute top-1/2 right-0 size-10 -translate-y-1/2"
+          >
+            {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+          </Button>
+        </div>
+        <TokenSetupGuide
+          guide={guide}
+          username={username}
+        />
+      </section>
+    </SavedSetting>
   );
 }
