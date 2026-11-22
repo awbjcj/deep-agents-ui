@@ -57,7 +57,11 @@ export function SourcePicker({
   const revisionKinds: SourceResource[] = [
     "branches",
     "tags",
-    isPlastic ? "commits" : "reviews",
+    ...(isPlastic
+      ? ["commits" as const]
+      : server?.provider === "gitlab"
+        ? ["commits" as const, "reviews" as const]
+        : ["reviews" as const]),
   ];
   const resource = revisionKinds.includes(draft.resource)
     ? draft.resource
@@ -106,7 +110,11 @@ export function SourcePicker({
                 value={item.id}
               >
                 {item.display_name} ·{" "}
-                {item.provider === "gerrit" ? "Gerrit" : "Plastic"}
+                {item.provider === "gerrit"
+                  ? "Gerrit"
+                  : item.provider === "gitlab"
+                    ? "GitLab"
+                    : "Plastic"}
               </option>
             ))}
           </WorkspaceSelect>
@@ -179,7 +187,9 @@ export function SourcePicker({
           >
             {isPlastic
               ? "Branch (br:), label (lb:), or changeset (cs:)."
-              : "Branch, tag, commit SHA, or Gerrit change selector."}
+              : server?.provider === "gitlab"
+                ? "Branch, tag, commit SHA, or HEAD for the default branch."
+                : "Branch, tag, commit SHA, or Gerrit change selector."}
           </p>
           <div className="flex flex-wrap gap-2 [&>div]:min-w-0 [&>div]:flex-1 [&>div]:basis-24">
             <WorkspaceSelect

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiFetch, extractErrorMessage } from "@/lib/auth";
+import { scmProviderSchema, type ScmProvider } from "@/lib/scm";
 import {
   analysisJobSchema,
   getAnalysisJob,
@@ -15,7 +16,7 @@ export type RepositoryRef = z.infer<typeof refSchema>;
 
 const targetSchema = z.object({
   ref: refSchema,
-  provider: z.enum(["gerrit", "plastic"]),
+  provider: scmProviderSchema,
   revision: z.string().min(1),
   selector: z.string().min(1),
 });
@@ -224,7 +225,7 @@ export async function releasePreparedWorkspace(
 export function sourceChoice(
   item: SourcePage["items"][number],
   resource: SourceResource,
-  provider: "gerrit" | "plastic"
+  provider: ScmProvider
 ) {
   const text = (key: string) =>
     typeof item[key] === "string" ? (item[key] as string) : "";
@@ -237,7 +238,7 @@ export function sourceChoice(
     case "tags": {
       const ref = text("ref");
       const selector =
-        provider === "gerrit"
+        provider !== "plastic"
           ? ref
           : name && `${resource === "branches" ? "br" : "lb"}:${name}`;
       return { label: ref || name, selector };
@@ -245,8 +246,11 @@ export function sourceChoice(
     case "commits": {
       const revision = text("revision");
       return {
-        label: revision && `Changeset ${revision}`,
-        selector: revision && `cs:${revision}`,
+        label:
+          revision &&
+          (provider === "plastic" ? `Changeset ${revision}` : revision),
+        selector:
+          revision && (provider === "plastic" ? `cs:${revision}` : revision),
         detail: text("message"),
       };
     }

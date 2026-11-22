@@ -190,7 +190,7 @@ const AGENT_INFO: Record<string, AgentInfo> = {
   },
   [CODE_ANALYZER_AGENT_ID]: {
     description:
-      "Answers questions about code in the configured Gerrit repositories. It pins each answer to an exact revision and cites files and lines. Analysis runs in an isolated worker that never builds the code or runs its scripts or tests.",
+      "Answers questions about code in the configured source repositories. It pins each answer to an exact revision and cites files and lines. Analysis runs in an isolated worker that never builds the code or runs its scripts or tests.",
     useCases: [
       "Explain how a code path works at a given revision, with file-and-line evidence.",
       "Compare two revisions and describe what changed in behavior.",

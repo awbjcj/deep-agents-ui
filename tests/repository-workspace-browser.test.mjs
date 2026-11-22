@@ -89,6 +89,13 @@ test(
         enabled: true,
         generation: 1,
       },
+      {
+        id: "gitlab",
+        provider: "gitlab",
+        display_name: "GitLab",
+        enabled: true,
+        generation: 1,
+      },
     ];
     const pageResult = (items, next_cursor = null) => ({
       items,
@@ -308,6 +315,31 @@ test(
           .isEnabled(),
         false
       );
+      await dialog.getByLabel("Source server").selectOption("gitlab");
+      await dialog
+        .getByText("Branch, tag, commit SHA, or HEAD for the default branch.")
+        .waitFor();
+      await dialog
+        .getByLabel("Repository", { exact: true })
+        .fill("vtv-data-analysis/vst-data-ops");
+      assert.equal(
+        await dialog
+          .getByLabel("Revision list type")
+          .locator('option[value="commits"]')
+          .count(),
+        1
+      );
+      await dialog.getByRole("button", { name: "Browse refs" }).click();
+      await dialog
+        .getByRole("button", { name: "refs/heads/main", exact: true })
+        .click();
+      assert.equal(
+        await dialog.getByLabel("Revision selector").inputValue(),
+        "refs/heads/main"
+      );
+      await mkdir(EVIDENCE, { recursive: true });
+      await page.screenshot({ path: `${EVIDENCE}/gitlab-source.png` });
+      await dialog.getByLabel("Source server").selectOption("gerrit");
       await dialog
         .getByLabel("Repository", { exact: true })
         .fill("draft/repository");

@@ -124,3 +124,48 @@ test("SCM server editing supports re-enable and locks the submitted form", async
   assert.match(source, /onCheckedChange=\{\(enabled\)/);
   assert.match(source, /<fieldset[\s\S]*disabled=\{saving\}/);
 });
+
+test("GitLab servers accept per-user credentials and source selections", async () => {
+  const { sourceChoice, workspaceResumeSchema } =
+    await import("../src/lib/code-workspace.ts");
+  assert.equal(
+    scmServerSchema.parse({
+      id: "gl",
+      provider: "gitlab",
+      display_name: "GitLab",
+      enabled: true,
+      generation: 1,
+    }).provider,
+    "gitlab"
+  );
+  assert.throws(
+    () => credentialUpdate("pat", "", "gitlab"),
+    /GitLab login name/
+  );
+  assert.deepEqual(credentialUpdate("pat", "alice", "gitlab"), {
+    token: "pat",
+    username: "alice",
+  });
+  assert.equal(
+    sourceChoice({ ref: "refs/heads/main" }, "branches", "gitlab").selector,
+    "refs/heads/main"
+  );
+  assert.equal(
+    sourceChoice({ revision: "a".repeat(40) }, "commits", "gitlab").selector,
+    "a".repeat(40)
+  );
+  assert.equal(
+    workspaceResumeSchema.parse({
+      prepareId: "job",
+      targets: [
+        {
+          ref: { server_id: "gl", repository: "team/repo" },
+          provider: "gitlab",
+          revision: "a".repeat(40),
+          selector: "main",
+        },
+      ],
+    }).targets[0].provider,
+    "gitlab"
+  );
+});

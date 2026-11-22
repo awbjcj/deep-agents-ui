@@ -168,7 +168,7 @@ export function ScmServersSection() {
     <div className="space-y-5">
       <SectionHeader
         title="SCM servers"
-        subtitle="Named Gerrit and Plastic sources available for read-only code analysis."
+        subtitle="Named Gerrit, GitLab, and Plastic sources available for read-only code analysis."
       />
       <DisclosureSection
         title="Server configuration"
@@ -243,6 +243,7 @@ export function ScmServersSection() {
                 className="border-input bg-background flex h-10 w-full rounded-md border px-3 text-sm"
               >
                 <option value="gerrit">Gerrit</option>
+                <option value="gitlab">GitLab</option>
                 <option value="plastic">Plastic SCM</option>
               </select>
             </div>

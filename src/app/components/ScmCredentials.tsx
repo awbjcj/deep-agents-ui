@@ -147,7 +147,13 @@ export function ScmCredentials() {
           const busy = saving !== null;
           const rowBusy = saving === server.id;
           const fieldKey = scmFieldKey(server.id);
-          const isGerrit = server.provider === "gerrit";
+          const providerName =
+            server.provider === "gerrit"
+              ? "Gerrit"
+              : server.provider === "gitlab"
+                ? "GitLab"
+                : "Plastic SCM";
+          const needsUsername = server.provider !== "plastic";
           const state = credentialStateText(server.credential_state);
           return (
             <div
@@ -158,7 +164,7 @@ export function ScmCredentials() {
                 <div>
                   <p className="text-sm font-medium">{server.display_name}</p>
                   <p className="text-muted-foreground text-xs">
-                    {isGerrit ? "Gerrit" : "Plastic SCM"} · {state.label}
+                    {providerName} · {state.label}
                   </p>
                   {state.hint && (
                     <p className="text-muted-foreground text-xs">
@@ -203,8 +209,8 @@ export function ScmCredentials() {
                     htmlFor={`${fieldKey}:username`}
                     className="text-xs"
                   >
-                    {isGerrit
-                      ? "Gerrit login name (required)"
+                    {needsUsername
+                      ? `${providerName} login name (required)`
                       : "Login name (if required)"}
                   </Label>
                   <Input
@@ -212,7 +218,7 @@ export function ScmCredentials() {
                     autoComplete="username"
                     value={value.username}
                     disabled={busy}
-                    required={isGerrit}
+                    required={needsUsername}
                     onChange={(event) =>
                       setValue(server.id, "username", event.target.value)
                     }
