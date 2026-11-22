@@ -32,6 +32,7 @@ test(
       function App() {
         const [thread, setThread] = useState(new URL(location.href).searchParams.get('threadId'));
         const [revision, setRevision] = useState(0);
+        const [open, setOpen] = useState(false);
         const ensure = async () => {
           history.replaceState({}, '', '?threadId=thread-1');
           setThread('thread-1');
@@ -40,8 +41,8 @@ test(
         window.switchThread = () => setThread('thread-2');
         return <main className="mx-auto max-w-3xl p-4">
           <h1>Code Analyzer</h1>
-          <RepositoryWorkspace accountId="user-1" threadId={thread} ensureThreadId={ensure} chatBusy={false} onJobSubmitted={() => setRevision(value => value + 1)} />
-          <CodeAnalysisJobs threadId={thread} isLoading={false} refreshRevision={revision} allowRelease={false} />
+          <RepositoryWorkspace accountId="user-1" threadId={thread} ensureThreadId={ensure} chatBusy={false} open={open} onOpenChange={setOpen} onJobSubmitted={() => setRevision(value => value + 1)} />
+          <CodeAnalysisJobs threadId={thread} isLoading={false} refreshRevision={revision} allowRelease={false} onManageWorkspace={() => setOpen(true)} />
         </main>;
       }
       createRoot(document.getElementById('root')).render(<App />);
@@ -471,6 +472,9 @@ test(
       await page
         .getByRole("region", { name: "Background code analysis" })
         .waitFor();
+      await page.getByRole("button", { name: "Manage workspace" }).click();
+      await dialog.getByText("Target 2 of 3").waitFor();
+      await page.keyboard.press("Escape");
       assert.doesNotMatch(
         await page.evaluate(() => JSON.stringify(sessionStorage)),
         /opaque-target/

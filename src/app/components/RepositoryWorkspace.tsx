@@ -13,15 +13,18 @@ export function RepositoryWorkspace({
   accountId,
   ensureThreadId,
   chatBusy,
+  open,
+  onOpenChange,
   onJobSubmitted,
 }: {
   threadId: string | null;
   accountId: string;
   ensureThreadId: () => Promise<string>;
   chatBusy: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onJobSubmitted: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [threadError, setThreadError] = useState(false);
   async function createConversation() {
@@ -40,7 +43,7 @@ export function RepositoryWorkspace({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        setOpen(next);
+        onOpenChange(next);
         if (next) void createConversation();
       }}
     >

@@ -130,7 +130,9 @@ const phases: Record<string, [string, string]> = {
 export function analysisPhase(job: AnalysisJobView): [string, string] {
   if (job.status === "cancel_requested")
     return [
-      "Stopping analysis",
+      job.operation === "prepare"
+        ? "Stopping preparation"
+        : "Stopping analysis",
       "Cancellation was requested. Waiting for current work and cleanup to finish.",
     ];
   if (job.status === "failed" || job.status === "interrupted")
@@ -143,13 +145,15 @@ export function analysisPhase(job: AnalysisJobView): [string, string] {
   if (job.status === "cancelled")
     return [
       "Work stopped",
-      "The job was cancelled. Any available partial report is retained.",
+      job.operation === "prepare"
+        ? "The source preparation was cancelled."
+        : "The job was cancelled. Any available partial report is retained.",
     ];
   if (job.status === "succeeded")
     return [
-      job.operation === "prepare" ? "Source ready" : "Report ready",
+      job.operation === "prepare" ? "Source prepared" : "Report ready",
       job.operation === "prepare"
-        ? "The workspace is ready for analysis."
+        ? "This run finished preparing the selected revisions."
         : "The run has completed.",
     ];
   return (

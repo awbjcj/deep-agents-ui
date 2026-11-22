@@ -83,7 +83,14 @@ test(
         },
       },
     };
-    let jobs = [preparation];
+    const earlierPreparation = {
+      ...preparation,
+      job_id: "prepare-earlier",
+      status: "succeeded",
+      phase: "complete",
+      finished_at: new Date(Date.now() - 600_000).toISOString(),
+    };
+    let jobs = [preparation, earlierPreparation];
     const polls = new Map();
     let discoveries = 0,
       offline = false;
@@ -158,6 +165,15 @@ test(
           .count(),
         1
       );
+      const history = region.getByText("Earlier preparations (1)", {
+        exact: true,
+      });
+      await history.click();
+      await region
+        .getByText("Preparation completed", { exact: true })
+        .waitFor();
+      assert.equal(polls.has("prepare-earlier"), false);
+      await history.click();
       await mkdir(EVIDENCE, { recursive: true });
       await page.screenshot({ path: `${EVIDENCE}/before-handoff.png` });
       await page.evaluate(() => {
@@ -193,10 +209,8 @@ test(
       preparation.progress = 100;
       preparation.result.preparation.completed_entries = 1000;
       preparation.finished_at = new Date().toISOString();
-      await page.getByText("Source ready", { exact: true }).waitFor();
-      await page
-        .getByText("Source preparation complete", { exact: true })
-        .waitFor();
+      await page.getByText("Source prepared", { exact: true }).waitFor();
+      assert.equal(await cards.getByRole("progressbar").count(), 0);
       const terminalPolls = polls.get("prepare-1");
       await page.waitForTimeout(2300);
       assert.equal(polls.get("prepare-1"), terminalPolls);
@@ -216,6 +230,7 @@ test(
           result: { activity: { model_calls: 2, tool_calls: 8 } },
         },
         preparation,
+        earlierPreparation,
       ];
       await page.evaluate(() => window.startAnalysis());
       await page
