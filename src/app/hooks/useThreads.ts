@@ -52,7 +52,11 @@ export function deriveMeta(thread: Thread): {
           title = normalized || title;
         } else {
           const prefix = normalized.slice(0, FALLBACK_TITLE_CHARS);
-          title = prefix.slice(0, prefix.lastIndexOf(" ")) || prefix;
+          const cut = prefix.lastIndexOf(" ");
+          title =
+            normalized[FALLBACK_TITLE_CHARS] === " " || cut <= 0
+              ? prefix
+              : prefix.slice(0, cut);
         }
       }
       const firstAi = messages.find((m) => m?.type === "ai");

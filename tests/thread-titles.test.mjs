@@ -35,3 +35,10 @@ test("fallback titles do not append ellipses or cut words", () => {
   assert.ok(!title.endsWith("..."));
   assert.ok(title.length === prompt.length || prompt[title.length] === " ");
 });
+
+test("fallback titles keep whole prefixes without spaces or at word ends", () => {
+  const cjk = "分析".repeat(60);
+  assert.equal(deriveMeta(thread({}, cjk)).title, cjk.slice(0, 100));
+  const wordEnd = `${"a".repeat(50)} ${"b".repeat(49)} tail`;
+  assert.equal(deriveMeta(thread({}, wordEnd)).title, wordEnd.slice(0, 100));
+});
