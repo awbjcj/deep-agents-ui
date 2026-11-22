@@ -72,7 +72,16 @@ export function deriveMeta(thread: Thread): {
     title = `Thread ${thread.thread_id.slice(0, 8)}`;
   }
 
-  return { title, description, titled };
+  const namedTitle = [thread.metadata?.custom_name, thread.metadata?.title]
+    .find(
+      (name): name is string => typeof name === "string" && Boolean(name.trim())
+    )
+    ?.trim();
+  return {
+    title: namedTitle || title,
+    description,
+    titled: Boolean(namedTitle),
+  };
 }
 
 /** Fetch sidebar fields and preserve previews for unconventional message orders. */
