@@ -17,13 +17,6 @@ export interface ThreadItem {
 
 const DEFAULT_PAGE_SIZE = 20;
 
-// Cache message-derived metadata across revalidations. A title can arrive as
-// a separate metadata update, so it and the custom name are part of the key.
-const derivationCache = new Map<
-  string,
-  { title: string; description: string; titled: boolean }
->();
-const CACHE_LIMIT = 500;
 const FALLBACK_TITLE_CHARS = 100;
 // The server names a conversation in the background after its first run
 // finishes (at most ~10 s), so recently finished untitled threads are
@@ -37,75 +30,87 @@ export function deriveMeta(thread: Thread): {
   description: string;
   titled: boolean;
 } {
-  const metadata = thread.metadata as Record<string, unknown> | undefined;
-  const generatedTitle =
-    typeof metadata?.title === "string" ? metadata.title.trim() : "";
-  const customName =
-    typeof metadata?.custom_name === "string"
-      ? metadata.custom_name.trim()
-      : "";
-  const key = JSON.stringify([
-    thread.thread_id,
-    thread.updated_at,
-    generatedTitle,
-    customName,
-  ]);
-  const hit = derivationCache.get(key);
-  if (hit) return hit;
-
   let title = "Untitled Thread";
   let description = "";
 
   try {
-    if (thread.values && typeof thread.values === "object") {
-      const values = thread.values as {
-        messages?: Array<{ type?: string; content?: unknown }>;
-      };
-      const messages = values.messages ?? [];
-      const firstHuman = messages.find((m) => m?.type === "human");
-      if (firstHuman?.content) {
-        const content =
-          typeof firstHuman.content === "string"
-            ? firstHuman.content
-            : (firstHuman.content as Array<{ text?: string }>)[0]?.text || "";
-        const normalized = content.replace(/\s+/g, " ").trim();
-        if (normalized.length <= FALLBACK_TITLE_CHARS) {
-          title = normalized || title;
-        } else {
-          const prefix = normalized.slice(0, FALLBACK_TITLE_CHARS);
-          const cut = prefix.lastIndexOf(" ");
-          title =
-            normalized[FALLBACK_TITLE_CHARS] === " " || cut <= 0
-              ? prefix
-              : prefix.slice(0, cut);
-        }
+    const values = thread.values as {
+      messages?: Array<{ type?: string; content?: unknown }>;
+    };
+    const preview = thread.extracted;
+    const messages = values?.messages ?? [
+      { type: preview?.firstType, content: preview?.firstContent },
+      { type: preview?.secondType, content: preview?.secondContent },
+    ];
+    const firstHuman = messages.find((m) => m?.type === "human");
+    if (firstHuman?.content) {
+      const content =
+        typeof firstHuman.content === "string"
+          ? firstHuman.content
+          : (firstHuman.content as Array<{ text?: string }>)[0]?.text || "";
+      const normalized = content.replace(/\s+/g, " ").trim();
+      if (normalized.length <= FALLBACK_TITLE_CHARS) {
+        title = normalized || title;
+      } else {
+        const prefix = normalized.slice(0, FALLBACK_TITLE_CHARS);
+        const cut = prefix.lastIndexOf(" ");
+        title =
+          normalized[FALLBACK_TITLE_CHARS] === " " || cut <= 0
+            ? prefix
+            : prefix.slice(0, cut);
       }
-      const firstAi = messages.find((m) => m?.type === "ai");
-      if (firstAi?.content) {
-        const content =
-          typeof firstAi.content === "string"
-            ? firstAi.content
-            : (firstAi.content as Array<{ text?: string }>)[0]?.text || "";
-        description = content.slice(0, 100);
-      }
+    }
+    const firstAi = messages.find((m) => m?.type === "ai");
+    if (firstAi?.content) {
+      const content =
+        typeof firstAi.content === "string"
+          ? firstAi.content
+          : (firstAi.content as Array<{ text?: string }>)[0]?.text || "";
+      description = content.slice(0, 100);
     }
   } catch {
     title = `Thread ${thread.thread_id.slice(0, 8)}`;
   }
 
-  const namedTitle = customName || generatedTitle;
-  const result = {
-    title: namedTitle || title,
-    description,
-    titled: !!namedTitle,
-  };
-  if (derivationCache.size >= CACHE_LIMIT) {
-    // Evict oldest entry — Map preserves insertion order.
-    const oldest = derivationCache.keys().next().value;
-    if (oldest) derivationCache.delete(oldest);
-  }
-  derivationCache.set(key, result);
-  return result;
+  return { title, description, titled };
+}
+
+/** Fetch sidebar fields and preserve previews for unconventional message orders. */
+export async function searchThreadSummaries(
+  client: Client,
+  query: NonNullable<Parameters<Client["threads"]["search"]>[0]>
+): Promise<Thread[]> {
+  const rows = await client.threads.search({
+    ...query,
+    select: ["thread_id", "metadata", "updated_at", "status"],
+    extract: {
+      firstType: "values.messages[0].type",
+      firstContent: "values.messages[0].content",
+      secondType: "values.messages[1].type",
+      secondContent: "values.messages[1].content",
+    },
+  });
+  const unusual = rows.filter(
+    ({ extracted, values }) =>
+      !values &&
+      (!extracted ||
+        (extracted?.firstType != null && extracted.firstType !== "human") ||
+        (extracted?.secondType != null && extracted.secondType !== "ai"))
+  );
+  if (!unusual.length) return rows;
+  const fullRows = await client.threads.search({
+    metadata: query.metadata,
+    ids: unusual.map((row) => row.thread_id),
+    limit: unusual.length,
+    select: ["thread_id", "values"],
+  });
+  const valuesById = new Map(
+    fullRows.map((row) => [row.thread_id, row.values])
+  );
+  return rows.map((row) => ({
+    ...row,
+    values: valuesById.get(row.thread_id) ?? row.values,
+  }));
 }
 
 /** Return recently finished, untitled threads whose title may still arrive. */
@@ -200,7 +205,7 @@ export function useThreads(props: {
       const metadata: Record<string, string> = {};
       if (userId) metadata.user_id = userId;
 
-      const threads = await client.threads.search({
+      const threads = await searchThreadSummaries(client, {
         limit: pageSize,
         offset: pageIndex * pageSize,
         sortBy: "updated_at" as const,

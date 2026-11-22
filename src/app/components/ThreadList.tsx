@@ -379,6 +379,23 @@ export function ThreadList({
     [flattened, deleteTargetId]
   );
 
+  const refreshAfterDelete = useCallback(
+    (confirmedIds: ReadonlySet<string>) => {
+      // Offset pagination needs a refill. Publish confirmed removals immediately
+      // while SWR reconciles every loaded page with the server.
+      void mutateRef
+        .current(
+          (pages) =>
+            pages?.map((page) =>
+              page.filter((row) => !confirmedIds.has(row.id))
+            ),
+          { revalidate: () => true }
+        )
+        .catch(() => toast.error("Couldn't refresh the thread list"));
+    },
+    []
+  );
+
   const handleDelete = useCallback(async () => {
     if (!deleteTargetId) return;
     setIsDeleting(true);
@@ -390,7 +407,7 @@ export function ThreadList({
       if (isCurrentThread) {
         onThreadSelect(nextThread?.id ?? null);
       }
-      await mutateRef.current();
+      refreshAfterDelete(new Set([deleteTargetId]));
       setDeleteTargetId(null);
       toast.success("Thread deleted");
     } catch {
@@ -398,7 +415,14 @@ export function ThreadList({
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteTargetId, currentThreadId, flattened, client, onThreadSelect]);
+  }, [
+    deleteTargetId,
+    currentThreadId,
+    flattened,
+    client,
+    onThreadSelect,
+    refreshAfterDelete,
+  ]);
 
   const handleBatchDelete = useCallback(async () => {
     const threadIds = selectedThreads.map((thread) => thread.id);
@@ -421,7 +445,9 @@ export function ThreadList({
         );
       }
 
-      await mutateRef.current();
+      refreshAfterDelete(
+        result.deletedCount === result.requestedCount ? selectedIds : new Set()
+      );
       setSelectedIds(new Set());
       setIsBatchDeleteOpen(false);
 
@@ -450,6 +476,7 @@ export function ThreadList({
     onThreadSelect,
     selectedIds,
     selectedThreads,
+    refreshAfterDelete,
   ]);
 
   return (

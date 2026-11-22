@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   deriveMeta,
   scheduleTitleRechecks,
+  searchThreadSummaries,
   threadsAwaitingTitle,
 } from "../src/app/hooks/useThreads.ts";
 
@@ -168,4 +169,71 @@ test("title retries reevaluate the original two-minute eligibility window", (t) 
   t.mock.timers.tick(4000);
   assert.equal(calls, 0);
   cancel();
+});
+
+test("sidebar projects previews and fetches unusual histories in one scoped batch", async () => {
+  const regular = {
+    thread_id: "regular",
+    extracted: {
+      firstType: "human",
+      firstContent: "Request",
+      secondType: "ai",
+      secondContent: "Answer",
+    },
+  };
+  const legacy = {
+    thread_id: "legacy",
+    extracted: { firstType: "system", secondType: "human" },
+  };
+  const metadata = { user_id: "owner" };
+  const queries = [];
+  const client = {
+    threads: {
+      async search(query) {
+        queries.push(query);
+        if (!query.ids) return [regular, legacy];
+        return [
+          {
+            thread_id: "legacy",
+            values: {
+              messages: [
+                { type: "system" },
+                { type: "human", content: "Later prompt" },
+                { type: "ai", content: "Later answer" },
+              ],
+            },
+          },
+        ];
+      },
+    },
+  };
+  const [first, second] = await searchThreadSummaries(client, {
+    metadata,
+    offset: 20,
+    limit: 20,
+  });
+  assert.equal(queries.length, 2);
+  assert.deepEqual(queries[0].select, [
+    "thread_id",
+    "metadata",
+    "updated_at",
+    "status",
+  ]);
+  assert.equal(queries[0].extract.firstContent, "values.messages[0].content");
+  assert.deepEqual(queries[1], {
+    metadata,
+    ids: ["legacy"],
+    limit: 1,
+    select: ["thread_id", "values"],
+  });
+  assert.deepEqual(deriveMeta(first), {
+    title: "Request",
+    description: "Answer",
+    titled: false,
+  });
+  assert.deepEqual(deriveMeta(second), {
+    title: "Later prompt",
+    description: "Later answer",
+    titled: false,
+  });
 });
