@@ -22,8 +22,12 @@ const derivationCache = new Map<
   { title: string; description: string }
 >();
 const CACHE_LIMIT = 500;
+const FALLBACK_TITLE_CHARS = 100;
 
-function deriveMeta(thread: Thread): { title: string; description: string } {
+export function deriveMeta(thread: Thread): {
+  title: string;
+  description: string;
+} {
   const key = `${thread.thread_id}::${thread.updated_at}`;
   const hit = derivationCache.get(key);
   if (hit) return hit;
@@ -43,7 +47,13 @@ function deriveMeta(thread: Thread): { title: string; description: string } {
           typeof firstHuman.content === "string"
             ? firstHuman.content
             : (firstHuman.content as Array<{ text?: string }>)[0]?.text || "";
-        title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
+        const normalized = content.replace(/\s+/g, " ").trim();
+        if (normalized.length <= FALLBACK_TITLE_CHARS) {
+          title = normalized || title;
+        } else {
+          const prefix = normalized.slice(0, FALLBACK_TITLE_CHARS);
+          title = prefix.slice(0, prefix.lastIndexOf(" ")) || prefix;
+        }
       }
       const firstAi = messages.find((m) => m?.type === "ai");
       if (firstAi?.content) {
@@ -58,9 +68,14 @@ function deriveMeta(thread: Thread): { title: string; description: string } {
     title = `Thread ${thread.thread_id.slice(0, 8)}`;
   }
 
-  const customName = (thread.metadata as Record<string, unknown>)?.custom_name;
-  if (typeof customName === "string" && customName) {
-    title = customName;
+  const metadata = thread.metadata as Record<string, unknown> | undefined;
+  const generatedTitle = metadata?.title;
+  const customName = metadata?.custom_name;
+  if (typeof generatedTitle === "string" && generatedTitle.trim()) {
+    title = generatedTitle.trim();
+  }
+  if (typeof customName === "string" && customName.trim()) {
+    title = customName.trim();
   }
 
   const result = { title, description };
