@@ -128,6 +128,25 @@ browser tab. Source and question drafts also stay in place when you close the
 workspace or change its tab within the same conversation. If the worker expires
 or releases the checkout, prepare it again.
 
+### Analyze MAT logs and review chat history
+
+Open **VSDA Log Analyzer Agent** and save your credentials in **Workspace →
+Tokens → Aspera**. Provide a Jira ticket with an Aspera Log Location or paste a
+Shares link. Signal plots embedded in an answer open as thumbnails. Select a
+thumbnail to inspect the full image.
+
+Conversation titles refresh after the backend generates them. Queued messages
+can steer an active run while retaining the conversation history. Source
+preparation entries are grouped in the conversation alongside analysis jobs.
+
+### Admin settings
+
+Saved credentials and endpoints initially appear in collapsed summaries. In
+the Code Analysis settings, a global Deep Agent model override must be approved
+for both Developer and Admin tiers. Copilot analysis has a separate model
+allowlist and default. The tool permissions view shows tool availability
+alongside administrator policy controls.
+
 ### Deployment profiles
 
 `next.config.ts` selects behavior by build mode:
