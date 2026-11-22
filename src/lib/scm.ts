@@ -12,6 +12,16 @@ const operatorServerValidationSchema = z
 export const scmProviderSchema = z.enum(["gerrit", "gitlab", "plastic"]);
 export type ScmProvider = z.infer<typeof scmProviderSchema>;
 
+export const scmProviderLabels: Record<ScmProvider, string> = {
+  gerrit: "Gerrit",
+  gitlab: "GitLab",
+  plastic: "Plastic SCM",
+};
+
+export function scmRequiresUsername(provider?: ScmProvider): boolean {
+  return provider === "gerrit" || provider === "gitlab";
+}
+
 export const scmServerSchema = z.object({
   id: z.string().min(1),
   provider: scmProviderSchema,
@@ -81,10 +91,8 @@ export function credentialUpdate(
   const normalizedToken = token.trim();
   if (!normalizedToken) throw new Error("Enter a personal access token");
   const normalizedUsername = username.trim();
-  if ((provider === "gerrit" || provider === "gitlab") && !normalizedUsername) {
-    throw new Error(
-      `Enter your ${provider === "gerrit" ? "Gerrit" : "GitLab"} login name`
-    );
+  if (provider && scmRequiresUsername(provider) && !normalizedUsername) {
+    throw new Error(`Enter your ${scmProviderLabels[provider]} login name`);
   }
   return {
     token: normalizedToken,

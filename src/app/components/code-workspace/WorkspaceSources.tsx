@@ -79,7 +79,7 @@ export function WorkspaceSources({
             <div className="border-border space-y-2 rounded-lg border border-dashed p-4 text-sm">
               <p className="font-medium">No source servers available</p>
               <p className="text-muted-foreground">
-                Ask an administrator to enable Gerrit or Plastic, then refresh
+                Ask an administrator to enable a source server, then refresh
                 this list.
               </p>
               <Button

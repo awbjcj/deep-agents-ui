@@ -159,6 +159,17 @@ test(
             : json(noServers ? [] : serverList);
         if (path === "/api/code-analysis/list") {
           const { resource, cursor } = body.query;
+          if (resource === "commits")
+            return json(pageResult([{ revision: "a".repeat(40) }]));
+          if (resource === "reviews")
+            return json(
+              pageResult([
+                {
+                  current_revision: "b".repeat(40),
+                  subject: "Document the setup",
+                },
+              ])
+            );
           if (resource === "externals")
             return json(
               pageResult([
@@ -322,14 +333,32 @@ test(
       await dialog
         .getByLabel("Repository", { exact: true })
         .fill("vtv-data-analysis/vst-data-ops");
-      assert.equal(
-        await dialog
-          .getByLabel("Revision list type")
-          .locator('option[value="commits"]')
-          .count(),
-        1
+      const revisionType = dialog.getByLabel("Revision list type");
+      const browseRevisions = dialog.getByRole("button", {
+        name: "Browse refs",
+      });
+      await revisionType.selectOption({ label: "Commits" });
+      await browseRevisions.press("Enter");
+      const commits = dialog.getByRole("region", { name: "Commits" });
+      await commits.getByRole("heading", { name: "Commits" }).waitFor();
+      await commits
+        .getByRole("button", { name: "Close source results" })
+        .press("Enter");
+      await page.waitForFunction(
+        () => document.activeElement?.textContent?.trim() === "Browse refs"
       );
-      await dialog.getByRole("button", { name: "Browse refs" }).click();
+      await revisionType.selectOption({ label: "Merge requests" });
+      await browseRevisions.click();
+      await dialog
+        .getByRole("region", { name: "Merge requests" })
+        .getByRole("button", { name: "Document the setup" })
+        .click();
+      assert.equal(
+        await dialog.getByLabel("Revision selector").inputValue(),
+        "b".repeat(40)
+      );
+      await revisionType.selectOption({ label: "Branches" });
+      await browseRevisions.click();
       await dialog
         .getByRole("button", { name: "refs/heads/main", exact: true })
         .click();

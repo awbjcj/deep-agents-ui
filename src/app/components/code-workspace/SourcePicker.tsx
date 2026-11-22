@@ -10,15 +10,48 @@ import type {
   SourceQuery,
   SourceResource,
 } from "@/lib/code-workspace";
-import type { ScmServerView } from "@/lib/scm";
+import {
+  scmProviderLabels,
+  type ScmProvider,
+  type ScmServerView,
+} from "@/lib/scm";
 import { SourceResults } from "./SourceResults";
 import { fieldClass, WorkspaceSelect } from "./WorkspaceFields";
 import {
-  resourceLabels,
+  sourceResourceLabel,
   type BrowseState,
   type DraftSetter,
   type SourceDraft,
 } from "./types";
+
+const sourceFields: Record<
+  ScmProvider,
+  {
+    repository: string;
+    revision: string;
+    hint: string;
+    resources: SourceResource[];
+  }
+> = {
+  gerrit: {
+    repository: "team/repository",
+    revision: "refs/heads/main",
+    hint: "Branch, tag, commit SHA, or Gerrit change selector.",
+    resources: ["branches", "tags", "reviews"],
+  },
+  gitlab: {
+    repository: "group/project",
+    revision: "main or HEAD",
+    hint: "Branch, tag, commit SHA, or HEAD for the default branch.",
+    resources: ["branches", "tags", "commits", "reviews"],
+  },
+  plastic: {
+    repository: "Project repository",
+    revision: "br:/main or cs:123",
+    hint: "Branch (br:), label (lb:), or changeset (cs:).",
+    resources: ["branches", "tags", "commits"],
+  },
+};
 
 export function SourcePicker({
   servers,
@@ -46,6 +79,8 @@ export function SourcePicker({
   const id = useId();
   const revisionInput = useRef<HTMLInputElement>(null);
   const repositoryInput = useRef<HTMLInputElement>(null);
+  const repositoryBrowse = useRef<HTMLButtonElement>(null);
+  const revisionBrowse = useRef<HTMLButtonElement>(null);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const server =
     servers.find((item) => item.id === draft.serverId) ?? servers[0];
@@ -53,16 +88,9 @@ export function SourcePicker({
     server_id: server?.id ?? "",
     repository: draft.repository.trim(),
   };
-  const isPlastic = server?.provider === "plastic";
-  const revisionKinds: SourceResource[] = [
-    "branches",
-    "tags",
-    ...(isPlastic
-      ? ["commits" as const]
-      : server?.provider === "gitlab"
-        ? ["commits" as const, "reviews" as const]
-        : ["reviews" as const]),
-  ];
+  const provider = server?.provider ?? "gerrit";
+  const fields = sourceFields[provider];
+  const revisionKinds = fields.resources;
   const resource = revisionKinds.includes(draft.resource)
     ? draft.resource
     : "branches";
@@ -109,12 +137,9 @@ export function SourcePicker({
                 key={item.id}
                 value={item.id}
               >
-                {item.display_name} ·{" "}
-                {item.provider === "gerrit"
-                  ? "Gerrit"
-                  : item.provider === "gitlab"
-                    ? "GitLab"
-                    : "Plastic"}
+                {item.display_name === scmProviderLabels[item.provider]
+                  ? item.display_name
+                  : `${item.display_name} · ${scmProviderLabels[item.provider]}`}
               </option>
             ))}
           </WorkspaceSelect>
@@ -139,12 +164,13 @@ export function SourcePicker({
               maxLength={500}
               required
               disabled={locked || !server}
-              placeholder={isPlastic ? "Project repository" : "team/repository"}
+              placeholder={fields.repository}
               onChange={(event) => change({ repository: event.target.value })}
               autoComplete="off"
               spellCheck={false}
             />
             <Button
+              ref={repositoryBrowse}
               type="button"
               variant="outline"
               className="min-h-touch px-3"
@@ -174,9 +200,7 @@ export function SourcePicker({
             required
             disabled={locked || !server}
             aria-describedby={`${id}-hint${error ? ` ${id}-error` : ""}`}
-            placeholder={
-              isPlastic ? "br:/main or cs:123" : "refs/heads/main or commit SHA"
-            }
+            placeholder={fields.revision}
             onChange={(event) => change({ selector: event.target.value })}
             autoComplete="off"
             spellCheck={false}
@@ -185,11 +209,7 @@ export function SourcePicker({
             id={`${id}-hint`}
             className="text-muted-foreground text-xs leading-relaxed"
           >
-            {isPlastic
-              ? "Branch (br:), label (lb:), or changeset (cs:)."
-              : server?.provider === "gitlab"
-                ? "Branch, tag, commit SHA, or HEAD for the default branch."
-                : "Branch, tag, commit SHA, or Gerrit change selector."}
+            {fields.hint}
           </p>
           <div className="flex flex-wrap gap-2 [&>div]:min-w-0 [&>div]:flex-1 [&>div]:basis-24">
             <WorkspaceSelect
@@ -205,11 +225,12 @@ export function SourcePicker({
                   key={kind}
                   value={kind}
                 >
-                  {resourceLabels[kind]}
+                  {sourceResourceLabel(kind, provider)}
                 </option>
               ))}
             </WorkspaceSelect>
             <Button
+              ref={revisionBrowse}
               type="button"
               variant="outline"
               className="min-h-touch px-3"
@@ -279,7 +300,13 @@ export function SourcePicker({
           onBrowse={onBrowse}
           onDismiss={() => {
             onDismiss();
-            repositoryInput.current?.focus();
+            const returnFocus =
+              browse.query.resource === "repositories"
+                ? repositoryBrowse
+                : browse.query.resource === "externals"
+                  ? repositoryInput
+                  : revisionBrowse;
+            requestAnimationFrame(() => returnFocus.current?.focus());
           }}
           onChoose={(choice) => {
             if (

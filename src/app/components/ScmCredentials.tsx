@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   credentialStateText,
-  credentialUpdate,
   deleteScmCredential,
   listScmServers,
   saveScmCredential,
   scmFieldKey,
+  scmProviderLabels,
+  scmRequiresUsername,
   type ScmServerView,
 } from "@/lib/scm";
 
@@ -26,14 +27,16 @@ export function ScmCredentials() {
     Record<string, { token: string; username: string }>
   >({});
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [pending, setPending] = useState<{
+    serverId: string;
+    action: "save" | "remove";
+  } | null>(null);
   useSettingsDraft(
-    saving !== null ||
+    pending !== null ||
       Object.values(values).some((value) => !!value.token || !!value.username)
   );
 
   const load = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
     try {
       setServers(await listScmServers(signal));
     } catch (error) {
@@ -68,11 +71,9 @@ export function ScmCredentials() {
     const serverId = server.id;
     const value = values[serverId] ?? { token: "", username: "" };
     try {
-      credentialUpdate(value.token, value.username, server.provider);
-      setSaving(serverId);
+      setPending({ serverId, action: "save" });
       await saveScmCredential(serverId, value, server.provider);
-      // Clear only the successfully sent secret; values for every other
-      // server remain untouched so a partial save cannot erase user input.
+      // Clear the submitted fields and preserve drafts for other servers.
       setValues((current) => ({
         ...current,
         [serverId]: { token: "", username: "" },
@@ -84,12 +85,12 @@ export function ScmCredentials() {
         error instanceof Error ? error.message : "Failed to save SCM credential"
       );
     } finally {
-      setSaving(null);
+      setPending(null);
     }
   };
 
   const remove = async (serverId: string) => {
-    setSaving(serverId);
+    setPending({ serverId, action: "remove" });
     try {
       await deleteScmCredential(serverId);
       setValues((current) => ({
@@ -105,7 +106,7 @@ export function ScmCredentials() {
           : "Failed to remove SCM credential"
       );
     } finally {
-      setSaving(null);
+      setPending(null);
     }
   };
 
@@ -133,8 +134,15 @@ export function ScmCredentials() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-3">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div
+          role="status"
+          className="text-muted-foreground flex items-center gap-2 py-3 text-sm"
+        >
+          <Loader2
+            className="size-4 motion-safe:animate-spin"
+            aria-hidden="true"
+          />
+          Loading source servers…
         </div>
       ) : servers.length === 0 ? (
         <p className="border-border text-muted-foreground rounded-md border border-dashed p-3 text-xs">
@@ -144,27 +152,37 @@ export function ScmCredentials() {
       ) : (
         servers.map((server) => {
           const value = values[server.id] ?? { token: "", username: "" };
-          const busy = saving !== null;
-          const rowBusy = saving === server.id;
+          const busy = pending !== null;
+          const saving =
+            pending?.serverId === server.id && pending.action === "save";
+          const removing =
+            pending?.serverId === server.id && pending.action === "remove";
           const fieldKey = scmFieldKey(server.id);
-          const providerName =
-            server.provider === "gerrit"
-              ? "Gerrit"
-              : server.provider === "gitlab"
-                ? "GitLab"
-                : "Plastic SCM";
-          const needsUsername = server.provider !== "plastic";
+          const providerName = scmProviderLabels[server.provider];
+          const needsUsername = scmRequiresUsername(server.provider);
           const state = credentialStateText(server.credential_state);
           return (
-            <div
+            <form
               key={server.id}
               className="border-border bg-card space-y-2 rounded-lg border p-3"
+              aria-labelledby={`${fieldKey}:title`}
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!busy && value.token.trim()) void save(server);
+              }}
             >
               <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium">{server.display_name}</p>
+                <div className="min-w-0 wrap-anywhere">
+                  <p
+                    id={`${fieldKey}:title`}
+                    className="text-sm font-medium"
+                  >
+                    {server.display_name}
+                  </p>
                   <p className="text-muted-foreground text-xs">
-                    {providerName} · {state.label}
+                    {server.display_name !== providerName &&
+                      `${providerName} · `}
+                    {state.label}
                   </p>
                   {state.hint && (
                     <p className="text-muted-foreground text-xs">
@@ -175,13 +193,25 @@ export function ScmCredentials() {
                 {server.credential_state !== undefined &&
                   server.credential_state !== "missing" && (
                     <Button
+                      type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="size-touch"
                       onClick={() => void remove(server.id)}
                       disabled={busy}
                       aria-label={`Remove ${server.display_name} credential`}
                     >
-                      <Trash2 className="text-destructive h-3.5 w-3.5" />
+                      {removing ? (
+                        <Loader2
+                          className="motion-safe:animate-spin"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Trash2
+                          className="text-destructive"
+                          aria-hidden="true"
+                        />
+                      )}
                     </Button>
                   )}
               </div>
@@ -197,8 +227,10 @@ export function ScmCredentials() {
                     id={`${fieldKey}:token`}
                     type="password"
                     autoComplete="off"
+                    className="min-h-touch text-base sm:text-sm"
                     value={value.token}
                     disabled={busy}
+                    required
                     onChange={(event) =>
                       setValue(server.id, "token", event.target.value)
                     }
@@ -216,6 +248,7 @@ export function ScmCredentials() {
                   <Input
                     id={`${fieldKey}:username`}
                     autoComplete="username"
+                    className="min-h-touch text-base sm:text-sm"
                     value={value.username}
                     disabled={busy}
                     required={needsUsername}
@@ -226,18 +259,28 @@ export function ScmCredentials() {
                 </div>
               </div>
               <Button
-                size="sm"
-                onClick={() => void save(server)}
+                type="submit"
+                className="min-h-touch"
                 disabled={busy || !value.token.trim()}
               >
-                {rowBusy ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                {saving ? (
+                  <Loader2
+                    className="motion-safe:animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                  <Save aria-hidden="true" />
                 )}
-                Save credential
+                {saving ? "Saving credential…" : "Save credential"}
               </Button>
-            </div>
+              <span
+                role="status"
+                className="sr-only"
+              >
+                {saving && "Saving credential…"}
+                {removing && "Removing credential…"}
+              </span>
+            </form>
           );
         })
       )}
