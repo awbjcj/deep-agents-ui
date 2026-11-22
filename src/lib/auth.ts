@@ -105,7 +105,12 @@ export async function apiFetch(
     headers["Authorization"] = `Bearer ${user.access_token}`;
   }
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  if (res.status === 401 && !path.startsWith("/auth/")) {
+  if (
+    res.status === 401 &&
+    !path.startsWith("/auth/") &&
+    user?.access_token &&
+    getAuthUser()?.access_token === user.access_token
+  ) {
     clearAuthUser();
   }
   return res;
@@ -908,7 +913,11 @@ export async function apiGetTierQuotaLimits(
 }
 
 /** Quota dimensions written by one tier save, in the order their PUTs fire. */
-const QUOTA_DIMENSIONS = ["token", "call", "cost"] as const;
+const QUOTA_FIELDS = {
+  token: "token_limit",
+  call: "call_limit",
+  cost: "cost_limit_micros",
+} as const;
 
 /** "token", "token and call", "token, call and cost". */
 function joinDimensions(labels: readonly string[]): string {
@@ -922,16 +931,15 @@ function describeDimensions(labels: readonly string[]): string {
 }
 
 /**
- * Persist all three weekly quota defaults for one role tier.
+ * Persist the weekly quota dimensions edited in one role tier.
  *
- * Each dimension is its own backend endpoint, so a save is three independent
- * writes with no way to roll them back as a unit. When only some land, the
- * thrown error names exactly which dimensions were persisted — reporting a
- * partial write as a blanket failure would hide that the tier changed.
+ * Each dimension has an independent endpoint. If only some writes succeed,
+ * the error names the persisted dimensions so the caller can reconcile.
  */
 export async function apiSetTierQuotaLimits(
   tier: Role,
-  limits: Omit<TierQuotaLimits, "tier">
+  limits: Omit<TierQuotaLimits, "tier">,
+  baseline: TierQuotaLimits
 ): Promise<TierQuotaLimits> {
   const putCount = async (
     path: string,
@@ -963,13 +971,23 @@ export async function apiSetTierQuotaLimits(
     return data.weekly_limit_micros;
   };
 
-  const results = await Promise.allSettled([
-    putCount(`/admin/tier-token-limits/${tier}`, limits.token_limit, "token"),
-    putCount(`/admin/tier-call-limits/${tier}`, limits.call_limit, "call"),
-    putCost(),
-  ]);
-
-  const failed = QUOTA_DIMENSIONS.filter(
+  const writers = {
+    token: () =>
+      putCount(`/admin/tier-token-limits/${tier}`, limits.token_limit, "token"),
+    call: () =>
+      putCount(`/admin/tier-call-limits/${tier}`, limits.call_limit, "call"),
+    cost: putCost,
+  };
+  const dimensions = (
+    Object.keys(QUOTA_FIELDS) as (keyof typeof QUOTA_FIELDS)[]
+  ).filter((dimension) => {
+    const field = QUOTA_FIELDS[dimension];
+    return limits[field] !== baseline[field];
+  });
+  const results = await Promise.allSettled(
+    dimensions.map((dimension) => writers[dimension]())
+  );
+  const failed = dimensions.filter(
     (_, index) => results[index].status === "rejected"
   );
   if (failed.length > 0) {
@@ -984,7 +1002,7 @@ export async function apiSetTierQuotaLimits(
           : []
       )
       .join("; ");
-    const saved = QUOTA_DIMENSIONS.filter(
+    const saved = dimensions.filter(
       (_, index) => results[index].status === "fulfilled"
     );
     throw new Error(
@@ -996,10 +1014,12 @@ export async function apiSetTierQuotaLimits(
     );
   }
 
-  const [token_limit, call_limit, cost_limit_micros] = results.map(
-    (result) => (result as PromiseFulfilledResult<number>).value
-  );
-  return { tier, token_limit, call_limit, cost_limit_micros };
+  const updated = { ...baseline };
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled")
+      updated[QUOTA_FIELDS[dimensions[index]]] = result.value;
+  });
+  return updated;
 }
 
 // --- Profile update ---

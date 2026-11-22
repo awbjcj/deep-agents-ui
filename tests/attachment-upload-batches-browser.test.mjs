@@ -28,8 +28,10 @@ test(
           window.rejected = [];
           function Fixture() {
             const [threadId, setThread] = React.useState('A');
+            const [createdThreadId, setCreatedThread] = React.useState();
             window.setThread = setThread;
-            window.attachments = useAttachments({ threadId, ensureThreadId: async () => 'A', files: {} });
+            window.createDraftThread = (id) => { setCreatedThread(id); setThread(id); };
+            window.attachments = useAttachments({ threadId, createdThreadId, ensureThreadId: async () => 'A', files: {} });
             return <div><h1>Attachment batch</h1>{window.attachments.items.map(item =>
               <p key={item.localId}>{item.file?.name ?? item.meta?.filename}: {item.phase}</p>
             )}</div>;
@@ -64,7 +66,8 @@ test(
                     reject(new DOMException('Cancelled', 'AbortError'));
                   }, { once: true });
                 });
-                return { filename: file.name, kind: 'image', state_files_key: file.name, image: { media_type: 'image/png', data_b64: 'AAAA' } };
+                const state_files_key = file.name === 'missing-path.png' ? null : file.name;
+                return { filename: file.name, kind: 'image', state_files_key, image: { media_type: 'image/png', data_b64: 'AAAA' } };
               }
               export async function deleteUpload() {}
             `,
@@ -213,6 +216,34 @@ test(
         ["B", "new.png"],
       ]);
       assert.deepEqual(await page.evaluate(() => window.rejected), []);
+
+      await reset();
+      await page.evaluate(() => window.setThread(null));
+      await page.evaluate(() =>
+        window.attachments.addFiles([new File(["image"], "draft.png")])
+      );
+      await page.waitForFunction(() => window.pending.length === 1);
+      await page.evaluate(() => window.createDraftThread("A"));
+      await page.getByText("draft.png: uploading").waitFor();
+      await settle();
+      await page.getByText("draft.png: ready").waitFor();
+      await page.evaluate(() => window.setThread(null));
+      await page.waitForFunction(() => window.attachments.items.length === 0);
+      await page.evaluate(() =>
+        window.attachments.addFiles([new File(["image"], "abandoned.png")])
+      );
+      await page.waitForFunction(() => window.pending.length === 1);
+      await page.evaluate(() => window.setThread("A"));
+      await page.waitForFunction(
+        () =>
+          window.attachments.items.length === 0 && window.pending.length === 0
+      );
+      await page.evaluate(() =>
+        window.attachments.addFiles([new File(["image"], "missing-path.png")])
+      );
+      await page.waitForFunction(() => window.pending.length === 1);
+      await settle();
+      await page.getByText("missing-path.png: error").waitFor();
 
       await reset();
       assert.ok(uploads.ACCEPT_ATTR.split(",").includes(".csv"));

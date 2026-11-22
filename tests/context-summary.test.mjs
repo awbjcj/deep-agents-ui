@@ -199,6 +199,25 @@ test("four drafts and replayed start events converge on one accepted card", () =
   );
 });
 
+test("a null anchor shows live context progress at the start of history", () => {
+  const user = { type: "human", id: "user", content: "Find tickets" };
+  const live = contextUpdateEvent(
+    { type: "context_update", id: "initial", after_message_id: null },
+    [],
+    "thread"
+  );
+  const [card, message] = projectContextUpdates([user], live);
+  assert.equal(contextSummary(card, "").status, "updating");
+  assert.equal(message, user);
+
+  const interrupted = projectContextUpdates([], {
+    ...live,
+    status: "interrupted",
+  });
+  assert.equal(interrupted.length, 1);
+  assert.equal(contextSummary(interrupted[0], "").status, "interrupted");
+});
+
 test("separate compactions remain distinct and stopped preparation never claims success", () => {
   const user = { type: "human", id: "user", content: "Find tickets" };
   const live = contextUpdateEvent(

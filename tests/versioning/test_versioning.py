@@ -127,6 +127,23 @@ class ClassificationTests(unittest.TestCase):
             v.Level.MAJOR,
         )
 
+    def test_release_merge_breaking_markers_and_override(self) -> None:
+        fix = commit("fix: draft", code("src/lib/draft.ts"))
+        changes = (v.Change(fix, v.classify_commit(fix)),)
+        previous = v.Version(2, 0, 0)
+        for message in (
+            "feat!: replace protocol",
+            "Merge pull request #37\n\nfeat!: replace protocol",
+            "Merge pull request #37\n\nBREAKING CHANGE: replace protocol",
+        ):
+            with self.subTest(message=message):
+                level, _ = v.summarize_release(changes, previous, message)
+                self.assertEqual(level, v.Level.MAJOR)
+                level, _ = v.summarize_release(
+                    changes, previous, f"{message}\n\nVersion-Bump: patch"
+                )
+                self.assertEqual(level, v.Level.PATCH)
+
     def test_multiple_fixes_escalate_a_release(self) -> None:
         changes = tuple(
             v.Change(item, v.classify_commit(item))

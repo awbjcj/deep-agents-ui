@@ -66,6 +66,7 @@ test(
     let tasks = [];
     let history = [];
     let failSave = false;
+    let runFailures = [422, 504, 200];
     let failChats = true;
     const requests = [];
     const threadId = "11111111-1111-4111-8111-111111111111";
@@ -102,6 +103,14 @@ test(
           tasks[0].status = "active";
           value = { ok: true };
         } else if (path.endsWith("/run")) {
+          if (runFailures.length) {
+            res.statusCode = runFailures.shift();
+            res.setHeader("Content-Type", "application/json");
+            res.end(
+              JSON.stringify({ detail: "Could not confirm scheduled run" })
+            );
+            return;
+          }
           history = [
             {
               id: "run-one",
@@ -299,9 +308,28 @@ test(
         true
       );
       await article.getByText("Updated prompt").waitFor();
+      const runNow = article.getByRole("button", {
+        name: "Run now",
+        exact: true,
+      });
+      for (const message of [
+        "Could not confirm scheduled run",
+        "Could not confirm scheduled run",
+        "The task service returned an invalid response.",
+      ]) {
+        await runNow.click();
+        await page.getByRole("alert").filter({ hasText: message }).waitFor();
+      }
+      await runNow.click();
       await article
-        .getByRole("button", { name: "Run now", exact: true })
-        .click();
+        .getByRole("button", { name: "Cancel run", exact: true })
+        .waitFor();
+      const runIds = requests
+        .filter(({ url }) => url.endsWith("/run"))
+        .map(({ body }) => body.request_id);
+      assert.equal(runIds.length, 4);
+      assert.notEqual(runIds[0], runIds[1]);
+      assert.deepEqual(runIds.slice(1), Array(3).fill(runIds[1]));
       await article
         .getByRole("button", { name: "Cancel run", exact: true })
         .waitFor();

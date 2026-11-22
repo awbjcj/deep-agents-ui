@@ -52,6 +52,23 @@ test("Responses citations deduplicate sources and reject unsafe links", () => {
   );
 });
 
+test("Web search activity distinguishes terminal failures from active searches", () => {
+  for (const [status, label] of [
+    ["in_progress", "Searching the web"],
+    ["searching", "Searching the web"],
+    ["failed", "Web search did not complete"],
+    ["incomplete", "Web search did not complete"],
+  ]) {
+    assert.deepEqual(
+      responsesDetails({
+        type: "ai",
+        content: [{ type: "web_search_call", status }],
+      }).activity,
+      [label]
+    );
+  }
+});
+
 test("Refusal-only and incomplete replies remain visible", () => {
   const result = responsesDetails({
     type: "ai",

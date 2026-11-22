@@ -38,8 +38,6 @@ const OPENAI_INLINE_MATH_BRACKETS = /\\\[\s*(.+?)\s*\\\]/g;
 const INLINE_MATH_BRACKETS = /(^|[^!\\])\[\s*([^\]\n]+?)\s*\](?!\()/g;
 const LATEX_COMMAND = /\\[a-zA-Z]+/;
 
-const MATH_LIKE_CONTENT =
-  /(?:\\[a-zA-Z]+|\\[,;! ]|[=^_]|[+*/]|\d+\s*[{}(),]\s*\d+)/;
 const DATE_TIME_PATTERN =
   /^\d{2,4}[/-]\d{1,2}([/-]\d{2,4})?([\sT]\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:?\d{2}|Z)?)?(\s*([APap][Mm]))?(\s*\(.*\))?$|^[A-Z][a-z]{2,8}\s+\d{1,2},?\s+\d{4}(\s+(at\s+)?\d{1,2}:\d{2}(:\d{2})?\s*([APap][Mm])?)?(\s*\(.*\))?$/;
 
@@ -464,13 +462,16 @@ function escapeLiteralEmphasis(line: string): string {
 
 // ── Math rendering helpers ─────────────────────────────────────────────────
 function renderDisplayMath(indent: string, expression: string): string {
-  return `${indent}$$\n${expression.trim()}\n${indent}$$`;
+  const body = expression
+    .trim()
+    .split("\n")
+    .map((line) => (line.startsWith(indent) ? line : indent + line));
+  return [indent + "$$", ...body, indent + "$$"].join("\n");
 }
 
 function isMathExpression(expression: string): boolean {
   return (
-    MATH_LIKE_CONTENT.test(expression) &&
-    !DATE_TIME_PATTERN.test(expression.trim())
+    LATEX_COMMAND.test(expression) && !DATE_TIME_PATTERN.test(expression.trim())
   );
 }
 
@@ -621,7 +622,10 @@ function normalizeProseBlock(lines: string[]): string[] {
   if (environment) output.push(protect(environment.lines.join("\n"), store));
   if (displayMathIndent !== null)
     output.push(
-      protect([String.raw`\[`, ...displayMathLines].join("\n"), store)
+      protect(
+        [displayMathIndent + String.raw`\[`, ...displayMathLines].join("\n"),
+        store
+      )
     );
 
   // remark-math allows inline math across soft line breaks. Classify dollars
