@@ -16,12 +16,31 @@ const MAX_ITEMS = 50;
 const MAX_DEPTH = 6;
 const MAX_NODES = 250;
 
+function ArtifactButton({ path, label }: { path: string; label: string }) {
+  const opener = useFileOpener();
+  if (!opener) return <>{label}</>;
+  return (
+    <button
+      type="button"
+      title={`Open ${attachmentDisplayName(path)}`}
+      onClick={() => opener.open(path)}
+      className="text-primary focus-visible:ring-ring inline text-left wrap-anywhere underline underline-offset-2 [font:inherit] hover:no-underline focus-visible:ring-2 focus-visible:outline-none"
+    >
+      {label}
+    </button>
+  );
+}
+
 function DataValue({
   value,
+  files,
+  compact = false,
   depth = 0,
   budget = MAX_NODES,
 }: {
   value: ResultValue;
+  files?: Record<string, unknown>;
+  compact?: boolean;
   depth?: number;
   budget?: number;
 }) {
@@ -48,25 +67,97 @@ function DataValue({
         Nested details available in raw result.
       </span>
     );
+  if (
+    compact &&
+    Array.isArray(value) &&
+    value.every((item) => typeof item === "number")
+  ) {
+    return (
+      <span className="font-mono text-xs wrap-anywhere">
+        {value.slice(0, Math.min(budget - 1, MAX_ITEMS)).join(", ")}
+        {value.length > Math.min(budget - 1, MAX_ITEMS) &&
+          " … (see raw result)"}
+      </span>
+    );
+  }
   const visible = entries.slice(0, Math.min(MAX_ITEMS, budget - 1));
   const childBudget = Math.floor((budget - 1) / visible.length);
   return (
-    <div className="min-w-0 space-y-2">
-      {visible.map(([key, item]) => (
-        <div
-          key={key}
-          className="border-border/60 min-w-0 rounded-md border px-3 py-2"
-        >
-          <div className="text-muted-foreground mb-1 text-xs font-medium wrap-anywhere wrap-break-word">
-            {Array.isArray(value) ? `Item ${Number(key) + 1}` : key}
+    <div
+      className={
+        compact
+          ? "divide-border @container/log min-w-0 divide-y"
+          : "min-w-0 space-y-2"
+      }
+    >
+      {visible.map(([key, item]) => {
+        const isList = Array.isArray(value);
+        let label = isList ? `Item ${Number(key) + 1}` : key;
+        let details: ResultValue | undefined = item;
+        if (compact && !isList) label = key.replaceAll("_", " ");
+        if (
+          compact &&
+          isList &&
+          item &&
+          typeof item === "object" &&
+          !Array.isArray(item)
+        ) {
+          const identity = typeof item.path === "string" ? "path" : "name";
+          const title = item[identity];
+          if (typeof title === "string" && title) {
+            label = title;
+            const fields = { ...item };
+            delete fields[identity];
+            details = Object.keys(fields).length ? fields : undefined;
+          }
+        }
+        return (
+          <div
+            key={key}
+            className={cn(
+              "min-w-0",
+              compact
+                ? "py-1.5"
+                : "border-border/60 rounded-md border px-3 py-2",
+              compact &&
+                !Array.isArray(value) &&
+                (item === null || typeof item !== "object") &&
+                "grid gap-x-3 @xs/log:grid-cols-[minmax(6rem,1fr)_minmax(0,2fr)]"
+            )}
+          >
+            <div
+              className={cn(
+                "text-muted-foreground mb-1 text-xs font-medium wrap-anywhere",
+                compact &&
+                  isList &&
+                  "text-foreground font-mono text-sm font-semibold"
+              )}
+            >
+              {label}
+            </div>
+            {key === "artifact_path" &&
+            typeof item === "string" &&
+            item.startsWith("/_artifacts/") &&
+            files &&
+            Object.hasOwn(files, item) ? (
+              <ArtifactButton
+                path={item}
+                label={attachmentDisplayName(item)}
+              />
+            ) : (
+              details !== undefined && (
+                <DataValue
+                  value={details}
+                  files={files}
+                  compact={compact}
+                  depth={depth + 1}
+                  budget={childBudget}
+                />
+              )
+            )}
           </div>
-          <DataValue
-            value={item}
-            depth={depth + 1}
-            budget={childBudget}
-          />
-        </div>
-      ))}
+        );
+      })}
       {entries.length > visible.length && (
         <p className="text-muted-foreground text-xs">
           Showing {visible.length} of {entries.length} entries. The raw result
@@ -98,15 +189,11 @@ function ArtifactText({
     <>
       {parts.map((part, index) =>
         "path" in part && (!files || Object.hasOwn(files, part.path)) ? (
-          <button
+          <ArtifactButton
             key={index}
-            type="button"
-            title={`Open ${attachmentDisplayName(part.path)}`}
-            onClick={() => opener.open(part.path)}
-            className="text-primary focus-visible:ring-ring inline text-left wrap-anywhere underline underline-offset-2 [font:inherit] hover:no-underline focus-visible:ring-2 focus-visible:outline-none"
-          >
-            {part.raw}
-          </button>
+            path={part.path}
+            label={part.raw}
+          />
         ) : (
           <React.Fragment key={index}>
             {"path" in part ? part.raw : part.text}
@@ -120,9 +207,11 @@ function ArtifactText({
 /** Present tool text and structured metadata while retaining exact raw output. */
 export function ReadableToolResult({
   result,
+  compact = false,
   files,
 }: {
   result: Result;
+  compact?: boolean;
   files?: Record<string, unknown>;
 }) {
   return (
@@ -142,7 +231,11 @@ export function ReadableToolResult({
           mode="document"
         />
       ) : result.kind === "data" ? (
-        <DataValue value={result.value} />
+        <DataValue
+          value={result.value}
+          compact={compact}
+          files={files}
+        />
       ) : result.monospace || result.kind === "preview" ? (
         <pre
           aria-label="Tool result text"

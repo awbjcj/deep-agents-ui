@@ -22,6 +22,7 @@ import {
 } from "@/app/components/tokenServiceGuides";
 import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
+import { AsperaCredentials } from "@/app/components/AsperaCredentials";
 import { CopilotCredentialPanel } from "@/app/components/CopilotCredentialPanel";
 import { Eye, EyeOff, Loader2, Save, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -323,6 +324,7 @@ export function TokenManagementSidebar({
               )}
             </>
           )}
+          {user && <AsperaCredentials key={user.user_id} />}
         </SettingsContent>
       </ScrollArea>
       {!isLoading && !loadError && (

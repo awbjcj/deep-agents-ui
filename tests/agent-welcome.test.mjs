@@ -19,6 +19,7 @@ const GRAPHS = [
   "VSDA Confluence Agent",
   "VSDA Jenkins Agent",
   "VSDA Code Analyzer Agent",
+  "VSDA Log Analyzer Agent",
 ];
 
 const DEVELOPER = {

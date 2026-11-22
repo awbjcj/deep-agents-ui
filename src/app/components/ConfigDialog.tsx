@@ -178,6 +178,16 @@ const AGENT_INFO: Record<string, AgentInfo> = {
       "Trigger a build with specific parameters and follow it through the queue.",
     ],
   },
+  "VSDA Log Analyzer Agent": {
+    description:
+      "Finds Aspera recordings, plots signals from MAT logs, and checks recordings against scenario conditions.",
+    useCases: [
+      "Find MAT recordings under an Aspera Shares link.",
+      "Extract or plot one or more signals over a selected window.",
+      "Find recordings with intervals that match a set of thresholds.",
+    ],
+    note: "Save your Aspera login in the token settings before retrieving recordings.",
+  },
   [CODE_ANALYZER_AGENT_ID]: {
     description:
       "Answers questions about code in the configured Gerrit repositories. It pins each answer to an exact revision and cites files and lines. Analysis runs in an isolated worker that never builds the code or runs its scripts or tests.",

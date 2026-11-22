@@ -380,6 +380,38 @@ const AGENT_WELCOME: Record<string, AgentWelcome> = {
       },
     ],
   },
+  "VSDA Log Analyzer Agent": {
+    name: "VSDA Log Analyzer Agent",
+    icon: "pattern",
+    headline: "Which recording should we investigate?",
+    lede: "Paste an Aspera Shares link from the recording folder or the Log Location in a Jira ticket to investigate a MAT log.",
+    prompts: [
+      {
+        title: "Find MAT recordings",
+        prompt:
+          "Find the MAT files under [Aspera Shares URL] for [Pre Label or filename].",
+        icon: "search",
+      },
+      {
+        title: "Find signal paths",
+        prompt:
+          "Find signals for [signal or subsystem] in [MAT filename] at [Aspera Shares URL].",
+        icon: "file",
+      },
+      {
+        title: "Plot signals",
+        prompt:
+          "Plot [signal paths or names] from [MAT filename] at [Aspera Shares URL] within [window].",
+        icon: "pattern",
+      },
+      {
+        title: "Screen for a scenario",
+        prompt:
+          "Screen [MAT filenames] at [Aspera Shares URL] for intervals matching [conditions and minimum duration].",
+        icon: "report",
+      },
+    ],
+  },
   [CODE_ANALYZER_AGENT_ID]: {
     name: CODE_ANALYZER_AGENT_ID,
     icon: "code",
