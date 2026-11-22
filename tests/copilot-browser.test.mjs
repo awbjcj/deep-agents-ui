@@ -34,7 +34,7 @@ test(
       model_override: { provider: "openai", model: "retired-analysis-model" },
       copilot: {
         allowed_models: ["model-a", "model-b"],
-        allowed_github_hosts: ["github.com"],
+        allowed_github_hosts: [],
         default_model: "model-b",
       },
       matlab: { limits: { max_artifact_bytes: 1234567 } },
@@ -255,6 +255,24 @@ test(
       const hostChoices = page.getByRole("dialog", {
         name: "Allowed GitHub account hostnames",
       });
+      // The persisted allowlist does not include public GitHub. It must stay
+      // denied until the administrator explicitly selects and saves it.
+      const githubChoice = hostChoices.getByRole("checkbox", {
+        name: "github.com",
+        exact: true,
+      });
+      await githubChoice.waitFor({ timeout: 5000 });
+      assert.equal(await githubChoice.isChecked(), false);
+      assert.deepEqual(engineSettings.copilot.allowed_github_hosts, []);
+      const tenantEntry = hostChoices.getByLabel("New tenant hostname");
+      await tenantEntry.fill("example.com");
+      await hostChoices
+        .getByRole("button", { name: "Add", exact: true })
+        .click();
+      await hostChoices.getByRole("alert").waitFor();
+      assert.equal(await githubChoice.isChecked(), false);
+      await githubChoice.check();
+      assert.deepEqual(engineSettings.copilot.allowed_github_hosts, []);
       await hostChoices.getByLabel("New tenant hostname").fill("acme.ghe.com");
       await hostChoices
         .getByRole("button", { name: "Add", exact: true })
