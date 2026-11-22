@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Bot,
   CheckCircle2,
+  ChevronDown,
   Cpu,
   Gauge,
   GitFork,
@@ -18,11 +19,17 @@ import {
   TimerReset,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { ZodType } from "zod";
 
 import { SectionHeader } from "@/app/components/admin/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -31,15 +38,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { apiGetTierModels, type TierModelEntry } from "@/lib/auth";
 import {
-  analysisLimitsSchema,
   copilotSettingsSchema,
   COPILOT_USAGE_EXPLANATION,
   analysisBlockerMessage,
   analysisSettingsSchema,
+  exactCopilotModel,
   getAnalysisEngineSettings,
   getAnalysisEngines,
   getAnalysisSettings,
+  githubHostSchema,
   saveAnalysisEngineSettings,
   type AnalysisEngine,
   type AnalysisLimits,
@@ -52,6 +61,18 @@ import { cn } from "@/lib/utils";
 type LimitField = keyof AnalysisLimits;
 type MatlabLimitField = keyof MatlabSettings["limits"];
 
+const ACCOUNT_MODEL = "account-model";
+const NO_COPILOT_DEFAULT = "none:";
+const BYTES_PER_MB = 1_000_000;
+const copilotPolicyHost = githubHostSchema.refine(
+  (host) => host.endsWith(".ghe.com"),
+  "Use an exact tenant.ghe.com hostname"
+);
+
+function analysisModelValue(model: TierModelEntry | null): string {
+  return model ? JSON.stringify([model.provider, model.model]) : ACCOUNT_MODEL;
+}
+
 type LimitDefinition = {
   key: string;
   label: string;
@@ -59,6 +80,22 @@ type LimitDefinition = {
   unit: string;
   min?: number;
 };
+
+function formatLimit(field: LimitDefinition, value: number): string {
+  if (field.unit !== "MB") return String(value);
+  const whole = Math.floor(value / BYTES_PER_MB);
+  const fraction = String(value % BYTES_PER_MB)
+    .padStart(6, "0")
+    .replace(/0+$/, "");
+  return fraction ? whole + "." + fraction : String(whole);
+}
+
+function parseLimit(field: LimitDefinition, value: string): number {
+  if (field.unit !== "MB") return Number(value);
+  if (!/^(?:\d+(?:\.\d{0,6})?|\.\d{1,6})$/.test(value)) return NaN;
+  const [whole, fraction = ""] = value.split(".");
+  return Number(whole) * BYTES_PER_MB + Number(fraction.padEnd(6, "0"));
+}
 
 const LIMIT_GROUPS: ReadonlyArray<{
   title: string;
@@ -114,13 +151,13 @@ const LIMIT_GROUPS: ReadonlyArray<{
         key: "session_max_bytes",
         label: "Session storage",
         description: "Maximum materialized data for one session.",
-        unit: "bytes",
+        unit: "MB",
       },
       {
         key: "worker_max_bytes",
         label: "Worker storage",
         description: "Maximum materialized data across the worker.",
-        unit: "bytes",
+        unit: "MB",
       },
     ],
   },
@@ -145,21 +182,19 @@ const LIMIT_GROUPS: ReadonlyArray<{
         key: "output_max_bytes",
         label: "Raw output limit",
         description: "Maximum captured worker output per job.",
-        unit: "bytes",
+        unit: "MB",
       },
       {
         key: "report_markdown_max_bytes",
         label: "Report limit",
         description: "Maximum stored Markdown report size.",
-        unit: "bytes",
+        unit: "MB",
       },
     ],
   },
 ];
 
-const EDITABLE: readonly LimitField[] = LIMIT_GROUPS.flatMap((group) =>
-  group.fields.map((field) => field.key as LimitField)
-);
+const EDITABLE = LIMIT_GROUPS.flatMap((group) => group.fields);
 
 const MATLAB_LIMITS: readonly LimitDefinition[] = [
   {
@@ -198,19 +233,19 @@ const MATLAB_LIMITS: readonly LimitDefinition[] = [
     key: "max_artifact_bytes",
     label: "Artifact size",
     description: "Maximum size of one materialized artifact.",
-    unit: "bytes",
+    unit: "MB",
   },
   {
     key: "max_download_bytes",
     label: "Download budget",
     description: "Maximum aggregate dependency download size.",
-    unit: "bytes",
+    unit: "MB",
   },
   {
     key: "max_archive_bytes",
     label: "Archive budget",
     description: "Maximum compressed dependency archive size.",
-    unit: "bytes",
+    unit: "MB",
   },
   {
     key: "max_dependency_restarts",
@@ -220,6 +255,35 @@ const MATLAB_LIMITS: readonly LimitDefinition[] = [
     min: 0,
   },
 ];
+
+function settingsDraft(
+  limits: AnalysisLimits,
+  engines: EngineSettings
+): Record<string, string> {
+  return {
+    ...Object.fromEntries(
+      EDITABLE.map((field) => [
+        field.key,
+        formatLimit(field, limits[field.key as LimitField]),
+      ])
+    ),
+    native_max_tokens: String(engines.native_limits.max_tokens),
+    native_max_tool_calls: String(engines.native_limits.max_tool_calls),
+    copilot_max_tokens: String(engines.copilot.max_tokens),
+    copilot_max_tool_calls: String(engines.copilot.max_tool_calls),
+    matlab_dependency_server_ids:
+      engines.matlab.dependency_server_ids.join(", "),
+    ...Object.fromEntries(
+      MATLAB_LIMITS.map((field) => [
+        "matlab_" + field.key,
+        formatLimit(
+          field,
+          engines.matlab.limits[field.key as MatlabLimitField]
+        ),
+      ])
+    ),
+  };
+}
 
 function engineName(engine: AnalysisEngine): string {
   return engine === "deep_agent" ? "Deep Agent" : "Copilot";
@@ -344,6 +408,130 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
   );
 }
 
+function CopilotPolicyList({
+  id,
+  label,
+  entryLabel,
+  options,
+  selected,
+  schema,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  entryLabel: string;
+  options: string[];
+  selected: string[];
+  schema: ZodType<string>;
+  onChange: (selection: string[]) => void;
+}) {
+  const [entry, setEntry] = useState("");
+  const [error, setError] = useState("");
+  const [addedChoices, setAddedChoices] = useState<string[]>([]);
+  const choices = [...new Set([...options, ...addedChoices, ...selected])];
+
+  function addEntry() {
+    const result = schema.safeParse(entry.trim());
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? "Enter a valid value.");
+      return;
+    }
+    if (!choices.includes(result.data)) {
+      setAddedChoices((current) => [...current, result.data]);
+    }
+    if (!selected.includes(result.data)) onChange([...selected, result.data]);
+    setEntry("");
+    setError("");
+  }
+
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type="button"
+            aria-label={label}
+            variant="outline"
+            className="w-full justify-between font-normal"
+          >
+            <span className="truncate">
+              {selected.length === 1
+                ? selected[0]
+                : selected.length + " selected"}
+            </span>
+            <ChevronDown className="opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          aria-label={label}
+          align="start"
+          className="w-72 max-w-[calc(100dvw-2rem)] space-y-2 p-3"
+        >
+          {choices.length > 0 && (
+            <div className="max-h-48 space-y-1 overflow-y-auto">
+              {choices.map((choice) => (
+                <label
+                  key={choice}
+                  className="flex cursor-pointer items-start gap-2 rounded px-1 py-1.5 text-sm"
+                >
+                  <input
+                    className="mt-0.5 shrink-0 rounded"
+                    type="checkbox"
+                    checked={selected.includes(choice)}
+                    onChange={(event) =>
+                      onChange(
+                        event.target.checked
+                          ? [...selected, choice]
+                          : selected.filter((value) => value !== choice)
+                      )
+                    }
+                  />
+                  <span className="min-w-0 wrap-anywhere">{choice}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              aria-label={entryLabel}
+              aria-invalid={Boolean(error)}
+              placeholder={entryLabel}
+              value={entry}
+              onChange={(event) => {
+                setEntry(event.target.value);
+                setError("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || !entry.trim()) return;
+                event.preventDefault();
+                addEntry();
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!entry.trim()}
+              onClick={addEntry}
+            >
+              Add
+            </Button>
+          </div>
+          {error && (
+            <p
+              className="text-destructive text-xs"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 function LimitInput({
   field,
   value,
@@ -373,9 +561,9 @@ function LimitInput({
       <Input
         id={inputId}
         type="number"
-        min={field.min ?? 1}
-        step={1}
-        inputMode="numeric"
+        min={field.unit === "MB" ? 1 / BYTES_PER_MB : (field.min ?? 1)}
+        step={field.unit === "MB" ? 1 / BYTES_PER_MB : 1}
+        inputMode={field.unit === "MB" ? "decimal" : "numeric"}
         value={value}
         aria-describedby={descriptionId}
         aria-invalid={Boolean(error)}
@@ -404,9 +592,14 @@ export function CodeAnalysisSettings({
   const [savedDefaultEngine, setSavedDefaultEngine] =
     useState<AnalysisEngine | null>(null);
   const [savedMatlabEnabled, setSavedMatlabEnabled] = useState(false);
-  const [copilotEnabled, setCopilotEnabled] = useState(false);
-  const [overrideProvider, setOverrideProvider] = useState("");
-  const [overrideModel, setOverrideModel] = useState("");
+  const [copilotPolicy, setCopilotPolicy] = useState(() =>
+    copilotSettingsSchema.parse({})
+  );
+  const [allowedModels, setAllowedModels] = useState<Map<
+    string,
+    TierModelEntry
+  > | null>(null);
+  const [overrideModel, setOverrideModel] = useState(ACCOUNT_MODEL);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -417,38 +610,40 @@ export function CodeAnalysisSettings({
     setLoadError(null);
     setFieldErrors({});
     try {
-      const [value, engineValue, engineCatalog] = await Promise.all([
-        getAnalysisSettings(),
-        getAnalysisEngineSettings(),
-        getAnalysisEngines().catch(() => null),
-      ]);
+      const [value, engineValue, engineCatalog, tierModels] = await Promise.all(
+        [
+          getAnalysisSettings(),
+          getAnalysisEngineSettings(),
+          getAnalysisEngines().catch(() => null),
+          Promise.all([
+            apiGetTierModels("developer"),
+            apiGetTierModels("admin"),
+          ]).catch(() => null),
+        ]
+      );
       setLimits(value);
       setEngines(engineValue);
-      setCopilotEnabled(engineValue.copilot.enabled);
+      setCopilotPolicy(engineValue.copilot);
       setCatalog(engineCatalog);
       setSavedDefaultEngine(engineValue.default_engine);
       setSavedMatlabEnabled(engineValue.matlab.enabled);
-      setOverrideProvider(engineValue.model_override?.provider ?? "");
-      setOverrideModel(engineValue.model_override?.model ?? "");
-      setDraft({
-        ...Object.fromEntries(EDITABLE.map((key) => [key, String(value[key])])),
-        native_max_tokens: String(engineValue.native_limits.max_tokens),
-        copilot_allowed_models: engineValue.copilot.allowed_models.join(", "),
-        copilot_allowed_github_hosts:
-          engineValue.copilot.allowed_github_hosts.join(", "),
-        copilot_default_model: engineValue.copilot.default_model ?? "",
-        copilot_max_tokens: String(engineValue.copilot.max_tokens),
-        copilot_max_tool_calls: String(engineValue.copilot.max_tool_calls),
-        native_max_tool_calls: String(engineValue.native_limits.max_tool_calls),
-        matlab_dependency_server_ids:
-          engineValue.matlab.dependency_server_ids.join(", "),
-        ...Object.fromEntries(
-          MATLAB_LIMITS.map((field) => [
-            `matlab_${field.key}`,
-            String(engineValue.matlab.limits[field.key as MatlabLimitField]),
-          ])
-        ),
-      });
+      if (tierModels) {
+        const [developer, admin] = tierModels;
+        const developerModels = new Set(
+          developer.models.map(analysisModelValue)
+        );
+        setAllowedModels(
+          new Map(
+            admin.models
+              .map((model) => [analysisModelValue(model), model] as const)
+              .filter(([value]) => developerModels.has(value))
+          )
+        );
+      } else {
+        setAllowedModels(null);
+      }
+      setOverrideModel(analysisModelValue(engineValue.model_override));
+      setDraft(settingsDraft(value, engineValue));
     } catch (error) {
       const message =
         error instanceof Error
@@ -465,38 +660,32 @@ export function CodeAnalysisSettings({
     void load();
   }, [load]);
 
-  const overrideIncomplete =
-    Boolean(overrideProvider.trim()) !== Boolean(overrideModel.trim());
+  const selectedOverride = allowedModels?.get(overrideModel);
+  const overrideInvalid = overrideModel !== ACCOUNT_MODEL && !selectedOverride;
   const copilotValidation = copilotSettingsSchema.safeParse({
-    enabled: copilotEnabled,
-    allowed_github_hosts: (draft.copilot_allowed_github_hosts ?? "github.com")
-      .split(",")
-      .map((host) => host.trim())
-      .filter(Boolean),
-    allowed_models: (draft.copilot_allowed_models ?? "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean),
-    default_model: draft.copilot_default_model || null,
+    ...copilotPolicy,
     max_tokens: Number(draft.copilot_max_tokens),
     max_tool_calls: Number(draft.copilot_max_tool_calls),
   });
   const dirty = useMemo(() => {
     if (!limits || !engines) return false;
     return (
-      EDITABLE.some((key) => draft[key] !== String(limits[key])) ||
+      EDITABLE.some(
+        (field) =>
+          draft[field.key] !==
+          formatLimit(field, limits[field.key as LimitField])
+      ) ||
       draft.native_max_tokens !== String(engines.native_limits.max_tokens) ||
       draft.native_max_tool_calls !==
         String(engines.native_limits.max_tool_calls) ||
-      overrideProvider !== (engines.model_override?.provider ?? "") ||
-      overrideModel !== (engines.model_override?.model ?? "") ||
+      overrideModel !== analysisModelValue(engines.model_override) ||
       engines.default_engine !== savedDefaultEngine ||
-      copilotEnabled !== engines.copilot.enabled ||
-      draft.copilot_allowed_github_hosts !==
-        engines.copilot.allowed_github_hosts.join(", ") ||
-      draft.copilot_allowed_models !==
-        engines.copilot.allowed_models.join(", ") ||
-      draft.copilot_default_model !== (engines.copilot.default_model ?? "") ||
+      copilotPolicy.enabled !== engines.copilot.enabled ||
+      JSON.stringify(copilotPolicy.allowed_github_hosts) !==
+        JSON.stringify(engines.copilot.allowed_github_hosts) ||
+      JSON.stringify(copilotPolicy.allowed_models) !==
+        JSON.stringify(engines.copilot.allowed_models) ||
+      copilotPolicy.default_model !== engines.copilot.default_model ||
       draft.copilot_max_tokens !== String(engines.copilot.max_tokens) ||
       draft.copilot_max_tool_calls !== String(engines.copilot.max_tool_calls) ||
       engines.matlab.enabled !== savedMatlabEnabled ||
@@ -505,7 +694,10 @@ export function CodeAnalysisSettings({
       MATLAB_LIMITS.some(
         (field) =>
           draft[`matlab_${field.key}`] !==
-          String(engines.matlab.limits[field.key as MatlabLimitField])
+          formatLimit(
+            field,
+            engines.matlab.limits[field.key as MatlabLimitField]
+          )
       )
     );
   }, [
@@ -513,21 +705,25 @@ export function CodeAnalysisSettings({
     engines,
     limits,
     overrideModel,
-    overrideProvider,
     savedDefaultEngine,
     savedMatlabEnabled,
-    copilotEnabled,
+    copilotPolicy,
   ]);
   useSettingsDraft(dirty || saving);
 
   const save = async () => {
-    if (!limits || !engines || overrideIncomplete || !copilotValidation.success)
+    if (!limits || !engines || overrideInvalid || !copilotValidation.success)
       return;
     try {
-      const input = analysisLimitsSchema.parse({
+      const input = {
         ...limits,
-        ...Object.fromEntries(EDITABLE.map((key) => [key, Number(draft[key])])),
-      });
+        ...Object.fromEntries(
+          EDITABLE.map((field) => [
+            field.key,
+            parseLimit(field, draft[field.key]),
+          ])
+        ),
+      };
       const candidate = {
         ...engines,
         limits: input,
@@ -536,10 +732,7 @@ export function CodeAnalysisSettings({
           max_tokens: Number(draft.native_max_tokens),
           max_tool_calls: Number(draft.native_max_tool_calls),
         },
-        model_override:
-          overrideProvider.trim() && overrideModel.trim()
-            ? { provider: overrideProvider.trim(), model: overrideModel.trim() }
-            : null,
+        model_override: selectedOverride ?? null,
         matlab: {
           enabled: engines.matlab.enabled,
           dependency_server_ids: draft.matlab_dependency_server_ids
@@ -549,7 +742,7 @@ export function CodeAnalysisSettings({
           limits: Object.fromEntries(
             MATLAB_LIMITS.map((field) => [
               field.key,
-              Number(draft[`matlab_${field.key}`]),
+              parseLimit(field, draft[`matlab_${field.key}`]),
             ])
           ) as MatlabSettings["limits"],
         },
@@ -582,36 +775,15 @@ export function CodeAnalysisSettings({
       const saved = savedEngines.limits;
       setLimits(saved);
       setEngines(savedEngines);
-      setCopilotEnabled(savedEngines.copilot.enabled);
+      setCopilotPolicy(savedEngines.copilot);
       setSavedDefaultEngine(savedEngines.default_engine);
       setSavedMatlabEnabled(savedEngines.matlab.enabled);
       // Policy changes can enable or block an engine independently of its default.
       setCatalog(null);
       const refreshedCatalog = await getAnalysisEngines().catch(() => null);
       setCatalog(refreshedCatalog);
-      setOverrideProvider(savedEngines.model_override?.provider ?? "");
-      setOverrideModel(savedEngines.model_override?.model ?? "");
-      setDraft({
-        ...Object.fromEntries(EDITABLE.map((key) => [key, String(saved[key])])),
-        native_max_tokens: String(savedEngines.native_limits.max_tokens),
-        copilot_allowed_models: savedEngines.copilot.allowed_models.join(", "),
-        copilot_allowed_github_hosts:
-          savedEngines.copilot.allowed_github_hosts.join(", "),
-        copilot_default_model: savedEngines.copilot.default_model ?? "",
-        copilot_max_tokens: String(savedEngines.copilot.max_tokens),
-        copilot_max_tool_calls: String(savedEngines.copilot.max_tool_calls),
-        native_max_tool_calls: String(
-          savedEngines.native_limits.max_tool_calls
-        ),
-        matlab_dependency_server_ids:
-          savedEngines.matlab.dependency_server_ids.join(", "),
-        ...Object.fromEntries(
-          MATLAB_LIMITS.map((field) => [
-            `matlab_${field.key}`,
-            String(savedEngines.matlab.limits[field.key as MatlabLimitField]),
-          ])
-        ),
-      });
+      setOverrideModel(analysisModelValue(savedEngines.model_override));
+      setDraft(settingsDraft(saved, savedEngines));
       toast.success("Code-analysis settings saved");
     } catch (error) {
       toast.error(
@@ -779,44 +951,61 @@ export function CodeAnalysisSettings({
                   }))
                 }
               />
-              <div className="space-y-1.5">
-                <Label htmlFor="analysis-override-provider">
-                  Model provider
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="analysis-override-model">
+                  Deep Agent model
                 </Label>
-                <Input
-                  id="analysis-override-provider"
-                  value={overrideProvider}
-                  placeholder="Use the user's approved provider"
-                  aria-describedby="analysis-model-override-help"
-                  aria-invalid={overrideIncomplete}
-                  onChange={(event) => setOverrideProvider(event.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="analysis-override-model">Model</Label>
-                <Input
-                  id="analysis-override-model"
+                <Select
                   value={overrideModel}
-                  placeholder="Use the user's approved model"
-                  aria-describedby="analysis-model-override-help"
-                  aria-invalid={overrideIncomplete}
-                  onChange={(event) => setOverrideModel(event.target.value)}
-                />
+                  onValueChange={setOverrideModel}
+                >
+                  <SelectTrigger
+                    id="analysis-override-model"
+                    aria-describedby="analysis-model-override-help"
+                    aria-invalid={overrideInvalid}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ACCOUNT_MODEL}>
+                      Use each account’s approved model
+                    </SelectItem>
+                    {overrideInvalid && engines.model_override && (
+                      <SelectItem
+                        value={overrideModel}
+                        disabled
+                      >
+                        {engines.model_override.provider}/
+                        {engines.model_override.model}
+                      </SelectItem>
+                    )}
+                    {Array.from(allowedModels ?? [], ([value, model]) => (
+                      <SelectItem
+                        key={value}
+                        value={value}
+                      >
+                        {model.provider}/{model.model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p
+                  id="analysis-model-override-help"
+                  className={cn(
+                    "text-xs leading-relaxed",
+                    overrideInvalid
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  )}
+                  role={overrideInvalid ? "alert" : undefined}
+                >
+                  {allowedModels === null
+                    ? "Could not load approved models. Reload settings to try again."
+                    : overrideInvalid
+                      ? "The saved model is unavailable for one or more tiers. Choose an approved model to save."
+                      : "A global model must be approved for both Developer and Admin tiers."}
+                </p>
               </div>
-              <p
-                id="analysis-model-override-help"
-                className={cn(
-                  "text-xs leading-relaxed sm:col-span-2",
-                  overrideIncomplete
-                    ? "text-destructive"
-                    : "text-muted-foreground"
-                )}
-                role={overrideIncomplete ? "alert" : undefined}
-              >
-                {overrideIncomplete
-                  ? "Enter both a provider and model, or leave both blank."
-                  : "Leave both fields blank to use each account’s approved selection. Overrides are still checked against its allowlist."}
-              </p>
             </div>
           </section>
 
@@ -850,8 +1039,10 @@ export function CodeAnalysisSettings({
                 </Label>
                 <Switch
                   id="analysis-copilot-enabled"
-                  checked={copilotEnabled}
-                  onCheckedChange={setCopilotEnabled}
+                  checked={copilotPolicy.enabled}
+                  onCheckedChange={(enabled) =>
+                    setCopilotPolicy((current) => ({ ...current, enabled }))
+                  }
                 />
               </div>
             </header>
@@ -859,64 +1050,80 @@ export function CodeAnalysisSettings({
               <div className="border-border/70 bg-muted/20 text-muted-foreground rounded-md border px-3 py-2.5 text-xs leading-relaxed">
                 {COPILOT_USAGE_EXPLANATION}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="analysis-copilot-hosts">
-                  Allowed GitHub account hostnames
-                </Label>
-                <Input
-                  id="analysis-copilot-hosts"
-                  value={draft.copilot_allowed_github_hosts ?? "github.com"}
-                  onChange={(event) =>
-                    setDraft((current) => ({
+              <CopilotPolicyList
+                id="analysis-copilot-hosts"
+                label="Allowed GitHub account hostnames"
+                entryLabel="New tenant hostname"
+                options={engines.copilot.allowed_github_hosts}
+                selected={copilotPolicy.allowed_github_hosts}
+                schema={copilotPolicyHost}
+                onChange={(allowed_github_hosts) =>
+                  setCopilotPolicy((current) => ({
+                    ...current,
+                    allowed_github_hosts,
+                  }))
+                }
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CopilotPolicyList
+                  id="analysis-copilot-models"
+                  label="Allowed Copilot models"
+                  entryLabel="New model ID"
+                  options={engines.copilot.allowed_models}
+                  selected={copilotPolicy.allowed_models}
+                  schema={exactCopilotModel}
+                  onChange={(allowed_models) =>
+                    setCopilotPolicy((current) => ({
                       ...current,
-                      copilot_allowed_github_hosts: event.target.value,
+                      allowed_models,
+                      default_model:
+                        current.default_model &&
+                        allowed_models.includes(current.default_model)
+                          ? current.default_model
+                          : null,
                     }))
                   }
-                  aria-describedby="analysis-copilot-hosts-help"
                 />
-                <p
-                  id="analysis-copilot-hosts-help"
-                  className="text-muted-foreground text-xs"
-                >
-                  Comma-separated exact hostnames, such as github.com,
-                  company.ghe.com. Each host also needs worker verification.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="analysis-copilot-models">
-                    Allowed model IDs
-                  </Label>
-                  <Input
-                    id="analysis-copilot-models"
-                    value={draft.copilot_allowed_models ?? ""}
-                    aria-describedby="analysis-copilot-help"
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        copilot_allowed_models: event.target.value,
-                      }))
-                    }
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    Enter exact model IDs, separated by commas.
-                  </p>
-                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="analysis-copilot-default">
                     Default Copilot model
                   </Label>
-                  <Input
-                    id="analysis-copilot-default"
-                    value={draft.copilot_default_model ?? ""}
-                    aria-describedby="analysis-copilot-help"
-                    onChange={(event) =>
-                      setDraft((current) => ({
+                  <Select
+                    value={
+                      copilotPolicy.default_model === null
+                        ? NO_COPILOT_DEFAULT
+                        : "model:" + copilotPolicy.default_model
+                    }
+                    onValueChange={(value) =>
+                      setCopilotPolicy((current) => ({
                         ...current,
-                        copilot_default_model: event.target.value,
+                        default_model:
+                          value === NO_COPILOT_DEFAULT
+                            ? null
+                            : value.slice("model:".length),
                       }))
                     }
-                  />
+                  >
+                    <SelectTrigger
+                      id="analysis-copilot-default"
+                      aria-describedby="analysis-copilot-help"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_COPILOT_DEFAULT}>
+                        No default model
+                      </SelectItem>
+                      {copilotPolicy.allowed_models.map((model) => (
+                        <SelectItem
+                          key={model}
+                          value={"model:" + model}
+                        >
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <LimitInput
                   field={{
@@ -1019,7 +1226,7 @@ export function CodeAnalysisSettings({
                   <Input
                     id="analysis-matlab-dependency-servers"
                     value={draft.matlab_dependency_server_ids ?? ""}
-                    placeholder="gerrit-primary, plastic-main"
+                    placeholder="gerrit-primary, gitlab-main, plastic-main"
                     aria-describedby="analysis-matlab-dependency-servers-help"
                     aria-invalid={Boolean(
                       fieldErrors["matlab-dependency-servers"]
@@ -1036,7 +1243,7 @@ export function CodeAnalysisSettings({
                     className="text-muted-foreground text-xs leading-relaxed"
                   >
                     {fieldErrors["matlab-dependency-servers"] ??
-                      "Comma-separated IDs of enabled Gerrit or Plastic SCM servers allowed for runtime dependencies."}
+                      "Comma-separated IDs of enabled Gerrit, GitLab or Plastic SCM servers allowed for runtime dependencies."}
                   </p>
                 </div>
                 <div className="border-border/70 bg-muted/20 rounded-md border px-3 py-2.5 sm:col-span-2">
@@ -1118,7 +1325,7 @@ export function CodeAnalysisSettings({
               disabled={
                 saving ||
                 !dirty ||
-                overrideIncomplete ||
+                overrideInvalid ||
                 !copilotValidation.success
               }
             >

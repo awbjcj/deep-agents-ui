@@ -14,9 +14,10 @@ export function CodeAnalysisJobDetails({
   now,
 }: {
   job: AnalysisJobView;
-  now: number;
+  now?: number;
 }) {
-  const preparation = preparationProgress(job);
+  const active = shouldPoll(job.status);
+  const preparation = active ? preparationProgress(job) : null;
   const activity = analysisActivity(job);
   const targets = analysisTargets(job.result);
   const matlab = analysisMatlabSummary(job.result);
@@ -26,9 +27,10 @@ export function CodeAnalysisJobDetails({
       ? value.toLocaleString("en-US")
       : "—";
   const updated = activity?.updated_at ? Date.parse(activity.updated_at) : NaN;
-  const age = Number.isFinite(updated)
-    ? Math.max(0, Math.floor((now - updated) / 1000))
-    : null;
+  const age =
+    now !== undefined && Number.isFinite(updated)
+      ? Math.max(0, Math.floor((now - updated) / 1000))
+      : null;
   const model = job.configuration?.model;
   const engine = job.configuration?.engine ?? job.result.engine;
   return (
@@ -70,7 +72,7 @@ export function CodeAnalysisJobDetails({
           ))}
         </dl>
       )}
-      {age !== null && shouldPoll(job.status) && (
+      {age !== null && active && (
         <p className="text-muted-foreground text-xs">
           {age < 10
             ? "Activity updated just now"

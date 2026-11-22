@@ -5,6 +5,7 @@ type StreamModeRequest = StreamMode | StreamMode[] | undefined;
 /** Local-only guard checked when the SDK actually starts a queued stream. */
 export const APPROVAL_DISPATCH_GUARD: unique symbol =
   Symbol("approval-dispatch");
+export const PARTIAL_STREAM_VALUES: unique symbol = Symbol("partial-values");
 export interface ApprovalDispatchGuard {
   signal: AbortSignal;
   onDispatch: () => void;
@@ -52,6 +53,38 @@ function isAbortSignal(value: unknown): value is AbortSignal {
   return typeof AbortSignal !== "undefined" && value instanceof AbortSignal;
 }
 
+async function* preserveTranscript(
+  stream: AsyncIterable<{ event: string; data: unknown }>
+) {
+  for await (const part of stream) {
+    const values = part.data;
+    if (
+      part.event === "values" &&
+      values &&
+      typeof values === "object" &&
+      !Array.isArray(values) &&
+      !("__interrupt__" in values) &&
+      (!("messages" in values) ||
+        !Array.isArray(values.messages) ||
+        values.messages.length === 0)
+    ) {
+      // The SDK replaces all state for root values events. Apply snapshots
+      // without a transcript through its merge callback instead.
+      const { messages: _messages, ...patch } = values as Record<
+        string,
+        unknown
+      >;
+      yield {
+        ...part,
+        event: "custom",
+        data: { [PARTIAL_STREAM_VALUES]: patch },
+      };
+    } else {
+      yield part;
+    }
+  }
+}
+
 export function createStreamModeCompatibilityClient<TClient extends Client>(
   client: TClient
 ): TClient {
@@ -62,10 +95,12 @@ export function createStreamModeCompatibilityClient<TClient extends Client>(
           const guard: ApprovalDispatchGuard | undefined =
             payload?.metadata?.[APPROVAL_DISPATCH_GUARD];
           if (!guard)
-            return target.stream(
-              threadId,
-              assistantId,
-              filterPayloadStreamMode(payload)
+            return preserveTranscript(
+              target.stream(
+                threadId,
+                assistantId,
+                filterPayloadStreamMode(payload)
+              )
             );
           const metadata = { ...payload.metadata };
           delete metadata[APPROVAL_DISPATCH_GUARD];
@@ -84,13 +119,15 @@ export function createStreamModeCompatibilityClient<TClient extends Client>(
               guard.onAccepted?.();
             };
             const onRunCreated = cleanPayload.onRunCreated;
-            for await (const event of target.stream(threadId, assistantId, {
-              ...cleanPayload,
-              onRunCreated: (...args: unknown[]) => {
-                onRunCreated?.(...args);
-                acknowledge();
-              },
-            })) {
+            for await (const event of preserveTranscript(
+              target.stream(threadId, assistantId, {
+                ...cleanPayload,
+                onRunCreated: (...args: unknown[]) => {
+                  onRunCreated?.(...args);
+                  acknowledge();
+                },
+              })
+            )) {
               // Some proxies omit run metadata; a streamed event also proves
               // that the server accepted the request. Errors alone do not.
               if (event?.event !== "error") acknowledge();
@@ -102,10 +139,14 @@ export function createStreamModeCompatibilityClient<TClient extends Client>(
 
       if (prop === "joinStream") {
         return (threadId: unknown, runId: unknown, options?: any) =>
-          target.joinStream(
-            threadId,
-            runId,
-            isAbortSignal(options) ? options : filterPayloadStreamMode(options)
+          preserveTranscript(
+            target.joinStream(
+              threadId,
+              runId,
+              isAbortSignal(options)
+                ? options
+                : filterPayloadStreamMode(options)
+            )
           );
       }
 

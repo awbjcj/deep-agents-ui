@@ -72,13 +72,15 @@ test(
         if (path.endsWith("/threads/saved/runs/run/stream")) {
           joins++;
           joinedBeforeHistory ||= !historyReady;
-          // A resumable stream may contain only fresh tokens, not a full values event.
+          // A resumed run may send a state-only snapshot before fresh tokens.
           return route.fulfill({
             contentType: "text/event-stream",
-            body: `event: messages\ndata: ${JSON.stringify([
-              { type: "ai", id: "live", content: "The resumed reply." },
-              { langgraph_node: "agent" },
-            ])}\n\nevent: error\ndata: {"message":"Connection interrupted"}\n\n`,
+            body: `event: values\ndata: {"todos":[]}\n\nevent: messages\ndata: ${JSON.stringify(
+              [
+                { type: "ai", id: "live", content: "The resumed reply." },
+                { langgraph_node: "agent" },
+              ]
+            )}\n\nevent: error\ndata: {"message":"Connection interrupted"}\n\n`,
           });
         }
         if (path.endsWith("/threads/saved/runs")) return json([]);

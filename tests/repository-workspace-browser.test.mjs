@@ -32,6 +32,7 @@ test(
       function App() {
         const [thread, setThread] = useState(new URL(location.href).searchParams.get('threadId'));
         const [revision, setRevision] = useState(0);
+        const [open, setOpen] = useState(false);
         const ensure = async () => {
           history.replaceState({}, '', '?threadId=thread-1');
           setThread('thread-1');
@@ -40,8 +41,8 @@ test(
         window.switchThread = () => setThread('thread-2');
         return <main className="mx-auto max-w-3xl p-4">
           <h1>Code Analyzer</h1>
-          <RepositoryWorkspace accountId="user-1" threadId={thread} ensureThreadId={ensure} chatBusy={false} onJobSubmitted={() => setRevision(value => value + 1)} />
-          <CodeAnalysisJobs threadId={thread} isLoading={false} refreshRevision={revision} allowRelease={false} />
+          <RepositoryWorkspace accountId="user-1" threadId={thread} ensureThreadId={ensure} chatBusy={false} open={open} onOpenChange={setOpen} onJobSubmitted={() => setRevision(value => value + 1)} />
+          <CodeAnalysisJobs threadId={thread} isLoading={false} refreshRevision={revision} allowRelease={false} onManageWorkspace={() => setOpen(true)} />
         </main>;
       }
       createRoot(document.getElementById('root')).render(<App />);
@@ -86,6 +87,13 @@ test(
         id: "plastic",
         provider: "plastic",
         display_name: "Plastic",
+        enabled: true,
+        generation: 1,
+      },
+      {
+        id: "gitlab",
+        provider: "gitlab",
+        display_name: "GitLab",
         enabled: true,
         generation: 1,
       },
@@ -152,6 +160,17 @@ test(
             : json(noServers ? [] : serverList);
         if (path === "/api/code-analysis/list") {
           const { resource, cursor } = body.query;
+          if (resource === "commits")
+            return json(pageResult([{ revision: "a".repeat(40) }]));
+          if (resource === "reviews")
+            return json(
+              pageResult([
+                {
+                  current_revision: "b".repeat(40),
+                  subject: "Document the setup",
+                },
+              ])
+            );
           if (resource === "externals")
             return json(
               pageResult([
@@ -308,6 +327,49 @@ test(
           .isEnabled(),
         false
       );
+      await dialog.getByLabel("Source server").selectOption("gitlab");
+      await dialog
+        .getByText("Branch, tag, commit SHA, or HEAD for the default branch.")
+        .waitFor();
+      await dialog
+        .getByLabel("Repository", { exact: true })
+        .fill("vtv-data-analysis/vst-data-ops");
+      const revisionType = dialog.getByLabel("Revision list type");
+      const browseRevisions = dialog.getByRole("button", {
+        name: "Browse refs",
+      });
+      await revisionType.selectOption({ label: "Commits" });
+      await browseRevisions.press("Enter");
+      const commits = dialog.getByRole("region", { name: "Commits" });
+      await commits.getByRole("heading", { name: "Commits" }).waitFor();
+      await commits
+        .getByRole("button", { name: "Close source results" })
+        .press("Enter");
+      await page.waitForFunction(
+        () => document.activeElement?.textContent?.trim() === "Browse refs"
+      );
+      await revisionType.selectOption({ label: "Merge requests" });
+      await browseRevisions.click();
+      await dialog
+        .getByRole("region", { name: "Merge requests" })
+        .getByRole("button", { name: "Document the setup" })
+        .click();
+      assert.equal(
+        await dialog.getByLabel("Revision selector").inputValue(),
+        "b".repeat(40)
+      );
+      await revisionType.selectOption({ label: "Branches" });
+      await browseRevisions.click();
+      await dialog
+        .getByRole("button", { name: "refs/heads/main", exact: true })
+        .click();
+      assert.equal(
+        await dialog.getByLabel("Revision selector").inputValue(),
+        "refs/heads/main"
+      );
+      await mkdir(EVIDENCE, { recursive: true });
+      await page.screenshot({ path: `${EVIDENCE}/gitlab-source.png` });
+      await dialog.getByLabel("Source server").selectOption("gerrit");
       await dialog
         .getByLabel("Repository", { exact: true })
         .fill("draft/repository");
@@ -410,6 +472,9 @@ test(
       await page
         .getByRole("region", { name: "Background code analysis" })
         .waitFor();
+      await page.getByRole("button", { name: "Manage workspace" }).click();
+      await dialog.getByText("Target 2 of 3").waitFor();
+      await page.keyboard.press("Escape");
       assert.doesNotMatch(
         await page.evaluate(() => JSON.stringify(sessionStorage)),
         /opaque-target/

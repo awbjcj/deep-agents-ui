@@ -1,5 +1,7 @@
 "use client";
 
+import { MeterFill } from "@/components/ui/meter-fill";
+
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -806,9 +808,9 @@ function NewsletterDetailView({
               </span>
             </div>
             <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-              <div
-                className="h-full rounded-full bg-(--aptiv-orange) transition-[width] duration-200 ease-out"
-                style={{ width: `${progress}%` }}
+              <MeterFill
+                percent={progress}
+                className="bg-(--aptiv-orange)"
               />
             </div>
             <div className="grid grid-cols-3 gap-2 pt-1">

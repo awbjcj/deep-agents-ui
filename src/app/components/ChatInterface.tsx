@@ -101,6 +101,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
     const showRepositoryWorkspace =
       canUseCodeAnalyzer(user) &&
       assistant?.graph_id === CODE_ANALYZER_AGENT_ID;
+    const [workspaceOpen, setWorkspaceOpen] = useState(false);
     const [analysisRefresh, setAnalysisRefresh] = useState(0);
     const [analysisVisibility, setAnalysisVisibility] = useState<{
       threadId: string;
@@ -389,11 +390,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             )}
             {canUseCodeAnalyzer(user) && (
               <CodeAnalysisJobs
-                key={analysisThreadId}
-                threadId={analysisThreadId}
+                threadId={
+                  isThreadLoading || historyError ? null : analysisThreadId
+                }
                 isLoading={isLoading}
                 refreshRevision={analysisRefresh}
                 allowRelease={!showRepositoryWorkspace}
+                onManageWorkspace={
+                  showRepositoryWorkspace
+                    ? () => setWorkspaceOpen(true)
+                    : undefined
+                }
                 onJobsChange={updateAnalysisVisibility}
               />
             )}
@@ -668,6 +675,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   threadId={analysisThreadId}
                   ensureThreadId={ensureThreadId}
                   chatBusy={isLoading || isThreadLoading || Boolean(interrupt)}
+                  open={workspaceOpen}
+                  onOpenChange={setWorkspaceOpen}
                   onJobSubmitted={refreshAnalysis}
                 />
               </div>

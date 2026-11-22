@@ -31,14 +31,20 @@ export function useCodeAnalysisJobs(
     let failures = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight = false;
+    let threadUnavailable = false;
     const controller = new AbortController();
     const discover = async () => {
-      if (disposed || inFlight) return;
+      if (disposed || inFlight || threadUnavailable) return;
       clearTimeout(timer);
       inFlight = true;
       try {
         const jobs = await getRecentAnalysisJobs(threadId, controller.signal);
         if (disposed) return;
+        if (jobs === null) {
+          threadUnavailable = true;
+          setState({ threadId, jobs: [], error: null });
+          return;
+        }
         failures = 0;
         setState({ threadId, jobs, error: null });
         // Delegated jobs can appear after chat hands back, and completed jobs

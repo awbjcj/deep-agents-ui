@@ -19,6 +19,7 @@ const GRAPHS = [
   "VSDA Confluence Agent",
   "VSDA Jenkins Agent",
   "VSDA Code Analyzer Agent",
+  "VSDA Log Analyzer Agent",
 ];
 
 const DEVELOPER = {
@@ -67,7 +68,11 @@ test("unknown and legacy agent IDs resolve to sensible welcome copy", () => {
 
 test("ordinary users never see restricted agents or code analysis in welcome copy", () => {
   for (const access of [USER, undefined, { role: "developer" }]) {
-    for (const graph of ["VSDA Task Agent", "VSDA Code Analyzer Agent"])
+    for (const graph of [
+      "VSDA Task Agent",
+      "VSDA Code Analyzer Agent",
+      "VSDA Log Analyzer Agent",
+    ])
       assert.equal(agentWelcome(graph, access).name, DEFAULT_WELCOME_AGENT);
     const supervisor = JSON.stringify(agentWelcome("VSDA Deep Agent", access));
     assert.doesNotMatch(supervisor, /code analy|task agent|checklist|grade/i);

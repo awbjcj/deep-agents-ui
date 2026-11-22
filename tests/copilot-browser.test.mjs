@@ -30,7 +30,16 @@ test(
       expires_at: null,
     };
     let failSave = false;
-    let engineSettings = {};
+    let engineSettings = {
+      model_override: { provider: "openai", model: "retired-analysis-model" },
+      copilot: {
+        allowed_models: ["model-a", "model-b"],
+        allowed_github_hosts: ["github.com"],
+        default_model: "model-b",
+      },
+      matlab: { limits: { max_artifact_bytes: 1234567 } },
+    };
+    const sharedModel = { provider: "openai", model: "shared-analysis-model" };
     let catalogRequests = 0;
     let quotaRequests = 0;
     const policy = {
@@ -86,6 +95,16 @@ test(
             source: "environment",
             updated_at: null,
           });
+        if (path.startsWith("/api/admin/tier-models/")) {
+          const tier = path.split("/").at(-1);
+          return json({
+            tier,
+            models: [
+              sharedModel,
+              { provider: "openai", model: `${tier}-only-model` },
+            ],
+          });
+        }
         if (path === "/api/admin/code-analysis/engine-settings") {
           if (route.request().method() === "PUT")
             engineSettings = route.request().postDataJSON();
@@ -152,6 +171,9 @@ test(
         .waitFor();
       await section.getByText("86.0% remaining", { exact: true }).waitFor();
       assert.equal(quotaRequests, 1);
+      await section
+        .getByRole("button", { name: "Copilot credential Saved" })
+        .click();
       assert.equal(await input.inputValue(), "");
       assert.equal(
         await section.innerText().then((text) => text.includes("github_pat_")),
@@ -163,7 +185,9 @@ test(
         await page.locator(":focus").getAttribute("id"),
         "copilot-expiry"
       );
-      const evidence = resolve("docs/evidence/copilot-enterprise");
+      const evidence = resolve(
+        process.env.COPILOT_EVIDENCE_DIR ?? "docs/evidence/copilot-enterprise"
+      );
       await mkdir(evidence, { recursive: true });
       await section.screenshot({
         path: resolve(evidence, "credential-desktop.png"),
@@ -187,22 +211,80 @@ test(
         .locator("summary")
         .filter({ hasText: "Execution resources" })
         .click();
-      const settings = page.getByRole("region", {
-        name: "Copilot analysis policy",
-      });
-      await settings.getByLabel("Allowed model IDs").fill("model-a");
-      await settings
-        .getByLabel("Allowed GitHub account hostnames")
-        .fill("github.com, acme.ghe.com");
-      await settings.getByLabel("Default Copilot model").fill("model-b");
-      await settings
-        .getByRole("switch", { name: "Enabled", exact: true })
-        .click();
+      const model = page.getByRole("combobox", { name: "Deep Agent model" });
       const savePolicy = page.getByRole("button", {
         name: "Save analysis settings",
       });
+      await page.getByText(/The saved model is unavailable/).waitFor();
+      assert.equal(await model.getAttribute("aria-invalid"), "true");
       assert.equal(await savePolicy.isDisabled(), true);
-      await settings.getByLabel("Default Copilot model").fill("model-a");
+      await model.click();
+      const modelOptions = page.getByRole("listbox");
+      await modelOptions.waitFor();
+      assert.deepEqual(
+        await modelOptions.getByRole("option").allTextContents(),
+        [
+          "Use each account’s approved model",
+          "openai/retired-analysis-model",
+          "openai/shared-analysis-model",
+        ]
+      );
+      assert.equal(
+        await modelOptions
+          .getByRole("option", { name: "openai/retired-analysis-model" })
+          .getAttribute("aria-disabled"),
+        "true"
+      );
+      await page.screenshot({
+        path: resolve(evidence, "analysis-model-dropdown.png"),
+      });
+      await modelOptions
+        .getByRole("option", { name: "openai/shared-analysis-model" })
+        .click();
+      const settings = page.getByRole("region", {
+        name: "Copilot analysis policy",
+      });
+      await settings
+        .getByRole("button", { name: "Allowed Copilot models" })
+        .click();
+      await page.getByRole("checkbox", { name: "model-b" }).uncheck();
+      await page.keyboard.press("Escape");
+      await settings
+        .getByRole("button", { name: "Allowed GitHub account hostnames" })
+        .click();
+      const hostChoices = page.getByRole("dialog", {
+        name: "Allowed GitHub account hostnames",
+      });
+      await hostChoices.getByLabel("New tenant hostname").fill("acme.ghe.com");
+      await hostChoices
+        .getByRole("button", { name: "Add", exact: true })
+        .click();
+      assert.equal(
+        await hostChoices
+          .getByRole("checkbox", { name: "acme.ghe.com" })
+          .isChecked(),
+        true
+      );
+      await page.screenshot({
+        path: resolve(evidence, "copilot-host-multiselect.png"),
+      });
+      await page.keyboard.press("Escape");
+      await settings
+        .getByRole("switch", { name: "Enabled", exact: true })
+        .click();
+      assert.equal(await savePolicy.isDisabled(), true);
+      const defaultModel = settings.getByRole("combobox", {
+        name: "Default Copilot model",
+      });
+      await defaultModel.click();
+      assert.equal(
+        await page.getByRole("option", { name: "model-b" }).count(),
+        0
+      );
+      await page.getByRole("option", { name: "model-a" }).click();
+      const reportLimit = page.getByLabel("Report limit", { exact: true });
+      assert.equal(await reportLimit.inputValue(), "2.097152");
+      await reportLimit.fill("1.25");
       const catalogRequestsBeforeSave = catalogRequests;
       await savePolicy.click();
       await page
@@ -215,10 +297,28 @@ test(
       ]);
       assert.deepEqual(engineSettings.copilot.allowed_models, ["model-a"]);
       assert.equal(engineSettings.copilot.default_model, "model-a");
+      assert.equal(engineSettings.limits.report_markdown_max_bytes, 1250000);
+      assert.equal(engineSettings.matlab.limits.max_artifact_bytes, 1234567);
+      assert.deepEqual(engineSettings.model_override, sharedModel);
       assert.ok(catalogRequests > catalogRequestsBeforeSave);
       await settings.screenshot({
         path: resolve(evidence, "admin-policy.png"),
       });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await model.scrollIntoViewIfNeeded();
+      await model.press("Space");
+      await modelOptions.waitFor();
+      await page.screenshot({
+        path: resolve(evidence, "analysis-model-dropdown-mobile.png"),
+      });
+      await page
+        .getByRole("option", { name: "Use each account’s approved model" })
+        .click();
+      await savePolicy.click();
+      await page
+        .getByText("All settings are up to date", { exact: true })
+        .waitFor();
+      assert.equal(engineSettings.model_override, null);
       assert.deepEqual(pageErrors, []);
       await context.close();
     } finally {

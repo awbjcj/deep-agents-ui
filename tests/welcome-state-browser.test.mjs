@@ -158,6 +158,27 @@ test(
         await message.inputValue(),
         /^Show the change history of \[TICKET-KEY\]/
       );
+      await page.goto(
+        `${server.baseUrl}?assistantId=${encodeURIComponent("VSDA Log Analyzer Agent")}`
+      );
+      const logWelcome = page.getByRole("region", {
+        name: "Which recording should we investigate?",
+      });
+      const starters = logWelcome.getByRole("button");
+      await starters.first().waitFor();
+      for (const panelWidth of [340, 620]) {
+        await logWelcome.evaluate((section, width) => {
+          section.style.width = width + "px";
+        }, panelWidth);
+        const first = await starters.nth(0).boundingBox();
+        const second = await starters.nth(1).boundingBox();
+        assert.equal(first.y === second.y, panelWidth === 620);
+      }
+      await logWelcome.getByRole("button", { name: "Plot signals" }).click();
+      assert.match(
+        await message.inputValue(),
+        /Plot .* from .*Aspera Shares URL/
+      );
       await context.close();
       assert.deepEqual(pageErrors, []);
 

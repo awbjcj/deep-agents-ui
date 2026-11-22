@@ -20,6 +20,8 @@ import {
   listAdminScmServers,
   partitionScmServers,
   saveScmServer,
+  scmProviderLabels,
+  scmProviderSchema,
   type AdminScmServerView,
   type ScmServerInput,
 } from "@/lib/scm";
@@ -34,6 +36,13 @@ const EMPTY: ScmServerInput = {
   validation: {},
 };
 
+const serverFields = [
+  ["id", "Server ID"],
+  ["display_name", "Display name"],
+  ["endpoint", "Endpoint"],
+  ["auth_profile", "Auth profile"],
+] as const;
+
 /** Admin-only named SCM server configuration, separate from personal PAT entry. */
 export function ScmServersSection() {
   const [servers, setServers] = useState<AdminScmServerView[]>([]);
@@ -44,6 +53,7 @@ export function ScmServersSection() {
   // must update that record rather than create a second one under a new ID.
   const [editingId, setEditingId] = useState<string | null>(null);
   const configurationRef = useRef<HTMLDetailsElement>(null);
+  const displayNameRef = useRef<HTMLInputElement>(null);
   const originalDraft = editingId
     ? servers.find((server) => server.id === editingId)
     : null;
@@ -168,7 +178,7 @@ export function ScmServersSection() {
     <div className="space-y-5">
       <SectionHeader
         title="SCM servers"
-        subtitle="Named Gerrit and Plastic sources available for read-only code analysis."
+        subtitle="Named Gerrit, GitLab, and Plastic sources available for read-only code analysis."
       />
       <DisclosureSection
         title="Server configuration"
@@ -180,13 +190,18 @@ export function ScmServersSection() {
           <Server className="text-primary h-4 w-4" />{" "}
           {editingId ? `Edit server ${editingId}` : "Add server"}
         </div>
-        <fieldset
-          className="space-y-3"
-          disabled={saving}
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!saving) void save();
+          }}
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(["id", "display_name", "endpoint", "auth_profile"] as const).map(
-              (field) => (
+          <fieldset
+            className="space-y-3"
+            disabled={saving}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {serverFields.map(([field, label]) => (
                 <div
                   key={field}
                   className="space-y-1"
@@ -195,10 +210,12 @@ export function ScmServersSection() {
                     htmlFor={`scm-server-${field}`}
                     className="text-xs"
                   >
-                    {field.replaceAll("_", " ")}
+                    {label}
                   </Label>
                   <Input
                     id={`scm-server-${field}`}
+                    ref={field === "display_name" ? displayNameRef : undefined}
+                    required
                     value={draft[field]}
                     readOnly={field === "id" && editingId !== null}
                     aria-readonly={field === "id" && editingId !== null}
@@ -222,73 +239,91 @@ export function ScmServersSection() {
                     }
                   />
                 </div>
-              )
-            )}
-            <div className="space-y-1">
-              <Label
-                htmlFor="scm-server-provider"
-                className="text-xs"
-              >
-                Provider
-              </Label>
-              <select
-                id="scm-server-provider"
-                value={draft.provider}
-                onChange={(event) =>
-                  setDraft((value) => ({
-                    ...value,
-                    provider: event.target.value as ScmServerInput["provider"],
-                  }))
-                }
-                className="border-input bg-background flex h-10 w-full rounded-md border px-3 text-sm"
-              >
-                <option value="gerrit">Gerrit</option>
-                <option value="plastic">Plastic SCM</option>
-              </select>
-            </div>
-            <div className="border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2 sm:col-span-2">
-              <div>
-                <Label htmlFor="scm-server-enabled">Enabled</Label>
-                <p className="text-muted-foreground text-xs">
-                  Allow users to connect and start new work with this server.
-                </p>
+              ))}
+              <div className="space-y-1">
+                <Label
+                  htmlFor="scm-server-provider"
+                  className="text-xs"
+                >
+                  Provider
+                </Label>
+                <select
+                  id="scm-server-provider"
+                  value={draft.provider}
+                  onChange={(event) =>
+                    setDraft((value) => ({
+                      ...value,
+                      provider: event.target
+                        .value as ScmServerInput["provider"],
+                    }))
+                  }
+                  className="border-input bg-background focus-visible:border-primary focus-visible:ring-primary/20 min-h-touch w-full rounded-lg border px-3 text-base outline-none focus-visible:ring-[3px] sm:text-sm"
+                >
+                  {scmProviderSchema.options.map((provider) => (
+                    <option
+                      key={provider}
+                      value={provider}
+                    >
+                      {scmProviderLabels[provider]}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <Switch
-                id="scm-server-enabled"
-                checked={draft.enabled}
-                onCheckedChange={(enabled) =>
-                  setDraft((value) => ({ ...value, enabled }))
-                }
-              />
+              <div className="border-border flex items-center justify-between gap-3 rounded-md border px-3 py-2 sm:col-span-2">
+                <div>
+                  <Label htmlFor="scm-server-enabled">Enabled</Label>
+                  <p className="text-muted-foreground text-xs">
+                    Allow users to connect and start new work with this server.
+                  </p>
+                </div>
+                <Switch
+                  id="scm-server-enabled"
+                  checked={draft.enabled}
+                  onCheckedChange={(enabled) =>
+                    setDraft((value) => ({ ...value, enabled }))
+                  }
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => void save()}
-              disabled={saving}
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}{" "}
-              Save server
-            </Button>
-            {editingId !== null && (
+            <div className="flex gap-2">
               <Button
-                variant="outline"
-                onClick={cancelEdit}
+                type="submit"
                 disabled={saving}
               >
-                Cancel edit
+                {saving ? (
+                  <Loader2
+                    className="motion-safe:animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Save aria-hidden="true" />
+                )}{" "}
+                Save server
               </Button>
-            )}
-          </div>
-        </fieldset>
+              {editingId !== null && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={cancelEdit}
+                  disabled={saving}
+                >
+                  Cancel edit
+                </Button>
+              )}
+            </div>
+          </fieldset>
+        </form>
       </DisclosureSection>
       {loading ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div
+          role="status"
+          className="text-muted-foreground flex items-center gap-2 py-4 text-sm"
+        >
+          <Loader2
+            className="size-4 motion-safe:animate-spin"
+            aria-hidden="true"
+          />
+          Loading source servers…
         </div>
       ) : (
         <div className={SETTINGS_WIDE_GRID}>
@@ -302,7 +337,7 @@ export function ScmServersSection() {
                   {server.display_name}
                 </p>
                 <p className="text-muted-foreground truncate text-xs">
-                  {server.id} · {server.provider} · enabled
+                  {server.id} · {scmProviderLabels[server.provider]}
                   {server.validation.ready === true && " · operator-verified"}
                   {editingId === server.id && " · editing"}
                 </p>
@@ -318,6 +353,7 @@ export function ScmServersSection() {
                     if (configurationRef.current) {
                       configurationRef.current.open = true;
                     }
+                    displayNameRef.current?.focus();
                   }}
                 >
                   Edit
@@ -353,8 +389,7 @@ export function ScmServersSection() {
                       {server.display_name}
                     </p>
                     <p className="text-muted-foreground truncate text-xs">
-                      {server.id} · {server.provider} · disabled · hidden from
-                      users
+                      {server.id} · {scmProviderLabels[server.provider]}
                     </p>
                   </div>
                   <Button

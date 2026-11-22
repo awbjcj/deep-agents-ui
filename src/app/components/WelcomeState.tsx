@@ -88,7 +88,7 @@ export function WelcomeState({
     <section
       aria-labelledby="welcome-title"
       data-agent={welcome.name}
-      className="welcome-state mx-auto flex w-full max-w-[760px] flex-col items-center px-1 py-4 text-center sm:py-12"
+      className="welcome-state @container/welcome mx-auto flex w-full max-w-[760px] flex-col items-center px-1 py-4 text-center sm:py-12"
     >
       <span
         className="welcome-mark"
@@ -109,7 +109,7 @@ export function WelcomeState({
         {welcome.lede}
       </p>
 
-      <div className="mt-5 grid w-full max-w-160 gap-2 text-left sm:mt-7 sm:grid-cols-2 sm:gap-3">
+      <div className="mt-5 grid w-full max-w-160 gap-2 text-left @lg/welcome:mt-7 @lg/welcome:grid-cols-2 @lg/welcome:gap-3">
         {welcome.prompts.map(({ title, prompt, icon }) => {
           const Icon = ICONS[icon];
           return (

@@ -24,7 +24,7 @@ interface ToolPermissionListProps {
   compactGroups?: boolean;
   idPrefix: string;
   saving: boolean;
-  onToggle: (toolId: string) => void;
+  onToggle?: (toolId: string) => void;
 }
 
 export function ToolPermissionList({
@@ -40,6 +40,7 @@ export function ToolPermissionList({
   saving,
   onToggle,
 }: ToolPermissionListProps) {
+  const ToolName = onToggle ? "label" : "span";
   const groups = new Map<string, ToolCatalogEntry[]>();
   for (const tool of catalog) {
     const entries = groups.get(tool.group) ?? [];
@@ -71,8 +72,9 @@ export function ToolPermissionList({
               const allowed = allowedIds.includes(tool.id);
               const effective = effectiveIds.includes(tool.id);
               const unavailableReason = unavailableTools[tool.id];
-              const pendingSelection = checked && allowed && !effective;
-              const pendingRemoval = !checked && effective;
+              const pendingSelection =
+                onToggle && checked && allowed && !effective;
+              const pendingRemoval = onToggle && !checked && effective;
               const disabled =
                 saving ||
                 Boolean(unavailableReason) ||
@@ -90,26 +92,30 @@ export function ToolPermissionList({
                 <div
                   key={tool.id}
                   className={cn(
-                    "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-3 px-3 py-3",
+                    "grid min-w-0 gap-3 px-3 py-3",
+                    onToggle && "grid-cols-[auto_minmax(0,1fr)]",
                     index > 0 && "border-border/60 border-t",
                     !allowed && !checked && "bg-muted/25"
                   )}
                 >
-                  <Checkbox
-                    id={controlId}
-                    className="mt-0.5"
-                    checked={checked}
-                    disabled={disabled}
-                    aria-describedby={`${controlId}-description`}
-                    onChange={() => onToggle(tool.id)}
-                  />
+                  {onToggle && (
+                    <Checkbox
+                      id={controlId}
+                      className="mt-0.5"
+                      checked={checked}
+                      disabled={disabled}
+                      aria-describedby={`${controlId}-description`}
+                      onChange={() => onToggle(tool.id)}
+                    />
+                  )}
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                      <label
-                        htmlFor={controlId}
+                      <ToolName
+                        htmlFor={onToggle ? controlId : undefined}
                         className={cn(
                           "text-foreground min-w-0 text-sm leading-tight font-semibold",
-                          disabled ? "cursor-not-allowed" : "cursor-pointer"
+                          onToggle &&
+                            (disabled ? "cursor-not-allowed" : "cursor-pointer")
                         )}
                       >
                         <span className="inline-flex items-center gap-2">
@@ -121,7 +127,7 @@ export function ToolPermissionList({
                           )}
                           {tool.label}
                         </span>
-                      </label>
+                      </ToolName>
                       {unavailableReason ? (
                         <span className="text-muted-foreground shrink-0 text-xs font-semibold">
                           Unavailable
@@ -141,6 +147,10 @@ export function ToolPermissionList({
                       ) : pendingRemoval ? (
                         <span className="text-foreground inline-flex shrink-0 items-center gap-1 rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-2 py-0.5 text-xs font-semibold">
                           Pending removal
+                        </span>
+                      ) : !onToggle && group === "Responses" && effective ? (
+                        <span className="text-foreground shrink-0 text-xs font-semibold">
+                          Available
                         </span>
                       ) : effective && selectedStatusLabel ? (
                         <span className="bg-primary/10 text-primary shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">
@@ -188,9 +198,11 @@ export function ToolPermissionList({
                 >
                   {group}
                 </span>
-                <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                  {selectedCount} of {tools.length} allowed
-                </span>
+                {onToggle && (
+                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    {selectedCount} of {tools.length} allowed
+                  </span>
+                )}
                 {groupChanged ? (
                   <span className="text-foreground rounded-full border border-(--aptiv-orange)/40 bg-(--aptiv-orange)/10 px-1.5 py-0.5 text-xs font-semibold">
                     Draft changed

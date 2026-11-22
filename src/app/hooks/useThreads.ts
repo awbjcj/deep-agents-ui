@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import useSWRInfinite from "swr/infinite";
 import type { Thread, Client } from "@langchain/langgraph-sdk";
 import { useClient } from "@/providers/ClientProvider";
@@ -9,6 +10,8 @@ export interface ThreadItem {
   status: Thread["status"];
   title: string;
   description: string;
+  /** True once the server or the user has named the thread. */
+  titled: boolean;
   assistantId?: string;
 }
 
@@ -19,11 +22,22 @@ const DEFAULT_PAGE_SIZE = 20;
 // so SWR focus revalidations don't repeatedly re-parse the same payloads.
 const derivationCache = new Map<
   string,
-  { title: string; description: string }
+  { title: string; description: string; titled: boolean }
 >();
 const CACHE_LIMIT = 500;
+const FALLBACK_TITLE_CHARS = 100;
+// The server names a conversation in the background after its first run
+// finishes (at most ~10 s), so recently finished untitled threads are
+// re-fetched a few times to pick the title up without a manual refresh.
+const TITLE_RECHECK_MS = 4000;
+const TITLE_RECHECK_LIMIT = 3;
+const TITLE_RECHECK_WINDOW_MS = 2 * 60 * 1000;
 
-function deriveMeta(thread: Thread): { title: string; description: string } {
+export function deriveMeta(thread: Thread): {
+  title: string;
+  description: string;
+  titled: boolean;
+} {
   const key = `${thread.thread_id}::${thread.updated_at}`;
   const hit = derivationCache.get(key);
   if (hit) return hit;
@@ -43,7 +57,17 @@ function deriveMeta(thread: Thread): { title: string; description: string } {
           typeof firstHuman.content === "string"
             ? firstHuman.content
             : (firstHuman.content as Array<{ text?: string }>)[0]?.text || "";
-        title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
+        const normalized = content.replace(/\s+/g, " ").trim();
+        if (normalized.length <= FALLBACK_TITLE_CHARS) {
+          title = normalized || title;
+        } else {
+          const prefix = normalized.slice(0, FALLBACK_TITLE_CHARS);
+          const cut = prefix.lastIndexOf(" ");
+          title =
+            normalized[FALLBACK_TITLE_CHARS] === " " || cut <= 0
+              ? prefix
+              : prefix.slice(0, cut);
+        }
       }
       const firstAi = messages.find((m) => m?.type === "ai");
       if (firstAi?.content) {
@@ -58,12 +82,20 @@ function deriveMeta(thread: Thread): { title: string; description: string } {
     title = `Thread ${thread.thread_id.slice(0, 8)}`;
   }
 
-  const customName = (thread.metadata as Record<string, unknown>)?.custom_name;
-  if (typeof customName === "string" && customName) {
-    title = customName;
+  const metadata = thread.metadata as Record<string, unknown> | undefined;
+  const generatedTitle = metadata?.title;
+  const customName = metadata?.custom_name;
+  let titled = false;
+  if (typeof generatedTitle === "string" && generatedTitle.trim()) {
+    title = generatedTitle.trim();
+    titled = true;
+  }
+  if (typeof customName === "string" && customName.trim()) {
+    title = customName.trim();
+    titled = true;
   }
 
-  const result = { title, description };
+  const result = { title, description, titled };
   if (derivationCache.size >= CACHE_LIMIT) {
     // Evict oldest entry — Map preserves insertion order.
     const oldest = derivationCache.keys().next().value;
@@ -71,6 +103,21 @@ function deriveMeta(thread: Thread): { title: string; description: string } {
   }
   derivationCache.set(key, result);
   return result;
+}
+
+/** Return recently finished, untitled threads whose title may still arrive. */
+export function threadsAwaitingTitle(
+  threads: ThreadItem[],
+  rechecks: ReadonlyMap<string, number>,
+  now = Date.now()
+): ThreadItem[] {
+  return threads.filter(
+    (thread) =>
+      !thread.titled &&
+      thread.status === "idle" &&
+      now - thread.updatedAt.getTime() < TITLE_RECHECK_WINDOW_MS &&
+      (rechecks.get(thread.id) ?? 0) < TITLE_RECHECK_LIMIT
+  );
 }
 
 export function useThreads(props: {
@@ -83,7 +130,7 @@ export function useThreads(props: {
   // (auth bearer, etc.) only need to be made in one place.
   const client: Client = useClient();
 
-  return useSWRInfinite(
+  const threads = useSWRInfinite(
     (pageIndex: number, previousPageData: ThreadItem[] | null) => {
       const config = getConfig();
       if (!config) return null;
@@ -132,6 +179,7 @@ export function useThreads(props: {
           status: thread.status,
           title: meta.title,
           description: meta.description,
+          titled: meta.titled,
           assistantId,
         };
       });
@@ -145,4 +193,26 @@ export function useThreads(props: {
       revalidateOnFocus: true,
     }
   );
+
+  const { data, mutate } = threads;
+  const titleRechecks = useRef(new Map<string, number>());
+  useEffect(() => {
+    const waiting = threadsAwaitingTitle(
+      data?.[0] ?? [],
+      titleRechecks.current
+    );
+    if (waiting.length === 0) return;
+    const timer = setTimeout(() => {
+      for (const thread of waiting) {
+        titleRechecks.current.set(
+          thread.id,
+          (titleRechecks.current.get(thread.id) ?? 0) + 1
+        );
+      }
+      void mutate();
+    }, TITLE_RECHECK_MS);
+    return () => clearTimeout(timer);
+  }, [data, mutate]);
+
+  return threads;
 }

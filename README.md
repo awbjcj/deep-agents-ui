@@ -92,7 +92,7 @@ The **Switch agent** button in the header opens the configuration dialog, which
 lists only the assistants the signed-in account may use.
 **VSDA Deep Agent** is the default supervisor and always stays the legacy
 supervisor; it never switches a conversation to the Task Agent, and a
-conversation stays with the agent it started in. Two assistants are restricted:
+conversation stays with the agent it started in. Three assistants are restricted:
 
 - **VSDA Task Agent**: developer and admin accounts only, and only after an
   administrator enrolls the account on the server (`VSDA_ORCHESTRATION_ROLLOUT`
@@ -100,6 +100,8 @@ conversation stays with the agent it started in. Two assistants are restricted:
 - **VSDA Code Analyzer Agent**: developer and admin accounts only. Its SCM
   credential, Copilot credential and Copilot quota panels in **Workspace →
   Tokens** appear only for these accounts.
+- **VSDA Log Analyzer Agent**: developer and admin accounts with the same
+  `can_use_code_analyzer` profile permission as Code Analyzer.
 
 The UI reads `can_use_task_agent` and `can_use_code_analyzer` from
 `GET /api/user/profile` (treated as `false` when an older server omits them)
@@ -112,7 +114,7 @@ the same rules and answers 403 for runs and `/api/code-analysis/*` or
 ### Prepare multiple repositories in Code Analyzer
 
 Select **VSDA Code Analyzer Agent**, then open **Repository workspace** above
-the composer. Use the **Repositories** tab to build the source selection. Connect your Gerrit or Plastic server in **Workspace → Tokens**
+the composer. Use the **Repositories** tab to build the source selection. Connect your Gerrit, GitLab or Plastic server in **Workspace → Tokens**
 if needed. Browse repositories and refs, or enter a revision selector directly.
 Resolve and add up to 20 targets, including different revisions of the same
 repository. **Find dependencies** lists Gerrit submodules and supported Bazel
@@ -125,6 +127,25 @@ in the conversation. You can reopen the workspace after refreshing the same
 browser tab. Source and question drafts also stay in place when you close the
 workspace or change its tab within the same conversation. If the worker expires
 or releases the checkout, prepare it again.
+
+### Analyze MAT logs and review chat history
+
+Open **VSDA Log Analyzer Agent** and save your credentials in **Workspace →
+Tokens → Aspera**. Provide a Jira ticket with an Aspera Log Location or paste a
+Shares link. Signal plots embedded in an answer open as thumbnails. Select a
+thumbnail to inspect the full image.
+
+Conversation titles refresh after the backend generates them. Queued messages
+can steer an active run while retaining the conversation history. Source
+preparation entries are grouped in the conversation alongside analysis jobs.
+
+### Admin settings
+
+Saved credentials and endpoints initially appear in collapsed summaries. In
+the Code Analysis settings, a global Deep Agent model override must be approved
+for both Developer and Admin tiers. Copilot analysis has a separate model
+allowlist and default. The tool permissions view shows tool availability
+alongside administrator policy controls.
 
 ### Deployment profiles
 

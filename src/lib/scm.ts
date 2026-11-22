@@ -9,9 +9,22 @@ const operatorServerValidationSchema = z
   .record(z.string(), z.unknown())
   .default({});
 
+export const scmProviderSchema = z.enum(["gerrit", "gitlab", "plastic"]);
+export type ScmProvider = z.infer<typeof scmProviderSchema>;
+
+export const scmProviderLabels: Record<ScmProvider, string> = {
+  gerrit: "Gerrit",
+  gitlab: "GitLab",
+  plastic: "Plastic SCM",
+};
+
+export function scmRequiresUsername(provider?: ScmProvider): boolean {
+  return provider === "gerrit" || provider === "gitlab";
+}
+
 export const scmServerSchema = z.object({
   id: z.string().min(1),
-  provider: z.enum(["gerrit", "plastic"]),
+  provider: scmProviderSchema,
   display_name: z.string().min(1),
   enabled: z.boolean(),
   generation: z.number().int().positive(),
@@ -78,9 +91,8 @@ export function credentialUpdate(
   const normalizedToken = token.trim();
   if (!normalizedToken) throw new Error("Enter a personal access token");
   const normalizedUsername = username.trim();
-  // Gerrit uses HTTP Basic auth, so a token without its login can never work.
-  if (provider === "gerrit" && !normalizedUsername) {
-    throw new Error("Enter your Gerrit login name");
+  if (provider && scmRequiresUsername(provider) && !normalizedUsername) {
+    throw new Error(`Enter your ${scmProviderLabels[provider]} login name`);
   }
   return {
     token: normalizedToken,

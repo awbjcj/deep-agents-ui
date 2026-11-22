@@ -28,6 +28,7 @@ test(
           import { ChatMessage } from "./src/app/components/ChatMessage";
           import { ResponseDetails } from "./src/app/components/ResponseDetails";
           import { ToolCallBox } from "./src/app/components/ToolCallBox";
+          import { FileOpenerProvider } from "./src/app/components/FileOpener";
           import { reconcileConversation } from "./src/app/hooks/internal/conversationProjection";
           const artifactStream = { client: { "~ui": { getComponent: async () => "" } } };
           const orphan = { type: "tool", id: "orphan", tool_call_id: "early", name: "lookup_record", content: JSON.stringify({ id: "early-record" }) };
@@ -100,6 +101,10 @@ test(
               <ToolCallBox toolCall={{ id: "artifact", name: "external_result", args: {}, status: "completed", result: JSON.stringify({ id: "artifact-fallback" }) }} uiComponent={{ id: "ui", name: "example" }} stream={artifactStream} graphId="fixture" />
               <ToolCallBox toolCall={{ id: "artifact-only", name: "artifact_only", args: {}, status: "completed" }} uiComponent={{ id: "ui-only", name: "example" }} stream={artifactStream} graphId="fixture" />
               <ToolCallBox toolCall={{ id: "diagram", name: "render_diagram", args: {}, status: "completed", result: "Created conversation files:\\n![diagram.png](" + diagramPath + ")" }} files={artifactFiles} />
+              <ToolCallBox toolCall={{ id: "signals", name: "discover_log_signals", args: {}, status: "completed", result: JSON.stringify({ total: 1, signals: [{path: "Vehicle.Speed", shape: [2048, 1], sample_count: 2048}] }) }} />
+              <FileOpenerProvider files={artifactFiles} sourceImageAttachments={{}} sourceAttachmentRecords={{}}>
+                <ToolCallBox toolCall={{ id: "plot", name: "plot_log_signals", args: {}, status: "completed", result: JSON.stringify({artifact_path:diagramPath, basis:"samples"}) }} files={artifactFiles} />
+              </FileOpenerProvider>
               <ToolCallBox toolCall={{ id: "report", name: "publish_workspace_file", args: {}, status: "completed", result: "Created conversation files:\\n[report.json](" + reportPath + ")\\nBytes: 15; SHA-256: " + "a".repeat(64) }} files={artifactFiles} />
               {reconcileConversation(null, [orphan, ...(callArrived ? [matchingCall] : []), subagentCall, subagentResult, mediaCall, mediaResult], false).map(row => <ChatMessage {...row} key={row.stableKey} files={{}} sourceImageAttachments={{}} />)}
               <ToolCallBox toolCall={{ id: "approval", name: "update_ticket", args: { title: "Reviewed" }, status: "interrupted" }} actionRequest={approval} onResume={decision => window.decision = decision} uiComponent={{ id: "approval-artifact", name: "example" }} stream={artifactStream} graphId="fixture" />
@@ -207,6 +212,39 @@ test(
         await summary.press("Space");
         assert.equal(await webSource.isVisible(), false);
         assert.equal((await sources.boundingBox()).height, collapsedHeight);
+
+        const signals = page.getByRole("button", {
+          name: "Find signal paths",
+          exact: true,
+        });
+        await signals.press("Enter");
+        const inventory = signals
+          .locator("..")
+          .getByRole("region", { name: "Tool result", exact: true });
+        await inventory.getByText("Vehicle.Speed", { exact: true }).waitFor();
+        await inventory.getByText("2048, 1", { exact: true }).waitFor();
+        if (evidence)
+          await signals
+            .locator("..")
+            .screenshot({ path: join(evidence, `signals-${width}.png`) });
+        await signals.press("Enter");
+
+        const plot = page.getByRole("button", {
+          name: "Plot signals",
+          exact: true,
+        });
+        await plot.click();
+        await plot
+          .locator("..")
+          .getByText("artifact path", { exact: true })
+          .waitFor();
+        await plot
+          .locator("..")
+          .getByRole("button", { name: "diagram.png", exact: true })
+          .press("Enter");
+        await page.getByRole("dialog").getByRole("img").waitFor();
+        await page.keyboard.press("Escape");
+        await plot.click();
 
         if (evidence)
           await page.screenshot({

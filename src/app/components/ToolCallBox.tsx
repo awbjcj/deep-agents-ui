@@ -28,6 +28,16 @@ import { scmToolMarkdown } from "@/lib/scm-tool-result";
 import { readableToolResult } from "@/lib/tool-result";
 import { RawToolResult, ReadableToolResult } from "./ReadableToolResult";
 
+const logToolLabels = new Map([
+  ["discover_aspera_logs", "Find MAT recordings"],
+  ["download_aspera_logs", "Download recordings"],
+  ["discover_log_signals", "Find signal paths"],
+  ["extract_log_signals", "Extract signal values"],
+  ["plot_log_signals", "Plot signals"],
+  ["analyze_log_scenarios", "Screen recordings for a scenario"],
+  ["release_log_workspace", "Release downloaded recordings"],
+]);
+
 interface ToolCallBoxProps {
   onUseEvidence?: (text: string) => void;
   toolCall: ToolCall;
@@ -123,6 +133,8 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       };
     }, [toolCall]);
 
+    const logLabel = logToolLabels.get(name);
+
     // Stable meta for the generative-UI artifact: a fresh object literal each
     // render would re-render LoadExternalComponent even when nothing changed.
     const meta = useMemo(
@@ -199,6 +211,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
         {readableResult && (
           <ReadableToolResult
             result={readableResult}
+            compact={!!logLabel}
             files={files}
           />
         )}
@@ -235,7 +248,8 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
             "group/tool min-h-touch focus-visible:ring-ring flex h-auto w-full items-center justify-between gap-3 rounded-lg border-none px-2.5 py-2 text-left whitespace-normal shadow-none outline-none hover:bg-transparent focus-visible:ring-2 disabled:cursor-default disabled:opacity-100 dark:hover:bg-transparent"
           )}
           aria-expanded={isExpanded}
-          aria-label={name}
+          aria-label={logLabel ?? name}
+          title={logLabel ? name : undefined}
           aria-describedby={`${contentId}-status`}
           aria-controls={isExpanded && hasContent ? contentId : undefined}
           disabled={!hasContent}
@@ -252,8 +266,13 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
             >
               <Wrench className="size-3.5" />
             </span>
-            <span className="text-foreground min-w-0 font-mono text-sm font-medium wrap-anywhere wrap-break-word">
-              {name}
+            <span
+              className={cn(
+                "text-foreground min-w-0 text-sm font-medium wrap-anywhere",
+                !logLabel && "font-mono"
+              )}
+            >
+              {logLabel ?? name}
             </span>
           </div>
           {analysisJobId ? (

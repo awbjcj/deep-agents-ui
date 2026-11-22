@@ -6,6 +6,7 @@ import type {
   SourceQuery,
   SourceResource,
 } from "@/lib/code-workspace";
+import type { ScmProvider } from "@/lib/scm";
 
 export type BrowseState = { query: SourceQuery; page: SourcePage };
 export type SourceDraft = {
@@ -29,11 +30,21 @@ export type AnalysisFormDraft = {
 export type DraftSetter<T> = Dispatch<SetStateAction<T>>;
 export type WorkspaceTab = "repositories" | "analysis";
 
-export const resourceLabels: Record<SourceResource, string> = {
+const resourceLabels: Record<SourceResource, string> = {
   repositories: "Repositories",
   branches: "Branches",
-  tags: "Tags / labels",
+  tags: "Tags",
   reviews: "Reviews",
-  commits: "Changesets",
+  commits: "Commits",
   externals: "External repositories",
 };
+
+export function sourceResourceLabel(
+  resource: SourceResource,
+  provider: ScmProvider
+) {
+  if (provider === "gitlab" && resource === "reviews") return "Merge requests";
+  if (provider === "plastic" && resource === "tags") return "Labels";
+  if (provider === "plastic" && resource === "commits") return "Changesets";
+  return resourceLabels[resource];
+}

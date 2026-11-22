@@ -200,10 +200,15 @@ export function useMessageRuns(options: Options) {
       !threadId
     )
       return;
-    const run = runs[0];
-    // A running follow-up can contain the active interrupt and must still be
-    // rejoined after a disconnect. Only pending successors wait for review.
-    if (options.paused && run.status === "pending") return;
+    // An accepted steer can supersede the review from the preceding run.
+    // Running follow-ups can also contain the active review after a disconnect.
+    const run = runs.find(
+      (item) =>
+        !options.paused ||
+        item.status !== "pending" ||
+        item.metadata?.message_delivery === "steer"
+    );
+    if (!run) return;
     session.joining = run.run_id;
     const joinGeneration = ++session.joinGeneration;
     rememberStreamRunId(threadId, run.run_id);
@@ -407,6 +412,7 @@ export function useMessageRuns(options: Options) {
     serverRunning:
       runs.some((run) => run.status === "running") ||
       (activity.session === session && activity.checked && activity.running),
+    steering: runs.some((run) => run.metadata?.message_delivery === "steer"),
     stopping,
     queuedCount: runs.filter(
       (run) =>

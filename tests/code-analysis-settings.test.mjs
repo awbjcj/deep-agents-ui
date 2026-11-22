@@ -95,7 +95,8 @@ test("analysis settings UI groups raw limits and validates model overrides inlin
   assert.match(source, /title: "Throughput"/);
   assert.match(source, /title: "Workspace lifecycle"/);
   assert.match(source, /title: "Health and artifacts"/);
-  assert.match(source, /Enter both a provider and model/);
+  assert.match(source, /<SelectTrigger[\s\S]*id="analysis-override-model"/);
+  assert.doesNotMatch(source, /id="analysis-override-provider"/);
   assert.match(source, /aria-describedby=\{descriptionId\}/);
   assert.match(source, /Settings unavailable/);
   assert.doesNotMatch(source, /saveAnalysisSettings/);
@@ -108,8 +109,6 @@ test("analysis settings UI groups raw limits and validates model overrides inlin
   assert.match(source, /Last verified/);
   assert.match(source, /fieldErrors\[field.key\]/);
   assert.match(source, /aria-invalid=\{Boolean\(error\)\}/);
-  assert.match(
-    source,
-    /copilot_allowed_github_hosts:\s*savedEngines\.copilot\.allowed_github_hosts\.join\(", "\)/
-  );
+  assert.match(source, /<SelectTrigger[^>]*id="analysis-copilot-default"/);
+  assert.match(source, /selected=\{copilotPolicy\.allowed_github_hosts\}/);
 });

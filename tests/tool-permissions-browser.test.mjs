@@ -533,18 +533,20 @@ test(
       await page.getByRole("button", { name: "Save changes" }).click();
       await page.getByText("User tier tools saved.").waitFor();
       await adminRadio.click();
-      await page.getByRole("button", { name: "Clear" }).click();
-      await page.getByRole("button", { name: "Save changes" }).click();
-      await page.getByText("Admin tier tools saved.").waitFor();
-      assert.equal(await page.getByRole("checkbox").count(), 13);
+      await page.getByText(/The Admin tier is read-only/).waitFor();
+      assert.equal(await page.getByRole("checkbox").count(), 0);
       assert.equal(
-        await page.getByRole("checkbox", { checked: false }).count(),
-        13
+        await page.getByRole("button", { name: "Clear" }).count(),
+        0
       );
-      assert.equal(await page.getByRole("checkbox").first().isEnabled(), true);
-      await page.getByRole("button", { name: "Select all" }).click();
-      await page.getByRole("button", { name: "Save changes" }).click();
-      await page.getByText("Admin tier tools saved.").waitFor();
+      assert.equal(
+        await page.getByRole("button", { name: "Select all" }).count(),
+        0
+      );
+      assert.equal(
+        await page.getByRole("button", { name: "Save changes" }).count(),
+        0
+      );
       await page
         .getByRole("heading", { name: "Tier permissions" })
         .scrollIntoViewIfNeeded();
@@ -553,8 +555,8 @@ test(
         animations: "disabled",
       });
       assert.deepEqual(
-        policy.tierPutBodies.slice(0, 4).map(({ tier }) => tier),
-        ["developer", "user", "admin", "admin"]
+        policy.tierPutBodies.map(({ tier }) => tier),
+        ["developer", "user"]
       );
 
       await page.getByRole("button", { name: "Close admin panel" }).click();
@@ -581,12 +583,11 @@ test(
       );
 
       await page.getByRole("button", { name: "Close workspace panel" }).click();
-      await openAdminTools(page);
-      await adminRadio.click();
-      await page.getByRole("checkbox", { name: "Send email" }).click();
-      await page.getByRole("button", { name: "Save changes" }).click();
-      await page.getByText("Admin tier tools saved.").waitFor();
-      await page.getByRole("button", { name: "Close admin panel" }).click();
+      // Simulate a blocked preference in the separate Workspace scenarios.
+      policy.tiers.admin.allowed_tool_ids = allToolIds.filter(
+        (id) => id !== "send_email"
+      );
+      policy.tiers.admin.revision += 1;
       await openWorkspaceTools(page);
       const blockedBadge = page.getByText("Blocked by administrator");
       await blockedBadge.waitFor();
@@ -670,12 +671,8 @@ test(
       ]);
 
       await page.getByRole("button", { name: "Close workspace panel" }).click();
-      await openAdminTools(page);
-      await adminRadio.click();
-      await page.getByRole("checkbox", { name: "Send email" }).click();
-      await page.getByRole("button", { name: "Save changes" }).click();
-      await page.getByText("Admin tier tools saved.").waitFor();
-      await page.getByRole("button", { name: "Close admin panel" }).click();
+      policy.tiers.admin.allowed_tool_ids = [...allToolIds];
+      policy.tiers.admin.revision += 1;
       await openWorkspaceTools(page);
       await page.getByText("Active").first().waitFor();
       assert.equal(await page.getByText("Blocked by administrator").count(), 0);
@@ -719,11 +716,11 @@ test(
 
       await page.getByRole("button", { name: "Close workspace panel" }).click();
       await openAdminTools(page);
-      await adminRadio.click();
+      await developerRadio.click();
       await page
         .getByRole("checkbox", { name: "Trigger Jenkins build" })
         .click();
-      policy.conflictTierSave("admin");
+      policy.conflictTierSave("developer");
       await page.getByRole("button", { name: "Save changes" }).click();
       await page
         .getByRole("alert")
@@ -734,21 +731,21 @@ test(
         .getByRole("alert")
         .getByText(/Tier policy changed.*draft is still here/)
         .waitFor({ state: "hidden" });
-      const adminReview = page.getByRole("button", {
+      const developerReview = page.getByRole("button", {
         name: "I reviewed the refreshed policy",
       });
-      await adminReview.waitFor();
+      await developerReview.waitFor();
       assert.equal(
         await page.getByRole("button", { name: "Save changes" }).isDisabled(),
         true
       );
-      await adminReview.click();
+      await developerReview.click();
       assert.equal(
         await page.getByRole("button", { name: "Save changes" }).isEnabled(),
         true
       );
       await page.getByRole("button", { name: "Save changes" }).click();
-      await page.getByText("Admin tier tools saved.").waitFor();
+      await page.getByText("Developer tier tools saved.").waitFor();
       await page.getByRole("button", { name: "Close admin panel" }).click();
       await openWorkspaceTools(page);
 

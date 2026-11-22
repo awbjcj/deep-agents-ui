@@ -106,7 +106,7 @@ async function fixture() {
             contents: "export function NotificationBanner() {return null;}",
           }));
           build.onLoad({ filter: /[\\/]PendingToolApproval\.tsx$/ }, () => ({
-            contents: "export function PendingToolApproval() {return null;}",
+            contents: "export function PendingToolApprovals() {return null;}",
           }));
           build.onLoad(
             { filter: /[\\/]ThemedSyntaxHighlighter\.tsx$/ },
@@ -430,6 +430,43 @@ test(
             0,
             "Preference changes do not recapture history reading"
           );
+        }
+      );
+
+      await t.test(
+        "streaming Markdown coalesces appends and flushes on interruption",
+        async () => {
+          const streamPage = await browser.newPage();
+          try {
+            await streamPage.goto(url);
+            const update = (text, live) =>
+              streamPage.evaluate((patch) => window.patchChat(patch), {
+                processedMessages: [human, ai(text)],
+                isLoading: live,
+              });
+            await streamPage.waitForFunction(() => !!window.patchChat);
+            await update("**First**", true);
+            const answer = streamPage.locator(".prose").last();
+            await answer.locator("strong").waitFor();
+            const now = new Date("2026-01-01T12:00:00Z");
+            await streamPage.clock.install({ time: now });
+            await streamPage.clock.pauseAt(new Date(now.getTime() + 1000));
+            await update("**First** token", true);
+            await update("**First** tokens", true);
+            assert.equal(await answer.innerText(), "First");
+            await streamPage.clock.runFor(60);
+            assert.equal(await answer.innerText(), "First tokens");
+            await update("**First** tokens pending", true);
+            await update("**Replacement**", true);
+            assert.equal(await answer.innerText(), "Replacement");
+            await update("**Replacement** partial", true);
+            await update("**Replacement** final", false);
+            assert.equal(await answer.innerText(), "Replacement final");
+            await streamPage.clock.runFor(100);
+            assert.equal(await answer.innerText(), "Replacement final");
+          } finally {
+            await streamPage.close();
+          }
         }
       );
 

@@ -5,11 +5,14 @@ import { DEFAULT_ASSISTANT_ID } from "@/lib/chat-links";
 export const TASK_AGENT_ID = "VSDA Task Agent";
 /** Isolated source-code analysis graph; developer and admin accounts only. */
 export const CODE_ANALYZER_AGENT_ID = "VSDA Code Analyzer Agent";
+/** Managed log analysis graph; subject to the same access as code analysis. */
+export const LOG_ANALYZER_AGENT_ID = "VSDA Log Analyzer Agent";
 
 /** Built-in graphs ordinary `user` accounts must never see or select. */
 export const RESTRICTED_AGENT_IDS: readonly string[] = [
   TASK_AGENT_ID,
   CODE_ANALYZER_AGENT_ID,
+  LOG_ANALYZER_AGENT_ID,
 ];
 
 /** Access flags from `GET /api/user/profile`, as stored on the signed-in user. */
@@ -66,7 +69,8 @@ export function canUseAgent(
 ): boolean {
   const id = graphId ? canonicalAssistantId(graphId) : "";
   if (id === TASK_AGENT_ID) return canUseTaskAgent(access);
-  if (id === CODE_ANALYZER_AGENT_ID) return canUseCodeAnalyzer(access);
+  if (id === CODE_ANALYZER_AGENT_ID || id === LOG_ANALYZER_AGENT_ID)
+    return canUseCodeAnalyzer(access);
   return true;
 }
 

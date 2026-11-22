@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { sourceChoice, type SourceQuery } from "@/lib/code-workspace";
 import type { ScmServerView } from "@/lib/scm";
-import { resourceLabels, type BrowseState } from "./types";
+import { sourceResourceLabel, type BrowseState } from "./types";
 import { fieldClass } from "./WorkspaceFields";
 
 type SourceChoice = ReturnType<typeof sourceChoice>;
@@ -34,17 +34,21 @@ export function SourceResults({
   const { query, page } = browse;
   const provider =
     servers.find(({ id }) => id === query.server_id)?.provider ?? "gerrit";
+  const title = sourceResourceLabel(query.resource, provider);
+  const needle = filter.trim().toLowerCase();
   const choices = page.items
     .map((item) => sourceChoice(item, query.resource, provider))
     .filter(
       (choice) =>
         choice.label &&
-        choice.label.toLowerCase().includes(filter.trim().toLowerCase())
+        [choice.label, choice.detail].some((value) =>
+          value?.toLowerCase().includes(needle)
+        )
     );
   const external = query.resource === "externals";
   return (
     <section
-      aria-label={resourceLabels[query.resource]}
+      aria-label={title}
       className="border-border mt-4 space-y-3 border-t pt-4"
     >
       <div className="flex min-w-0 items-start justify-between gap-2">
@@ -54,7 +58,7 @@ export function SourceResults({
             tabIndex={-1}
             className="text-sm font-medium outline-none"
           >
-            {resourceLabels[query.resource]}
+            {title}
           </h4>
           {query.ref && (
             <p className="text-muted-foreground mt-1 text-xs wrap-anywhere">
@@ -93,7 +97,7 @@ export function SourceResults({
             >
               <button
                 type="button"
-                className="group min-h-touch focus-visible:ring-ring enabled:hover:bg-muted disabled:text-muted-foreground flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-sm focus-visible:ring-2 focus-visible:outline-none enabled:cursor-pointer"
+                className="min-h-touch focus-visible:ring-ring pointer-fine:enabled:hover:bg-muted enabled:active:bg-muted disabled:text-muted-foreground flex w-full min-w-0 items-center gap-3 rounded-md px-2 py-2 text-left text-sm focus-visible:ring-2 focus-visible:outline-none enabled:cursor-pointer"
                 disabled={disabled || !selectable}
                 onClick={() => onChoose(choice)}
               >

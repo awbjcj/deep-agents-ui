@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -46,15 +46,18 @@ const statuses: Record<string, string> = {
 export function CodeAnalysisJob({
   jobId,
   allowRelease,
+  workspaceAction,
 }: {
   jobId: string;
   allowRelease?: boolean;
+  workspaceAction?: ReactNode;
 }) {
   return (
     <AnalysisJobSession
       key={jobId}
       jobId={jobId}
       allowRelease={allowRelease}
+      workspaceAction={workspaceAction}
     />
   );
 }
@@ -62,9 +65,11 @@ export function CodeAnalysisJob({
 function AnalysisJobSession({
   jobId,
   allowRelease,
+  workspaceAction,
 }: {
   jobId: string;
   allowRelease?: boolean;
+  workspaceAction?: ReactNode;
 }) {
   const { job, error, checkedAt, cancel, refresh } = useCodeAnalysisJob(jobId);
   const reportFile = useAnalysisReportFile(job);
@@ -76,6 +81,7 @@ function AnalysisJobSession({
     return () => clearInterval(timer);
   }, [active]);
   const failed = job?.status === "failed" || job?.status === "interrupted";
+  const prepared = job?.operation === "prepare" && job.status === "succeeded";
   const elapsed = job ? analysisElapsed(job, now) : null;
   const percentage = job ? analysisPercentage(job) : null;
   const [phase, description] = job
@@ -101,7 +107,9 @@ function AnalysisJobSession({
           <CardTitle>
             <h2>
               {job?.operation === "prepare"
-                ? "Preparing source"
+                ? active
+                  ? "Preparing source"
+                  : "Source preparation"
                 : "Code analysis"}
             </h2>
           </CardTitle>
@@ -120,13 +128,13 @@ function AnalysisJobSession({
                 : "Loading"}
           </Badge>
         </div>
-        <CardDescription>
-          {job?.operation === "prepare"
-            ? job.status === "succeeded"
-              ? "Source preparation complete"
-              : "Source preparation · analysis has not started"
-            : "Source investigation and evidence report"}
-        </CardDescription>
+        {!prepared && (
+          <CardDescription>
+            {job?.operation === "prepare"
+              ? "Repository checkout for analysis"
+              : "Source investigation and evidence report"}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {reportFile && (
@@ -167,10 +175,13 @@ function AnalysisJobSession({
                   </span>
                 )}
               </div>
-              <p className="text-muted-foreground text-sm">{description}</p>
+              {!prepared && (
+                <p className="text-muted-foreground text-sm">{description}</p>
+              )}
               {percentage !== null &&
                 job.operation === "prepare" &&
-                !failed && (
+                active &&
+                job.status !== "cancel_requested" && (
                   <Progress
                     value={percentage}
                     aria-label="Source preparation progress"
@@ -228,6 +239,7 @@ function AnalysisJobSession({
           refresh={refresh}
           allowRelease={allowRelease}
         />
+        {workspaceAction}
         <span
           className="text-muted-foreground text-xs sm:ml-auto"
           title={
