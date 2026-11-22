@@ -51,7 +51,10 @@ import {
   readStreamRunId,
 } from "@/app/utils/threadRecovery";
 import { fromLatestCheckpoint } from "@/app/utils/threadHeadSubmit";
-import { APPROVAL_DISPATCH_GUARD } from "@/app/utils/langgraphStreamModes";
+import {
+  APPROVAL_DISPATCH_GUARD,
+  PARTIAL_STREAM_VALUES,
+} from "@/app/utils/langgraphStreamModes";
 import { deleteUpload } from "@/lib/uploads";
 import { CONVERSATION_FILES_CHANGED_EVENT } from "@/lib/conversation-files";
 import {
@@ -244,6 +247,16 @@ export function useChat({
         mutate: (update: (previous: StateType) => Partial<StateType>) => void;
       }
     ) => {
+      if (
+        event &&
+        typeof event === "object" &&
+        PARTIAL_STREAM_VALUES in event
+      ) {
+        options?.mutate(
+          () => event[PARTIAL_STREAM_VALUES] as Partial<StateType>
+        );
+        return;
+      }
       const eventType =
         typeof event === "object" && event !== null
           ? (event as Record<string, unknown>).type
@@ -532,7 +545,7 @@ export function useChat({
     scope: messageRunScope,
     threadId,
     loading: stream.isLoading,
-    threadLoading: stream.isThreadLoading,
+    threadLoading: stream.isThreadLoading || threadId !== streamThreadId,
     paused: pendingApprovals.length > 0,
     blockJoin: isApprovalSubmitting,
     joinStream: (runId) => streamRef.current.joinStream(runId),
@@ -1436,6 +1449,7 @@ export function useChat({
       isApprovalSubmitting ||
       stream.isLoading ||
       messageRuns.serverRunning ||
+      messageRuns.steering ||
       messageRuns.stopping ||
       submissionPending,
     // A requested stop is a known outcome, not a conversation failure; the

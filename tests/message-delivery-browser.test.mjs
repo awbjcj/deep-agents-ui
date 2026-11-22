@@ -31,6 +31,8 @@ test(
       { type: "human", id: "initial", content: "Existing conversation" },
     ];
     let release;
+    let releaseSteering;
+    let steeringValues;
     let rejectNext = false;
     let rejectNormal = false;
     let disconnectNextJoin = false;
@@ -80,6 +82,17 @@ test(
       }
       request.resume();
       response.setHeader("Content-Type", "text/event-stream");
+      if (request.url.startsWith("/steering")) {
+        response.write('event: values\ndata: {"messages":[]}\n\n');
+        response.write(
+          `event: messages\ndata: ${JSON.stringify([
+            { type: "ai", id: "steer-delta", content: "Steering in progress" },
+            { langgraph_node: "agent" },
+          ])}\n\n`
+        );
+        releaseSteering = () => response.end(steeringValues);
+        return;
+      }
       response.setHeader("Content-Location", "/threads/delivery/runs/original");
       response.write(
         `event: metadata\ndata: {"run_id":"original","thread_id":"delivery"}\n\nevent: values\ndata: ${JSON.stringify(
@@ -215,6 +228,10 @@ test(
               { detail: "The stream connection was lost after completion" },
               400
             );
+          }
+          if (run.kwargs.input.messages[0].content === "Change focus now") {
+            steeringValues = sse(run.run_id);
+            return route.continue({ url: new URL("/steering", liveUrl).href });
           }
           return route.fulfill({
             contentType: "text/event-stream",
@@ -457,7 +474,7 @@ test(
         submissions[0].input.messages[0].content,
         "Edited follow-up"
       );
-      assert.equal(submissions[0].multitask_strategy, "enqueue");
+      assert.equal(submissions[0].multitask_strategy, "reject");
       assert.equal(submissions[0].checkpoint, undefined);
       assert.equal(submissions[0].config.configurable.autopilot, false);
       assert.equal(
@@ -535,6 +552,13 @@ test(
       await page.getByRole("combobox", { name: "Message delivery" }).click();
       await page.getByRole("option", { name: /^Queue/ }).click();
       await input.press("Control+Enter");
+      await page.getByText("Steering in progress", { exact: true }).waitFor();
+      assert.equal(
+        await page.getByText("Existing conversation", { exact: true }).count(),
+        1,
+        "the steering stream must preserve earlier messages before its full checkpoint arrives"
+      );
+      releaseSteering();
       await page
         .getByText("Reply to Change focus now", { exact: true })
         .waitFor();
@@ -696,7 +720,7 @@ test(
       );
       pending = [
         {
-          id: "old-action",
+          id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           value: {
             action_requests: [{ name: "send_email", args: {} }],
             review_configs: [
@@ -709,6 +733,7 @@ test(
         },
       ];
       release();
+      await page.getByText("Approval required", { exact: true }).waitFor();
       await page.waitForTimeout(1000);
       assert.equal(
         automaticResumes.length,
@@ -720,6 +745,7 @@ test(
       await page
         .getByText("Reply to Correct this before approval", { exact: true })
         .waitFor();
+      assert.equal(automaticResumes.length, 0);
       await page.goto(server.baseUrl);
       const runStarts = traffic.filter(
         (path) => path === "POST /threads/delivery/runs/stream"

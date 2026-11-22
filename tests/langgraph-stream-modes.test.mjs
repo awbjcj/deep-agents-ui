@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createStreamModeCompatibilityClient,
   filterUnsupportedStreamMode,
+  PARTIAL_STREAM_VALUES,
 } from "../src/app/utils/langgraphStreamModes.ts";
 
 test("removes unsupported tools stream mode while preserving supported modes", () => {
@@ -24,30 +25,51 @@ test("omits stream mode when tools is the only requested mode", () => {
   assert.equal(filterUnsupportedStreamMode(["tools"]), undefined);
 });
 
-test("filters unsupported stream modes before creating runs", () => {
+test("filters unsupported stream modes before creating runs", async () => {
   let capturedPayload;
   const client = {
     runs: {
-      stream(_threadId, _assistantId, payload) {
+      async *stream(_threadId, _assistantId, payload) {
         capturedPayload = payload;
-        return "stream-result";
+        yield "stream-result";
       },
     },
   };
 
   const compatibleClient = createStreamModeCompatibilityClient(client);
 
-  assert.equal(
-    compatibleClient.runs.stream("thread-id", "assistant-id", {
-      streamMode: ["values", "messages-tuple", "updates", "custom", "tools"],
-    }),
-    "stream-result"
-  );
+  const stream = compatibleClient.runs.stream("thread-id", "assistant-id", {
+    streamMode: ["values", "messages-tuple", "updates", "custom", "tools"],
+  });
+  assert.equal((await stream.next()).value, "stream-result");
   assert.deepEqual(capturedPayload.streamMode, [
     "values",
     "messages-tuple",
     "updates",
     "custom",
+  ]);
+});
+
+test("only root snapshots without messages are merged into current stream state", async () => {
+  const authoritative = [
+    { event: "values", data: { messages: [{ id: "prompt" }] } },
+    { event: "values", data: { __interrupt__: [] } },
+    { event: "values|tools:worker", data: { messages: [] } },
+  ];
+  const client = createStreamModeCompatibilityClient({
+    runs: {
+      async *stream() {
+        yield { event: "values", data: { messages: [], todos: [] } };
+        yield* authoritative;
+      },
+    },
+  });
+  const parts = [];
+  for await (const part of client.runs.stream("thread", "assistant"))
+    parts.push(part);
+  assert.deepEqual(parts, [
+    { event: "custom", data: { [PARTIAL_STREAM_VALUES]: { todos: [] } } },
+    ...authoritative,
   ]);
 });
 
