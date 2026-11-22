@@ -35,12 +35,15 @@ export function SourceResults({
   const provider =
     servers.find(({ id }) => id === query.server_id)?.provider ?? "gerrit";
   const title = sourceResourceLabel(query.resource, provider);
+  const needle = filter.trim().toLowerCase();
   const choices = page.items
     .map((item) => sourceChoice(item, query.resource, provider))
     .filter(
       (choice) =>
         choice.label &&
-        choice.label.toLowerCase().includes(filter.trim().toLowerCase())
+        [choice.label, choice.detail].some((value) =>
+          value?.toLowerCase().includes(needle)
+        )
     );
   const external = query.resource === "externals";
   return (

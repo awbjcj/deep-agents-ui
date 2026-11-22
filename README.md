@@ -114,7 +114,7 @@ the same rules and answers 403 for runs and `/api/code-analysis/*` or
 ### Prepare multiple repositories in Code Analyzer
 
 Select **VSDA Code Analyzer Agent**, then open **Repository workspace** above
-the composer. Use the **Repositories** tab to build the source selection. Connect your Gerrit or Plastic server in **Workspace → Tokens**
+the composer. Use the **Repositories** tab to build the source selection. Connect your Gerrit, GitLab or Plastic server in **Workspace → Tokens**
 if needed. Browse repositories and refs, or enter a revision selector directly.
 Resolve and add up to 20 targets, including different revisions of the same
 repository. **Find dependencies** lists Gerrit submodules and supported Bazel

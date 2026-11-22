@@ -245,13 +245,19 @@ export function sourceChoice(
     }
     case "commits": {
       const revision = text("revision");
+      if (provider === "plastic") {
+        return {
+          label: revision && `Changeset ${revision}`,
+          selector: revision && `cs:${revision}`,
+          detail: text("message"),
+        };
+      }
+      // Git commits read best by subject; the short SHA stays visible as detail.
+      const subject = text("title") || text("message").split("\n", 1)[0];
       return {
-        label:
-          revision &&
-          (provider === "plastic" ? `Changeset ${revision}` : revision),
-        selector:
-          revision && (provider === "plastic" ? `cs:${revision}` : revision),
-        detail: text("message"),
+        label: revision && (subject || revision),
+        selector: revision,
+        detail: subject ? revision.slice(0, 12) : undefined,
       };
     }
     case "reviews": {

@@ -153,6 +153,22 @@ test("GitLab servers accept per-user credentials and source selections", async (
     sourceChoice({ revision: "a".repeat(40) }, "commits", "gitlab").selector,
     "a".repeat(40)
   );
+  assert.deepEqual(
+    sourceChoice(
+      {
+        revision: "a".repeat(40),
+        title: "Fix login retry",
+        message: "Fix login retry\n\nLonger body",
+      },
+      "commits",
+      "gitlab"
+    ),
+    {
+      label: "Fix login retry",
+      selector: "a".repeat(40),
+      detail: "aaaaaaaaaaaa",
+    }
+  );
   assert.equal(
     workspaceResumeSchema.parse({
       prepareId: "job",
