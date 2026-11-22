@@ -17,9 +17,8 @@ export interface ThreadItem {
 
 const DEFAULT_PAGE_SIZE = 20;
 
-// Title/description derivation is expensive (walks message history) and stable
-// for a given thread until `updated_at` changes. Cache by `${id}::${updatedAt}`
-// so SWR focus revalidations don't repeatedly re-parse the same payloads.
+// Cache message-derived metadata across revalidations. A title can arrive as
+// a separate metadata update, so it and the custom name are part of the key.
 const derivationCache = new Map<
   string,
   { title: string; description: string; titled: boolean }
@@ -38,7 +37,19 @@ export function deriveMeta(thread: Thread): {
   description: string;
   titled: boolean;
 } {
-  const key = `${thread.thread_id}::${thread.updated_at}`;
+  const metadata = thread.metadata as Record<string, unknown> | undefined;
+  const generatedTitle =
+    typeof metadata?.title === "string" ? metadata.title.trim() : "";
+  const customName =
+    typeof metadata?.custom_name === "string"
+      ? metadata.custom_name.trim()
+      : "";
+  const key = JSON.stringify([
+    thread.thread_id,
+    thread.updated_at,
+    generatedTitle,
+    customName,
+  ]);
   const hit = derivationCache.get(key);
   if (hit) return hit;
 
@@ -82,20 +93,12 @@ export function deriveMeta(thread: Thread): {
     title = `Thread ${thread.thread_id.slice(0, 8)}`;
   }
 
-  const metadata = thread.metadata as Record<string, unknown> | undefined;
-  const generatedTitle = metadata?.title;
-  const customName = metadata?.custom_name;
-  let titled = false;
-  if (typeof generatedTitle === "string" && generatedTitle.trim()) {
-    title = generatedTitle.trim();
-    titled = true;
-  }
-  if (typeof customName === "string" && customName.trim()) {
-    title = customName.trim();
-    titled = true;
-  }
-
-  const result = { title, description, titled };
+  const namedTitle = customName || generatedTitle;
+  const result = {
+    title: namedTitle || title,
+    description,
+    titled: !!namedTitle,
+  };
   if (derivationCache.size >= CACHE_LIMIT) {
     // Evict oldest entry — Map preserves insertion order.
     const oldest = derivationCache.keys().next().value;
@@ -118,6 +121,41 @@ export function threadsAwaitingTitle(
       now - thread.updatedAt.getTime() < TITLE_RECHECK_WINDOW_MS &&
       (rechecks.get(thread.id) ?? 0) < TITLE_RECHECK_LIMIT
   );
+}
+
+/** Recheck titles even when an equal SWR response does not rerun the effect. */
+export function scheduleTitleRechecks(
+  firstPage: ThreadItem[],
+  rechecks: Map<string, number>,
+  revalidate: () => Promise<ThreadItem[][] | undefined>
+): () => void {
+  let page = firstPage;
+  let cancelled = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  function schedule() {
+    if (cancelled || threadsAwaitingTitle(page, rechecks).length === 0) return;
+    timer = setTimeout(async () => {
+      const waiting = threadsAwaitingTitle(page, rechecks);
+      if (cancelled || waiting.length === 0) return;
+      for (const thread of waiting) {
+        rechecks.set(thread.id, (rechecks.get(thread.id) ?? 0) + 1);
+      }
+      try {
+        const updated = await revalidate();
+        if (updated?.[0]) page = updated[0];
+      } catch {
+        // A transient failure still consumes an attempt, but not the remainder.
+      }
+      schedule();
+    }, TITLE_RECHECK_MS);
+  }
+
+  schedule();
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
 }
 
 export function useThreads(props: {
@@ -196,23 +234,10 @@ export function useThreads(props: {
 
   const { data, mutate } = threads;
   const titleRechecks = useRef(new Map<string, number>());
-  useEffect(() => {
-    const waiting = threadsAwaitingTitle(
-      data?.[0] ?? [],
-      titleRechecks.current
-    );
-    if (waiting.length === 0) return;
-    const timer = setTimeout(() => {
-      for (const thread of waiting) {
-        titleRechecks.current.set(
-          thread.id,
-          (titleRechecks.current.get(thread.id) ?? 0) + 1
-        );
-      }
-      void mutate();
-    }, TITLE_RECHECK_MS);
-    return () => clearTimeout(timer);
-  }, [data, mutate]);
+  useEffect(
+    () => scheduleTitleRechecks(data?.[0] ?? [], titleRechecks.current, mutate),
+    [data, mutate]
+  );
 
   return threads;
 }

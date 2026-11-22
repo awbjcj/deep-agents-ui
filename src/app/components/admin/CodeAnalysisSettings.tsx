@@ -1054,7 +1054,10 @@ export function CodeAnalysisSettings({
                 id="analysis-copilot-hosts"
                 label="Allowed GitHub account hostnames"
                 entryLabel="New tenant hostname"
-                options={engines.copilot.allowed_github_hosts}
+                options={[
+                  "github.com",
+                  ...engines.copilot.allowed_github_hosts,
+                ]}
                 selected={copilotPolicy.allowed_github_hosts}
                 schema={copilotPolicyHost}
                 onChange={(allowed_github_hosts) =>

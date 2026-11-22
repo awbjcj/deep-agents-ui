@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   deriveMeta,
+  scheduleTitleRechecks,
   threadsAwaitingTitle,
 } from "../src/app/hooks/useThreads.ts";
 
@@ -69,4 +70,102 @@ test("only recent idle untitled threads are rechecked, a bounded number of times
     threadsAwaitingTitle(threads, rechecks, now).map((thread) => thread.id),
     ["waiting"]
   );
+});
+
+test("a generated or manual title overrides a cached fallback at the same timestamp", () => {
+  const original = thread({}, "Fallback");
+  assert.equal(deriveMeta(original).title, "Fallback");
+  const named = { ...original, metadata: { title: "Generated" } };
+  assert.equal(deriveMeta(named).title, "Generated");
+  assert.equal(
+    deriveMeta({
+      ...named,
+      metadata: { ...named.metadata, custom_name: "Manual" },
+    }).title,
+    "Manual"
+  );
+});
+
+function pendingTitle(id = "thread") {
+  return {
+    id,
+    updatedAt: new Date(Date.now()),
+    status: "idle",
+    title: "Fallback",
+    description: "",
+    titled: false,
+  };
+}
+
+test("title checks continue after an equal SWR response and stop when named", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: Date.now() });
+  const item = pendingTitle();
+  let page = [item];
+  const calls = [];
+  const rechecks = new Map();
+  const cancel = scheduleTitleRechecks(page, rechecks, async () => {
+    calls.push(Date.now());
+    if (calls.length === 2) {
+      page = [{ ...item, title: "Generated", titled: true }];
+    }
+    // First result is deep-equal: SWR does not update data or rerun the effect.
+    return [page.map((row) => ({ ...row }))];
+  });
+
+  t.mock.timers.tick(4000);
+  await Promise.resolve();
+  assert.equal(calls.length, 1);
+  t.mock.timers.tick(4000);
+  await Promise.resolve();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1] - calls[0], 4000);
+  assert.equal(page[0].title, "Generated");
+  t.mock.timers.tick(20_000);
+  assert.equal(calls.length, 2);
+  cancel();
+});
+
+test("title retries are bounded, resilient to rejection, and cancel when disposed", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: Date.now() });
+  const item = pendingTitle();
+  let calls = 0;
+  const cancel = scheduleTitleRechecks([item], new Map(), async () => {
+    calls += 1;
+    if (calls === 1) throw Error("temporary failure");
+  });
+  for (let i = 0; i < 4; i++) {
+    t.mock.timers.tick(4000);
+    await Promise.resolve();
+  }
+  assert.equal(calls, 3);
+  cancel();
+
+  let finish;
+  const dispose = scheduleTitleRechecks([item], new Map(), () => {
+    calls += 1;
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  });
+  t.mock.timers.tick(4000);
+  t.mock.timers.tick(8000);
+  assert.equal(calls, 4, "never overlap a pending revalidation");
+  dispose();
+  finish();
+  await Promise.resolve();
+  t.mock.timers.tick(12_000);
+  assert.equal(calls, 4, "never reschedule after disposal");
+});
+
+test("title retries reevaluate the original two-minute eligibility window", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: Date.now() });
+  const item = pendingTitle();
+  item.updatedAt = new Date(Date.now() - 119_000);
+  let calls = 0;
+  const cancel = scheduleTitleRechecks([item], new Map(), async () => {
+    calls += 1;
+  });
+  t.mock.timers.tick(4000);
+  assert.equal(calls, 0);
+  cancel();
 });
