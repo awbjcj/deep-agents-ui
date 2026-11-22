@@ -353,6 +353,7 @@ export function useChat({
         .then((thread) => {
           if (!threadIdRef.current) {
             threadIdRef.current = thread.thread_id;
+            setCreatedThread({ accountId: userId, id: thread.thread_id });
             setThreadId(thread.thread_id);
             onHistoryRevalidate?.();
           }
@@ -363,7 +364,13 @@ export function useChat({
         });
     }
     return creatingThreadRef.current;
-  }, [client, onHistoryRevalidate, setThreadId, threadCreationMetadata]);
+  }, [
+    client,
+    onHistoryRevalidate,
+    setThreadId,
+    threadCreationMetadata,
+    userId,
+  ]);
 
   // Read the execution budget on submission, including checkpoint retries/resumes.
   // Do not enable __event_streaming_v2 until the deferred SDK migration lands.
@@ -876,13 +883,8 @@ export function useChat({
     [rootFiles, livePendingFiles]
   );
   const pendingFilePaths = useMemo(
-    () =>
-      new Set(
-        Object.keys(livePendingFiles.files).filter(
-          (path) => !(path in rootFiles)
-        )
-      ),
-    [livePendingFiles, rootFiles]
+    () => new Set(Object.keys(livePendingFiles.files)),
+    [livePendingFiles]
   );
 
   const rawServerSourceImageAttachments = useMemo(
@@ -1166,13 +1168,18 @@ export function useChat({
 
   // Uploads, deletes and background reports run outside this stream, so read
   // the persisted thread files after their maintenance runs complete.
+  const fileRefreshSequence = useRef({ requested: 0, applied: 0 });
   const refreshFiles = useCallback(
     async (targetThreadId?: string | null) => {
       const target = targetThreadId ?? threadIdRef.current;
       if (!target) return;
+      const sequence = fileRefreshSequence.current;
+      const request = ++sequence.requested;
       try {
         const refreshed = await client.threads.getState<StateType>(target);
-        if (threadIdRef.current !== target) return;
+        if (threadIdRef.current !== target || request < sequence.applied)
+          return;
+        sequence.applied = request;
         const refreshedFiles = refreshed.values?.files ?? {};
         // Read the live baselines: this runs after a long upload, and a stale
         // closure baseline would make the override clear itself immediately.

@@ -106,10 +106,11 @@ export function projectContextUpdates(
     if (!present.has(id)) committedRecords.delete(id);
   }
   if (pending && !accepted.has(pending.id)) {
-    const anchor = visible.findIndex(
-      (message) => message.id === pending.afterMessageId
-    );
-    if (anchor !== -1) {
+    const anchor =
+      pending.afterMessageId === null
+        ? -1
+        : visible.findIndex((message) => message.id === pending.afterMessageId);
+    if (pending.afterMessageId === null || anchor !== -1) {
       let card = summaryMessages.get(pending);
       if (!card) {
         card = {

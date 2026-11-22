@@ -73,6 +73,7 @@ interface PreparedAttachments {
 
 interface UseAttachmentsOpts {
   threadId: string | null;
+  createdThreadId?: string;
   ensureThreadId: () => Promise<string | null>;
   files: Record<string, string>;
   /**
@@ -106,13 +107,15 @@ function attachmentName(item: AttachmentState): string {
 
 export function useAttachments({
   threadId,
+  createdThreadId,
   ensureThreadId,
   files,
   onFilesChanged,
 }: UseAttachmentsOpts) {
   const [items, setItems] = useState<AttachmentState[]>([]);
   const aborters = useRef(new Map<string, AbortController>());
-  const previousThreadId = useRef<string | null>(null);
+  const previousThreadId = useRef(threadId);
+  const draftCreationBaseline = useRef(createdThreadId);
   const itemsRef = useRef<AttachmentState[]>([]);
   const reserved = useRef(new Set<string>());
   const uploadQueue = useRef<Promise<void>>(Promise.resolve());
@@ -142,13 +145,14 @@ export function useAttachments({
     );
   }, [files]);
 
-  // Switching away from an existing thread clears in-flight chips.
-  // null -> string is initial thread creation; keep attachments in place.
+  // Keep draft uploads only when that draft became the new conversation.
   useEffect(() => {
-    if (
-      previousThreadId.current !== null &&
-      previousThreadId.current !== threadId
-    ) {
+    const previous = previousThreadId.current;
+    const openedDraftConversation =
+      previous === null &&
+      threadId === createdThreadId &&
+      createdThreadId !== draftCreationBaseline.current;
+    if (previous !== threadId && !openedDraftConversation) {
       const readyItems = itemsRef.current.filter(
         (item): item is Extract<AttachmentState, { phase: "ready" }> =>
           item.phase === "ready" && !reserved.current.has(item.localId)
@@ -165,8 +169,10 @@ export function useAttachments({
       aborters.current.clear();
       setItems([]);
     }
+    if (threadId === null && previous !== null)
+      draftCreationBaseline.current = createdThreadId;
     previousThreadId.current = threadId;
-  }, [threadId]);
+  }, [createdThreadId, threadId]);
 
   // Abort in-flight uploads on unmount
   useEffect(() => {
@@ -218,6 +224,15 @@ export function useAttachments({
           item.file,
           controller.signal
         );
+        if (controller.signal.aborted) {
+          if (meta.state_files_key)
+            await deleteUpload(uploadThreadId, meta.state_files_key);
+          return;
+        }
+        if (!meta.artifact_path && !meta.state_files_key)
+          throw new Error(
+            "The upload response did not include a stored file path."
+          );
         update(item.localId, {
           phase: "ready",
           localId: item.localId,

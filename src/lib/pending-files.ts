@@ -109,7 +109,7 @@ export function applyPendingDelta(
 }
 
 /**
- * Drop overlay entries the root thread now owns. Once the run is settled
+ * Drop overlay entries whose contents have reached the root thread. Once the run is settled
  * (not streaming and not paused for review) the root state is authoritative,
  * so the whole overlay is discarded. Returns the same object when unchanged.
  */
@@ -130,7 +130,13 @@ export function prunePendingFiles(
   if (settled) return EMPTY_PENDING_FILES;
   const files: Record<string, unknown> = {};
   for (const path of pendingPaths) {
-    if (!(path in rootFiles)) files[path] = pending.files[path];
+    const pendingValue = pending.files[path];
+    // Checkpoint snapshots recreate file records across transport boundaries.
+    if (
+      rootFiles[path] !== pendingValue &&
+      JSON.stringify(rootFiles[path]) !== JSON.stringify(pendingValue)
+    )
+      files[path] = pendingValue;
   }
   const records: Record<string, SourceImageRecord> = {};
   for (const id of recordIds) {
@@ -151,13 +157,13 @@ export function prunePendingFiles(
   return unchanged ? pending : { files, records, documents };
 }
 
-/** Root files win over overlay entries for the same path. */
+/** Show in-flight writes, including updates to existing files. */
 export function mergePendingFiles<T>(
   rootFiles: Record<string, T>,
   pending: PendingSubagentFiles
 ): Record<string, T> {
   if (Object.keys(pending.files).length === 0) return rootFiles;
-  return { ...(pending.files as Record<string, T>), ...rootFiles };
+  return { ...rootFiles, ...(pending.files as Record<string, T>) };
 }
 
 /**
@@ -173,7 +179,8 @@ export function withoutPendingFiles<T>(
   const rootNext: Record<string, T> = {};
   for (const [path, value] of Object.entries(next)) {
     const overlay = pending.files[path];
-    if (!(path in previousRoot) && overlay !== undefined && overlay === value) {
+    if (overlay !== undefined && overlay === value) {
+      if (path in previousRoot) rootNext[path] = previousRoot[path] as T;
       continue;
     }
     rootNext[path] = value;

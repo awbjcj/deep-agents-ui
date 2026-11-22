@@ -54,9 +54,11 @@ export function responsesDetails(message: Message) {
       if (block.type === "compaction") activity.add("Context compacted");
       if (block.type === "tool_search_call") activity.add("Tools searched");
       if (block.type === "web_search_call") {
-        activity.add(
-          block.status === "completed" ? "Web searched" : "Searching the web"
-        );
+        if (block.status === "completed") activity.add("Web searched");
+        else if (block.status === "failed" || block.status === "incomplete")
+          activity.add("Web search did not complete");
+        else if (block.status === "in_progress" || block.status === "searching")
+          activity.add("Searching the web");
         const action = block.action as { sources?: unknown[] } | undefined;
         if (Array.isArray(action?.sources))
           action.sources.slice(0, 100).forEach(addSource);

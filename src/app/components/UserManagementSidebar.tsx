@@ -272,7 +272,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         user_id: result.user_id,
         username: result.username,
         role: result.role,
-        email: result.email ?? user?.email,
+        email: result.email !== undefined ? result.email : user?.email,
         access_token: result.access_token,
       });
       setNewUsername("");
@@ -304,10 +304,12 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         user_id: result.user_id,
         username: result.username,
         role: result.role,
-        email: result.email ?? trimmedEmail,
+        email: result.email !== undefined ? result.email : trimmedEmail,
         access_token: result.access_token,
       });
-      setProfileEmail(result.email ?? trimmedEmail);
+      setProfileEmail(
+        result.email === undefined ? trimmedEmail : (result.email ?? "")
+      );
       setNewEmail("");
       setEmailSaved(true);
       toast.success("Email updated");
@@ -350,7 +352,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
         user_id: result.user_id,
         username: result.username,
         role: result.role,
-        email: result.email ?? user?.email,
+        email: result.email !== undefined ? result.email : user?.email,
         access_token: result.access_token,
       });
       setCurrentPassword("");

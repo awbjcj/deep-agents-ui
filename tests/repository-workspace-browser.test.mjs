@@ -25,7 +25,7 @@ test(
         resolveDir: ROOT,
         loader: "tsx",
         contents: `
-      import React, { useState } from 'react';
+      import React, { useCallback, useState } from 'react';
       import { createRoot } from 'react-dom/client';
       import { RepositoryWorkspace } from './src/app/components/RepositoryWorkspace';
       import { CodeAnalysisJobs } from './src/app/components/CodeAnalysisJobs';
@@ -33,6 +33,10 @@ test(
         const [thread, setThread] = useState(new URL(location.href).searchParams.get('threadId'));
         const [revision, setRevision] = useState(0);
         const [open, setOpen] = useState(false);
+        const [release, setRelease] = useState(null);
+        const updateRelease = useCallback((threadId, available) => {
+          setRelease({ threadId, available });
+        }, []);
         const ensure = async () => {
           history.replaceState({}, '', '?threadId=thread-1');
           setThread('thread-1');
@@ -41,8 +45,8 @@ test(
         window.switchThread = () => setThread('thread-2');
         return <main className="mx-auto max-w-3xl p-4">
           <h1>Code Analyzer</h1>
-          <RepositoryWorkspace accountId="user-1" threadId={thread} ensureThreadId={ensure} chatBusy={false} open={open} onOpenChange={setOpen} onJobSubmitted={() => setRevision(value => value + 1)} />
-          <CodeAnalysisJobs threadId={thread} isLoading={false} refreshRevision={revision} allowRelease={false} onManageWorkspace={() => setOpen(true)} />
+          <RepositoryWorkspace accountId="user-1" threadId={thread} ensureThreadId={ensure} chatBusy={false} open={open} onOpenChange={setOpen} onJobSubmitted={() => setRevision(value => value + 1)} onReleaseAvailabilityChange={updateRelease} />
+          <CodeAnalysisJobs threadId={thread} isLoading={false} refreshRevision={revision} allowRelease={release?.threadId !== thread || !release?.available} onManageWorkspace={() => setOpen(true)} />
         </main>;
       }
       createRoot(document.getElementById('root')).render(<App />);
@@ -484,6 +488,27 @@ test(
       await trigger.click();
       await dialog.getByText("Ready to analyze").waitFor();
       await dialog.getByText("3 / 20 targets").waitFor();
+      await page.keyboard.press("Escape");
+      const releaseInChat = (tab) =>
+        tab
+          .getByRole("region", { name: "Background code analysis" })
+          .getByRole("button", { name: "Release workspace", exact: true });
+      await page
+        .getByRole("region", { name: "Background code analysis" })
+        .waitFor();
+      assert.equal(
+        await releaseInChat(page).count(),
+        0,
+        "restored draft owns the release action"
+      );
+      const freshTab = await browser.newPage();
+      try {
+        await freshTab.goto(page.url());
+        await releaseInChat(freshTab).waitFor();
+      } finally {
+        await freshTab.close();
+      }
+      await trigger.click();
       await dialog
         .getByRole("button", { name: "Continue to analysis" })
         .click();

@@ -97,16 +97,24 @@ test("overlay yields to root state and clears once the run settles", () => {
   assert.equal(prunePendingFiles(pending, {}, true), EMPTY_PENDING_FILES);
 });
 
-test("merged files keep root content authoritative", () => {
+test("pending edits to existing files remain visible until their contents reach root", () => {
+  const updated = { ...image, content: ["updated image"] };
   const pending = applyPendingDelta(EMPTY_PENDING_FILES, {
-    files: { [imagePath]: { content: "stale" }, [docPath]: image },
+    files: { [imagePath]: updated, [docPath]: image },
     records: {},
   });
   const root = { [imagePath]: image, "/notes.md": "notes" };
-  const merged = mergePendingFiles(root, pending);
-  assert.equal(merged[imagePath], image);
+  const overlay = prunePendingFiles(pending, root, false);
+  const merged = mergePendingFiles(root, overlay);
+  assert.equal(merged[imagePath], updated);
   assert.equal(merged[docPath], image);
   assert.equal(merged["/notes.md"], "notes");
+  assert.deepEqual(withoutPendingFiles(merged, root, overlay), root);
+  const persisted = { ...root, [imagePath]: structuredClone(updated) };
+  assert.deepEqual(
+    Object.keys(prunePendingFiles(overlay, persisted, false).files),
+    [docPath]
+  );
   assert.equal(mergePendingFiles(root, EMPTY_PENDING_FILES), root);
 });
 

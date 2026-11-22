@@ -367,9 +367,9 @@ function toolCallEqual(a: ToolCall, b: ToolCall): boolean {
 }
 
 /**
- * A message bubble renders from `type` + `content` (+ human attachment kwargs).
+ * Message bubbles use content, attachment kwargs, and response metadata.
  * Tool calls drive a separate prop, so they are excluded here. For finished
- * messages the SDK keeps `content`/`additional_kwargs` references stable across
+ * messages the SDK keeps these references stable across
  * frames (it shallow-spreads the envelope), so reference equality is both
  * correct and O(1); the live message's `content` ref changes each token and
  * correctly compares unequal.
@@ -380,7 +380,9 @@ function messageRenderEqual(a: Message, b: Message): boolean {
     (a as { content?: unknown }).content ===
       (b as { content?: unknown }).content &&
     (a as { additional_kwargs?: unknown }).additional_kwargs ===
-      (b as { additional_kwargs?: unknown }).additional_kwargs
+      (b as { additional_kwargs?: unknown }).additional_kwargs &&
+    (a as { response_metadata?: unknown }).response_metadata ===
+      (b as { response_metadata?: unknown }).response_metadata
   );
 }
 

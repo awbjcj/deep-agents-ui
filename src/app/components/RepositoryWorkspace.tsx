@@ -16,6 +16,7 @@ export function RepositoryWorkspace({
   open,
   onOpenChange,
   onJobSubmitted,
+  onReleaseAvailabilityChange,
 }: {
   threadId: string | null;
   accountId: string;
@@ -24,6 +25,7 @@ export function RepositoryWorkspace({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onJobSubmitted: () => void;
+  onReleaseAvailabilityChange?: (threadId: string, available: boolean) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [threadError, setThreadError] = useState(false);
@@ -64,6 +66,7 @@ export function RepositoryWorkspace({
           open={open}
           chatBusy={chatBusy}
           onJobSubmitted={onJobSubmitted}
+          onReleaseAvailabilityChange={onReleaseAvailabilityChange}
         />
       ) : (
         <WorkspaceDialog>

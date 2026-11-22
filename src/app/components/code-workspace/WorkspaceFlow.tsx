@@ -27,12 +27,14 @@ export function WorkspaceFlow({
   open,
   chatBusy,
   onJobSubmitted,
+  onReleaseAvailabilityChange,
 }: {
   threadId: string;
   accountId: string;
   open: boolean;
   chatBusy: boolean;
   onJobSubmitted: () => void;
+  onReleaseAvailabilityChange?: (threadId: string, available: boolean) => void;
 }) {
   const state = useRepositoryWorkspace(
     threadId,
@@ -40,6 +42,12 @@ export function WorkspaceFlow({
     open,
     onJobSubmitted
   );
+  const canRelease = Boolean(state.prepareJob);
+  useEffect(() => {
+    onReleaseAvailabilityChange?.(threadId, canRelease);
+    return () => onReleaseAvailabilityChange?.(threadId, false);
+  }, [canRelease, onReleaseAvailabilityChange, threadId]);
+
   const id = useId();
   const content = useRef<HTMLDivElement>(null);
   const releaseButton = useRef<HTMLButtonElement>(null);
@@ -222,7 +230,7 @@ export function WorkspaceFlow({
             : null
         }
         notice={state.notice}
-        onRelease={state.prepareJob ? state.release : undefined}
+        onRelease={canRelease ? state.release : undefined}
         releaseDisabled={locked}
         confirmRelease={confirmRelease}
         onCancelRelease={() => {

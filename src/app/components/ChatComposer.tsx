@@ -274,6 +274,7 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       accept: acceptAttr,
     } = useAttachments({
       threadId,
+      createdThreadId,
       ensureThreadId: ensureAttachmentThreadId,
       files,
       onFilesChanged: onThreadFilesChanged,
