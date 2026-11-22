@@ -224,7 +224,7 @@ export function UsageLimitControls() {
   };
 
   const saveTier = async (tier: Role) => {
-    if (!drafts || savingTier) return;
+    if (!drafts || !limits || savingTier) return;
     let parsed: Omit<TierQuotaLimits, "tier">;
     try {
       parsed = parseTierQuotaDraft(tier, drafts[tier]);
@@ -238,7 +238,7 @@ export function UsageLimitControls() {
     setSavingTier(tier);
     setErrors((current) => ({ ...current, [tier]: undefined }));
     try {
-      const updated = await apiSetTierQuotaLimits(tier, parsed);
+      const updated = await apiSetTierQuotaLimits(tier, parsed, limits[tier]);
       setLimits((current) =>
         current ? { ...current, [tier]: updated } : current
       );
@@ -253,9 +253,17 @@ export function UsageLimitControls() {
           : `Failed to save ${tier} quotas`;
       setErrors((current) => ({ ...current, [tier]: message }));
       toast.error(`${message}. Refreshing saved values.`);
-      setLimits(null);
-      setDrafts(null);
-      await loadQuotas();
+      try {
+        const saved = await apiGetTierQuotaLimits(tier);
+        setLimits((current) =>
+          current ? { ...current, [tier]: saved } : current
+        );
+        setDrafts((current) =>
+          current ? { ...current, [tier]: quotaToDraft(saved) } : current
+        );
+      } catch {
+        toast.error(`Could not refresh saved quotas for ${tier}.`);
+      }
     } finally {
       setSavingTier(null);
     }

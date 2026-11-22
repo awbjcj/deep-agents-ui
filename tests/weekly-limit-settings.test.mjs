@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { apiSetTierQuotaLimits } from "../src/lib/auth.ts";
 
 test("admin console exposes all three weekly cap switches", async () => {
   const source = await readFile(
@@ -139,4 +140,46 @@ test("tier quota inputs lock while that tier's save is in flight", async () => {
   assert.match(panel, /const isSavingRow = savingTier === role;/);
   // Tokens, calls and cost inputs all honour the in-flight lock.
   assert.equal(panel.match(/disabled=\{isSavingRow\}/g)?.length, 3);
+});
+
+test("tier saves leave untouched quota dimensions alone and report partial writes", async ({
+  mock,
+}) => {
+  const requests = [];
+  mock.method(globalThis, "fetch", async (path, request) => {
+    requests.push([path, JSON.parse(request.body)]);
+    if (path.includes("/tier-call-limits/"))
+      return Response.json({ detail: "Calls unavailable" }, { status: 503 });
+    return Response.json(JSON.parse(request.body));
+  });
+  const baseline = {
+    tier: "user",
+    token_limit: 100,
+    call_limit: 10,
+    cost_limit_micros: 1_000_000,
+  };
+  assert.deepEqual(
+    await apiSetTierQuotaLimits(
+      "user",
+      { ...baseline, token_limit: 200 },
+      baseline
+    ),
+    { ...baseline, token_limit: 200 }
+  );
+  assert.deepEqual(requests, [
+    ["/api/admin/tier-token-limits/user", { weekly_limit: 200 }],
+  ]);
+  requests.length = 0;
+  await assert.rejects(
+    apiSetTierQuotaLimits(
+      "user",
+      { ...baseline, call_limit: 20, cost_limit_micros: 2_000_000 },
+      baseline
+    ),
+    /Calls unavailable.*the cost limit for user did save/
+  );
+  assert.deepEqual(requests, [
+    ["/api/admin/tier-call-limits/user", { weekly_limit: 20 }],
+    ["/api/admin/tier-cost-limits/user", { weekly_limit_micros: 2_000_000 }],
+  ]);
 });

@@ -41,14 +41,20 @@ export function useScheduledTasks(accountId: string) {
     try {
       let message = "Task updated.";
       if (name === "run") {
-        // Reuse the request ID only when the outcome is unknown (no HTTP
-        // response), so a retry cannot queue the same manual run twice.
+        // A network error, timeout, server error, or malformed success can
+        // leave acceptance unknown. Reusing the ID makes retries idempotent.
         const key = runKeys.current.get(id) ?? crypto.randomUUID();
         runKeys.current.set(id, key);
         try {
           await scheduledTasksAPI.run(id, key);
         } catch (cause) {
-          if (cause instanceof TaskAPIError) runKeys.current.delete(id);
+          if (
+            cause instanceof TaskAPIError &&
+            cause.status >= 400 &&
+            cause.status < 500 &&
+            cause.status !== 408
+          )
+            runKeys.current.delete(id);
           throw cause;
         }
         runKeys.current.delete(id);

@@ -56,6 +56,49 @@ function ConversationSkeleton() {
   );
 }
 
+/** Mount the latest transcript rows first and reveal older rows on request. */
+function ConversationHistory({
+  count,
+  renderRows,
+  stopFollowing,
+}: {
+  count: number;
+  renderRows: (start: number) => React.ReactNode;
+  stopFollowing: () => void;
+}) {
+  const [hidden, setHidden] = useState(() => Math.max(0, count - 60));
+  const start = Math.min(hidden, Math.max(0, count - 60));
+  const marker = useRef<HTMLDivElement>(null);
+  const priorBottom = useRef<number | null>(null);
+  React.useLayoutEffect(() => {
+    const viewport = marker.current?.closest("#conversation");
+    if (viewport && priorBottom.current !== null) {
+      viewport.scrollTop += viewport.scrollHeight - priorBottom.current;
+      priorBottom.current = null;
+    }
+  }, [hidden]);
+  return (
+    <>
+      <div ref={marker}>
+        {start > 0 && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              stopFollowing();
+              priorBottom.current =
+                marker.current?.closest("#conversation")?.scrollHeight ?? null;
+              setHidden(Math.max(0, start - 60));
+            }}
+          >
+            Show earlier messages ({start})
+          </Button>
+        )}
+      </div>
+      {renderRows(start)}
+    </>
+  );
+}
+
 interface ChatInterfaceProps {
   assistant: Assistant | null;
   userId?: string;
@@ -102,6 +145,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       canUseCodeAnalyzer(user) &&
       assistant?.graph_id === CODE_ANALYZER_AGENT_ID;
     const [workspaceOpen, setWorkspaceOpen] = useState(false);
+    const [workspaceRelease, setWorkspaceRelease] = useState<{
+      threadId: string;
+      available: boolean;
+    } | null>(null);
+    const updateWorkspaceRelease = useCallback(
+      (threadId: string, available: boolean) =>
+        setWorkspaceRelease({ threadId, available }),
+      []
+    );
     const [analysisRefresh, setAnalysisRefresh] = useState(0);
     const [analysisVisibility, setAnalysisVisibility] = useState<{
       threadId: string;
@@ -343,34 +395,47 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 sourceImageAttachments={sourceImageAttachments}
                 sourceAttachmentRecords={sourceAttachmentRecords}
               >
-                {processedMessages.map((data, index) => {
-                  if (isTaskOutcomeNotice(data.message, taskVerification))
-                    return null;
-                  const messageUi = data.message.id
-                    ? uiByMessageId.get(data.message.id)
-                    : undefined;
-                  return (
-                    <Fragment key={data.stableKey}>
-                      <ChatMessage
-                        onUseEvidence={addEvidence}
-                        message={data.message}
-                        toolCalls={data.toolCalls}
-                        isLoading={isLoading}
-                        isStreaming={
-                          isLoading && index === processedMessages.length - 1
-                        }
-                        ui={messageUi}
-                        stream={messageUi?.length ? stream : undefined}
-                        onResumeInterrupt={resumeInterrupt}
-                        graphId={assistant?.graph_id}
-                        files={files}
-                        sourceImageAttachments={sourceImageAttachments}
-                        rubricCheckNumber={checkNumbers.get(data.stableKey)}
-                      />
-                      {index === candidateIndex && outcomeStatus}
-                    </Fragment>
-                  );
-                })}
+                {processedMessages.length > 0 && (
+                  <ConversationHistory
+                    key={threadId}
+                    count={processedMessages.length}
+                    stopFollowing={stopScroll}
+                    renderRows={(start) =>
+                      processedMessages.slice(start).map((data, offset) => {
+                        const index = start + offset;
+                        if (isTaskOutcomeNotice(data.message, taskVerification))
+                          return null;
+                        const messageUi = data.message.id
+                          ? uiByMessageId.get(data.message.id)
+                          : undefined;
+                        return (
+                          <Fragment key={data.stableKey}>
+                            <ChatMessage
+                              onUseEvidence={addEvidence}
+                              message={data.message}
+                              toolCalls={data.toolCalls}
+                              isLoading={isLoading}
+                              isStreaming={
+                                isLoading &&
+                                index === processedMessages.length - 1
+                              }
+                              ui={messageUi}
+                              stream={messageUi?.length ? stream : undefined}
+                              onResumeInterrupt={resumeInterrupt}
+                              graphId={assistant?.graph_id}
+                              files={files}
+                              sourceImageAttachments={sourceImageAttachments}
+                              rubricCheckNumber={checkNumbers.get(
+                                data.stableKey
+                              )}
+                            />
+                            {index === candidateIndex && outcomeStatus}
+                          </Fragment>
+                        );
+                      })
+                    }
+                  />
+                )}
                 {candidateIndex === -1 && outcomeStatus}
                 <PendingToolApprovals
                   interrupts={interrupts}
@@ -395,7 +460,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                 }
                 isLoading={isLoading}
                 refreshRevision={analysisRefresh}
-                allowRelease={!showRepositoryWorkspace}
+                allowRelease={
+                  !showRepositoryWorkspace ||
+                  workspaceRelease?.threadId !== analysisThreadId ||
+                  !workspaceRelease?.available
+                }
                 onManageWorkspace={
                   showRepositoryWorkspace
                     ? () => setWorkspaceOpen(true)
@@ -678,6 +747,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                   open={workspaceOpen}
                   onOpenChange={setWorkspaceOpen}
                   onJobSubmitted={refreshAnalysis}
+                  onReleaseAvailabilityChange={updateWorkspaceRelease}
                 />
               </div>
             )}

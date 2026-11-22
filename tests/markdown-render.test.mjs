@@ -5,6 +5,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { MarkdownRenderer as MarkdownContent } from "../src/app/components/MarkdownRenderer.tsx";
+import { normalizeAssistantMarkdown } from "../src/app/utils/markdown.ts";
 
 /**
  * Renders assistant markdown exactly as the chat does. Server rendering resolves
@@ -156,6 +157,28 @@ test("renders OpenAI-style escaped delimiters as math", () => {
 test("renders Anthropic/Gemini-style dollar delimiters as math", () => {
   const html = render("Inline $x^2$ and display:\n\n$$\n\\int_0^1 x\\,dx\n$$");
   assert.deepEqual(mathAnnotations(html), ["x^2", String.raw`\int_0^1 x\,dx`]);
+});
+
+test("bare bracketed prose is not rendered as a math block", () => {
+  const html = render("[docs/api]\n\n[A/B testing]\n\n[file_name]");
+  assert.deepEqual(mathAnnotations(html), []);
+  for (const text of ["[docs/api]", "[A/B testing]", "[file_name]"])
+    assert.ok(html.includes(text), text);
+});
+
+test("indented display math and its streamed opener stay inside the list", () => {
+  const open = "- First item\n\n  \\[\n  x = 2";
+  assert.ok(normalizeAssistantMarkdown(open).includes("\n  \\[\n  x = 2"));
+  assert.ok(
+    normalizeAssistantMarkdown(open + "\n  \\]").includes(
+      "\n  $$\n  x = 2\n  $$"
+    )
+  );
+  const html = render(open + "\n  \\]");
+  assert.match(
+    html,
+    /<li(?:\s[^>]*)?>[\s\S]*<span class="katex-display">[\s\S]*<\/li>/
+  );
 });
 
 test("renders bare LaTeX environments as display math", () => {

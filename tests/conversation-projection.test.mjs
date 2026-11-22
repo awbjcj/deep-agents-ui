@@ -7,6 +7,16 @@ import {
 
 import { reconcileConversation } from "../src/app/hooks/internal/conversationProjection.ts";
 
+test("a metadata-only update replaces the projected message", () => {
+  const first = { type: "ai", id: "a", content: "Finished" };
+  const initial = reconcileConversation(null, [first], false, true);
+  const response_metadata = { status: "incomplete" };
+  const update = { ...first, response_metadata };
+  const next = reconcileConversation(initial, [update], false, true);
+  assert.equal(next[0].message.response_metadata, response_metadata);
+  assert.equal(reconcileConversation(next, [update], false, true)[0], next[0]);
+});
+
 test("explicit tool errors stay failed rather than appearing completed", () => {
   const messages = [
     {

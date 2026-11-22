@@ -649,13 +649,22 @@ def summarize_release(
     ``release_message`` is the message of the release commit when it is a merge
     (the pull-request title); a ``Version-Bump`` trailer in its final paragraph
     overrides the computed level (``none`` defers the changes to the next
-    release), and an architecture keyword there marks a code release MAJOR.
+    release). Breaking markers request a major bump, and an architecture keyword
+    marks a code release MAJOR.
     The whole release is also re-checked structurally so a subsystem delivered
     across many commits is still recognised as a large feature.
     """
     override = trailer_level(release_message)
     if override is not None:
         return override, f"Version-Bump trailer on release commit ({override.label})"
+    subject, _, body = release_message.strip().partition("\n")
+    if re.match(r"Merge pull request #\d+\b", subject):
+        subject = body.lstrip().partition("\n")[0]
+    header = _HEADER_RE.match(subject)
+    if header and header.group("bang"):
+        return Level.MAJOR, "breaking change marker (!) on release commit"
+    if _BREAKING_RE.search(body):
+        return Level.MAJOR, "BREAKING CHANGE footer on release commit"
     relevant = [
         change for change in changes if change.classification.level > Level.NONE
     ]
