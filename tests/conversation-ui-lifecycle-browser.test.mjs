@@ -98,6 +98,7 @@ test(
     };
     let jobs = [];
     let discoveries = 0;
+    let missingDiscoveries = 0;
     const polls = new Map();
     const releases = [];
     let delayedDiscovery = null;
@@ -107,6 +108,11 @@ test(
       res.setHeader("Content-Type", "application/json");
       if (url.pathname === "/api/code-analysis/jobs") {
         discoveries++;
+        if (url.searchParams.get("thread_id") === "missing-thread") {
+          missingDiscoveries++;
+          res.statusCode = 404;
+          return res.end(JSON.stringify({ detail: "Thread not found" }));
+        }
         const snapshot = JSON.stringify(
           url.searchParams.get("thread_id") === "thread-1" ? jobs : []
         );
@@ -159,7 +165,11 @@ test(
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => {
-        if (message.type() === "error") errors.push(message.text());
+        if (
+          message.type() === "error" &&
+          !message.location().url.includes("thread_id=missing-thread")
+        )
+          errors.push(message.text());
       });
       await page.goto(`http://127.0.0.1:${server.address().port}`);
       const welcome = page.locator(".welcome-state");
@@ -338,6 +348,32 @@ test(
         discoveries,
         beforeFocus,
         "a new chat must not rediscover createdThreadId's jobs"
+      );
+
+      await page.evaluate(() =>
+        window.updateChat({ threadId: "missing-thread", isThreadLoading: true })
+      );
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await page.waitForTimeout(150);
+      assert.equal(missingDiscoveries, 0, "wait for conversation history");
+
+      const missingResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes("thread_id=missing-thread") &&
+          response.status() === 404
+      );
+      await page.evaluate(() => window.updateChat({ isThreadLoading: false }));
+      await missingResponse;
+      // StrictMode can start two requests while mounting and abort the first.
+      await page.waitForTimeout(150);
+      const missingAfterMount = missingDiscoveries;
+      await page.waitForTimeout(2300);
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await page.waitForTimeout(150);
+      assert.equal(
+        missingDiscoveries,
+        missingAfterMount,
+        "stop discovery after a missing thread"
       );
 
       // Ignore a late result from an old conversation, then allow a clean revisit.

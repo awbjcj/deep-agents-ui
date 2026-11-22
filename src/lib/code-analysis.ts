@@ -590,17 +590,19 @@ export async function getAnalysisEngines(): Promise<EngineCatalog> {
   );
 }
 
-/** Recover background work even when delegated tool messages have disappeared. */
+/** Recover background work, or return null when the thread is unavailable. */
 export async function getRecentAnalysisJobs(
   threadId: string,
   signal?: AbortSignal
-): Promise<AnalysisJobView[]> {
+): Promise<AnalysisJobView[] | null> {
   const query = new URLSearchParams({ thread_id: threadId, limit: "5" });
+  const response = await apiFetch(`/code-analysis/jobs?${query}`, {
+    signal,
+    cache: "no-store",
+  });
+  if (response.status === 404) return null;
   const data = await responseJson(
-    await apiFetch(`/code-analysis/jobs?${query}`, {
-      signal,
-      cache: "no-store",
-    }),
+    response,
     "Failed to load conversation analysis jobs"
   );
   const jobs = z.array(analysisJobSchema).max(5).parse(data);

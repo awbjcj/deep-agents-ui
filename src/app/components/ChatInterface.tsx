@@ -389,8 +389,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
             )}
             {canUseCodeAnalyzer(user) && (
               <CodeAnalysisJobs
-                key={analysisThreadId}
-                threadId={analysisThreadId}
+                threadId={
+                  isThreadLoading || historyError ? null : analysisThreadId
+                }
                 isLoading={isLoading}
                 refreshRevision={analysisRefresh}
                 allowRelease={!showRepositoryWorkspace}
