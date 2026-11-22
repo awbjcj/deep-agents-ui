@@ -164,7 +164,7 @@ export const matlabReadinessSchema = z
   })
   .strict();
 
-const exactCopilotModel = z
+export const exactCopilotModel = z
   .string()
   .min(1)
   .max(256)
