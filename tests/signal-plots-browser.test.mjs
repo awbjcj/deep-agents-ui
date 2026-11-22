@@ -8,7 +8,7 @@ import {
 } from "./tool-permissions-browser-fixture.mjs";
 
 test(
-  "saved signal plots render inline with their tool calls and open full size",
+  "saved signal plots render as inline thumbnails and open full size",
   { skip: process.env.SIGNAL_PLOTS_BROWSER_TEST !== "1", timeout: 60000 },
   async () => {
     const { chromium } = await loadPlaywright(
@@ -105,7 +105,15 @@ test(
           (await preview.last().boundingBox()).y <
             (await answer.boundingBox()).y
         );
-        assert.ok((await preview.last().boundingBox()).width <= width);
+        for (const thumbnail of await preview.all()) {
+          const bounds = await thumbnail.boundingBox();
+          assert.ok(bounds.width <= 224 && bounds.height <= 160);
+          const image = thumbnail.getByRole("img", { name: "MAT signal plot" });
+          assert.equal(
+            await image.evaluate((img) => getComputedStyle(img).objectFit),
+            "contain"
+          );
+        }
         await preview.last().click();
         const dialog = page.getByRole("dialog");
         await dialog.getByRole("button", { name: "Download" }).waitFor();
