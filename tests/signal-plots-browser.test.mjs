@@ -8,7 +8,7 @@ import {
 } from "./tool-permissions-browser-fixture.mjs";
 
 test(
-  "saved signal plots render as inline thumbnails and open full size",
+  "only explicitly embedded visuals preview inline, and saved plot links open full size",
   { skip: process.env.SIGNAL_PLOTS_BROWSER_TEST !== "1", timeout: 60000 },
   async () => {
     const { chromium } = await loadPlaywright(
@@ -22,8 +22,10 @@ test(
     const root = "/_artifacts/user/plots/log-analysis/";
     const direct = `${root}signal-plot-${"a".repeat(32)}.png`;
     const delegated = `${root}signal-plot-${"b".repeat(32)}.png`;
+    const mermaid = "/_artifacts/user/plots/diagrams/mermaid/flow.png";
+    const plantuml = "/_artifacts/user/plots/diagrams/plantuml/sequence.png";
     const png =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR9sAAAAASUVORK5CYII=";
+      "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAZUlEQVR4nO3PUQkAIBTAwBfFSEawfwpD+HEIgwW4zdrn64YLGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEteOwCes/AiG2PDa4AAAAASUVORK5CYII=";
     const file = (callId) => ({
       content: png,
       encoding: "base64",
@@ -64,9 +66,24 @@ test(
             tool_call_id: "delegate",
             content: "Annotated the signal.",
           },
-          { type: "ai", id: "answer", content: "Here are the findings." },
+          {
+            type: "ai",
+            id: "answer",
+            content: [
+              "Here are the findings.",
+              `![Signal transition](${direct})`,
+              `![Mermaid flow](${mermaid})`,
+              `![PlantUML sequence](${plantuml})`,
+              `[Optional plot](${delegated})`,
+            ].join("\n\n"),
+          },
         ],
-        files: { [direct]: file("plot"), [delegated]: file("delegate") },
+        files: {
+          [direct]: file("plot"),
+          [delegated]: file("delegate"),
+          [mermaid]: file(),
+          [plantuml]: file(),
+        },
         todos: [],
       },
       tasks: [],
@@ -93,28 +110,29 @@ test(
         policy,
         "developer"
       );
-      const preview = page.getByRole("button", { name: /Open full-size plot/ });
       const answer = page.getByText("Here are the findings.");
       for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 900 });
         await page.reload();
         await answer.waitFor();
-        await preview.last().waitFor();
-        assert.equal(await preview.count(), 2);
-        assert.ok(
-          (await preview.last().boundingBox()).y <
-            (await answer.boundingBox()).y
-        );
-        for (const thumbnail of await preview.all()) {
-          const bounds = await thumbnail.boundingBox();
-          assert.ok(bounds.width <= 224 && bounds.height <= 160);
-          const image = thumbnail.getByRole("img", { name: "MAT signal plot" });
-          assert.equal(
-            await image.evaluate((img) => getComputedStyle(img).objectFit),
-            "contain"
-          );
+        for (const name of [
+          "Signal transition",
+          "Mermaid flow",
+          "PlantUML sequence",
+        ]) {
+          const preview = page.getByRole("img", { name, exact: true });
+          await preview.waitFor();
+          await preview.scrollIntoViewIfNeeded();
+          assert.equal(await preview.count(), 1);
+          const bounds = await preview.boundingBox();
+          assert.ok(bounds.width <= width && bounds.height <= 240);
+          assert.ok(bounds.y > (await answer.boundingBox()).y);
         }
-        await preview.last().click();
+        assert.equal(
+          await page.locator('img[src^="data:image/png"]').count(),
+          3
+        );
+        await page.getByText("Optional plot", { exact: true }).click();
         const dialog = page.getByRole("dialog");
         await dialog.getByRole("button", { name: "Download" }).waitFor();
         assert.match(await dialog.getAttribute("aria-labelledby"), /.+/);

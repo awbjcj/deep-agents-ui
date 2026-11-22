@@ -29,8 +29,6 @@ import { Button } from "@/components/ui/button";
 import { WelcomeState } from "./WelcomeState";
 import { TaskOutcomeStatus } from "./TaskOutcomeStatus";
 import { CodeAnalysisJobs } from "./CodeAnalysisJobs";
-import { SignalPlotPreviews } from "./SignalPlotPreviews";
-import { groupSignalPlots } from "@/lib/signal-plots";
 import { RepositoryWorkspace } from "./RepositoryWorkspace";
 import {
   isLatestTaskOutcome,
@@ -209,18 +207,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       () => rubricCheckNumbers(processedMessages),
       [processedMessages]
     );
-    const signalPlots = useMemo(
-      () =>
-        groupSignalPlots(
-          files,
-          new Set(
-            processedMessages.flatMap(({ toolCalls }) =>
-              toolCalls.map(({ id }) => id)
-            )
-          )
-        ),
-      [files, processedMessages]
-    );
     // Attach the current run's completion status to the answer it judges. The
     // run's own persisted notice would repeat it, so that row is skipped.
     const candidateId = taskVerification?.outcome.candidate_message_id;
@@ -380,16 +366,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                         sourceImageAttachments={sourceImageAttachments}
                         rubricCheckNumber={checkNumbers.get(data.stableKey)}
                       />
-                      <SignalPlotPreviews
-                        plots={data.toolCalls.flatMap(
-                          ({ id }) => signalPlots.byCall.get(id) ?? []
-                        )}
-                      />
                       {index === candidateIndex && outcomeStatus}
                     </Fragment>
                   );
                 })}
-                <SignalPlotPreviews plots={signalPlots.unlinked} />
                 {candidateIndex === -1 && outcomeStatus}
                 <PendingToolApprovals
                   interrupts={interrupts}
