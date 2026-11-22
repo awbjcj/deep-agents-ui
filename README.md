@@ -92,7 +92,7 @@ The **Switch agent** button in the header opens the configuration dialog, which
 lists only the assistants the signed-in account may use.
 **VSDA Deep Agent** is the default supervisor and always stays the legacy
 supervisor; it never switches a conversation to the Task Agent, and a
-conversation stays with the agent it started in. Two assistants are restricted:
+conversation stays with the agent it started in. Three assistants are restricted:
 
 - **VSDA Task Agent**: developer and admin accounts only, and only after an
   administrator enrolls the account on the server (`VSDA_ORCHESTRATION_ROLLOUT`
@@ -100,6 +100,8 @@ conversation stays with the agent it started in. Two assistants are restricted:
 - **VSDA Code Analyzer Agent**: developer and admin accounts only. Its SCM
   credential, Copilot credential and Copilot quota panels in **Workspace →
   Tokens** appear only for these accounts.
+- **VSDA Log Analyzer Agent**: developer and admin accounts with the same
+  `can_use_code_analyzer` profile permission as Code Analyzer.
 
 The UI reads `can_use_task_agent` and `can_use_code_analyzer` from
 `GET /api/user/profile` (treated as `false` when an older server omits them)

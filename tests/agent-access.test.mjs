@@ -11,6 +11,7 @@ import {
   canUseTaskAgent,
   CODE_ANALYZER_AGENT_ID,
   isRestrictedAgent,
+  LOG_ANALYZER_AGENT_ID,
   RESTRICTED_AGENT_IDS,
   TASK_AGENT_ID,
 } from "../src/lib/agent-access.ts";
@@ -22,10 +23,37 @@ const account = (role, task, code) => ({
   can_use_code_analyzer: code,
 });
 
+test("log analysis follows the Code Analyzer access flag across UI entry points", () => {
+  const log = LOG_ANALYZER_AGENT_ID;
+  const options = [
+    { id: "default", graphId: DEFAULT_ASSISTANT_ID },
+    { id: "system-log", graphId: log },
+    { id: "custom-log", graphId: log },
+  ];
+  for (const access of [
+    account("user", false, false),
+    account("user", true, true),
+    account("developer", true, false),
+    { role: "admin" },
+    undefined,
+  ]) {
+    assert.equal(isRestrictedAgent(log), true);
+    assert.equal(canUseAgent(log, access), false);
+    assert.equal(allowedAssistantId(log, access), DEFAULT_ASSISTANT_ID);
+    assert.deepEqual(allowedAssistants(options, access), [options[0]]);
+  }
+  for (const role of ["admin", "developer"]) {
+    const access = account(role, false, true);
+    assert.equal(canUseAgent(log, access), true);
+    assert.equal(allowedAssistantId(log, access), log);
+    assert.deepEqual(allowedAssistants(options, access), options);
+  }
+});
+
 test("restricted agents require a privileged role and the matching profile flag", () => {
   assert.deepEqual(
     [...RESTRICTED_AGENT_IDS].sort(),
-    [CODE_ANALYZER_AGENT_ID, TASK_AGENT_ID].sort()
+    [CODE_ANALYZER_AGENT_ID, LOG_ANALYZER_AGENT_ID, TASK_AGENT_ID].sort()
   );
   for (const role of ["admin", "developer"]) {
     const enrolled = account(role, true, true);
