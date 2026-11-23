@@ -231,7 +231,7 @@ export function settingsReviewFixture({
       if (path === "/api/code-analysis/copilot/credential")
         return json({
           configured: false,
-          github_host: "github.com",
+          github_host: "aptv.ghe.com",
           generation: 0,
           updated_at: null,
           expires_at: null,

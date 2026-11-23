@@ -243,6 +243,19 @@ test(
             });
             assert.deepEqual(violations, []);
             await password.press("Enter");
+            await page.waitForFunction(() =>
+              document.activeElement?.textContent?.includes("Aspera login")
+            );
+            if (process.env.ASPERA_SETTINGS_EVIDENCE_DIR) {
+              await page
+                .getByRole("region", { name: "Aspera", exact: true })
+                .screenshot({
+                  path: join(
+                    process.env.ASPERA_SETTINGS_EVIDENCE_DIR,
+                    `aspera-saved-focus-${width}-${panel}-${theme}.png`
+                  ),
+                });
+            }
             await page
               .locator('button[aria-expanded="false"]')
               .filter({ hasText: "Aspera login" })

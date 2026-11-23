@@ -37,7 +37,7 @@ export function hasSavedToken(
   preview: string | null | undefined
 ): preview is string {
   const value = preview?.trim();
-  return Boolean(value && value !== "(not set)");
+  return Boolean(value && value !== "(not set)" && value !== "(unavailable)");
 }
 
 export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [

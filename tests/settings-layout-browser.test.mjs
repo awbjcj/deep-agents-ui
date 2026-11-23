@@ -6,8 +6,122 @@ import {
   authenticatedPage,
   staticServer,
 } from "./tool-permissions-browser-fixture.mjs";
-import { loadPlaywright } from "./browser-fixtures.mjs";
+import { compileBrowserStyles, loadPlaywright } from "./browser-fixtures.mjs";
 import { settingsReviewFixture } from "./settings-review-fixture.mjs";
+
+test(
+  "saved setting revisions restore form focus without focusing background updates",
+  { skip: process.env.SETTINGS_LAYOUT_BROWSER_TEST !== "1", timeout: 30_000 },
+  async () => {
+    const { build } = await import("esbuild");
+    const { chromium } = await loadPlaywright();
+    const browser = await chromium.launch();
+    try {
+      const { outputFiles } = await build({
+        absWorkingDir: join(import.meta.dirname, ".."),
+        stdin: {
+          resolveDir: join(import.meta.dirname, ".."),
+          loader: "tsx",
+          contents: `
+            import React, { useState } from 'react';
+            import { createRoot } from 'react-dom/client';
+            import { SavedSetting } from './src/app/components/settings/SavedSetting';
+            function App() {
+              const [revision, setRevision] = useState(0);
+              const [saved, setSaved] = useState(true);
+              const [busy, setBusy] = useState(false);
+              window.refreshSetting = () => setRevision(value => value + 1);
+              window.resetSetting = () => setSaved(false);
+              return <main className="max-w-md space-y-4 p-4">
+                <button>Other settings</button>
+                <output aria-label="Revision">{revision}</output>
+                <SavedSetting title="Review credential" status={saved ? 'Saved' : undefined} revision={revision}>
+                  <fieldset disabled={busy} className="space-y-3">
+                    <label>Replacement<input aria-label="Replacement" /></label>
+                    <button onClick={() => {
+                      setBusy(true);
+                      window.finishSave = () => {
+                        setBusy(false);
+                        setSaved(true);
+                        setRevision(value => value + 1);
+                      };
+                    }}>Save credential</button>
+                  </fieldset>
+                </SavedSetting>
+              </main>;
+            }
+            createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
+          `,
+        },
+        bundle: true,
+        write: false,
+        format: "esm",
+      });
+      const { css } = await compileBrowserStyles({ omitFontFaces: true });
+      const page = await browser.newPage({
+        viewport: { width: 390, height: 700 },
+      });
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.setContent('<div id="root"></div>');
+      await page.addStyleTag({ content: css });
+      await page.addScriptTag({ content: outputFiles[0].text, type: "module" });
+      const summary = page.getByRole("button", {
+        name: "Review credential Saved",
+      });
+      await summary.waitFor();
+      await page.evaluate(() => window.refreshSetting());
+      await page
+        .getByRole("status", { name: "Revision" })
+        .filter({ hasText: "1" })
+        .waitFor();
+      assert.equal(
+        await page.evaluate(() => document.activeElement === document.body),
+        true
+      );
+
+      const outside = page.getByRole("button", { name: "Other settings" });
+      await outside.focus();
+      await page.evaluate(() => window.refreshSetting());
+      await page
+        .getByRole("status", { name: "Revision" })
+        .filter({ hasText: "2" })
+        .waitFor();
+      assert.equal(
+        await outside.evaluate((node) => node === document.activeElement),
+        true
+      );
+
+      for (const firstSave of [false, true]) {
+        if (firstSave) await page.evaluate(() => window.resetSetting());
+        else await summary.click();
+        await page
+          .getByRole("textbox", { name: "Replacement" })
+          .fill("replacement");
+        await page
+          .getByRole("button", { name: "Save credential", exact: true })
+          .click();
+        await page.evaluate(() => window.finishSave());
+        await page.waitForFunction(() =>
+          document.activeElement?.textContent?.includes("Review credential")
+        );
+        assert.equal(await summary.getAttribute("aria-expanded"), "false");
+      }
+      assert.deepEqual(errors, []);
+      if (process.env.SETTINGS_LAYOUT_EVIDENCE) {
+        await mkdir(process.env.SETTINGS_LAYOUT_EVIDENCE, { recursive: true });
+        await page.screenshot({
+          path: join(
+            process.env.SETTINGS_LAYOUT_EVIDENCE,
+            "saved-setting-focus.png"
+          ),
+        });
+      }
+    } finally {
+      await browser.close();
+    }
+  }
+);
 
 test(
   "settings protect drafts and keep navigation, account actions, and forms usable",
@@ -66,6 +180,9 @@ test(
           const workspace = page.locator("#right-panel");
           await workspace
             .getByRole("tab", { name: "Tokens", exact: true })
+            .click();
+          await workspace
+            .getByRole("button", { name: "Graph API Token Saved", exact: true })
             .click();
           const token = workspace.getByLabel("Graph API Token", {
             exact: true,
@@ -379,6 +496,9 @@ test(
           policy.failTokens = false;
           await workspace
             .getByRole("button", { name: "Retry loading tokens" })
+            .click();
+          await workspace
+            .getByRole("button", { name: "Graph API Token Saved", exact: true })
             .click();
           await workspace
             .getByLabel("Graph API Token", { exact: true })

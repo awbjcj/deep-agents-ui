@@ -410,7 +410,7 @@ function TokenField({
   const saved = hasSavedToken(preview);
   return (
     <SavedSetting
-      key={updatedAt}
+      revision={updatedAt}
       title={guide.label}
       triggerId={`${id}-edit`}
       status={saved ? "Saved" : undefined}

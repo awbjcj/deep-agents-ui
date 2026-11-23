@@ -22,6 +22,7 @@ import {
   deleteCopilotCredential,
   getCopilotCredential,
   getCopilotQuota,
+  DEFAULT_GITHUB_HOST,
   githubHostSchema,
   saveCopilotCredential,
   type CopilotCredentialStatus,
@@ -32,7 +33,7 @@ import {
 export function CopilotCredentialPanel() {
   const [status, setStatus] = useState<CopilotCredentialStatus | null>(null);
   const [token, setToken] = useState("");
-  const [githubHost, setGithubHost] = useState("github.com");
+  const [githubHost, setGithubHost] = useState(DEFAULT_GITHUB_HOST);
   const [expiry, setExpiry] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -115,7 +116,7 @@ export function CopilotCredentialPanel() {
     let expiresAt: string | null = null;
     if (!remove) {
       if (!githubHostSchema.safeParse(githubHost).success) {
-        setError("Use github.com or your exact company.ghe.com hostname.");
+        setError("Use your exact company.ghe.com hostname.");
         return;
       }
       if (
@@ -238,7 +239,7 @@ export function CopilotCredentialPanel() {
         onRefresh={() => void refreshQuota()}
       />
       <SavedSetting
-        key={status?.updated_at}
+        revision={status?.updated_at}
         title="Copilot credential"
         status={configured ? "Saved" : undefined}
       >
@@ -261,7 +262,7 @@ export function CopilotCredentialPanel() {
               id="copilot-host-help"
               className="text-muted-foreground text-xs leading-relaxed"
             >
-              Use github.com or your exact company.ghe.com hostname.
+              Use your exact company.ghe.com hostname.
               {status?.configured && ` Saved account: ${status.github_host}.`}
             </p>
           </div>

@@ -173,20 +173,25 @@ export const exactCopilotModel = z
     "Enter an exact model ID"
   );
 
+/** Mirrors the backend: Copilot accounts live on GitHub Enterprise Cloud tenants. */
+export const DEFAULT_GITHUB_HOST = "aptv.ghe.com";
+
 export const githubHostSchema = z
   .string()
   .trim()
   .toLowerCase()
   .regex(
-    /^(github\.com|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.ghe\.com)$/,
-    "Use github.com or an exact tenant.ghe.com hostname"
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.ghe\.com$/,
+    "Use an exact tenant.ghe.com hostname"
   );
 
 export const copilotSettingsSchema = z
   .object({
     enabled: z.boolean().default(false),
     allowed_models: z.array(exactCopilotModel).default([]),
-    allowed_github_hosts: z.array(githubHostSchema).default(["github.com"]),
+    allowed_github_hosts: z
+      .array(githubHostSchema)
+      .default([DEFAULT_GITHUB_HOST]),
     default_model: exactCopilotModel.nullable().default(null),
     max_tokens: z.number().int().positive().default(100000),
     max_tool_calls: z.number().int().positive().default(200),
@@ -214,7 +219,7 @@ export const copilotSettingsSchema = z
 export const copilotCredentialStatusSchema = z
   .object({
     configured: z.boolean(),
-    github_host: githubHostSchema.default("github.com"),
+    github_host: githubHostSchema.default(DEFAULT_GITHUB_HOST),
     generation: z.number().int().nonnegative(),
     updated_at: z.string().nullable(),
     expires_at: z.string().nullable(),
@@ -388,7 +393,7 @@ export const analysisJobSchema = z.object({
           adapter: z.literal("sdk-v1"),
           model: exactCopilotModel,
           credential_generation: z.number().int().positive(),
-          github_host: githubHostSchema.default("github.com"),
+          github_host: githubHostSchema.default(DEFAULT_GITHUB_HOST),
           max_tokens: z.number().int().positive(),
           max_tool_calls: z.number().int().positive(),
           job_timeout_seconds: z.number().int().positive(),

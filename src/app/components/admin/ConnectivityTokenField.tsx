@@ -41,7 +41,7 @@ export function ConnectivityTokenField({
       data-connectivity-token={settingKey}
     >
       <SavedSetting
-        key={info?.updated_at}
+        revision={info?.updated_at}
         title={label}
         status={
           settingKey === "cf_aig_token" && info?.overridden
