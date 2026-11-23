@@ -800,13 +800,21 @@ test(
       await page.getByRole("heading", { name: "New newsletter" }).waitFor();
 
       const sourcesTab = page.getByRole("tab", { name: "Sources" });
+      const policyReads = [];
+      page.on("request", (request) => {
+        const path = new URL(request.url()).pathname;
+        if (
+          request.method() === "GET" &&
+          path.startsWith("/api/admin/tier-source-images/")
+        )
+          policyReads.push(path);
+      });
       await sourcesTab.focus();
       await page.keyboard.press("Enter");
-      await assert.doesNotReject(() =>
-        page
-          .getByRole("heading", { name: "Source images and attachments" })
-          .waitFor()
-      );
+      const sourcePolicies = page.locator("summary").filter({
+        hasText: "Source images and attachments",
+      });
+      await sourcePolicies.waitFor({ timeout: 5000 });
       assert.equal(await sourcesTab.getAttribute("aria-selected"), "true");
 
       await page.locator("#admin-panel").screenshot({
@@ -832,6 +840,8 @@ test(
       assert.deepEqual(connectivityPutBodies.at(-1), {
         proxy_attachments_enabled: false,
       });
+      assert.deepEqual(policyReads, []);
+      await sourcePolicies.press("Enter");
 
       const tierTabs = page.getByRole("tablist", {
         name: "Attachment permission tier",
@@ -848,6 +858,12 @@ test(
         exact: true,
       });
       await userSection.getByText("Jira", { exact: true }).waitFor();
+      assert.ok(policyReads.length > 0);
+      assert.ok(
+        policyReads.every((path) =>
+          path.startsWith("/api/admin/tier-source-images/user/")
+        )
+      );
       const graphDocuments = userSection.getByRole("switch", {
         name: "Microsoft Graph documents for user tier",
       });

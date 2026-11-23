@@ -247,6 +247,22 @@ test(
       await settings
         .getByRole("button", { name: "Allowed Copilot models" })
         .click();
+      const modelChoices = page.getByRole("dialog", {
+        name: "Allowed Copilot models",
+      });
+      const sharedChoice = modelChoices.getByRole("checkbox", {
+        name: sharedModel.model,
+        exact: true,
+      });
+      await sharedChoice.waitFor({ timeout: 5000 });
+      assert.equal(await modelChoices.getByLabel("New model ID").count(), 0);
+      assert.equal(
+        await modelChoices
+          .getByRole("checkbox", { name: "developer-only-model", exact: true })
+          .count(),
+        0
+      );
+      await sharedChoice.check();
       await page.getByRole("checkbox", { name: "model-b" }).uncheck();
       await page.keyboard.press("Escape");
       await settings
@@ -299,7 +315,11 @@ test(
         await page.getByRole("option", { name: "model-b" }).count(),
         0
       );
-      await page.getByRole("option", { name: "model-a" }).click();
+      assert.equal(
+        await page.getByRole("option", { name: "model-a" }).count(),
+        1
+      );
+      await page.getByRole("option", { name: sharedModel.model }).click();
       const reportLimit = page.getByLabel("Report limit", { exact: true });
       assert.equal(await reportLimit.inputValue(), "2.097152");
       await reportLimit.fill("1.25");
@@ -312,8 +332,11 @@ test(
       assert.deepEqual(engineSettings.copilot.allowed_github_hosts, [
         "acme.ghe.com",
       ]);
-      assert.deepEqual(engineSettings.copilot.allowed_models, ["model-a"]);
-      assert.equal(engineSettings.copilot.default_model, "model-a");
+      assert.deepEqual(engineSettings.copilot.allowed_models, [
+        "model-a",
+        sharedModel.model,
+      ]);
+      assert.equal(engineSettings.copilot.default_model, sharedModel.model);
       assert.equal(engineSettings.limits.report_markdown_max_bytes, 1250000);
       assert.equal(engineSettings.matlab.limits.max_artifact_bytes, 1234567);
       assert.deepEqual(engineSettings.model_override, sharedModel);

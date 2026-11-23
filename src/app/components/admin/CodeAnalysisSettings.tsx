@@ -407,18 +407,16 @@ function EngineReadiness({ catalog }: { catalog: EngineCatalog | null }) {
 function CopilotPolicyList({
   id,
   label,
-  entryLabel,
+  entryConfig,
   options,
   selected,
-  schema,
   onChange,
 }: {
   id: string;
   label: string;
-  entryLabel: string;
+  entryConfig?: { label: string; schema: ZodType<string> };
   options: string[];
   selected: string[];
-  schema: ZodType<string>;
   onChange: (selection: string[]) => void;
 }) {
   const [entry, setEntry] = useState("");
@@ -427,7 +425,8 @@ function CopilotPolicyList({
   const choices = [...new Set([...options, ...addedChoices, ...selected])];
 
   function addEntry() {
-    const result = schema.safeParse(entry.trim());
+    if (!entryConfig) return;
+    const result = entryConfig.schema.safeParse(entry.trim());
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Enter a valid value.");
       return;
@@ -465,7 +464,7 @@ function CopilotPolicyList({
           align="start"
           className="w-72 max-w-[calc(100dvw-2rem)] space-y-2 p-3"
         >
-          {choices.length > 0 && (
+          {choices.length > 0 ? (
             <div className="max-h-48 space-y-1 overflow-y-auto">
               {choices.map((choice) => (
                 <label
@@ -488,32 +487,38 @@ function CopilotPolicyList({
                 </label>
               ))}
             </div>
+          ) : !entryConfig ? (
+            <p className="text-muted-foreground text-sm">
+              No approved models available.
+            </p>
+          ) : null}
+          {entryConfig && (
+            <div className="flex gap-2">
+              <Input
+                aria-label={entryConfig.label}
+                aria-invalid={Boolean(error)}
+                placeholder={entryConfig.label}
+                value={entry}
+                onChange={(event) => {
+                  setEntry(event.target.value);
+                  setError("");
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" || !entry.trim()) return;
+                  event.preventDefault();
+                  addEntry();
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!entry.trim()}
+                onClick={addEntry}
+              >
+                Add
+              </Button>
+            </div>
           )}
-          <div className="flex gap-2">
-            <Input
-              aria-label={entryLabel}
-              aria-invalid={Boolean(error)}
-              placeholder={entryLabel}
-              value={entry}
-              onChange={(event) => {
-                setEntry(event.target.value);
-                setError("");
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" || !entry.trim()) return;
-                event.preventDefault();
-                addEntry();
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!entry.trim()}
-              onClick={addEntry}
-            >
-              Add
-            </Button>
-          </div>
           {error && (
             <p
               className="text-destructive text-xs"
@@ -666,6 +671,9 @@ export function CodeAnalysisSettings({
       ? (savedOverride ?? undefined)
       : undefined);
   const overrideInvalid = overrideModel !== ACCOUNT_MODEL && !selectedOverride;
+  const approvedCopilotModels = Array.from(allowedModels?.values() ?? [])
+    .map(({ model }) => model)
+    .filter((model) => exactCopilotModel.safeParse(model).success);
   const copilotValidation = copilotSettingsSchema.safeParse({
     ...copilotPolicy,
     max_tokens: Number(draft.copilot_max_tokens),
@@ -1057,10 +1065,12 @@ export function CodeAnalysisSettings({
               <CopilotPolicyList
                 id="analysis-copilot-hosts"
                 label="Allowed GitHub account hostnames"
-                entryLabel="New tenant hostname"
+                entryConfig={{
+                  label: "New tenant hostname",
+                  schema: githubHostSchema,
+                }}
                 options={engines.copilot.allowed_github_hosts}
                 selected={copilotPolicy.allowed_github_hosts}
-                schema={githubHostSchema}
                 onChange={(allowed_github_hosts) =>
                   setCopilotPolicy((current) => ({
                     ...current,
@@ -1072,10 +1082,11 @@ export function CodeAnalysisSettings({
                 <CopilotPolicyList
                   id="analysis-copilot-models"
                   label="Allowed Copilot models"
-                  entryLabel="New model ID"
-                  options={engines.copilot.allowed_models}
+                  options={[
+                    ...approvedCopilotModels,
+                    ...engines.copilot.allowed_models,
+                  ]}
                   selected={copilotPolicy.allowed_models}
-                  schema={exactCopilotModel}
                   onChange={(allowed_models) =>
                     setCopilotPolicy((current) => ({
                       ...current,
@@ -1093,6 +1104,7 @@ export function CodeAnalysisSettings({
                     Default Copilot model
                   </Label>
                   <Select
+                    disabled={copilotPolicy.allowed_models.length === 0}
                     value={
                       copilotPolicy.default_model === null
                         ? NO_COPILOT_DEFAULT

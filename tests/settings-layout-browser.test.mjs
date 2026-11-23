@@ -293,7 +293,7 @@ test(
     );
 
     await t.test(
-      "mobile account menu supports keyboard navigation, theme, Enter submission and persistent errors",
+      "account menu aligns identity and adapts actions while keeping keyboard access",
       async () => {
         const policy = settingsReviewFixture();
         const { page, context, pageErrors } = await authenticatedPage(
@@ -303,10 +303,35 @@ test(
           "user"
         );
         try {
-          await page.setViewportSize({ width: 390, height: 844 });
           const trigger = page.getByRole("button", {
             name: /Account menu for/,
           });
+          for (const width of [1440, 1024, 768]) {
+            await page.setViewportSize({ width, height: 844 });
+            await trigger.press("ArrowDown");
+            const menu = page.getByRole("menu");
+            const signOut = menu.getByRole("menuitem", { name: "Sign out" });
+            await signOut.waitFor();
+            assert.equal(await menu.getByRole("menuitem").count(), 1);
+            assert.ok(
+              await signOut.evaluate((node) => node === document.activeElement)
+            );
+            const [nameBox, badgeBox] = await Promise.all([
+              menu.getByText("user-fixture", { exact: true }).boundingBox(),
+              menu.getByText("user", { exact: true }).boundingBox(),
+            ]);
+            assert.ok(badgeBox.x > nameBox.x);
+            assert.ok(
+              Math.abs(
+                nameBox.y +
+                  nameBox.height / 2 -
+                  badgeBox.y -
+                  badgeBox.height / 2
+              ) <= 1
+            );
+            await page.keyboard.press("Escape");
+          }
+          await page.setViewportSize({ width: 320, height: 844 });
           await trigger.focus();
           await page.keyboard.press("ArrowDown");
           const settings = page.getByRole("menuitem", {

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
-import type { ComponentType, ReactNode, Ref } from "react";
+import type { ComponentType, ReactNode, Ref, ToggleEventHandler } from "react";
 
 import { cn } from "@/lib/utils";
 import type { ActionIntent } from "@/app/components/admin/primitives-utils";
@@ -41,6 +41,7 @@ export function DisclosureSection({
   className,
   contentClassName,
   detailsRef,
+  onToggle,
 }: {
   title: string;
   subtitle?: string;
@@ -48,10 +49,12 @@ export function DisclosureSection({
   className?: string;
   contentClassName?: string;
   detailsRef?: Ref<HTMLDetailsElement>;
+  onToggle?: ToggleEventHandler<HTMLDetailsElement>;
 }) {
   return (
     <details
       ref={detailsRef}
+      onToggle={onToggle}
       className={cn("settings-surface group overflow-hidden", className)}
     >
       <summary className="hover:bg-muted/35 focus-visible:ring-primary/40 flex cursor-pointer list-none items-center gap-3 px-3 py-3 transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset motion-reduce:transition-none [&::-webkit-details-marker]:hidden">

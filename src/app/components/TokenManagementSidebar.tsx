@@ -316,7 +316,7 @@ function TokenField({
       <section className="space-y-2">
         <Label
           htmlFor={id}
-          className="text-sm font-medium"
+          className={saved ? "sr-only" : "text-sm font-medium"}
         >
           {guide.label}
         </Label>

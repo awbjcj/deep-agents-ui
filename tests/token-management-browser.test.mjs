@@ -192,6 +192,17 @@ test(
         const asux = await focus("polarion");
         assert.equal(await asux.inputValue(), "");
         const graph = await focus("graph");
+        for (const service of services.slice(0, -1)) {
+          const field = await focus(service);
+          assert.equal(
+            await page
+              .locator(`label[for="${service}Token"]`)
+              .evaluate((label) => label.getBoundingClientRect().height <= 1),
+            true,
+            "the saved row supplies the visible token name"
+          );
+          assert.equal(await field.getAttribute("type"), "password");
+        }
         await graph.fill("  synthetic-graph-secret  ");
         await save.click();
         await page.getByText("Saving tokens…", { exact: true }).waitFor();

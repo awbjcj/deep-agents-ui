@@ -168,18 +168,18 @@ export function ScmCredentials() {
           const providerName = scmProviderLabels[server.provider];
           const needsUsername = scmRequiresUsername(server.provider);
           const state = credentialStateText(server.credential_state);
+          const savedStatus =
+            server.credential_state === "validated"
+              ? "Verified"
+              : server.credential_state === "unvalidated"
+                ? "Saved"
+                : undefined;
           return (
             <SavedSetting
               key={server.id}
               revision={revisions[server.id]}
               title={server.display_name}
-              status={
-                server.credential_state === "validated"
-                  ? "Verified"
-                  : server.credential_state === "unvalidated"
-                    ? "Saved"
-                    : undefined
-              }
+              status={savedStatus}
             >
               <form
                 autoComplete="off"
@@ -194,7 +194,9 @@ export function ScmCredentials() {
                   <div className="min-w-0 wrap-anywhere">
                     <p
                       id={`${fieldKey}:title`}
-                      className="text-sm font-medium"
+                      className={
+                        savedStatus ? "sr-only" : "text-sm font-medium"
+                      }
                     >
                       {server.display_name}
                     </p>

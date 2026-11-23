@@ -9,6 +9,12 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 
+function visibleMenuItems(menu: HTMLElement | null) {
+  return Array.from(
+    menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []
+  ).filter((item) => item.getClientRects().length > 0);
+}
+
 /** Account and appearance actions stay reachable at every screen width. */
 export function AccountMenu({
   onOpenSettings,
@@ -34,9 +40,8 @@ export function AccountMenu({
 
   useEffect(() => {
     if (!open) return;
-    const items =
-      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
-    (lastItem.current ? items?.[items.length - 1] : items?.[0])?.focus();
+    const items = visibleMenuItems(menuRef.current);
+    (lastItem.current ? items.at(-1) : items[0])?.focus();
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) {
@@ -124,11 +129,7 @@ export function AccountMenu({
             role="menu"
             aria-labelledby={`${id}-trigger`}
             onKeyDown={(event) => {
-              const items = Array.from(
-                event.currentTarget.querySelectorAll<HTMLButtonElement>(
-                  '[role="menuitem"]'
-                )
-              );
+              const items = visibleMenuItems(event.currentTarget);
               const current = items.indexOf(
                 document.activeElement as HTMLButtonElement
               );
@@ -154,12 +155,14 @@ export function AccountMenu({
             }}
             className="border-border bg-card text-card-foreground absolute top-full right-0 z-80 mt-2 w-56 overflow-hidden rounded-md border p-1 shadow-lg"
           >
-            <div className="border-border border-b px-3 py-2">
-              <p className="truncate text-sm font-medium">{user.username}</p>
-              <RoleBadge
-                role={user.role}
-                className="mt-1"
-              />
+            <div className="border-border flex items-center justify-between gap-2 border-b px-3 py-2">
+              <span
+                className="min-w-0 truncate text-sm font-medium"
+                title={user.username}
+              >
+                {user.username}
+              </span>
+              <RoleBadge role={user.role} />
             </div>
             {onOpenSettings && (
               <button
@@ -169,7 +172,10 @@ export function AccountMenu({
                   close();
                   onOpenSettings();
                 }}
-                className="min-h-touch hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none"
+                className={cn(
+                  "min-h-touch hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none",
+                  toolbar && "sm:hidden"
+                )}
               >
                 <UserCog
                   className="size-4"
@@ -185,7 +191,10 @@ export function AccountMenu({
                 toggleTheme();
                 close();
               }}
-              className="min-h-touch hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none"
+              className={cn(
+                "min-h-touch hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none",
+                toolbar && "sm:hidden"
+              )}
             >
               {theme === "dark" ? (
                 <Sun

@@ -144,9 +144,9 @@ test("an undefined override falls back to the enforced dimension", () => {
   );
 });
 
-test("usage values use dollars for cost and counts for tokens or calls", () => {
+test("usage values show costs to the cent and counts as whole numbers", () => {
   assert.equal(formatUsageAmount(12_345.4, "tokens"), "12,345");
-  assert.equal(formatUsageAmount(0.0045, "cost"), "$0.0045");
-  assert.equal(formatUsageAmount(1.0045, "cost"), "$1.0045");
+  assert.equal(formatUsageAmount(0.0045, "cost"), "$0.00");
+  assert.equal(formatUsageAmount(1.0055, "cost"), "$1.01");
   assert.equal(formatUsageAmount(12.5, "cost"), "$12.50");
 });
