@@ -204,10 +204,8 @@ function skillsFixture() {
             created_at: "2026-10-17T12:00:00Z",
           },
         ]);
-      if (path.endsWith("/history")) return json(route, []);
-      if (path.endsWith("/threads/search")) {
-        return json(route, [{ thread_id: "evidence-thread" }]);
-      }
+      if (path.endsWith("/history") || path.endsWith("/threads/search"))
+        return json(route, []);
       if (path.endsWith("/threads"))
         return json(route, { thread_id: "sent-thread" });
       if (path.includes("/runs")) {

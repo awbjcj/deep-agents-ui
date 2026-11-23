@@ -9,6 +9,37 @@ import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 // Allow about 90 seconds for a 14 MB response at 150 KiB/s, plus headroom.
 const HISTORY_TIMEOUT_MS = 120_000;
 
+/** The selected conversation is absent from the current account's threads. */
+export class ThreadUnavailableError extends Error {}
+
+async function loadHistory<StateType extends Record<string, unknown>>(
+  client: Client,
+  threadId: string
+): Promise<ThreadState<StateType>[]> {
+  const signal = AbortSignal.timeout(HISTORY_TIMEOUT_MS);
+  try {
+    // Each checkpoint contains the full state. Only the latest is needed.
+    return await client.threads.getHistory<StateType>(threadId, {
+      limit: 1,
+      signal,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "status" in error &&
+      (error.status === 403 || error.status === 404)
+    ) {
+      // A failed history read can be temporary. Check the account-scoped
+      // thread list before clearing the selection.
+      const threads = await client.threads
+        .search({ ids: [threadId], select: ["thread_id"], limit: 1, signal })
+        .catch(() => undefined);
+      if (threads?.length === 0) throw new ThreadUnavailableError();
+    }
+    throw error;
+  }
+}
+
 /**
  * Loads thread history through SWR so rejected history requests are observed
  * and handled instead of becoming unhandled promise rejections inside the SDK
@@ -38,16 +69,7 @@ export function useRecoverableThread<
       : null;
   const { data, error, isLoading } = useSWR<ThreadState<StateType>[]>(
     key,
-    async () => {
-      if (!threadId) return [];
-      // This UI follows the current conversation, not historical branches.
-      // Each checkpoint contains the full state; older copies waste bandwidth
-      // and can lead the SDK's branch selection away from the newest head.
-      return client.threads.getHistory<StateType>(threadId, {
-        limit: 1,
-        signal: AbortSignal.timeout(HISTORY_TIMEOUT_MS),
-      });
-    },
+    ([, , id]: NonNullable<typeof key>) => loadHistory<StateType>(client, id),
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
@@ -69,11 +91,7 @@ export function useRecoverableThread<
       try {
         const updated = await mutateCache<ThreadState<StateType>[]>(
           ["thread-history", client, targetThreadId],
-          () =>
-            client.threads.getHistory<StateType>(targetThreadId, {
-              limit: 1,
-              signal: AbortSignal.timeout(HISTORY_TIMEOUT_MS),
-            }),
+          () => loadHistory<StateType>(client, targetThreadId),
           { revalidate: false }
         );
         setRefreshFailure((previous) =>

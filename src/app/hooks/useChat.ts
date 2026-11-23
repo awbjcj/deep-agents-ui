@@ -11,7 +11,7 @@ import {
   type StreamMode,
   type ThreadState,
 } from "@langchain/langgraph-sdk";
-import { v4 as uuidv4, v5 as uuidv5 } from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import {
@@ -38,7 +38,10 @@ import {
 } from "@/lib/message-delivery";
 import type { ResumeInterruptValue } from "@/app/types/types";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
-import { useRecoverableThread } from "@/app/hooks/useRecoverableThread";
+import {
+  ThreadUnavailableError,
+  useRecoverableThread,
+} from "@/app/hooks/useRecoverableThread";
 import {
   useNotifications,
   type StreamNotificationEvent,
@@ -342,55 +345,6 @@ export function useChat({
     [userId]
   );
 
-  // Check only when entering chat without a selected thread. Clearing the
-  // selection later can be an intentional request for a fresh draft.
-  const [initialThreadPending, setInitialThreadPending] = useState(
-    () => Boolean(userId && !threadId)
-  );
-  useEffect(() => {
-    if (!initialThreadPending || !userId) return;
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    async function openFirstThread(accountId: string) {
-      try {
-        if (threadIdRef.current) return;
-        const existing = await client.threads.search({
-          metadata: threadCreationMetadata,
-          limit: 1,
-          select: ["thread_id"],
-          signal,
-        });
-        if (signal.aborted || threadIdRef.current || existing.length) return;
-
-        // Concurrent tabs may both see empty history. Reuse one server thread.
-        const thread = await client.threads.create({
-          threadId: uuidv5(`vsda:first-chat:${accountId}`, uuidv5.URL),
-          ifExists: "do_nothing",
-          metadata: threadCreationMetadata,
-          signal,
-        });
-        if (signal.aborted || threadIdRef.current) return;
-        handleThreadCreated(thread.thread_id);
-        onHistoryRevalidate?.();
-      } catch {
-        // Leave the normal message and upload creation paths available.
-      } finally {
-        if (!signal.aborted) setInitialThreadPending(false);
-      }
-    }
-
-    void openFirstThread(userId);
-    return () => controller.abort();
-  }, [
-    client,
-    handleThreadCreated,
-    initialThreadPending,
-    onHistoryRevalidate,
-    threadCreationMetadata,
-    userId,
-  ]);
-
   const ensureThreadId = useCallback(async () => {
     if (threadIdRef.current) return threadIdRef.current;
     if (!creatingThreadRef.current) {
@@ -447,8 +401,12 @@ export function useChat({
   );
 
   const handleThreadHistoryError = useCallback(
-    (_error: unknown, failedThreadId: string) => {
+    (error: unknown, failedThreadId: string) => {
       if (threadIdRef.current !== failedThreadId) return;
+      if (error instanceof ThreadUnavailableError) {
+        void setThreadId(null);
+        return;
+      }
       if (!reportedHistoryErrorsRef.current.has(failedThreadId)) {
         reportedHistoryErrorsRef.current.add(failedThreadId);
         toast.error("Couldn't load this conversation", {
@@ -457,7 +415,7 @@ export function useChat({
         });
       }
     },
-    []
+    [setThreadId]
   );
 
   const recoverableThread = useRecoverableThread<StateType>({
@@ -633,8 +591,10 @@ export function useChat({
     return () => clearTimeout(timer);
   }, [threadId, stream.isThreadLoading]);
 
+  const threadUnavailable = history.error instanceof ThreadUnavailableError;
   const historyError =
-    Boolean(history.error) || (threadId !== null && slowThreadId === threadId);
+    !threadUnavailable &&
+    (Boolean(history.error) || (threadId !== null && slowThreadId === threadId));
   const retryHistory = useCallback(() => {
     setSlowThreadId(null);
     if (threadId) reportedHistoryErrorsRef.current.delete(threadId);
@@ -715,7 +675,6 @@ export function useChat({
       delivery?: MessageDelivery
     ) => {
       if (
-        initialThreadPending ||
         messageSubmission.current ||
         messageRuns.stopping ||
         !activeAssistant ||
@@ -844,7 +803,6 @@ export function useChat({
     },
     [
       buildConfig,
-      initialThreadPending,
       onHistoryRevalidate,
       threadCreationMetadata,
       client,
@@ -1639,10 +1597,7 @@ export function useChat({
     messageRuns.pendingCount > 0 ||
     messageRuns.stopping ||
     submissionPending;
-  const isThreadLoading =
-    initialThreadPending ||
-    stream.isThreadLoading ||
-    threadId !== streamThreadId;
+  const isThreadLoading = stream.isThreadLoading || threadId !== streamThreadId;
   const serverQueuedCount = messageRuns.queuedCount;
   const isStopping = messageRuns.stopping;
   const stateTaskOutcome = stream.values.task_outcome;
