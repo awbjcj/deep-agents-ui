@@ -128,7 +128,9 @@ test(
         if (path.endsWith("/threads/delivery/runs/original/stream")) {
           return route.continue({ url: liveUrl });
         }
-        if (path.endsWith("/threads/search")) return json([]);
+        if (path.endsWith("/threads/search")) {
+          return json([{ thread_id: "delivery" }]);
+        }
         if (path.endsWith("/threads") && request.method() === "POST") {
           if (delayThreadCreation) {
             delayThreadCreation = false;

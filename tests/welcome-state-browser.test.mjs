@@ -3,9 +3,102 @@ import test from "node:test";
 import {
   staticServer,
   authenticatedPage,
+  deferred,
   makePolicyFixture,
 } from "./tool-permissions-browser-fixture.mjs";
 import { loadPlaywright } from "./browser-fixtures.mjs";
+
+test(
+  "concurrent first chat visits create and select the same initial thread",
+  { skip: process.env.WELCOME_STATE_BROWSER_TEST !== "1", timeout: 60_000 },
+  async () => {
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
+    );
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
+    const server = await staticServer();
+    const fallback = makePolicyFixture();
+    const threads = new Map();
+    const creates = [];
+    const bothLookupsStarted = deferred();
+    let initialLookups = 0;
+    const policy = {
+      async route(route, account) {
+        const request = route.request();
+        const path = new URL(request.url()).pathname;
+        const json = (body) => route.fulfill({ json: body });
+        if (path.endsWith("/threads/search")) {
+          const existing = [...threads.values()];
+          if (++initialLookups <= 2) {
+            if (initialLookups === 2) bothLookupsStarted.resolve();
+            await bothLookupsStarted.promise;
+          }
+          return json(existing);
+        }
+        if (path.endsWith("/threads") && request.method() === "POST") {
+          const create = request.postDataJSON();
+          creates.push(create);
+          const id = create.thread_id ?? "first-thread";
+          if (threads.has(id) && create.if_exists !== "do_nothing") {
+            return route.fulfill({ status: 409, json: { detail: "Conflict" } });
+          }
+          if (!threads.has(id)) {
+            threads.set(id, {
+              thread_id: id,
+              metadata: create.metadata,
+              updated_at: new Date().toISOString(),
+              status: "idle",
+              values: {},
+            });
+          }
+          return json(threads.get(id));
+        }
+        if (path.endsWith("/history") || path.endsWith("/runs"))
+          return json([]);
+        return fallback.route(route, account);
+      },
+    };
+    try {
+      const [first, second] = await Promise.all(
+        Array.from({ length: 2 }, () =>
+          authenticatedPage(browser, server, policy, "user")
+        )
+      );
+      for (const { page } of [first, second]) {
+        await page.waitForURL((url) => url.searchParams.has("threadId"), {
+          timeout: 8_000,
+        });
+      }
+      const { page, context, pageErrors } = first;
+      const id = new URL(page.url()).searchParams.get("threadId");
+      assert.equal(new URL(second.page.url()).searchParams.get("threadId"), id);
+      assert.equal(creates.length, 2);
+      assert.equal(threads.size, 1);
+      assert.equal(threads.get(id)?.metadata.user_id, "user-account");
+      assert.deepEqual(second.pageErrors, []);
+      await second.context.close();
+
+      await page.reload();
+      const newThread = page.getByRole("button", { name: "New Thread" });
+      await newThread.click();
+      await page.waitForURL((url) => !url.searchParams.has("threadId"));
+      await page.goto(server.baseUrl);
+      await page
+        .getByRole("region", { name: "What should your agents work on?" })
+        .waitFor();
+      assert.equal(await newThread.isDisabled(), true);
+      assert.equal(creates.length, 2);
+      assert.deepEqual(pageErrors, []);
+      await context.close();
+    } finally {
+      await browser.close();
+      await server.close();
+    }
+  }
+);
 
 const saved = {
   values: {
@@ -54,7 +147,9 @@ test(
           });
         if (path.endsWith("/threads/saved/history")) return json([saved]);
         if (path.endsWith("/runs")) return json([]);
-        if (path.endsWith("/threads/search")) return json([]);
+        if (path.endsWith("/threads/search")) {
+          return json([{ thread_id: "saved" }]);
+        }
         if (path.endsWith("/assistants/search")) {
           const graph = route.request().postDataJSON().graph_id;
           return json([
