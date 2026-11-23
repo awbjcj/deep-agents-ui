@@ -82,9 +82,22 @@ test(
           await page.route("**/api/user/notifications**", (route) =>
             route.fulfill({ json: [] })
           );
-          await page.route("**/api/user/tokens", (route) =>
-            route.fulfill({ status: 503, json: {} })
-          );
+          let tokenLoadFailed = false;
+          await page.route("**/api/user/tokens", (route) => {
+            if (!tokenLoadFailed) {
+              tokenLoadFailed = true;
+              return route.fulfill({ status: 503, json: {} });
+            }
+            return route.fulfill({
+              json: {
+                graph_api_token_preview: "(not set)",
+                graph_api_token_updated_at: "2026-11-22 09:00:00 UTC",
+                jira_api_token_preview: "***",
+                confluence_api_token_preview: "",
+                confluence_api_token_updated_at: "2026-11-22 09:00:00 UTC",
+              },
+            });
+          });
           const requests = [];
           let saved = { configured: true, username: "previous-user" };
           let loadFailed = false;
@@ -131,7 +144,26 @@ test(
             );
             await page
               .getByRole("button", { name: "Retry loading tokens" })
+              .click();
+            const graphToken = page.getByLabel("Graph API Token", {
+              exact: true,
+            });
+            await graphToken.waitFor();
+            assert.equal(
+              await graphToken.getAttribute("placeholder"),
+              "Paste a token"
+            );
+            await page
+              .getByLabel("Confluence API Token", { exact: true })
               .waitFor();
+            const savedJira = page.getByRole("button", {
+              name: "JIRA API Token Saved",
+            });
+            await savedJira.waitFor();
+            assert.equal(
+              await savedJira.getAttribute("aria-expanded"),
+              "false"
+            );
             await page
               .getByRole("button", { name: "Retry", exact: true })
               .click();

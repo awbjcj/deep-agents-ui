@@ -19,6 +19,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import {
   getTokenGuide,
+  hasSavedToken,
   OPEN_TOKEN_WIZARD_EVENT,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
@@ -201,7 +202,7 @@ export function TokenManagementSidebar({
   };
 
   const missingCount = TOKEN_SERVICE_GUIDES.filter(
-    (guide) => !tokenMeta?.[guide.previewField]
+    (guide) => !hasSavedToken(tokenMeta?.[guide.previewField])
   ).length;
 
   return (
@@ -406,12 +407,13 @@ function TokenField({
 }) {
   const [show, setShow] = useState(false);
   const id = `${guide.key}Token`;
+  const saved = hasSavedToken(preview);
   return (
     <SavedSetting
       key={updatedAt}
       title={guide.label}
       triggerId={`${id}-edit`}
-      status={preview || hasUpdatedAt(updatedAt) ? "Saved" : undefined}
+      status={saved ? "Saved" : undefined}
     >
       <section className="space-y-2">
         <Label
@@ -420,13 +422,11 @@ function TokenField({
         >
           {guide.label}
         </Label>
-        {(preview || hasUpdatedAt(updatedAt)) && (
+        {saved && (
           <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-            {preview && (
-              <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
-                {preview}
-              </code>
-            )}
+            <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
+              {preview}
+            </code>
             {hasUpdatedAt(updatedAt) && (
               <span>
                 Updated{" "}
@@ -445,9 +445,7 @@ function TokenField({
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
-            placeholder={
-              preview ? "Enter a replacement token" : "Paste a token"
-            }
+            placeholder={saved ? "Enter a replacement token" : "Paste a token"}
             className="pr-11"
           />
           <Button
