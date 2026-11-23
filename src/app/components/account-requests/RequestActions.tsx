@@ -54,6 +54,16 @@ const actions = {
   },
 };
 
+const usageTypes: AccountRequestType[] = [
+  "usage_reset",
+  "token_limit_increase",
+];
+const accountTypes: AccountRequestType[] = [
+  "developer_access",
+  "account_deletion",
+  ...usageTypes,
+];
+
 export function RequestActions({
   location,
 }: {
@@ -76,10 +86,7 @@ export function RequestActions({
   const active = data?.find((item) => item.type === panel);
   const details = panel && panel !== "history" ? actions[panel] : undefined;
   const isAccount = location === "account";
-  const types: AccountRequestType[] =
-    location === "usage"
-      ? ["usage_reset", "token_limit_increase"]
-      : ["developer_access", "account_deletion"];
+  const types = isAccount ? accountTypes : usageTypes;
   const options = types.flatMap((type) => {
     const option = data?.find((item) => item.type === type);
     return option && (option.available || option.pending_request_id)

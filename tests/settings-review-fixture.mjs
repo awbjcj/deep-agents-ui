@@ -259,6 +259,14 @@ export function settingsReviewFixture({
       if (path === "/api/admin/scopes") return json([scope]);
       if (path.endsWith("/members"))
         return json([{ username: "review-member", access: "read" }]);
+      if (path === "/api/user/account-request-options")
+        return json({ items: [] });
+      if (
+        path === "/api/user/account-requests" ||
+        path === "/api/admin/account-requests"
+      ) {
+        return json({ items: [], next_cursor: null });
+      }
       if (path === "/api/admin/broadcasts") return json({ broadcasts: [] });
       if (path === "/api/admin/run-mode")
         return json({

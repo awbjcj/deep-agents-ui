@@ -621,6 +621,7 @@ test(
                     "Tokens",
                     "Bots",
                     "Connections",
+                    "Requests",
                   ],
                 ],
                 [

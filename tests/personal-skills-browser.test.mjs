@@ -2058,7 +2058,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
       }
     );
     await t.test(
-      "six tabs scroll with manual keyboard activation at 320px",
+      "workspace tabs use manual keyboard activation at 320px",
       async () => {
         const policy = skillsFixture();
         const { page, context, pageErrors } = await authenticatedPage(
@@ -2094,6 +2094,7 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
             "Tokens",
             "Bots",
             "Connections",
+            "Requests",
           ]);
           const skillsTab = rail.getByRole("tab", {
             name: "Skills",
@@ -2101,23 +2102,23 @@ test("personal skills built UI", { skip: !RUN }, async (t) => {
           });
           await skillsTab.focus();
           await skillsTab.press("End");
-          const connections = rail.getByRole("tab", {
-            name: "Connections",
+          const requests = rail.getByRole("tab", {
+            name: "Requests",
             exact: true,
           });
           assert.equal(
-            await connections.evaluate((el) => el === document.activeElement),
+            await requests.evaluate((el) => el === document.activeElement),
             true
           );
           assert.equal(await skillsTab.getAttribute("aria-selected"), "true");
-          const bounds = await connections.boundingBox();
+          const bounds = await requests.boundingBox();
           assert(
             bounds.x >= -1 && bounds.x + bounds.width <= 321,
             JSON.stringify(bounds)
           );
           await page.screenshot({ path: join(EVIDENCE, "320-tabs-light.png") });
           await captureMatrix(page, "tabs", page.locator("#right-panel"));
-          await connections.press("Home");
+          await requests.press("Home");
           await rail
             .getByRole("tab", { name: "Models", exact: true })
             .press("ArrowRight");

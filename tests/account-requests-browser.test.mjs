@@ -20,6 +20,7 @@ test(
           import { createRoot } from "react-dom/client";
           import { AuthProvider } from "./src/providers/AuthProvider";
           import { ChangeProfileDialog } from "./src/app/components/ChangeProfileDialog";
+          import { WorkspacePanel } from "./src/app/components/WorkspacePanel";
           import { AdminRequestInbox } from "./src/app/components/account-requests/AdminRequestInbox";
           import { UsersSection } from "./src/app/components/admin/UsersSection";
           function AdminPeople() {
@@ -34,13 +35,19 @@ test(
           }
           createRoot(document.getElementById("root")).render(
             <AuthProvider><main className="@container/panel space-y-4 p-4">
-              {location.pathname === "/admin-view" ? <AdminPeople /> : <ChangeProfileDialog open onOpenChange={() => {}} />}
+              {location.pathname === "/admin-view" ? <AdminPeople />
+                : location.pathname === "/workspace-view" ? (
+                  <div className="relative h-dvh">
+                    <WorkspacePanel onClose={() => {}} onCreateWithAgent={() => {}} onDirtyChange={() => {}} />
+                  </div>
+                ) : <ChangeProfileDialog open onOpenChange={() => {}} />}
             </main></AuthProvider>
           );
         `,
       },
       bundle: true,
       format: "esm",
+      define: { "process.env": "{}" },
       write: false,
     });
     const { css } = await compileBrowserStyles({ omitFontFaces: true });
@@ -56,7 +63,12 @@ test(
       { username: "admin", user_id: "admin", role: "admin" },
       { username, user_id: "other", role: "user" },
     ];
-    async function open(role, width, dark = false) {
+    async function open(
+      role,
+      width,
+      dark = false,
+      view = role === "admin" ? "admin-view" : "account-view"
+    ) {
       const page = await browser.newPage({
         viewport: { width, height: 800 },
         reducedMotion: width < 400 ? "reduce" : "no-preference",
@@ -90,6 +102,9 @@ test(
             json: { role, username: role, user_id: role },
           });
         }
+        if (!path.includes("account-request") && role === "user") {
+          return route.fulfill({ status: 404 });
+        }
         if (path === "/api/admin/users") {
           return route.fulfill({ json: { users: accounts } });
         }
@@ -101,7 +116,9 @@ test(
           return route.fulfill({ status: 404 });
         }
         if (path.endsWith("/account-request-options")) {
-          const pending = rows.find((row) => row.status === "pending");
+          const pending = rows.find(
+            (row) => row.type === "developer_access" && row.status === "pending"
+          );
           return route.fulfill({
             json: {
               items: [
@@ -113,6 +130,21 @@ test(
                   pending_request_id: pending?.id ?? null,
                   current_limit: null,
                   cycle_end: null,
+                },
+                {
+                  type: "usage_reset",
+                  available: true,
+                  pending_request_id: null,
+                },
+                {
+                  type: "token_limit_increase",
+                  available: true,
+                  pending_request_id: null,
+                },
+                {
+                  type: "account_deletion",
+                  available: true,
+                  pending_request_id: null,
                 },
               ],
             },
@@ -179,9 +211,7 @@ test(
           },
         });
       });
-      await page.goto(
-        `${origin}/${role === "admin" ? "admin-view" : "account-view"}`
-      );
+      await page.goto(`${origin}/${view}`);
       await page.addStyleTag({ content: css });
       await page.addScriptTag({
         content: bundle.outputFiles[0].text,
@@ -190,6 +220,37 @@ test(
       return page;
     }
     try {
+      const workspace = await open("user", 1440, false, "workspace-view");
+      try {
+        const nav = workspace.getByRole("tablist", {
+          name: "Workspace sections",
+        });
+        const requestsTab = nav.getByRole("tab", { name: "Requests" });
+        await requestsTab.waitFor({ timeout: 5_000 });
+        await requestsTab.click({ timeout: 5_000 });
+        const requestsPanel = workspace.getByRole("tabpanel", {
+          name: "Requests",
+        });
+        for (const action of [
+          "Request developer access",
+          "Request account deletion",
+          "Request a usage reset",
+          "Request a higher token limit",
+          "My requests",
+        ]) {
+          await requestsPanel.getByRole("button", { name: action }).waitFor();
+        }
+        await requestsPanel
+          .getByRole("button", { name: "My requests" })
+          .click();
+        await workspace.getByRole("dialog", { name: "My requests" }).waitFor();
+      } catch (error) {
+        if (errors.length) throw new Error(errors.join("\n"), { cause: error });
+        throw error;
+      } finally {
+        await workspace.close();
+      }
+
       const user = await open("user", 320);
       await user.getByRole("tab", { name: "Requests" }).click();
       const action = user.getByRole("button", {
