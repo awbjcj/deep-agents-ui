@@ -691,10 +691,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
             </Button>
           </div>
 
-          <section
-            aria-label="Account requests"
-            className="border-border space-y-3 border-t pt-4"
-          >
+          <div className="border-border space-y-3 border-t pt-4">
             {user && recoveryAvailable !== undefined && (
               <PasswordRecoveryAction
                 accessToken={user.access_token}
@@ -702,7 +699,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
               />
             )}
             <RequestActions location="account" />
-          </section>
+          </div>
 
           {/* Admin Panel */}
           {isAdmin(user) && (

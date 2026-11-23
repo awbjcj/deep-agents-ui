@@ -3,6 +3,8 @@
 import { useId, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -142,7 +144,7 @@ export function ReviewRequestForm({
         </div>
       )}
       {type === "developer_access" && (
-        <div className="space-y-1 text-sm">
+        <div className="bg-muted/50 space-y-1 rounded-lg px-3 py-2 text-sm wrap-anywhere">
           <p>Grant the developer role to this account.</p>
           {!!review?.developer_capabilities?.length && (
             <ul className="list-inside list-disc">
@@ -154,14 +156,13 @@ export function ReviewRequestForm({
         </div>
       )}
       {deleting && !declining && (
-        <div className="border-destructive/40 space-y-2 rounded-md border p-3">
-          <p className="text-sm">
+        <div className="border-destructive/40 bg-destructive/5 space-y-2 rounded-lg border p-3">
+          <p className="text-sm wrap-anywhere">
             Delete the app account for <strong>{detail.username}</strong> and
             retire its saved credentials. Shared records stay with their owners.
           </p>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
+          <label className="min-h-touch flex cursor-pointer items-center gap-2 text-sm">
+            <Checkbox
               checked={confirmed}
               disabled={busy}
               onChange={(event) =>
@@ -169,7 +170,6 @@ export function ReviewRequestForm({
                   event.target.checked ? detail.review_version : undefined
                 )
               }
-              className="mt-1"
             />
             <span>
               I checked and handled any shared ownership for this account.
@@ -201,7 +201,7 @@ export function ReviewRequestForm({
       {unavailable && (
         <p className="text-muted-foreground text-sm">{unavailable}</p>
       )}
-      <div className="flex flex-wrap justify-end gap-2">
+      <DialogFooter>
         <Button
           variant="outline"
           type="button"
@@ -232,7 +232,7 @@ export function ReviewRequestForm({
                   ? "Delete account"
                   : "Approve and apply"}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }

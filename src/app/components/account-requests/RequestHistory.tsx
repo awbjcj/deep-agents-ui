@@ -140,12 +140,12 @@ export function RequestHistory({
         </p>
       )}
       {data && !rows.size && (
-        <p className="text-muted-foreground text-sm">
+        <p className="border-border/80 text-muted-foreground rounded-lg border border-dashed px-3 py-6 text-center text-sm">
           You haven’t made any requests yet.
         </p>
       )}
       {!!rows.size && (
-        <ul>
+        <ul className="m-0 grid list-none gap-2 p-0">
           {[...rows.values()].map((row) => (
             <RequestRow
               row={row}
@@ -155,6 +155,7 @@ export function RequestHistory({
                 <Button
                   variant="outline"
                   size="sm"
+                  className="min-h-touch"
                   disabled={!!busy}
                   onClick={() => void withdraw(row.id)}
                 >

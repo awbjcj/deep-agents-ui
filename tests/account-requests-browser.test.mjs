@@ -19,11 +19,22 @@ test(
           window.refreshRequest = (id) => mutate(["admin-account-request", "admin", id]);
           import { createRoot } from "react-dom/client";
           import { AuthProvider } from "./src/providers/AuthProvider";
-          import { RequestActions } from "./src/app/components/account-requests/RequestActions";
+          import { ChangeProfileDialog } from "./src/app/components/ChangeProfileDialog";
           import { AdminRequestInbox } from "./src/app/components/account-requests/AdminRequestInbox";
+          import { UsersSection } from "./src/app/components/admin/UsersSection";
+          function AdminPeople() {
+            const [revision, setRevision] = React.useState(0);
+            return <>
+              <AdminRequestInbox onFulfilled={() => {
+                document.body.dataset.fulfilled = "yes";
+                setRevision((value) => value + 1);
+              }} />
+              <UsersSection revision={revision} />
+            </>;
+          }
           createRoot(document.getElementById("root")).render(
-            <AuthProvider><main className="p-4">
-              {location.pathname === "/admin-view" ? <AdminRequestInbox onFulfilled={() => document.body.dataset.fulfilled = "yes"} /> : <RequestActions location="account" />}
+            <AuthProvider><main className="@container/panel space-y-4 p-4">
+              {location.pathname === "/admin-view" ? <AdminPeople /> : <ChangeProfileDialog open onOpenChange={() => {}} />}
             </main></AuthProvider>
           );
         `,
@@ -40,8 +51,16 @@ test(
     let rows = [];
     const date = "2026-11-23T15:00:00Z";
     const requests = [];
+    const username = "long.account.name.".repeat(5);
+    const accounts = [
+      { username: "admin", user_id: "admin", role: "admin" },
+      { username, user_id: "other", role: "user" },
+    ];
     async function open(role, width, dark = false) {
-      const page = await browser.newPage({ viewport: { width, height: 800 } });
+      const page = await browser.newPage({
+        viewport: { width, height: 800 },
+        reducedMotion: width < 400 ? "reduce" : "no-preference",
+      });
       page.on("pageerror", (error) => errors.push(error.message));
       await page.addInitScript(
         ({ role }) => {
@@ -70,6 +89,16 @@ test(
           return route.fulfill({
             json: { role, username: role, user_id: role },
           });
+        }
+        if (path === "/api/admin/users") {
+          return route.fulfill({ json: { users: accounts } });
+        }
+        if (path === "/api/admin/users/other/role") {
+          accounts[1].role = req.postDataJSON().role;
+          return route.fulfill({ json: accounts[1] });
+        }
+        if (path.startsWith("/api/admin/token-usage/users/")) {
+          return route.fulfill({ status: 404 });
         }
         if (path.endsWith("/account-request-options")) {
           const pending = rows.find((row) => row.status === "pending");
@@ -134,7 +163,17 @@ test(
         return route.fulfill({
           json: {
             items: path.startsWith("/api/admin/")
-              ? rows.filter((item) => item.status === "pending")
+              ? rows.filter((item) => {
+                  const query = new URL(req.url()).searchParams;
+                  const type = query.get("type");
+                  const status = query.get("status");
+                  return (
+                    (!type || item.type === type) &&
+                    (status === "history"
+                      ? item.status !== "pending"
+                      : item.status === "pending")
+                  );
+                })
               : rows,
             next_cursor: null,
           },
@@ -152,6 +191,7 @@ test(
     }
     try {
       const user = await open("user", 320);
+      await user.getByRole("tab", { name: "Requests" }).click();
       const action = user.getByRole("button", {
         name: "Request developer access",
       });
@@ -166,11 +206,10 @@ test(
       await user.getByRole("button", { name: "Withdraw" }).click();
       await user.getByText("Withdrawn", { exact: true }).waitFor();
       await user.keyboard.press("Escape");
-      await user.getByRole("dialog").waitFor({ state: "hidden" });
-      assert.equal(
-        await action.evaluate((element) => element === document.activeElement),
-        true
-      );
+      await user
+        .getByRole("dialog", { name: "My requests" })
+        .waitFor({ state: "hidden" });
+      await action.and(user.locator(":focus")).waitFor();
       await action.click();
       await user.getByLabel("Reason", { exact: true }).fill("Review firmware");
       await user.getByRole("button", { name: "Submit request" }).click();
@@ -181,6 +220,17 @@ test(
       );
 
       const admin = await open("admin", 1440, true);
+      const accountsSummary = admin
+        .locator("summary")
+        .filter({ hasText: "Accounts" })
+        .first();
+      await accountsSummary.getByText("2 accounts", { exact: true }).waitFor();
+      const actions = admin.getByRole("button", {
+        name: `Actions for ${username}`,
+      });
+      assert.equal(await actions.isVisible(), false);
+      await accountsSummary.press("Enter");
+      await actions.waitFor();
       await admin
         .getByRole("button", { name: "Review Developer access for user" })
         .click();
@@ -188,6 +238,7 @@ test(
       await admin.getByRole("button", { name: "Approve and apply" }).click();
       await admin.getByText("Request completed.").waitFor();
       await admin.getByText("No pending requests.").waitFor();
+      await actions.waitFor();
       assert.equal(
         await admin.locator("body").getAttribute("data-fulfilled"),
         "yes"
@@ -208,7 +259,64 @@ test(
         status: "pending",
       };
       rows = [deletion];
-      const reviewer = await open("admin", 1440);
+      const reviewer = await open("admin", 375);
+      const requestType = reviewer.getByRole("combobox", {
+        name: "Request type",
+      });
+      await requestType.click();
+      await reviewer
+        .getByRole("option", { name: "Weekly usage reset" })
+        .click();
+      assert.equal(
+        await requestType.evaluate((trigger) => {
+          const [label, chevron] = trigger.children;
+          const text = document.createRange();
+          text.selectNodeContents(label);
+          return (
+            text.getBoundingClientRect().right <
+            chevron.getBoundingClientRect().left
+          );
+        }),
+        true
+      );
+      await requestType.click();
+      await reviewer.getByRole("option", { name: "Account deletion" }).click();
+      const directory = reviewer
+        .locator("summary")
+        .filter({ hasText: "Accounts" })
+        .first();
+      await directory.press("Enter");
+      const mobileActions = reviewer.getByRole("button", {
+        name: `Actions for ${username}`,
+      });
+      await mobileActions.press("Enter");
+      const operations = reviewer.getByRole("dialog", {
+        name: `Account actions for ${username}`,
+      });
+      await operations
+        .getByRole("button", { name: "Reset password" })
+        .waitFor();
+      await operations
+        .getByRole("button", { name: "Reset weekly usage" })
+        .waitFor();
+      await operations
+        .getByRole("button", { name: "Delete account" })
+        .waitFor();
+      await operations.getByRole("combobox", { name: "Role" }).press("Enter");
+      await reviewer.getByRole("option", { name: "developer" }).click();
+      await operations
+        .getByRole("combobox", { name: "Role" })
+        .getByText("developer")
+        .waitFor();
+      await reviewer.keyboard.press("Escape");
+      await operations.waitFor({ state: "hidden" });
+      await mobileActions.and(reviewer.locator(":focus")).waitFor();
+      await directory.press("Enter");
+      await mobileActions.waitFor({ state: "hidden" });
+      assert.equal(
+        await reviewer.evaluate(() => document.documentElement.scrollWidth),
+        375
+      );
       await reviewer
         .getByRole("button", { name: "Review Account deletion for user" })
         .click();

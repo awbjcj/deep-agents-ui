@@ -11,7 +11,7 @@ export function PeopleSection() {
   return (
     <div className="space-y-6">
       <AdminRequestInbox onFulfilled={() => setUsersRevision((n) => n + 1)} />
-      <UsersSection key={usersRevision} />
+      <UsersSection revision={usersRevision} />
       <RegistrationSection />
     </div>
   );

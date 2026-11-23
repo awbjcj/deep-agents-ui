@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RequestActions } from "@/app/components/account-requests/RequestActions";
 import { apiUpdateProfile } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -147,15 +148,18 @@ export function ChangeProfileDialog({
       open={open}
       onOpenChange={changeOpen}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto">
+      <DialogContent className="grid-cols-[minmax(0,1fr)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Account</DialogTitle>
-          <DialogDescription>Signed in as {user?.username}.</DialogDescription>
+          <DialogDescription className="wrap-anywhere">
+            Signed in as {user?.username}.
+          </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="username">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="username">Username</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsTrigger value="requests">Requests</TabsTrigger>
           </TabsList>
           <TabsContent
             value="username"
@@ -310,6 +314,12 @@ export function ChangeProfileDialog({
                 </Button>
               </fieldset>
             </form>
+          </TabsContent>
+          <TabsContent
+            value="requests"
+            className="pt-3"
+          >
+            <RequestActions location="account" />
           </TabsContent>
         </Tabs>
       </DialogContent>

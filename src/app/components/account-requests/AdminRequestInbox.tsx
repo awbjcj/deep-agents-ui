@@ -1,16 +1,18 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { ArrowRight, CheckCircle2, Inbox } from "lucide-react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   getAdminAccountRequest,
   listAdminAccountRequests,
@@ -19,6 +21,7 @@ import {
   type AdminAccountRequest,
 } from "@/lib/account-requests";
 import { useAuth } from "@/providers/AuthProvider";
+import { RequestDialogHeader } from "./RequestDialogHeader";
 import { RequestRow } from "./RequestRow";
 import { ReviewRequestForm } from "./ReviewRequestForm";
 
@@ -66,65 +69,88 @@ export function AdminRequestInbox({
   return (
     <section
       aria-labelledby={`${filtersId}-heading`}
-      className="border-border space-y-3 rounded-lg border p-4"
+      className="settings-surface @container min-w-0 space-y-4 p-3 @sm/panel:p-4"
     >
-      <h3
-        ref={heading}
-        tabIndex={-1}
-        id={`${filtersId}-heading`}
-        className="text-sm font-semibold"
-      >
-        Requests
-      </h3>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor={`${filtersId}-status`}>Status</Label>
-          <select
-            id={`${filtersId}-status`}
-            className="border-input bg-background min-h-touch rounded-md border px-2 text-sm"
-            value={status}
-            onChange={(event) => {
-              setStatus(
-                event.target.value === "history" ? "history" : "pending"
-              );
-              setCursor(undefined);
-            }}
+      <header className="flex items-center gap-3">
+        <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+          <Inbox
+            className="size-4"
+            aria-hidden="true"
+          />
+        </span>
+        <div className="min-w-0">
+          <h3
+            ref={heading}
+            tabIndex={-1}
+            id={`${filtersId}-heading`}
+            className="text-base font-semibold tracking-tight"
           >
-            <option value="pending">Pending</option>
-            <option value="history">History</option>
-          </select>
+            Requests
+          </h3>
         </div>
-        <div className="grid gap-1.5">
+      </header>
+      <div className="border-border/70 grid gap-3 border-t pt-3 @xs:grid-cols-[minmax(0,9rem)_minmax(0,14rem)]">
+        <div className="grid min-w-0 gap-1.5">
+          <Label htmlFor={`${filtersId}-status`}>Status</Label>
+          <Select
+            value={status}
+            onValueChange={(value) => {
+              setStatus(value === "history" ? "history" : "pending");
+              setCursor(undefined);
+            }}
+          >
+            <SelectTrigger
+              id={`${filtersId}-status`}
+              className="min-h-touch bg-background"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="history">History</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid min-w-0 gap-1.5">
           <Label htmlFor={`${filtersId}-type`}>Request type</Label>
-          <select
-            id={`${filtersId}-type`}
-            className="border-input bg-background min-h-touch rounded-md border px-2 text-sm"
-            value={type ?? ""}
-            onChange={(event) => {
+          <Select
+            value={type ?? "all"}
+            onValueChange={(value) => {
               setType(
-                (event.target.value || undefined) as
-                  AccountRequestType | undefined
+                value === "all" ? undefined : (value as AccountRequestType)
               );
               setCursor(undefined);
             }}
           >
-            <option value="">All types</option>
-            {Object.entries(requestLabels).map(([value, label]) => (
-              <option
-                key={value}
-                value={value}
-              >
-                {label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              id={`${filtersId}-type`}
+              className="min-h-touch bg-background"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              {Object.entries(requestLabels).map(([value, label]) => (
+                <SelectItem
+                  key={value}
+                  value={value}
+                >
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       {success && (
         <p
           role="status"
-          className="text-sm"
+          className="bg-primary/10 text-primary flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
         >
+          <CheckCircle2
+            className="size-4 shrink-0"
+            aria-hidden="true"
+          />
           {success}
         </p>
       )}
@@ -152,36 +178,38 @@ export function AdminRequestInbox({
         </p>
       )}
       {data?.items.length === 0 && (
-        <p className="text-muted-foreground text-sm">
+        <p className="border-border/80 text-muted-foreground rounded-lg border border-dashed px-3 py-6 text-center text-sm">
           {status === "pending"
             ? "No pending requests."
             : "No requests in history."}
         </p>
       )}
       {!!data?.items.length && (
-        <ul>
+        <ul className="m-0 grid list-none gap-2 p-0">
           {data.items.map((row) => (
             <RequestRow
               row={row}
+              requester={row.username ?? "Removed account"}
               key={row.id}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground max-w-48 truncate text-xs">
-                  {row.username ?? "Removed account"}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`${status === "pending" ? "Review" : "View"} ${requestLabels[row.type]} for ${row.username ?? "removed account"}`}
-                  onClick={(event) => {
-                    trigger.current = event.currentTarget;
-                    setSuccess("");
-                    setSelected(row);
-                  }}
-                >
-                  {status === "pending" ? "Review" : "View"}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={status === "pending" ? "default" : "outline"}
+                className="min-h-touch"
+                aria-label={`${status === "pending" ? "Review" : "View"} ${requestLabels[row.type]} for ${row.username ?? "removed account"}`}
+                onClick={(event) => {
+                  trigger.current = event.currentTarget;
+                  setSuccess("");
+                  setSelected(row);
+                }}
+              >
+                {status === "pending" ? "Review" : "View"}
+                <ArrowRight
+                  className="size-4"
+                  aria-hidden="true"
+                />
+              </Button>
             </RequestRow>
           ))}
         </ul>
@@ -215,21 +243,24 @@ export function AdminRequestInbox({
         }}
       >
         <DialogContent
+          className="grid-cols-[minmax(0,1fr)]"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             if (trigger.current?.isConnected) trigger.current.focus();
             else heading.current?.focus();
           }}
         >
-          <DialogHeader>
-            <DialogTitle>
-              {selected ? requestLabels[selected.type] : "Review request"}
-            </DialogTitle>
-            <DialogDescription>
-              {detail.data?.username ?? selected?.username ?? "Removed account"}
-              {detail.data?.role && ` · ${detail.data.role}`}
-            </DialogDescription>
-          </DialogHeader>
+          <RequestDialogHeader
+            title={selected ? requestLabels[selected.type] : "Review request"}
+            description={
+              <>
+                {detail.data?.username ??
+                  selected?.username ??
+                  "Removed account"}
+                {detail.data?.role && ` · ${detail.data.role}`}
+              </>
+            }
+          />
           {detail.error && (
             <p
               role="alert"
@@ -255,7 +286,7 @@ export function AdminRequestInbox({
           )}
           {detail.data && (
             <>
-              <ul>
+              <ul className="m-0 list-none p-0">
                 <RequestRow row={detail.data} />
               </ul>
               {detail.data.status === "pending" && (

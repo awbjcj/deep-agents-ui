@@ -2,12 +2,26 @@
 
 import { MeterFill } from "@/components/ui/meter-fill";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, KeyRound, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Download,
+  Ellipsis,
+  KeyRound,
+  RotateCcw,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { UsageDimensionToggle } from "@/app/components/UsageDimensionToggle";
 import { roleVisual } from "@/app/utils/roleVisual";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -36,40 +50,38 @@ import {
 } from "@/lib/usage";
 import { useAuth } from "@/providers/AuthProvider";
 import {
-  ActionPill,
   DisclosureSection,
+  EmptyState,
   LoadingRow,
-  SectionHeader,
 } from "@/app/components/admin/primitives";
 import { ROLES, downloadBlob } from "@/app/components/admin/primitives-utils";
 import { SETTINGS_CARD_GRID } from "@/app/components/settings/SettingsLayout";
 
-export function UsersSection() {
+export function UsersSection({ revision = 0 }: { revision?: number }) {
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usage, setUsage] = useState<Record<string, AdminUserUsage>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [usageView, setUsageView] = useState<UsageDimension>("tokens");
 
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const list = await apiListUsers();
-      setUsers(list);
-    } catch {
-      toast.error("Failed to load users");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void fetchUsers();
-  }, [fetchUsers]);
+    const controller = new AbortController();
+    const { signal } = controller;
+    apiListUsers(signal)
+      .then((list) => {
+        if (!signal.aborted) setUsers(list);
+      })
+      .catch(() => {
+        if (!signal.aborted) toast.error("Failed to load users");
+      })
+      .finally(() => {
+        if (!signal.aborted) setIsLoading(false);
+      });
+    return () => controller.abort();
+  }, [revision]);
 
-  // Only refetch usage when the *set* of usernames changes — local mutations
-  // (role change, delete, reset-usage) update users[] in place and must NOT
-  // trigger a fan-out of N usage requests on every click.
+  // Watch the set of usernames and completed review revisions so an ordinary
+  // role edit does not reload every usage meter.
   const usernameKey = useMemo(
     () =>
       users
@@ -97,7 +109,7 @@ export function UsersSection() {
       setUsage(map);
     })();
     return () => controller.abort();
-  }, [usernameKey]);
+  }, [usernameKey, revision]);
 
   const handleRoleChange = async (id: string, role: Role) => {
     if (id === user?.user_id && role !== "admin") {
@@ -245,124 +257,180 @@ export function UsersSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionHeader
-          title={
-            isLoading
-              ? "Accounts"
-              : `${users.length} ${users.length === 1 ? "account" : "accounts"}`
-          }
-        />
-        <div title="Which weekly cap the usage bars show">
-          <UsageDimensionToggle
-            value={usageDim}
-            onChange={setUsageView}
-          />
-        </div>
-      </div>
+      <DisclosureSection
+        title="Accounts"
+        subtitle={
+          isLoading
+            ? undefined
+            : `${users.length} ${users.length === 1 ? "account" : "accounts"}`
+        }
+        icon={Users}
+        contentClassName="space-y-3"
+      >
+        {isLoading ? (
+          <LoadingRow compact />
+        ) : users.length === 0 ? (
+          <EmptyState title="No accounts found" />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-muted-foreground m-0 text-xs font-medium">
+                Weekly usage
+              </p>
+              <UsageDimensionToggle
+                value={usageDim}
+                onChange={setUsageView}
+              />
+            </div>
 
-      {isLoading ? (
-        <LoadingRow />
-      ) : (
-        <div className={SETTINGS_CARD_GRID}>
-          {users.map((u) => {
-            const u_usage = usage[u.username];
-            const isSelf = u.user_id === user?.user_id;
-            const { Icon: RoleIcon, color: roleColor } = roleVisual(u.role);
-            return (
-              <article
-                key={u.user_id}
-                className="settings-surface hover:bg-muted/50 p-2.5 transition-[background-color,border-color] duration-150"
-              >
-                <header className="flex items-center gap-2">
-                  <div
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border"
-                    style={{
-                      color: roleColor,
-                      borderColor: `color-mix(in srgb, ${roleColor} 40%, transparent)`,
-                      background: `color-mix(in srgb, ${roleColor} 12%, transparent)`,
-                    }}
-                    aria-hidden="true"
+            <ul className={`m-0 list-none p-0 ${SETTINGS_CARD_GRID}`}>
+              {users.map((account) => {
+                const accountUsage = usage[account.username];
+                const isSelf = account.user_id === user?.user_id;
+                const { Icon: RoleIcon, color: roleColor } = roleVisual(
+                  account.role
+                );
+                return (
+                  <li
+                    key={account.user_id}
+                    className="border-border/60 bg-background/60 m-0 min-w-0 rounded-lg border px-3 py-2"
                   >
-                    <RoleIcon className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-semibold tracking-tight">
-                        {u.username}
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full"
+                        style={{
+                          color: roleColor,
+                          background: `color-mix(in srgb, ${roleColor} 12%, transparent)`,
+                        }}
+                        aria-hidden="true"
+                      >
+                        <RoleIcon className="size-4" />
                       </span>
-                      {isSelf && (
-                        <span className="bg-muted text-muted-foreground rounded-sm px-1.5 py-px text-xs font-semibold tracking-wider uppercase">
-                          You
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Select
-                    value={u.role}
-                    onValueChange={(v) =>
-                      handleRoleChange(u.user_id, v as Role)
-                    }
-                    disabled={isSelf}
-                  >
-                    <SelectTrigger
-                      className="h-7 w-[140px] shrink-0 gap-1.5 px-2 text-xs"
-                      aria-label={`Role for ${u.username}`}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((role) => {
-                        const { Icon: OptIcon } = roleVisual(role);
-                        return (
-                          <SelectItem
-                            key={role}
-                            value={role}
-                            className="text-xs"
+                      <div className="min-w-0 flex-1 wrap-anywhere">
+                        <p className="m-0 text-sm font-semibold">
+                          {account.username}
+                        </p>
+                        <p className="text-muted-foreground m-0 text-xs capitalize">
+                          {account.role}
+                          {isSelf && (
+                            <span className="normal-case"> · You</span>
+                          )}
+                        </p>
+                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Actions for ${account.username}`}
+                            className="size-touch text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
                           >
-                            <span className="flex items-center gap-1.5">
-                              <OptIcon className="h-3.5 w-3.5" />
-                              {role}
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </header>
-
-                {u_usage && (
-                  <UsageStrip
-                    usage={u_usage}
-                    override={usageDim}
-                  />
-                )}
-
-                <div className="mt-2 grid grid-cols-3 gap-1.5">
-                  <ActionPill
-                    icon={KeyRound}
-                    label="Reset PW"
-                    onClick={() => handleResetPassword(u)}
-                  />
-                  <ActionPill
-                    icon={RotateCcw}
-                    label="Reset Usage"
-                    onClick={() => handleResetUsage(u)}
-                    intent="renewal"
-                  />
-                  <ActionPill
-                    icon={Trash2}
-                    label="Delete"
-                    onClick={() => handleDelete(u)}
-                    intent="destructive"
-                    disabled={isSelf}
-                  />
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+                            <Ellipsis
+                              className="size-5"
+                              aria-hidden="true"
+                            />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="end"
+                          collisionPadding={12}
+                          aria-label={`Account actions for ${account.username}`}
+                          className="w-64 max-w-(--radix-popover-content-available-width) p-1.5 data-[state=closed]:animate-none data-[state=open]:animate-none"
+                        >
+                          <p className="m-0 px-2.5 pt-1.5 pb-2 text-sm font-semibold wrap-anywhere">
+                            {account.username}
+                          </p>
+                          {!isSelf && (
+                            <div className="border-border/70 space-y-1.5 border-y px-2.5 py-2">
+                              <Label
+                                htmlFor={`account-role-${account.user_id}`}
+                              >
+                                Role
+                              </Label>
+                              <Select
+                                value={account.role}
+                                onValueChange={(role) =>
+                                  void handleRoleChange(
+                                    account.user_id,
+                                    role as Role
+                                  )
+                                }
+                              >
+                                <SelectTrigger
+                                  id={`account-role-${account.user_id}`}
+                                  className="min-h-touch capitalize"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="capitalize">
+                                  {ROLES.map((role) => (
+                                    <SelectItem
+                                      key={role}
+                                      value={role}
+                                    >
+                                      {role}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          <div className="grid gap-0.5 pt-1">
+                            <PopoverClose asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="min-h-touch justify-start"
+                                onClick={() =>
+                                  void handleResetPassword(account)
+                                }
+                              >
+                                <KeyRound aria-hidden="true" /> Reset password
+                              </Button>
+                            </PopoverClose>
+                            <PopoverClose asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="min-h-touch justify-start"
+                                onClick={() => void handleResetUsage(account)}
+                              >
+                                <RotateCcw aria-hidden="true" /> Reset weekly
+                                usage
+                              </Button>
+                            </PopoverClose>
+                          </div>
+                          {!isSelf && (
+                            <div className="border-border/70 mt-1 border-t pt-1">
+                              <PopoverClose asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/10 min-h-touch w-full justify-start"
+                                  onClick={() => void handleDelete(account)}
+                                >
+                                  <Trash2 aria-hidden="true" /> Delete account
+                                </Button>
+                              </PopoverClose>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    {accountUsage && (
+                      <UsageStrip
+                        usage={accountUsage}
+                        override={usageDim}
+                      />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </DisclosureSection>
 
       <DisclosureSection
         title="Bulk account operations"
@@ -406,8 +474,8 @@ function UsageStrip({
 }) {
   const { primary } = splitUsageByEnforcement(usage, override);
   return (
-    <div className="text-muted-foreground mt-2 flex items-center gap-2 text-xs">
-      <div className="bg-muted h-1 flex-1 overflow-hidden rounded-full">
+    <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <div className="bg-muted h-1 min-w-12 flex-1 overflow-hidden rounded-full">
         <MeterFill
           percent={primary.isUnlimited ? 100 : primary.pct}
           className={
@@ -422,7 +490,7 @@ function UsageStrip({
         />
       </div>
       <span
-        className="text-foreground font-mono whitespace-nowrap tabular-nums"
+        className="text-foreground max-w-full font-mono wrap-anywhere tabular-nums"
         title={`Weekly ${primary.dimension} cap`}
       >
         {primary.dimension}{" "}
