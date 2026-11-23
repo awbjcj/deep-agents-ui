@@ -207,6 +207,37 @@ export async function apiForgotPassword(
   return res.json();
 }
 
+export async function apiConfirmPasswordReset(
+  token: string,
+  newPassword: string
+): Promise<void> {
+  const res = await apiFetch("/auth/password-reset-confirmations", {
+    method: "POST",
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage(data.detail, "Could not reset your password.")
+    );
+  }
+}
+
+export async function apiRequestPasswordResetEmail(
+  accessToken: string
+): Promise<void> {
+  const res = await apiFetch("/user/password-reset-emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      extractErrorMessage(data.detail, "Could not email a reset link.")
+    );
+  }
+}
+
 export async function apiLogin(
   username: string,
   password: string
@@ -377,6 +408,7 @@ export interface UserProfile {
   can_use_task_agent: boolean;
   /** Developer/admin. */
   can_use_code_analyzer: boolean;
+  password_recovery_available?: boolean;
 }
 
 /** Fetch the caller's profile; access flags default to false on older servers. */

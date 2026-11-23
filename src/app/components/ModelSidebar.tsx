@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTokenUsage } from "@/app/hooks/useTokenUsage";
+import { RequestActions } from "@/app/components/account-requests/RequestActions";
 import {
   formatUsageAmount,
   splitUsageByEnforcement,
@@ -519,6 +520,7 @@ export function ModelSidebar() {
                   />
                 );
               })()}
+              <RequestActions location="usage" />
             </section>
           )}
 

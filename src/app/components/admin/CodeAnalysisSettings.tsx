@@ -79,18 +79,18 @@ type LimitDefinition = {
 
 function formatLimit(field: LimitDefinition, value: number): string {
   if (field.unit !== "MB") return String(value);
-  const whole = Math.floor(value / BYTES_PER_MB);
-  const fraction = String(value % BYTES_PER_MB)
-    .padStart(6, "0")
-    .replace(/0+$/, "");
-  return fraction ? whole + "." + fraction : String(whole);
+  return String(Math.max(1, Math.round(value / BYTES_PER_MB)));
 }
 
-function parseLimit(field: LimitDefinition, value: string): number {
+function parseLimit(
+  field: LimitDefinition,
+  value: string,
+  savedValue: number
+): number {
   if (field.unit !== "MB") return Number(value);
-  if (!/^(?:\d+(?:\.\d{0,6})?|\.\d{1,6})$/.test(value)) return NaN;
-  const [whole, fraction = ""] = value.split(".");
-  return Number(whole) * BYTES_PER_MB + Number(fraction.padEnd(6, "0"));
+  // Preserve exact byte limits when saving other settings.
+  if (value === formatLimit(field, savedValue)) return savedValue;
+  return /^\d+$/.test(value) ? Number(value) * BYTES_PER_MB : NaN;
 }
 
 const LIMIT_GROUPS: ReadonlyArray<{
@@ -562,9 +562,9 @@ function LimitInput({
       <Input
         id={inputId}
         type="number"
-        min={field.unit === "MB" ? 1 / BYTES_PER_MB : (field.min ?? 1)}
-        step={field.unit === "MB" ? 1 / BYTES_PER_MB : 1}
-        inputMode={field.unit === "MB" ? "decimal" : "numeric"}
+        min={field.min ?? 1}
+        step={1}
+        inputMode="numeric"
         value={value}
         aria-describedby={descriptionId}
         aria-invalid={Boolean(error)}
@@ -580,7 +580,7 @@ function LimitInput({
   );
 }
 
-/** Nonsecret worker resource controls, deliberately expressed in exact stored units. */
+/** Administrator controls for engine policy and worker resource limits. */
 export function CodeAnalysisSettings({
   showHeader = true,
 }: {
@@ -732,7 +732,11 @@ export function CodeAnalysisSettings({
         ...Object.fromEntries(
           EDITABLE.map((field) => [
             field.key,
-            parseLimit(field, draft[field.key]),
+            parseLimit(
+              field,
+              draft[field.key],
+              limits[field.key as LimitField]
+            ),
           ])
         ),
       };
@@ -754,7 +758,11 @@ export function CodeAnalysisSettings({
           limits: Object.fromEntries(
             MATLAB_LIMITS.map((field) => [
               field.key,
-              parseLimit(field, draft[`matlab_${field.key}`]),
+              parseLimit(
+                field,
+                draft[`matlab_${field.key}`],
+                engines.matlab.limits[field.key as MatlabLimitField]
+              ),
             ])
           ) as MatlabSettings["limits"],
         },
@@ -776,7 +784,10 @@ export function CodeAnalysisSettings({
                   : section === "matlab" && group === "dependency_server_ids"
                     ? "matlab-dependency-servers"
                     : issue.path.join("-");
-          errors[key] ??= issue.message;
+          errors[key] ??=
+            issue.code === "invalid_type" && key.endsWith("_bytes")
+              ? "Enter a whole number of MB."
+              : issue.message;
         }
         setFieldErrors(errors);
         return;
@@ -811,7 +822,7 @@ export function CodeAnalysisSettings({
       {showHeader ? (
         <SectionHeader
           title="Code-analysis resources"
-          subtitle="Choose the analysis policy, native model budget, and bounded worker capacity. Values are stored in the exact units shown."
+          subtitle="Choose the analysis policy, native model budget, and bounded worker capacity. Size limits are shown in whole MB."
         />
       ) : null}
 

@@ -88,6 +88,8 @@ test(
           });
         }
         if (path === "/api/user/scm/servers") return json([]);
+        if (path === "/api/admin/account-requests")
+          return json({ items: [], next_cursor: null });
         if (path === "/api/admin/connectivity") return json({ urls: {} });
         if (path === "/api/admin/run-mode")
           return json({
@@ -321,8 +323,15 @@ test(
       );
       await page.getByRole("option", { name: sharedModel.model }).click();
       const reportLimit = page.getByLabel("Report limit", { exact: true });
-      assert.equal(await reportLimit.inputValue(), "2.097152");
+      const artifactSize = page.getByLabel("Artifact size", { exact: true });
+      assert.equal(await reportLimit.inputValue(), "2");
+      assert.equal(await artifactSize.inputValue(), "1");
+      assert.equal(await reportLimit.getAttribute("step"), "1");
       await reportLimit.fill("1.25");
+      await savePolicy.click();
+      assert.equal(await reportLimit.getAttribute("aria-invalid"), "true");
+      assert.equal(engineSettings.copilot.enabled, undefined);
+      await reportLimit.fill("3");
       const catalogRequestsBeforeSave = catalogRequests;
       await savePolicy.click();
       await page
@@ -337,10 +346,12 @@ test(
         sharedModel.model,
       ]);
       assert.equal(engineSettings.copilot.default_model, sharedModel.model);
-      assert.equal(engineSettings.limits.report_markdown_max_bytes, 1250000);
+      assert.equal(engineSettings.limits.report_markdown_max_bytes, 3_000_000);
       assert.equal(engineSettings.matlab.limits.max_artifact_bytes, 1234567);
       assert.deepEqual(engineSettings.model_override, sharedModel);
       assert.ok(catalogRequests > catalogRequestsBeforeSave);
+      assert.equal(await reportLimit.inputValue(), "3");
+      await artifactSize.fill("4");
       await settings.screenshot({
         path: resolve(evidence, "admin-policy.png"),
       });
@@ -359,6 +370,7 @@ test(
         .getByText("All settings are up to date", { exact: true })
         .waitFor();
       assert.equal(engineSettings.model_override, null);
+      assert.equal(engineSettings.matlab.limits.max_artifact_bytes, 4_000_000);
       assert.deepEqual(pageErrors, []);
       await context.close();
     } finally {

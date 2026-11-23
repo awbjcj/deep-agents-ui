@@ -66,8 +66,10 @@ export default function ForgotPasswordPage() {
           tone="info"
           message={
             <>
-              If <strong>{email}</strong> is registered, you’ll receive a
-              temporary password. Use it to sign in and change your password.
+              If <strong>{email}</strong> is verified and email recovery is
+              available, you’ll receive a link to choose a new password. The
+              link expires in 30 minutes. If you need help, contact an
+              administrator.
             </>
           }
         />
@@ -99,7 +101,7 @@ export default function ForgotPasswordPage() {
             isSubmitting={isSubmitting}
             pendingLabel="Sending…"
           >
-            Email temporary password
+            Email reset link
           </AuthSubmitButton>
         </form>
       )}

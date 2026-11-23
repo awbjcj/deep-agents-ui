@@ -37,6 +37,8 @@ import {
   Role,
 } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
+import { RequestActions } from "@/app/components/account-requests/RequestActions";
+import { PasswordRecoveryAction } from "@/app/components/settings/PasswordRecoveryAction";
 import { toast } from "sonner";
 import { RoleBadge } from "@/app/utils/roles";
 import { ModelSelector } from "./ModelSelector";
@@ -66,6 +68,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
 
   // --- Change email ---
   const [profileEmail, setProfileEmail] = useState<string>(user?.email ?? "");
+  const [recoveryAvailable, setRecoveryAvailable] = useState<boolean>();
   const [newEmail, setNewEmail] = useState("");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [emailSaved, setEmailSaved] = useState(false);
@@ -131,6 +134,7 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
       .then((profile) => {
         if (active) {
           setProfileEmail(profile.email ?? "");
+          setRecoveryAvailable(profile.password_recovery_available === true);
         }
       })
       .catch(() => {
@@ -686,6 +690,19 @@ export function UserManagementSidebar({ onClose }: UserManagementSidebarProps) {
               )}
             </Button>
           </div>
+
+          <section
+            aria-label="Account requests"
+            className="border-border space-y-3 border-t pt-4"
+          >
+            {user && recoveryAvailable !== undefined && (
+              <PasswordRecoveryAction
+                accessToken={user.access_token}
+                available={recoveryAvailable}
+              />
+            )}
+            <RequestActions location="account" />
+          </section>
 
           {/* Admin Panel */}
           {isAdmin(user) && (
