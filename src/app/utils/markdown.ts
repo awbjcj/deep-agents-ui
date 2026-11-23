@@ -479,8 +479,7 @@ function normalizeInlineMathBrackets(line: string, store: string[]): string {
   return line.replace(INLINE_MATH_BRACKETS, (match, prefix, expression) => {
     // Bare brackets are only promoted to math when they carry a LaTeX command;
     // `[^1]`, `[VSDA-123]` and `config[a/b]` must survive untouched.
-    if (!LATEX_COMMAND.test(expression)) return match;
-    if (DATE_TIME_PATTERN.test(expression.trim())) return match;
+    if (!isMathExpression(expression)) return match;
     return prefix + protect(`$${expression.trim()}$`, store);
   });
 }

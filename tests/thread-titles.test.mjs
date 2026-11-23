@@ -66,7 +66,9 @@ test("only recent idle untitled threads are rechecked, a bounded number of times
     item("old", { updatedAt: new Date("2025-12-31T00:00:00Z") }),
     item("exhausted"),
   ];
-  const rechecks = new Map([["exhausted", 3]]);
+  const rechecks = new Map([
+    ["exhausted", { updatedAt: threads[4].updatedAt.getTime(), attempts: 3 }],
+  ]);
   assert.deepEqual(
     threadsAwaitingTitle(threads, rechecks, now).map((thread) => thread.id),
     ["waiting"]
@@ -169,6 +171,31 @@ test("title retries reevaluate the original two-minute eligibility window", (t) 
   t.mock.timers.tick(4000);
   assert.equal(calls, 0);
   cancel();
+});
+
+test("a thread gets fresh title retries after its first run updates the empty draft", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: Date.now() });
+  const draft = pendingTitle();
+  const rechecks = new Map();
+  let calls = 0;
+  const revalidate = async () => {
+    calls += 1;
+  };
+  const stopDraft = scheduleTitleRechecks([draft], rechecks, revalidate);
+  for (let i = 0; i < 3; i++) {
+    t.mock.timers.tick(4000);
+    await Promise.resolve();
+  }
+  assert.equal(calls, 3);
+  stopDraft();
+
+  t.mock.timers.tick(60_000);
+  const finished = { ...draft, updatedAt: new Date(Date.now()) };
+  const stopRun = scheduleTitleRechecks([finished], rechecks, revalidate);
+  t.mock.timers.tick(4000);
+  await Promise.resolve();
+  assert.equal(calls, 4, "a newly finished run must not inherit draft retries");
+  stopRun();
 });
 
 test("sidebar projects previews and fetches unusual histories in one scoped batch", async () => {
