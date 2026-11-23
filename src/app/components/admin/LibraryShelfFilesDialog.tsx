@@ -29,7 +29,8 @@ import {
   type LibraryJob,
 } from "@/lib/library-admin";
 import { sortLibraryFiles } from "@/lib/library-file-view";
-import { SUPPORTED_DOC_EXTS, UPLOAD_MAX_MIB } from "@/lib/uploads";
+import { SUPPORTED_DOC_EXTS, UPLOAD_MAX_MB } from "@/lib/uploads";
+import { useConnectivity } from "@/providers/ConnectivityProvider";
 
 const ACCEPTED_FILES = SUPPORTED_DOC_EXTS.map((ext) => `.${ext}`).join(",");
 const PENDING_REFRESH_MS = 5000;
@@ -49,6 +50,7 @@ export function LibraryShelfFilesDialog({
   onTrackJob,
   onChanged,
 }: LibraryShelfFilesDialogProps) {
+  const { uploadMaxMb = UPLOAD_MAX_MB } = useConnectivity();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<LibraryFile[]>([]);
@@ -205,7 +207,7 @@ export function LibraryShelfFilesDialog({
           <p className="text-muted-foreground text-xs leading-relaxed">
             PDF, Word, PowerPoint, Excel, CSV, HTML, Markdown, text, and Outlook
             message files are supported. Up to 20 files per upload,{" "}
-            {UPLOAD_MAX_MIB} MiB each.
+            {uploadMaxMb} MB each.
           </p>
 
           <LibraryShelfFileList

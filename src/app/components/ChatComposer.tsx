@@ -264,6 +264,10 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       return id;
     }, [ensureThreadId, threadId, draftKey, accountId]);
 
+    // Attachments are available in every run mode. Proxy mode follows the
+    // admin switch, and the server supplies the file size limit.
+    const { attachmentsEnabled, uploadMaxMb } = useConnectivity();
+
     const {
       items: attachments,
       addFiles,
@@ -277,13 +281,9 @@ export const ChatComposer = React.memo<ChatComposerProps>(
       createdThreadId,
       ensureThreadId: ensureAttachmentThreadId,
       files,
+      uploadMaxMb,
       onFilesChanged: onThreadFilesChanged,
     });
-
-    // Attachments are available in every run mode; under Proxy they follow an
-    // admin switch surfaced by the connectivity endpoint. Every entry point
-    // (button, menu, drag-and-drop) is gated on the same resolved flag.
-    const { attachmentsEnabled } = useConnectivity();
 
     const fileKeysCount = Object.keys(files).length;
 

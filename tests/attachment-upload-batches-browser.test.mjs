@@ -31,7 +31,7 @@ test(
             const [createdThreadId, setCreatedThread] = React.useState();
             window.setThread = setThread;
             window.createDraftThread = (id) => { setCreatedThread(id); setThread(id); };
-            window.attachments = useAttachments({ threadId, createdThreadId, ensureThreadId: async () => 'A', files: {} });
+            window.attachments = useAttachments({ threadId, createdThreadId, ensureThreadId: async () => 'A', files: {}, uploadMaxMb: 10 });
             return <div><h1>Attachment batch</h1>{window.attachments.items.map(item =>
               <p key={item.localId}>{item.file?.name ?? item.meta?.filename}: {item.phase}</p>
             )}</div>;
@@ -49,8 +49,7 @@ test(
               export const ACCEPT_ATTR = ${JSON.stringify(uploads.ACCEPT_ATTR)};
               export const SUPPORTED_DOC_EXTS = ${JSON.stringify(uploads.SUPPORTED_DOC_EXTS)};
               export const SUPPORTED_IMAGE_EXTS = ${JSON.stringify(uploads.SUPPORTED_IMAGE_EXTS)};
-              export const UPLOAD_MAX_BYTES = ${uploads.UPLOAD_MAX_BYTES};
-              export const UPLOAD_MAX_MIB = ${uploads.UPLOAD_MAX_MIB};
+              export const UPLOAD_MAX_MB = ${uploads.UPLOAD_MAX_MB};
               export const UPLOAD_MAX_PER_SEND = ${uploads.UPLOAD_MAX_PER_SEND};
               export async function uploadFile(thread, file, signal) {
                 window.started.push([thread, file.name]);
@@ -248,7 +247,7 @@ test(
       await reset();
       assert.ok(uploads.ACCEPT_ATTR.split(",").includes(".csv"));
       await page.evaluate(() => {
-        const pdf = new Uint8Array(30 * 1024 * 1024);
+        const pdf = new Uint8Array(10_000_000);
         window.attachments.addFiles([
           new File(["Name,Value\nExample,1"], "report.csv"),
           new File([pdf], "at-limit.pdf"),

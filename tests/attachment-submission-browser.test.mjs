@@ -45,8 +45,7 @@ test(
         export const ACCEPT_ATTR = '.txt';
         export const SUPPORTED_DOC_EXTS = new Set(['txt']);
         export const SUPPORTED_IMAGE_EXTS = new Set([]);
-        export const UPLOAD_MAX_BYTES = 10000;
-        export const UPLOAD_MAX_MIB = 30;
+        export const UPLOAD_MAX_MB = 30;
         export const UPLOAD_MAX_PER_SEND = 10;
         export async function uploadFile(thread, file) {
           return { filename: file.name, kind: 'document', state_files_key: file.name, byte_size: file.size, markdown_chars: file.size };

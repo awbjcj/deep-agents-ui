@@ -7,8 +7,7 @@ import {
   ACCEPT_ATTR,
   SUPPORTED_DOC_EXTS,
   SUPPORTED_IMAGE_EXTS,
-  UPLOAD_MAX_BYTES,
-  UPLOAD_MAX_MIB,
+  UPLOAD_MAX_MB,
   UPLOAD_MAX_PER_SEND,
   deleteUpload,
   uploadFile,
@@ -76,6 +75,7 @@ interface UseAttachmentsOpts {
   createdThreadId?: string;
   ensureThreadId: () => Promise<string | null>;
   files: Record<string, string>;
+  uploadMaxMb?: number;
   /**
    * Called after an upload or delete lands in the thread. Those writes run
    * outside the chat stream, so the Files list must re-read thread state.
@@ -110,6 +110,7 @@ export function useAttachments({
   createdThreadId,
   ensureThreadId,
   files,
+  uploadMaxMb = UPLOAD_MAX_MB,
   onFilesChanged,
 }: UseAttachmentsOpts) {
   const [items, setItems] = useState<AttachmentState[]>([]);
@@ -278,8 +279,8 @@ export function useAttachments({
           toast.error(`Unsupported file type: ${file.name}`);
           continue;
         }
-        if (file.size > UPLOAD_MAX_BYTES) {
-          toast.error(`Too large (>${UPLOAD_MAX_MIB} MiB): ${file.name}`);
+        if (file.size > uploadMaxMb * 1_000_000) {
+          toast.error(`Too large (>${uploadMaxMb} MB): ${file.name}`);
           continue;
         }
         const localId = uuidv4();
@@ -298,7 +299,7 @@ export function useAttachments({
         void beginUpload({ localId: a.state.localId, file: a.file });
       });
     },
-    [beginUpload]
+    [beginUpload, uploadMaxMb]
   );
 
   /**

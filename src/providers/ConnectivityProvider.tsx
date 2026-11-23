@@ -26,6 +26,7 @@ interface ConnectivityContextValue {
    * 403, never an unauthorized upload.
    */
   attachmentsEnabled: boolean;
+  uploadMaxMb?: number;
   isLoading: boolean;
   /** Refetch connectivity from the server. */
   refresh: () => Promise<void>;
@@ -47,6 +48,7 @@ export function ConnectivityProvider({ children }: { children: ReactNode }) {
   // The admin switch, kept separate from the effective flag so an optimistic
   // run-mode change re-derives attachment availability without a round trip.
   const [proxyAttachmentsEnabled, setProxyAttachmentsEnabled] = useState(true);
+  const [uploadMaxMb, setUploadMaxMb] = useState<number>();
   const [isLoading, setIsLoading] = useState(false);
   // Only the latest request may commit, so a slow response for a previous
   // session cannot overwrite the current account's connectivity.
@@ -56,6 +58,7 @@ export function ConnectivityProvider({ children }: { children: ReactNode }) {
     const request = ++requestRef.current;
     if (!user?.access_token) {
       setRunMode(null);
+      setUploadMaxMb(undefined);
       setIsLoading(false);
       return;
     }
@@ -65,6 +68,7 @@ export function ConnectivityProvider({ children }: { children: ReactNode }) {
       if (request !== requestRef.current) return;
       setRunMode(res.run_mode);
       setProxyAttachmentsEnabled(res.proxy_attachments_enabled ?? true);
+      setUploadMaxMb(res.upload_max_mb);
     } catch {
       // Best effort: keep the previous value. Attachment gating fails open
       // (enabled) so a transient fetch error never strands the upload UI.
@@ -86,11 +90,19 @@ export function ConnectivityProvider({ children }: { children: ReactNode }) {
       runMode,
       isProxyMode: runMode === "proxy",
       attachmentsEnabled: runMode === "proxy" ? proxyAttachmentsEnabled : true,
+      uploadMaxMb,
       isLoading,
       refresh,
       setRunModeLocal,
     }),
-    [runMode, proxyAttachmentsEnabled, isLoading, refresh, setRunModeLocal]
+    [
+      runMode,
+      proxyAttachmentsEnabled,
+      uploadMaxMb,
+      isLoading,
+      refresh,
+      setRunModeLocal,
+    ]
   );
 
   return (

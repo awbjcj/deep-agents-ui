@@ -118,8 +118,7 @@ export function fileContentToText(rawContent: unknown): string {
   return String(rawContent || "");
 }
 
-export const UPLOAD_MAX_MIB = 30;
-export const UPLOAD_MAX_BYTES = UPLOAD_MAX_MIB * 1024 * 1024;
+export const UPLOAD_MAX_MB = 30;
 export const UPLOAD_MAX_PER_SEND = 5;
 
 export const SUPPORTED_DOC_EXTS = [

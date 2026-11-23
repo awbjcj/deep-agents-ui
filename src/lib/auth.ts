@@ -1618,6 +1618,8 @@ export interface UserConnectivityResponse {
   attachments_enabled?: boolean;
   /** The raw admin switch, independent of the user's current run mode. */
   proxy_attachments_enabled?: boolean;
+  /** Per-file upload limit in whole decimal MB. */
+  upload_max_mb?: number;
 }
 
 export interface UserConnectivityUpdatePayload {
