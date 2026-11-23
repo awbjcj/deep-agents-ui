@@ -193,8 +193,13 @@ test(
             assert.ok(usernameBounds && passwordBounds);
             assert.equal(passwordBounds.y > usernameBounds.y, panel < 448);
             assert.equal(
+              await username.evaluate((input) => input.form?.autocomplete),
+              "off"
+            );
+            assert.equal(await username.getAttribute("autocomplete"), "off");
+            assert.equal(
               await password.getAttribute("autocomplete"),
-              "section-aspera current-password"
+              "new-password"
             );
             assert.ok(
               await page.evaluate(

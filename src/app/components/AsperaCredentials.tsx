@@ -142,7 +142,10 @@ export function AsperaCredentials() {
             title="Aspera login"
             status={credential.configured ? "Saved" : undefined}
           >
-            <form onSubmit={save}>
+            <form
+              autoComplete="off"
+              onSubmit={save}
+            >
               <fieldset
                 disabled={pending !== null}
                 className="min-w-0 space-y-3"
@@ -160,7 +163,7 @@ export function AsperaCredentials() {
                       id="aspera-username"
                       ref={usernameInput}
                       className="border-muted-foreground/70"
-                      autoComplete="section-aspera username"
+                      autoComplete="off"
                       autoCapitalize="none"
                       spellCheck={false}
                       value={username}
@@ -179,7 +182,7 @@ export function AsperaCredentials() {
                       id="aspera-password"
                       className="border-muted-foreground/70"
                       type="password"
-                      autoComplete="section-aspera current-password"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(event) => {
                         setPassword(event.target.value);
