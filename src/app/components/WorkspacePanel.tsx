@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Bot,
   BookOpen,
-  ClipboardList,
   KeyRound,
   MessagesSquare,
   PlugZap,
@@ -17,22 +16,14 @@ import { ConnectivitySidebar } from "@/app/components/ConnectivitySidebar";
 import { ToolPermissionsSidebar } from "@/app/components/ToolPermissionsSidebar";
 import { SkillsSidebar } from "@/app/components/SkillsSidebar";
 import { ChatChannelSettings } from "@/app/components/chat-channels/ChatChannelSettings";
-import { RequestActions } from "@/app/components/account-requests/RequestActions";
 import { useAuth } from "@/providers/AuthProvider";
 import { readBrowserStorage, writeBrowserStorage } from "@/lib/browserStorage";
 import { SettingsPanel } from "./settings/SettingsPanel";
-import { SettingsContent } from "./settings/SettingsLayout";
 import { SettingsDrafts } from "./settings/SettingsDrafts";
 import { useSettingsLeaveGuard } from "./settings/useSettingsDrafts";
 
 export type WorkspaceTab =
-  | "models"
-  | "tokens"
-  | "bots"
-  | "connectivity"
-  | "tools"
-  | "skills"
-  | "requests";
+  "models" | "tokens" | "bots" | "connectivity" | "tools" | "skills";
 
 interface WorkspacePanelProps {
   /** Tab to show on mount; falls back to "models" if undefined. */
@@ -52,7 +43,7 @@ interface TabDef {
   id: WorkspaceTab;
   label: string;
   icon: typeof Bot;
-  description?: string;
+  description: string;
 }
 
 const TABS: TabDef[] = [
@@ -95,11 +86,6 @@ const TABS: TabDef[] = [
     icon: PlugZap,
     description:
       "Choose your connection route and source attachment preferences.",
-  },
-  {
-    id: "requests",
-    label: "Requests",
-    icon: ClipboardList,
   },
 ];
 
@@ -243,16 +229,6 @@ function WorkspacePanelContent({
             className="absolute inset-0 focus-visible:outline-none"
           >
             <ToolPermissionsSidebar />
-          </div>
-        )}
-        {active === "requests" && (
-          <div
-            {...panelTabPanelProps("workspace", "requests")}
-            className="absolute inset-0 overflow-y-auto focus-visible:outline-none"
-          >
-            <SettingsContent>
-              <RequestActions location="account" />
-            </SettingsContent>
           </div>
         )}
       </div>
