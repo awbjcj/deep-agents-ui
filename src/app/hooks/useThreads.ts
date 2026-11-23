@@ -25,6 +25,18 @@ const TITLE_RECHECK_MS = 4000;
 const TITLE_RECHECK_LIMIT = 3;
 const TITLE_RECHECK_WINDOW_MS = 2 * 60 * 1000;
 
+type TitleRecheck = { updatedAt: number; attempts: number };
+
+function titleRecheckCount(
+  thread: ThreadItem,
+  rechecks: ReadonlyMap<string, TitleRecheck>
+): number {
+  const checked = rechecks.get(thread.id);
+  return checked?.updatedAt === thread.updatedAt.getTime()
+    ? checked.attempts
+    : 0;
+}
+
 export function deriveMeta(thread: Thread): {
   title: string;
   description: string;
@@ -125,7 +137,7 @@ export async function searchThreadSummaries(
 /** Return recently finished, untitled threads whose title may still arrive. */
 export function threadsAwaitingTitle(
   threads: ThreadItem[],
-  rechecks: ReadonlyMap<string, number>,
+  rechecks: ReadonlyMap<string, TitleRecheck>,
   now = Date.now()
 ): ThreadItem[] {
   return threads.filter(
@@ -133,14 +145,14 @@ export function threadsAwaitingTitle(
       !thread.titled &&
       thread.status === "idle" &&
       now - thread.updatedAt.getTime() < TITLE_RECHECK_WINDOW_MS &&
-      (rechecks.get(thread.id) ?? 0) < TITLE_RECHECK_LIMIT
+      titleRecheckCount(thread, rechecks) < TITLE_RECHECK_LIMIT
   );
 }
 
 /** Recheck titles even when an equal SWR response does not rerun the effect. */
 export function scheduleTitleRechecks(
   firstPage: ThreadItem[],
-  rechecks: Map<string, number>,
+  rechecks: Map<string, TitleRecheck>,
   revalidate: () => Promise<ThreadItem[][] | undefined>
 ): () => void {
   let page = firstPage;
@@ -153,7 +165,10 @@ export function scheduleTitleRechecks(
       const waiting = threadsAwaitingTitle(page, rechecks);
       if (cancelled || waiting.length === 0) return;
       for (const thread of waiting) {
-        rechecks.set(thread.id, (rechecks.get(thread.id) ?? 0) + 1);
+        rechecks.set(thread.id, {
+          updatedAt: thread.updatedAt.getTime(),
+          attempts: titleRecheckCount(thread, rechecks) + 1,
+        });
       }
       try {
         const updated = await revalidate();
@@ -247,9 +262,18 @@ export function useThreads(props: {
   );
 
   const { data, mutate } = threads;
-  const titleRechecks = useRef(new Map<string, number>());
+  const titleRechecks = useRef(new Map<string, TitleRecheck>());
   useEffect(
-    () => scheduleTitleRechecks(data?.[0] ?? [], titleRechecks.current, mutate),
+    () =>
+      scheduleTitleRechecks(data?.[0] ?? [], titleRechecks.current, () =>
+        mutate(undefined, {
+          revalidate: (_page, key) =>
+            key !== null &&
+            typeof key === "object" &&
+            "pageIndex" in key &&
+            key.pageIndex === 0,
+        })
+      ),
     [data, mutate]
   );
 

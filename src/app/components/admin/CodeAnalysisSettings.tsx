@@ -64,10 +64,6 @@ type MatlabLimitField = keyof MatlabSettings["limits"];
 const ACCOUNT_MODEL = "account-model";
 const NO_COPILOT_DEFAULT = "none:";
 const BYTES_PER_MB = 1_000_000;
-const copilotPolicyHost = githubHostSchema.refine(
-  (host) => host.endsWith(".ghe.com"),
-  "Use an exact tenant.ghe.com hostname"
-);
 
 function analysisModelValue(model: TierModelEntry | null): string {
   return model ? JSON.stringify([model.provider, model.model]) : ACCOUNT_MODEL;
@@ -660,7 +656,15 @@ export function CodeAnalysisSettings({
     void load();
   }, [load]);
 
-  const selectedOverride = allowedModels?.get(overrideModel);
+  const savedOverride = engines?.model_override ?? null;
+  const savedOverrideValue = analysisModelValue(savedOverride);
+  // If the approved-model lists fail to load, the saved override stays a valid,
+  // unchanged choice; the backend still revalidates it on save.
+  const selectedOverride =
+    allowedModels?.get(overrideModel) ??
+    (allowedModels === null && overrideModel === savedOverrideValue
+      ? (savedOverride ?? undefined)
+      : undefined);
   const overrideInvalid = overrideModel !== ACCOUNT_MODEL && !selectedOverride;
   const copilotValidation = copilotSettingsSchema.safeParse({
     ...copilotPolicy,
@@ -970,15 +974,15 @@ export function CodeAnalysisSettings({
                     <SelectItem value={ACCOUNT_MODEL}>
                       Use each account’s approved model
                     </SelectItem>
-                    {overrideInvalid && engines.model_override && (
-                      <SelectItem
-                        value={overrideModel}
-                        disabled
-                      >
-                        {engines.model_override.provider}/
-                        {engines.model_override.model}
-                      </SelectItem>
-                    )}
+                    {savedOverride &&
+                      !allowedModels?.has(savedOverrideValue) && (
+                        <SelectItem
+                          value={savedOverrideValue}
+                          disabled={allowedModels !== null}
+                        >
+                          {savedOverride.provider}/{savedOverride.model}
+                        </SelectItem>
+                      )}
                     {Array.from(allowedModels ?? [], ([value, model]) => (
                       <SelectItem
                         key={value}
@@ -1054,12 +1058,9 @@ export function CodeAnalysisSettings({
                 id="analysis-copilot-hosts"
                 label="Allowed GitHub account hostnames"
                 entryLabel="New tenant hostname"
-                options={[
-                  "github.com",
-                  ...engines.copilot.allowed_github_hosts,
-                ]}
+                options={engines.copilot.allowed_github_hosts}
                 selected={copilotPolicy.allowed_github_hosts}
-                schema={copilotPolicyHost}
+                schema={githubHostSchema}
                 onChange={(allowed_github_hosts) =>
                   setCopilotPolicy((current) => ({
                     ...current,

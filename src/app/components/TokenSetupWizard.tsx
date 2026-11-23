@@ -26,6 +26,7 @@ import { apiGetTokens, apiUpdateTokens } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import {
+  hasSavedToken,
   OPEN_TOKEN_WIZARD_EVENT,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
@@ -76,7 +77,7 @@ export function TokenSetupWizard() {
         const tokens = await apiGetTokens();
         if (cancelled) return;
         const missing = TOKEN_SERVICE_GUIDES.filter(
-          (g) => !tokens[g.previewField]
+          (g) => !hasSavedToken(tokens[g.previewField])
         );
         if (missing.length > 0) {
           setGuides(missing);
@@ -103,7 +104,7 @@ export function TokenSetupWizard() {
         try {
           const tokens = await apiGetTokens();
           const missing = TOKEN_SERVICE_GUIDES.filter(
-            (g) => !tokens[g.previewField]
+            (g) => !hasSavedToken(tokens[g.previewField])
           );
           if (missing.length > 0) next = missing;
         } catch {

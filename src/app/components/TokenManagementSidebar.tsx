@@ -18,10 +18,11 @@ import { useNotifications } from "@/app/hooks/useNotifications";
 import { useAuth } from "@/providers/AuthProvider";
 import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import {
-  getTokenGuide,
+  hasSavedToken,
   OPEN_TOKEN_WIZARD_EVENT,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
+  type TokenServiceKey,
 } from "@/app/components/tokenServiceGuides";
 import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
@@ -31,13 +32,7 @@ import { Eye, EyeOff, Loader2, Save, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-/**
- * Whether a token's `updated_at` value is meaningful enough to show the
- * "Updated …" block. We treat falsy values, an empty string, or the sentinel
- * "Unknown" returned by the backend as "no record yet". This protects against
- * older deployments that omit a field or send an empty string instead of
- * "Unknown" — the previous `!== "Unknown"` check would render "Updated  ()".
- */
+/** Whether the backend reports a meaningful timestamp for a saved token. */
 function hasUpdatedAt(value: string | null | undefined): value is string {
   if (!value) return false;
   const trimmed = value.trim();
@@ -45,7 +40,7 @@ function hasUpdatedAt(value: string | null | undefined): value is string {
 }
 
 interface TokenManagementSidebarProps {
-  /** Service key ("graph" | "jira" | "polarion" | "confluence") to focus on mount. */
+  /** Service key (including the legacy "polarion" alias) to focus on mount. */
   initialFocus?: string | null;
   /** Called once after the initialFocus has been consumed so the parent
    *  doesn't keep re-focusing on every render. */
@@ -61,29 +56,15 @@ export function TokenManagementSidebar({
   const username = user?.username ?? "";
   // SCM and Copilot credentials serve only the Code Analyzer.
   const codeAnalyzerAllowed = canUseCodeAnalyzer(user);
-  const [graphToken, setGraphToken] = useState("");
-  const [jiraToken, setJiraToken] = useState("");
-  // Track whether the user has edited each token field since load.
-  // Only send a token to the backend if the user actually typed something,
-  // so we never accidentally overwrite a stored token with an empty string.
-  const [graphDirty, setGraphDirty] = useState(false);
-  const [jiraDirty, setJiraDirty] = useState(false);
-  const [polarionAsuxToken, setPolarionAsuxToken] = useState("");
-  const [polarionAsuxDirty, setPolarionAsuxDirty] = useState(false);
-  const [polarionProd1Token, setPolarionProd1Token] = useState("");
-  const [polarionProd1Dirty, setPolarionProd1Dirty] = useState(false);
-  const [confluenceToken, setConfluenceToken] = useState("");
-  const [confluenceDirty, setConfluenceDirty] = useState(false);
+  // Missing entries are untouched; an explicit empty string clears a token.
+  const [tokenDraft, setTokenDraft] = useState<
+    Partial<Record<TokenServiceKey, string>>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [tokenMeta, setTokenMeta] = useState<UserTokens | null>(null);
-  const dirty =
-    graphDirty ||
-    jiraDirty ||
-    polarionAsuxDirty ||
-    polarionProd1Dirty ||
-    confluenceDirty;
+  const dirty = Object.keys(tokenDraft).length > 0;
   useSettingsDraft(dirty || isSaving);
 
   const fetchTokens = useCallback(async () => {
@@ -94,11 +75,7 @@ export function TokenManagementSidebar({
       // Backend only returns masked previews — never full token values.
       // Token input fields start empty; we only send values the user types.
       setTokenMeta(tokens);
-      setGraphDirty(false);
-      setJiraDirty(false);
-      setPolarionAsuxDirty(false);
-      setPolarionProd1Dirty(false);
-      setConfluenceDirty(false);
+      setTokenDraft({});
     } catch {
       setLoadError(true);
     } finally {
@@ -139,44 +116,18 @@ export function TokenManagementSidebar({
   }, [initialFocus, isLoading, onFocusConsumed]);
 
   const handleSave = async () => {
-    if (
-      !graphDirty &&
-      !jiraDirty &&
-      !polarionAsuxDirty &&
-      !polarionProd1Dirty &&
-      !confluenceDirty
-    )
-      return;
+    if (!dirty) return;
     setIsSaving(true);
     try {
-      // Only send tokens the user actually edited to avoid clearing the other
-      const payload: {
-        graph_api_token?: string;
-        jira_api_token?: string;
-        polarion_asux_api_token?: string;
-        polarion_prod1_api_token?: string;
-        confluence_api_token?: string;
-      } = {};
-      if (graphDirty) payload.graph_api_token = graphToken;
-      if (jiraDirty) payload.jira_api_token = jiraToken;
-      if (polarionAsuxDirty)
-        payload.polarion_asux_api_token = polarionAsuxToken;
-      if (polarionProd1Dirty)
-        payload.polarion_prod1_api_token = polarionProd1Token;
-      if (confluenceDirty) payload.confluence_api_token = confluenceToken;
+      const payload: Parameters<typeof apiUpdateTokens>[0] = {};
+      for (const guide of TOKEN_SERVICE_GUIDES) {
+        const value = tokenDraft[guide.key];
+        if (value !== undefined) payload[guide.payloadField] = value;
+      }
       const updated = await apiUpdateTokens(payload);
       setTokenMeta(updated);
       applyClearedNotifications(updated.cleared_notifications);
-      setGraphToken("");
-      setJiraToken("");
-      setGraphDirty(false);
-      setJiraDirty(false);
-      setPolarionAsuxToken("");
-      setPolarionAsuxDirty(false);
-      setPolarionProd1Token("");
-      setPolarionProd1Dirty(false);
-      setConfluenceToken("");
-      setConfluenceDirty(false);
+      setTokenDraft({});
       toast.success("Tokens saved");
     } catch (err) {
       toast.error(
@@ -187,21 +138,10 @@ export function TokenManagementSidebar({
     }
   };
 
-  const discard = () => {
-    setGraphToken("");
-    setJiraToken("");
-    setPolarionAsuxToken("");
-    setPolarionProd1Token("");
-    setConfluenceToken("");
-    setGraphDirty(false);
-    setJiraDirty(false);
-    setPolarionAsuxDirty(false);
-    setPolarionProd1Dirty(false);
-    setConfluenceDirty(false);
-  };
+  const discard = () => setTokenDraft({});
 
   const missingCount = TOKEN_SERVICE_GUIDES.filter(
-    (guide) => !tokenMeta?.[guide.previewField]
+    (guide) => !hasSavedToken(tokenMeta?.[guide.previewField])
   ).length;
 
   return (
@@ -264,66 +204,25 @@ export function TokenManagementSidebar({
                   disabled={isSaving}
                   className="min-w-0 space-y-5"
                 >
-                  <TokenField
-                    guide={getTokenGuide("graph")}
-                    username={username}
-                    value={graphToken}
-                    preview={tokenMeta?.graph_api_token_preview}
-                    updatedAt={tokenMeta?.graph_api_token_updated_at}
-                    timeGap={tokenMeta?.graph_api_token_time_gap}
-                    onChange={(value) => {
-                      setGraphToken(value);
-                      setGraphDirty(true);
-                    }}
-                  />
-                  <TokenField
-                    guide={getTokenGuide("jira")}
-                    username={username}
-                    value={jiraToken}
-                    preview={tokenMeta?.jira_api_token_preview}
-                    updatedAt={tokenMeta?.jira_api_token_updated_at}
-                    timeGap={tokenMeta?.jira_api_token_time_gap}
-                    onChange={(value) => {
-                      setJiraToken(value);
-                      setJiraDirty(true);
-                    }}
-                  />
-                  <TokenField
-                    guide={getTokenGuide("polarion_asux")}
-                    username={username}
-                    value={polarionAsuxToken}
-                    preview={tokenMeta?.polarion_asux_api_token_preview}
-                    updatedAt={tokenMeta?.polarion_asux_api_token_updated_at}
-                    timeGap={tokenMeta?.polarion_asux_api_token_time_gap}
-                    onChange={(value) => {
-                      setPolarionAsuxToken(value);
-                      setPolarionAsuxDirty(true);
-                    }}
-                  />
-                  <TokenField
-                    guide={getTokenGuide("polarion_prod1")}
-                    username={username}
-                    value={polarionProd1Token}
-                    preview={tokenMeta?.polarion_prod1_api_token_preview}
-                    updatedAt={tokenMeta?.polarion_prod1_api_token_updated_at}
-                    timeGap={tokenMeta?.polarion_prod1_api_token_time_gap}
-                    onChange={(value) => {
-                      setPolarionProd1Token(value);
-                      setPolarionProd1Dirty(true);
-                    }}
-                  />
-                  <TokenField
-                    guide={getTokenGuide("confluence")}
-                    username={username}
-                    value={confluenceToken}
-                    preview={tokenMeta?.confluence_api_token_preview}
-                    updatedAt={tokenMeta?.confluence_api_token_updated_at}
-                    timeGap={tokenMeta?.confluence_api_token_time_gap}
-                    onChange={(value) => {
-                      setConfluenceToken(value);
-                      setConfluenceDirty(true);
-                    }}
-                  />
+                  {TOKEN_SERVICE_GUIDES.map((guide) => (
+                    <TokenField
+                      key={guide.key}
+                      guide={guide}
+                      username={username}
+                      value={tokenDraft[guide.key] ?? ""}
+                      preview={tokenMeta?.[guide.previewField]}
+                      updatedAt={
+                        tokenMeta?.[`${guide.payloadField}_updated_at`]
+                      }
+                      timeGap={tokenMeta?.[`${guide.payloadField}_time_gap`]}
+                      onChange={(value) =>
+                        setTokenDraft((draft) => ({
+                          ...draft,
+                          [guide.key]: value,
+                        }))
+                      }
+                    />
+                  ))}
                 </fieldset>
               </form>
               {codeAnalyzerAllowed && (
@@ -406,12 +305,13 @@ function TokenField({
 }) {
   const [show, setShow] = useState(false);
   const id = `${guide.key}Token`;
+  const saved = hasSavedToken(preview);
   return (
     <SavedSetting
-      key={updatedAt}
+      revision={updatedAt}
       title={guide.label}
       triggerId={`${id}-edit`}
-      status={preview || hasUpdatedAt(updatedAt) ? "Saved" : undefined}
+      status={saved ? "Saved" : undefined}
     >
       <section className="space-y-2">
         <Label
@@ -420,13 +320,11 @@ function TokenField({
         >
           {guide.label}
         </Label>
-        {(preview || hasUpdatedAt(updatedAt)) && (
+        {saved && (
           <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-            {preview && (
-              <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
-                {preview}
-              </code>
-            )}
+            <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
+              {preview}
+            </code>
             {hasUpdatedAt(updatedAt) && (
               <span>
                 Updated{" "}
@@ -445,9 +343,7 @@ function TokenField({
             autoComplete="off"
             autoCapitalize="none"
             spellCheck={false}
-            placeholder={
-              preview ? "Enter a replacement token" : "Paste a token"
-            }
+            placeholder={saved ? "Enter a replacement token" : "Paste a token"}
             className="pr-11"
           />
           <Button

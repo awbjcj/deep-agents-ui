@@ -115,3 +115,78 @@ test(
     }
   }
 );
+
+test(
+  "background title checks preserve loaded older pages without refetching them",
+  { skip: process.env.CHAT_BROWSER_TEST !== "1", timeout: 30_000 },
+  async () => {
+    const { chromium } = await loadPlaywright(
+      process.env.CHAT_PLAYWRIGHT_MODULE
+    );
+    const browser = await chromium.launch({
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
+    const server = await staticServer();
+    const fallback = makePolicyFixture();
+    const updatedAt = new Date().toISOString();
+    let olderReads = 0;
+    try {
+      const { page, pageErrors } = await authenticatedPage(
+        browser,
+        server,
+        {
+          route(route, account) {
+            if (
+              new URL(route.request().url()).pathname.endsWith(
+                "/threads/search"
+              )
+            ) {
+              const { offset = 0, limit = 20 } = route.request().postDataJSON();
+              if (offset) olderReads += 1;
+              return route.fulfill({
+                json: Array.from({ length: offset ? 5 : limit }, (_, index) => {
+                  const id = offset + index;
+                  return {
+                    thread_id: String(id),
+                    status: "idle",
+                    updated_at: updatedAt,
+                    metadata:
+                      id === 0
+                        ? olderReads
+                          ? { title: "Generated after run" }
+                          : {}
+                        : { title: "Saved thread " + id },
+                    extracted: {
+                      firstType: "human",
+                      firstContent: "Pending title",
+                      secondType: "ai",
+                      secondContent: "Saved answer",
+                    },
+                  };
+                }),
+              });
+            }
+            return fallback.route(route, account);
+          },
+        },
+        "admin"
+      );
+      await page.getByRole("button", { name: "Threads", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Load More", exact: true })
+        .click();
+      await page.getByText("Saved thread 24", { exact: true }).waitFor();
+      assert.equal(olderReads, 1);
+      await page.getByText("Generated after run", { exact: true }).waitFor();
+      assert.equal(
+        olderReads,
+        1,
+        "title polling must only revalidate the first page"
+      );
+      assert.deepEqual(pageErrors, []);
+    } finally {
+      await browser.close();
+      await server.close();
+    }
+  }
+);

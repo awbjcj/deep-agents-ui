@@ -170,7 +170,8 @@ export function ScmCredentials() {
           const state = credentialStateText(server.credential_state);
           return (
             <SavedSetting
-              key={JSON.stringify([server.id, revisions[server.id]])}
+              key={server.id}
+              revision={revisions[server.id]}
               title={server.display_name}
               status={
                 server.credential_state === "validated"

@@ -24,7 +24,7 @@ test(
     const fallback = makePolicyFixture();
     let state = {
       configured: false,
-      github_host: "github.com",
+      github_host: "aptv.ghe.com",
       generation: 0,
       updated_at: null,
       expires_at: null,
@@ -255,23 +255,23 @@ test(
       const hostChoices = page.getByRole("dialog", {
         name: "Allowed GitHub account hostnames",
       });
-      // The persisted allowlist does not include public GitHub. It must stay
-      // denied until the administrator explicitly selects and saves it.
-      const githubChoice = hostChoices.getByRole("checkbox", {
-        name: "github.com",
-        exact: true,
-      });
-      await githubChoice.waitFor({ timeout: 5000 });
-      assert.equal(await githubChoice.isChecked(), false);
-      assert.deepEqual(engineSettings.copilot.allowed_github_hosts, []);
+      // The backend accepts only tenant.ghe.com hosts, so public GitHub is
+      // neither offered nor accepted as a typed entry.
       const tenantEntry = hostChoices.getByLabel("New tenant hostname");
-      await tenantEntry.fill("example.com");
-      await hostChoices
-        .getByRole("button", { name: "Add", exact: true })
-        .click();
-      await hostChoices.getByRole("alert").waitFor();
-      assert.equal(await githubChoice.isChecked(), false);
-      await githubChoice.check();
+      await tenantEntry.waitFor({ timeout: 5000 });
+      assert.equal(
+        await hostChoices
+          .getByRole("checkbox", { name: "github.com", exact: true })
+          .count(),
+        0
+      );
+      for (const rejected of ["example.com", "github.com"]) {
+        await tenantEntry.fill(rejected);
+        await hostChoices
+          .getByRole("button", { name: "Add", exact: true })
+          .click();
+        await hostChoices.getByRole("alert").waitFor();
+      }
       assert.deepEqual(engineSettings.copilot.allowed_github_hosts, []);
       await hostChoices.getByLabel("New tenant hostname").fill("acme.ghe.com");
       await hostChoices
@@ -310,7 +310,6 @@ test(
         .waitFor();
       assert.equal(engineSettings.copilot.enabled, true);
       assert.deepEqual(engineSettings.copilot.allowed_github_hosts, [
-        "github.com",
         "acme.ghe.com",
       ]);
       assert.deepEqual(engineSettings.copilot.allowed_models, ["model-a"]);

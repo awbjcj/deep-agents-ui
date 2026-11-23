@@ -164,7 +164,8 @@ class Repo:
         self.path = path
         self.clock = 1_700_010_000
         if init:
-            self.git("init", "-q", "-b", "main")
+            self.git("init", "-q")
+            self.git("symbolic-ref", "HEAD", "refs/heads/main")
             self.git("config", "user.name", "Release Test")
             self.git("config", "user.email", "test@example.com")
             self.git("config", "commit.gpgsign", "false")

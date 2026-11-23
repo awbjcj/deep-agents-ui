@@ -53,7 +53,7 @@ export function ProviderEndpointFields({
               data-connectivity-mode={mode.id}
             >
               <SavedSetting
-                key={JSON.stringify([
+                revision={JSON.stringify([
                   info?.updated_at,
                   connectivity.tokens?.[tokenKey]?.updated_at,
                 ])}

@@ -56,6 +56,8 @@ function ConversationSkeleton() {
   );
 }
 
+const TRANSCRIPT_WINDOW = 60;
+
 /** Mount the latest transcript rows first and reveal older rows on request. */
 function ConversationHistory({
   count,
@@ -66,8 +68,10 @@ function ConversationHistory({
   renderRows: (start: number) => React.ReactNode;
   stopFollowing: () => void;
 }) {
-  const [hidden, setHidden] = useState(() => Math.max(0, count - 60));
-  const start = Math.min(hidden, Math.max(0, count - 60));
+  const [hidden, setHidden] = useState(() =>
+    Math.max(0, count - TRANSCRIPT_WINDOW)
+  );
+  const start = Math.min(hidden, Math.max(0, count - TRANSCRIPT_WINDOW));
   const marker = useRef<HTMLDivElement>(null);
   const priorBottom = useRef<number | null>(null);
   React.useLayoutEffect(() => {
@@ -87,7 +91,7 @@ function ConversationHistory({
               stopFollowing();
               priorBottom.current =
                 marker.current?.closest("#conversation")?.scrollHeight ?? null;
-              setHidden(Math.max(0, start - 60));
+              setHidden(Math.max(0, start - TRANSCRIPT_WINDOW));
             }}
           >
             Show earlier messages ({start})

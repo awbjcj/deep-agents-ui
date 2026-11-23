@@ -28,7 +28,11 @@ test("enterprise hosts normalize exact tenants and reject URLs and wildcard dest
       updated_at: null,
       expires_at: null,
     }).github_host,
-    "github.com"
+    "aptv.ghe.com"
+  );
+  assert.equal(
+    analysis.githubHostSchema.safeParse("github.com").success,
+    false
   );
 });
 

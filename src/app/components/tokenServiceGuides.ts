@@ -22,7 +22,7 @@ export interface TokenServiceGuide {
     | "polarion_prod1_api_token"
     | "confluence_api_token";
   /** UserTokens preview field used to detect whether a token already exists. */
-  previewField: keyof UserTokens;
+  previewField: Extract<keyof UserTokens, `${string}_preview`>;
   /** Short, human description of how long the token stays valid. */
   expiry: string;
   /** Builds the page where the user creates / copies the token. */
@@ -31,6 +31,13 @@ export interface TokenServiceGuide {
   steps: string[];
   /** Optional caveat shown below the steps. */
   note?: string;
+}
+
+export function hasSavedToken(
+  preview: string | null | undefined
+): preview is string {
+  const value = preview?.trim();
+  return Boolean(value && value !== "(not set)" && value !== "(unavailable)");
 }
 
 export const TOKEN_SERVICE_GUIDES: TokenServiceGuide[] = [
