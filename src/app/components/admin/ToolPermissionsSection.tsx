@@ -18,18 +18,15 @@ import { Button } from "@/components/ui/button";
 import { ToolPermissionList } from "@/app/components/tool-permissions/ToolPermissionList";
 import { LoadingRow, SectionHeader } from "@/app/components/admin/primitives";
 import { ROLES } from "@/app/components/admin/primitives-utils";
-import { CONNECTIVITY_CHANGED_EVENT } from "@/lib/auth";
 import {
   ToolPermissionsApiError,
   apiGetAdminToolPermissions,
-  apiGetUserToolPermissions,
   apiSetTierToolPermissions,
   canSaveToolPermissions,
   mergeRetainedSelection,
   sameToolIds,
   type AdminToolPermissions,
   type ToolTier,
-  type UserToolPermissions,
 } from "@/lib/tool-permissions";
 
 type TierDrafts = Record<ToolTier, string[]>;
@@ -52,11 +49,6 @@ export function ToolPermissionsSection() {
     admin: false,
   });
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
-  const [adminAvailability, setAdminAvailability] = useState<
-    UserToolPermissions | null | undefined
-  >(undefined);
-  const readOnly = activeTier === "admin";
-
   const snapshotRef = useRef<AdminToolPermissions | null>(null);
   const draftsRef = useRef<TierDrafts>(EMPTY_DRAFTS);
   const draftGeneration = useRef(0);
@@ -151,31 +143,6 @@ export function ToolPermissionsSection() {
     };
   }, [loadPermissions]);
 
-  useEffect(() => {
-    if (!readOnly) return;
-    let controller: AbortController | undefined;
-    const refresh = async () => {
-      controller?.abort();
-      const request = new AbortController();
-      controller = request;
-      setAdminAvailability(undefined);
-      try {
-        const response = await apiGetUserToolPermissions(request.signal);
-        if (!request.signal.aborted) setAdminAvailability(response);
-      } catch {
-        if (!request.signal.aborted) setAdminAvailability(null);
-      }
-    };
-    void refresh();
-    window.addEventListener("focus", refresh);
-    window.addEventListener(CONNECTIVITY_CHANGED_EVENT, refresh);
-    return () => {
-      controller?.abort();
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener(CONNECTIVITY_CHANGED_EVENT, refresh);
-    };
-  }, [readOnly]);
-
   const savedIds = snapshot?.tiers[activeTier].allowed_tool_ids ?? [];
   const activeDraft = drafts[activeTier];
   const dirty = !sameToolIds(activeDraft, savedIds);
@@ -187,14 +154,12 @@ export function ToolPermissionsSection() {
             !sameToolIds(drafts[role], snapshot.tiers[role].allowed_tool_ids)
         ))
   );
-  const canSave =
-    !readOnly &&
-    canSaveToolPermissions({
-      hasSnapshot: Boolean(snapshot && policyResolved),
-      dirty,
-      saving,
-      policyReviewRequired: reviewRequired[activeTier],
-    });
+  const canSave = canSaveToolPermissions({
+    hasSnapshot: Boolean(snapshot && policyResolved),
+    dirty,
+    saving,
+    policyReviewRequired: reviewRequired[activeTier],
+  });
   const allCatalogIds = useMemo(
     () => snapshot?.catalog.map((tool) => tool.id) ?? [],
     [snapshot]
@@ -375,102 +340,70 @@ export function ToolPermissionsSection() {
         <LoadingRow />
       ) : snapshot ? (
         <>
-          {readOnly ? (
-            <div className="text-muted-foreground space-y-1 text-xs">
-              <p>
-                The Admin tier is read-only. Administrators are automatically
-                granted all tools.
-              </p>
-              <p role="status">
-                {adminAvailability?.connection_mode
-                  ? `Your connection is in ${titleCase(adminAvailability.connection_mode)} mode. Responses availability reflects this connection and may vary by model.`
-                  : adminAvailability === undefined
-                    ? "Checking Responses availability for your connection…"
-                    : "Responses availability for your connection could not be determined."}
-              </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-muted-foreground text-xs">
+              <span className="text-foreground font-semibold">
+                {activeDraft.length}
+              </span>{" "}
+              of {snapshot.catalog.length} allowed
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={saving || sameToolIds(activeDraft, allCatalogIds)}
+                onClick={() => setActiveDraft(allCatalogIds)}
+              >
+                <Check
+                  className="mr-1.5 h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
+                Select all
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={saving || activeDraft.length === 0}
+                onClick={() => setActiveDraft([])}
+              >
+                <X className="mr-1.5 h-3.5 w-3.5" />
+                Clear
+              </Button>
             </div>
-          ) : (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-muted-foreground text-xs">
-                <span className="text-foreground font-semibold">
-                  {activeDraft.length}
-                </span>{" "}
-                of {snapshot.catalog.length} allowed
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={saving || sameToolIds(activeDraft, allCatalogIds)}
-                  onClick={() => setActiveDraft(allCatalogIds)}
-                >
-                  <Check
-                    className="mr-1.5 h-3.5 w-3.5"
-                    aria-hidden="true"
-                  />
-                  Select all
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={saving || activeDraft.length === 0}
-                  onClick={() => setActiveDraft([])}
-                >
-                  <X className="mr-1.5 h-3.5 w-3.5" />
-                  Clear
-                </Button>
-              </div>
-            </div>
-          )}
+          </div>
 
           <ToolPermissionList
             catalog={snapshot.catalog}
             selectedIds={activeDraft}
             allowedIds={allCatalogIds}
-            effectiveIds={
-              readOnly
-                ? (adminAvailability?.effective_tool_ids ?? [])
-                : activeDraft
-            }
-            unavailableTools={
-              readOnly ? adminAvailability?.unavailable_tools : undefined
-            }
+            effectiveIds={activeDraft}
             savedSelectedIds={savedIds}
             selectedStatusLabel={null}
             compactGroups
             idPrefix={`admin-tools-${activeTier}`}
             saving={saving}
-            onToggle={readOnly ? undefined : toggleTool}
+            onToggle={toggleTool}
           />
-
-          {!readOnly && (
-            <Button
-              type="button"
-              className="w-full"
-              disabled={!canSave}
-              onClick={() => void saveActiveTier()}
-            >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {saving ? "Saving" : "Save changes"}
-            </Button>
-          )}
         </>
-      ) : !readOnly ? (
+      ) : null}
+
+      {(snapshot || !loading) && (
         <Button
           type="button"
           className="w-full"
-          disabled
+          disabled={!canSave}
+          onClick={() => void saveActiveTier()}
         >
-          <Save className="mr-2 h-4 w-4" />
-          Save changes
+          {saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          {saving ? "Saving" : "Save changes"}
         </Button>
-      ) : null}
+      )}
     </div>
   );
 }

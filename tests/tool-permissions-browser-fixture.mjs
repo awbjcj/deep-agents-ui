@@ -94,7 +94,7 @@ const catalog = [
     group: "Shared memory",
     description: "Save a named note in a shared memory scope.",
     prerequisites:
-      "Requires developer or admin role and write access to the target scope.",
+      "Requires tool permission and write access to the target scope.",
   },
   {
     id: "save_scope_preference",
@@ -102,7 +102,7 @@ const catalog = [
     group: "Shared memory",
     description: "Save a preference or rule in a shared memory scope.",
     prerequisites:
-      "Requires developer or admin role and write access to the target scope.",
+      "Requires tool permission and write access to the target scope.",
   },
   {
     id: "record_scope_history",
@@ -110,7 +110,7 @@ const catalog = [
     group: "Shared memory",
     description: "Record an event in a shared memory scope.",
     prerequisites:
-      "Requires developer or admin role and write access to the target scope.",
+      "Requires tool permission and write access to the target scope.",
   },
   {
     id: "update_scope_context",
@@ -118,7 +118,7 @@ const catalog = [
     group: "Shared memory",
     description: "Update the summary for a shared memory scope.",
     prerequisites:
-      "Requires developer or admin role and write access to the target scope.",
+      "Requires tool permission and write access to the target scope.",
   },
 ];
 const allToolIds = catalog.map((tool) => tool.id);
@@ -201,7 +201,7 @@ function makePolicyFixture() {
 
   const userResponse = (account) => {
     const allowed = tiers[account.role].allowed_tool_ids;
-    const selected = selections.get(account.user_id) ?? allowed;
+    const selected = selections.get(account.user_id) ?? [];
     return {
       catalog,
       tier: account.role,
@@ -266,6 +266,9 @@ function makePolicyFixture() {
         });
       }
       if (path === "/api/admin/users") return json(route, { users: [] });
+      if (path === "/api/admin/account-requests") {
+        return json(route, { items: [], next_cursor: null });
+      }
       if (path === "/api/admin/registration-settings") {
         return json(route, { require_invitation_code: true });
       }

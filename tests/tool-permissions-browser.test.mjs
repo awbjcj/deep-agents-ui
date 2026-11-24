@@ -14,7 +14,9 @@ import {
 } from "./tool-permissions-browser-fixture.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const EVIDENCE = join(ROOT, "docs", "evidence", "tool-permissions");
+const EVIDENCE =
+  process.env.TOOL_PERMISSIONS_EVIDENCE_DIR ??
+  join(ROOT, "docs", "evidence", "tool-permissions");
 const RUN_BROWSER = process.env.TOOL_PERMISSIONS_BROWSER_TEST === "1";
 
 async function openWorkspaceTools(page) {
@@ -47,9 +49,16 @@ async function openAdminTools(page) {
   await page.getByRole("button", { name: "Admin console" }).click();
   await page.locator("#admin-panel").waitFor();
   const toolsTab = page.getByRole("tab", { name: "Tools" });
-  await toolsTab.waitFor();
-  await page.waitForTimeout(150);
-  await toolsTab.click();
+  try {
+    await toolsTab.click({ timeout: 5_000 });
+  } catch (error) {
+    throw new Error(
+      `Admin tools tab unavailable: ${JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        body: (await page.locator("body").innerText()).slice(0, 2_000),
+      })}`
+    );
+  }
   await page.getByRole("heading", { name: "Tier permissions" }).waitFor();
   const groups = page.locator("#admin-panel details");
   await groups.first().waitFor();
@@ -157,10 +166,6 @@ test(
             `${panel} ${failure} PUT requires fresh GET recovery`,
             async () => {
               const policy = makePolicyFixture();
-              // This recovery case starts with no selection so checking email
-              // creates a dirty draft under the admin tier's allowed defaults.
-              if (panel === "personal")
-                policy.selections.set("admin-account", []);
               const { page, context, pageErrors, consoleErrors } =
                 await authenticatedPage(browser, fixture, policy, "admin");
               const recoveryStarted = deferred();
@@ -492,8 +497,6 @@ test(
     await mkdir(EVIDENCE, { recursive: true });
     const fixture = await staticServer();
     const policy = makePolicyFixture();
-    policy.selections.set("admin-account", []);
-    policy.selections.set("switched-admin-account", []);
     const browser = await chromium.launch({
       headless: true,
       ...(process.env.TOOL_PERMISSIONS_BROWSER_EXECUTABLE
@@ -533,19 +536,12 @@ test(
       await page.getByRole("button", { name: "Save changes" }).click();
       await page.getByText("User tier tools saved.").waitFor();
       await adminRadio.click();
-      await page.getByText(/The Admin tier is read-only/).waitFor();
-      assert.equal(await page.getByRole("checkbox").count(), 0);
+      await page.getByRole("checkbox", { name: "Send draft email" }).uncheck();
+      await page.getByRole("button", { name: "Save changes" }).click();
+      await page.getByText("Admin tier tools saved.").waitFor();
       assert.equal(
-        await page.getByRole("button", { name: "Clear" }).count(),
-        0
-      );
-      assert.equal(
-        await page.getByRole("button", { name: "Select all" }).count(),
-        0
-      );
-      assert.equal(
-        await page.getByRole("button", { name: "Save changes" }).count(),
-        0
+        policy.tiers.admin.allowed_tool_ids.includes("send_draft_email"),
+        false
       );
       await page
         .getByRole("heading", { name: "Tier permissions" })
@@ -556,7 +552,7 @@ test(
       });
       assert.deepEqual(
         policy.tierPutBodies.map(({ tier }) => tier),
-        ["developer", "user"]
+        ["developer", "user", "admin"]
       );
 
       await page.getByRole("button", { name: "Close admin panel" }).click();
