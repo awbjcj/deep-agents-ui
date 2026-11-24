@@ -1,5 +1,11 @@
 "use client";
 
+import { CredentialTest } from "@/app/components/settings/CredentialTest";
+import {
+  savedCredentialStatus,
+  useCredentialTests,
+} from "@/app/hooks/useCredentialTests";
+
 import { SavedSetting } from "@/app/components/settings/SavedSetting";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -13,6 +19,7 @@ const endpoint = "/user/aspera/credentials";
 
 interface AsperaCredentialView {
   configured: boolean;
+  revision?: string | null;
   username?: string | null;
 }
 
@@ -35,6 +42,12 @@ export function AsperaCredentials() {
   );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const connection = useCredentialTests();
+  const draft = {
+    service: "aspera" as const,
+    secret: password,
+    username: username.trim(),
+  };
   const [pending, setPending] = useState<CredentialAction | null>(null);
   const [revision, setRevision] = useState(0);
   const [completed, setCompleted] = useState<CredentialAction | null>(null);
@@ -98,6 +111,11 @@ export function AsperaCredentials() {
         throw new Error();
       }
       const saved: AsperaCredentialView = await response.json();
+      connection.record(
+        "aspera",
+        method === "PUT" ? draft : null,
+        saved.revision
+      );
       setCredential(saved);
       setUsername(saved.username ?? "");
       setPassword("");
@@ -140,7 +158,11 @@ export function AsperaCredentials() {
           <SavedSetting
             revision={revision}
             title="Aspera login"
-            status={credential.configured ? "Saved" : undefined}
+            status={
+              credential.configured
+                ? savedCredentialStatus("aspera", credential.revision)
+                : undefined
+            }
           >
             <form
               autoComplete="off"
@@ -168,6 +190,7 @@ export function AsperaCredentials() {
                       spellCheck={false}
                       value={username}
                       onChange={(event) => {
+                        connection.clear("aspera");
                         setUsername(event.target.value);
                         setCompleted(null);
                         setUpdateError("");
@@ -185,6 +208,7 @@ export function AsperaCredentials() {
                       autoComplete="new-password"
                       value={password}
                       onChange={(event) => {
+                        connection.clear("aspera");
                         setPassword(event.target.value);
                         setCompleted(null);
                         setUpdateError("");
@@ -194,6 +218,13 @@ export function AsperaCredentials() {
                     />
                   </div>
                 </div>
+                {password && (
+                  <CredentialTest
+                    result={connection.results.aspera}
+                    disabled={!username.trim() || pending !== null}
+                    onTest={() => void connection.test("aspera", draft)}
+                  />
+                )}
                 {updateError && (
                   <p
                     role="alert"

@@ -263,6 +263,7 @@ export async function apiLogin(
 }
 
 export interface UserTokens {
+  credential_revisions?: Record<string, string>;
   graph_api_token_preview: string;
   jira_api_token_preview: string;
   polarion_asux_api_token_preview: string;

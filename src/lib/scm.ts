@@ -30,6 +30,8 @@ export const scmServerSchema = z.object({
   generation: z.number().int().positive(),
   validation: publicServerValidationSchema,
   credential_state: z.string().optional(),
+  credential_revision: z.string().nullish(),
+  credential_generation: z.number().int().positive().nullish(),
 });
 
 /** Operator-only server details excluded from the personal token endpoint. */

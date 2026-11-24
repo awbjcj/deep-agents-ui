@@ -1,14 +1,10 @@
 "use client";
 
+import { CredentialTest } from "@/app/components/settings/CredentialTest";
+import { useCredentialTests } from "@/app/hooks/useCredentialTests";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  EyeOff,
-  Loader2,
-} from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { MaskedTokenInput } from "@/app/components/settings/MaskedTokenInput";
 import { Label } from "@/components/ui/label";
 import { apiGetTokens, apiUpdateTokens } from "@/lib/auth";
 import { useAuth } from "@/providers/AuthProvider";
@@ -134,7 +130,9 @@ export function TokenSetupWizard() {
     setOpen(false);
   }, [markDismissed]);
 
-  const handleFinish = useCallback(async () => {
+  const connection = useCredentialTests();
+
+  const handleFinish = async () => {
     const payload: Record<string, string> = {};
     for (const guide of guides) {
       const value = values[guide.key]?.trim();
@@ -147,6 +145,15 @@ export function TokenSetupWizard() {
     setIsSaving(true);
     try {
       const updated = await apiUpdateTokens(payload);
+      for (const guide of guides) {
+        const secret = payload[guide.payloadField];
+        if (secret)
+          connection.record(
+            guide.key,
+            { service: guide.payloadField, secret },
+            updated.credential_revisions?.[guide.payloadField]
+          );
+      }
       applyClearedNotifications(updated.cleared_notifications);
       toast.success(
         `Saved ${Object.keys(payload).length} token${
@@ -160,16 +167,16 @@ export function TokenSetupWizard() {
     } finally {
       setIsSaving(false);
     }
-  }, [applyClearedNotifications, guides, handleClose, markDismissed, values]);
+  };
 
-  const goNext = useCallback(() => {
+  const goNext = () => {
     if (isLast) {
       void handleFinish();
     } else {
       setShowValue(false);
       setStep((s) => s + 1);
     }
-  }, [handleFinish, isLast]);
+  };
 
   const goBack = useCallback(() => {
     setShowValue(false);
@@ -224,33 +231,33 @@ export function TokenSetupWizard() {
             >
               Paste token
             </Label>
-            <div className="relative">
-              <Input
-                id="wizardTokenInput"
-                type={showValue ? "text" : "password"}
-                value={values[current.key] ?? ""}
-                onChange={(e) =>
-                  setValues((prev) => ({
-                    ...prev,
-                    [current.key]: e.target.value,
-                  }))
+            <MaskedTokenInput
+              id="wizardTokenInput"
+              tokenLabel="token"
+              revealed={showValue}
+              onToggle={() => setShowValue((visible) => !visible)}
+              disabled={isSaving}
+              value={values[current.key] ?? ""}
+              onChange={(event) => {
+                connection.clear(current.key);
+                setValues((previous) => ({
+                  ...previous,
+                  [current.key]: event.target.value,
+                }));
+              }}
+            />
+            {values[current.key]?.trim() && (
+              <CredentialTest
+                result={connection.results[current.key]}
+                disabled={isSaving}
+                onTest={() =>
+                  void connection.test(current.key, {
+                    service: current.payloadField,
+                    secret: values[current.key].trim(),
+                  })
                 }
-                autoComplete="off"
-                className="pr-10"
               />
-              <button
-                type="button"
-                onClick={() => setShowValue((v) => !v)}
-                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2"
-                aria-label={showValue ? "Hide token" : "Show token"}
-              >
-                {showValue ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            )}
             <p className="text-muted-foreground text-xs">
               Tokens are saved when you finish.
             </p>

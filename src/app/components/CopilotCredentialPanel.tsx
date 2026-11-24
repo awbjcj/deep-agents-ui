@@ -1,5 +1,11 @@
 "use client";
 
+import { CredentialTest } from "@/app/components/settings/CredentialTest";
+import {
+  savedCredentialStatus,
+  useCredentialTests,
+} from "@/app/hooks/useCredentialTests";
+
 import { SavedSetting } from "@/app/components/settings/SavedSetting";
 
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
@@ -35,6 +41,12 @@ export function CopilotCredentialPanel() {
   const [token, setToken] = useState("");
   const [githubHost, setGithubHost] = useState(DEFAULT_GITHUB_HOST);
   const [expiry, setExpiry] = useState("");
+  const connection = useCredentialTests();
+  const draft = {
+    service: "copilot" as const,
+    secret: token,
+    github_host: githubHost.trim().toLowerCase(),
+  };
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -151,6 +163,11 @@ export function CopilotCredentialPanel() {
             expires_at: expiresAt,
             github_host: githubHostSchema.parse(githubHost),
           }));
+      connection.record(
+        "copilot",
+        remove ? null : draft,
+        nextStatus.updated_at
+      );
       setStatus(nextStatus);
       setToken("");
       setExpiry("");
@@ -173,7 +190,7 @@ export function CopilotCredentialPanel() {
   const expired =
     status?.expires_at && new Date(status.expires_at).getTime() <= Date.now();
   const quotaAvailable = Boolean(status?.configured && !expired);
-  const configured = quotaAvailable;
+  const configured = Boolean(status?.configured);
   return (
     <section
       aria-labelledby="copilot-credential-title"
@@ -194,37 +211,18 @@ export function CopilotCredentialPanel() {
             >
               Copilot analysis
             </h3>
-            <p
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                configured
-                  ? "border-primary/25 bg-primary/10 text-primary"
-                  : expired
-                    ? "border-destructive/30 bg-destructive/10 text-destructive"
-                    : "border-border bg-background/70 text-muted-foreground"
-              }`}
-              role="status"
-            >
-              {configured ? (
-                <CheckCircle2
-                  aria-hidden="true"
-                  className="h-3 w-3"
-                />
-              ) : (
-                <span
-                  aria-hidden="true"
-                  className="h-1.5 w-1.5 rounded-full bg-current"
-                />
-              )}
-              {busy && !status
-                ? "Loading token status…"
-                : !status
-                  ? "Token status unavailable"
-                  : expired
-                    ? "Token expired"
-                    : status.configured
-                      ? "Personal token configured"
-                      : "No personal token configured"}
-            </p>
+            {!configured && (
+              <p
+                role="status"
+                className="text-muted-foreground text-xs"
+              >
+                {busy && !status
+                  ? "Loading token status…"
+                  : !status
+                    ? "Token status unavailable"
+                    : "No credential added"}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -241,7 +239,13 @@ export function CopilotCredentialPanel() {
       <SavedSetting
         revision={status?.updated_at}
         title="Copilot credential"
-        status={configured ? "Saved" : undefined}
+        status={
+          configured
+            ? expired
+              ? "Expired"
+              : savedCredentialStatus("copilot", status?.updated_at)
+            : undefined
+        }
       >
         <fieldset
           disabled={busy || !status}
@@ -255,7 +259,10 @@ export function CopilotCredentialPanel() {
               maxLength={253}
               autoCapitalize="none"
               spellCheck={false}
-              onChange={(event) => setGithubHost(event.target.value)}
+              onChange={(event) => {
+                connection.clear("copilot");
+                setGithubHost(event.target.value);
+              }}
               aria-describedby="copilot-host-help"
             />
             <p
@@ -276,7 +283,10 @@ export function CopilotCredentialPanel() {
               autoComplete="new-password"
               value={token}
               maxLength={8192}
-              onChange={(event) => setToken(event.target.value)}
+              onChange={(event) => {
+                connection.clear("copilot");
+                setToken(event.target.value);
+              }}
               aria-describedby="copilot-token-help"
             />
             <p
@@ -305,6 +315,13 @@ export function CopilotCredentialPanel() {
               </p>
             )}
           </div>
+          {token && (
+            <CredentialTest
+              result={connection.results.copilot}
+              disabled={busy || !githubHostSchema.safeParse(githubHost).success}
+              onTest={() => void connection.test("copilot", draft)}
+            />
+          )}
           <div className="flex flex-col gap-2 pt-1 sm:flex-row">
             <Button
               type="button"

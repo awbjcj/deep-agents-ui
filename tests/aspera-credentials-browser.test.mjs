@@ -99,7 +99,22 @@ test(
             });
           });
           const requests = [];
-          let saved = { configured: true, username: "previous-user" };
+          const tests = [];
+          const firstTestResponse = Promise.withResolvers();
+          await page.route("**/api/user/credential-tests", async (route) => {
+            tests.push(route.request().postDataJSON());
+            if (tests.length === 1) await firstTestResponse.promise;
+            const json =
+              tests.length === 1
+                ? { status: "failed", message: "Check your Aspera password." }
+                : { status: "verified" };
+            await route.fulfill({ json });
+          });
+          let saved = {
+            configured: true,
+            username: "previous-user",
+            revision: undefined,
+          };
           let loadFailed = false;
           let failSave = true;
           const pendingSave = Promise.withResolvers();
@@ -124,7 +139,11 @@ test(
                   json: { detail: { code: "credentials_unavailable" } },
                 });
               }
-              saved = { configured: true, username: record.body.username };
+              saved = {
+                configured: true,
+                username: record.body.username,
+                revision: "new-revision",
+              };
             } else if (record.method === "DELETE") {
               saved = { configured: false, username: null };
             }
@@ -157,7 +176,7 @@ test(
               .getByLabel("Confluence API Token", { exact: true })
               .waitFor();
             const savedJira = page.getByRole("button", {
-              name: "JIRA API Token Saved",
+              name: "JIRA API Token Unverified",
             });
             await savedJira.waitFor();
             assert.equal(
@@ -180,7 +199,7 @@ test(
               name: "Remove Aspera login",
             });
             const savedLogin = page.getByRole("button", {
-              name: "Aspera login Saved",
+              name: "Aspera login Unverified",
             });
             await savedLogin.click();
             await username.waitFor();
@@ -220,6 +239,44 @@ test(
             }
             await username.fill(" next-user ");
             await password.fill(secret);
+            const testConnection = page.getByRole("button", {
+              name: "Test connection",
+            });
+            await testConnection.focus();
+            await page.keyboard.press("Enter");
+            await page.getByText("Testing…", { exact: true }).waitFor();
+            assert.equal(
+              await testConnection.getAttribute("aria-disabled"),
+              "true"
+            );
+            assert.equal(
+              await testConnection.evaluate(
+                (button) => document.activeElement === button
+              ),
+              true
+            );
+            await page.keyboard.press("Enter");
+            firstTestResponse.resolve();
+            await page
+              .getByText("Check your Aspera password.", { exact: true })
+              .waitFor();
+            assert.equal(tests.length, 1);
+            await testConnection.click();
+            await page.getByText("Verified", { exact: true }).waitFor();
+            await password.fill(secret + "!");
+            await page
+              .getByText("Unverified", { exact: true })
+              .filter({ visible: true })
+              .last()
+              .waitFor();
+            await password.fill(secret);
+            await testConnection.click();
+            await page.getByText("Verified", { exact: true }).waitFor();
+            assert.deepEqual(tests.at(-1), {
+              service: "aspera",
+              username: "next-user",
+              secret,
+            });
             await save.click();
             await page
               .getByText("Saving Aspera login…", { exact: true })
@@ -251,6 +308,9 @@ test(
             await page.waitForFunction(() =>
               document.activeElement?.textContent?.includes("Aspera login")
             );
+            await page
+              .getByRole("button", { name: "Aspera login Verified" })
+              .waitFor();
             if (process.env.ASPERA_SETTINGS_EVIDENCE_DIR) {
               await page
                 .getByRole("region", { name: "Aspera", exact: true })

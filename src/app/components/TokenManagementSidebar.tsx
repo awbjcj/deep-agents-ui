@@ -1,5 +1,11 @@
 "use client";
 
+import { CredentialTest } from "@/app/components/settings/CredentialTest";
+import {
+  savedCredentialStatus,
+  useCredentialTests,
+} from "@/app/hooks/useCredentialTests";
+
 import { SavedSetting } from "@/app/components/settings/SavedSetting";
 
 import { flushSync } from "react-dom";
@@ -10,7 +16,7 @@ import { SettingsLoading } from "@/app/components/settings/SettingsFeedback";
 
 import { formatTimestamp } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MaskedTokenInput } from "@/app/components/settings/MaskedTokenInput";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiGetTokens, apiUpdateTokens, UserTokens } from "@/lib/auth";
@@ -28,7 +34,7 @@ import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
 import { AsperaCredentials } from "@/app/components/AsperaCredentials";
 import { CopilotCredentialPanel } from "@/app/components/CopilotCredentialPanel";
-import { Eye, EyeOff, Loader2, Save, Wand2 } from "lucide-react";
+import { Loader2, Save, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -115,6 +121,8 @@ export function TokenManagementSidebar({
     return () => cancelAnimationFrame(frame);
   }, [initialFocus, isLoading, onFocusConsumed]);
 
+  const connection = useCredentialTests();
+
   const handleSave = async () => {
     if (!dirty) return;
     setIsSaving(true);
@@ -125,6 +133,16 @@ export function TokenManagementSidebar({
         if (value !== undefined) payload[guide.payloadField] = value;
       }
       const updated = await apiUpdateTokens(payload);
+      for (const guide of TOKEN_SERVICE_GUIDES) {
+        const secret = payload[guide.payloadField]?.trim();
+        if (secret !== undefined) {
+          connection.record(
+            guide.key,
+            { service: guide.payloadField, secret },
+            updated.credential_revisions?.[guide.payloadField]
+          );
+        }
+      }
       setTokenMeta(updated);
       applyClearedNotifications(updated.cleared_notifications);
       setTokenDraft({});
@@ -138,7 +156,10 @@ export function TokenManagementSidebar({
     }
   };
 
-  const discard = () => setTokenDraft({});
+  const discard = () => {
+    for (const guide of TOKEN_SERVICE_GUIDES) connection.clear(guide.key);
+    setTokenDraft({});
+  };
 
   const missingCount = TOKEN_SERVICE_GUIDES.filter(
     (guide) => !hasSavedToken(tokenMeta?.[guide.previewField])
@@ -215,12 +236,17 @@ export function TokenManagementSidebar({
                         tokenMeta?.[`${guide.payloadField}_updated_at`]
                       }
                       timeGap={tokenMeta?.[`${guide.payloadField}_time_gap`]}
-                      onChange={(value) =>
+                      verificationRevision={
+                        tokenMeta?.credential_revisions?.[guide.payloadField]
+                      }
+                      connection={connection}
+                      onChange={(value) => {
+                        connection.clear(guide.key);
                         setTokenDraft((draft) => ({
                           ...draft,
                           [guide.key]: value,
-                        }))
-                      }
+                        }));
+                      }}
                     />
                   ))}
                 </fieldset>
@@ -293,6 +319,8 @@ function TokenField({
   preview,
   updatedAt,
   timeGap,
+  verificationRevision,
+  connection,
   onChange,
 }: {
   guide: TokenServiceGuide;
@@ -301,6 +329,8 @@ function TokenField({
   preview?: string | null;
   updatedAt?: string | null;
   timeGap?: string | null;
+  verificationRevision?: string;
+  connection: ReturnType<typeof useCredentialTests>;
   onChange: (value: string) => void;
 }) {
   const [show, setShow] = useState(false);
@@ -311,7 +341,11 @@ function TokenField({
       revision={updatedAt}
       title={guide.label}
       triggerId={`${id}-edit`}
-      status={saved ? "Saved" : undefined}
+      status={
+        saved
+          ? savedCredentialStatus(guide.key, verificationRevision)
+          : undefined
+      }
     >
       <section className="space-y-2">
         <Label
@@ -334,30 +368,27 @@ function TokenField({
             )}
           </div>
         )}
-        <div className="relative">
-          <Input
-            id={id}
-            type={show ? "text" : "password"}
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            placeholder={saved ? "Enter a replacement token" : "Paste a token"}
-            className="pr-11"
+        <MaskedTokenInput
+          id={id}
+          tokenLabel={guide.label}
+          revealed={show}
+          onToggle={() => setShow((visible) => !visible)}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={saved ? "Enter a replacement token" : "Paste a token"}
+        />
+        {value.trim() && (
+          <CredentialTest
+            result={connection.results[guide.key]}
+            disabled={false}
+            onTest={() =>
+              void connection.test(guide.key, {
+                service: guide.payloadField,
+                secret: value.trim(),
+              })
+            }
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={`${show ? "Hide" : "Show"} ${guide.label}`}
-            aria-controls={id}
-            onClick={() => setShow((visible) => !visible)}
-            className="absolute top-1/2 right-0 size-10 -translate-y-1/2"
-          >
-            {show ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-          </Button>
-        </div>
+        )}
         <TokenSetupGuide
           guide={guide}
           username={username}

@@ -182,7 +182,10 @@ test(
             .getByRole("tab", { name: "Tokens", exact: true })
             .click();
           await workspace
-            .getByRole("button", { name: "Graph API Token Saved", exact: true })
+            .getByRole("button", {
+              name: "Graph API Token Unverified",
+              exact: true,
+            })
             .click();
           const token = workspace.getByLabel("Graph API Token", {
             exact: true,
@@ -523,7 +526,10 @@ test(
             .getByRole("button", { name: "Retry loading tokens" })
             .click();
           await workspace
-            .getByRole("button", { name: "Graph API Token Saved", exact: true })
+            .getByRole("button", {
+              name: "Graph API Token Unverified",
+              exact: true,
+            })
             .click();
           await workspace
             .getByLabel("Graph API Token", { exact: true })

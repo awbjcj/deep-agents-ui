@@ -1,5 +1,11 @@
 "use client";
 
+import { CredentialTest } from "@/app/components/settings/CredentialTest";
+import {
+  savedCredentialStatus,
+  useCredentialTests,
+} from "@/app/hooks/useCredentialTests";
+
 import { SavedSetting } from "@/app/components/settings/SavedSetting";
 
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
@@ -12,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  credentialStateText,
   deleteScmCredential,
   listScmServers,
   saveScmCredential,
@@ -29,6 +34,7 @@ export function ScmCredentials() {
     Record<string, { token: string; username: string }>
   >({});
   const [revisions, setRevisions] = useState<Record<string, number>>({});
+  const connection = useCredentialTests();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<{
     serverId: string;
@@ -41,7 +47,9 @@ export function ScmCredentials() {
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
-      setServers(await listScmServers(signal));
+      const next = await listScmServers(signal);
+      setServers(next);
+      return next;
     } catch (error) {
       if ((error as DOMException | undefined)?.name !== "AbortError") {
         toast.error(
@@ -64,6 +72,7 @@ export function ScmCredentials() {
     field: "token" | "username",
     value: string
   ) => {
+    connection.clear(`scm:${serverId}`);
     setValues((current) => {
       const previous = current[serverId] ?? { token: "", username: "" };
       return { ...current, [serverId]: { ...previous, [field]: value } };
@@ -75,7 +84,7 @@ export function ScmCredentials() {
     const value = values[serverId] ?? { token: "", username: "" };
     try {
       setPending({ serverId, action: "save" });
-      await saveScmCredential(serverId, value, server.provider);
+      const saved = await saveScmCredential(serverId, value, server.provider);
       // Clear the submitted fields and preserve drafts for other servers.
       setValues((current) => ({
         ...current,
@@ -85,7 +94,20 @@ export function ScmCredentials() {
         ...current,
         [serverId]: (current[serverId] ?? 0) + 1,
       }));
-      await load();
+      const next = (await load())?.find((item) => item.id === serverId);
+      connection.record(
+        `scm:${serverId}`,
+        {
+          service: "scm",
+          server_id: serverId,
+          secret: value.token.trim(),
+          username: value.username.trim(),
+        },
+        next?.generation === server.generation &&
+          next.credential_generation === saved.credential_generation
+          ? next.credential_revision
+          : null
+      );
       toast.success("SCM credential saved");
     } catch (error) {
       toast.error(
@@ -100,6 +122,7 @@ export function ScmCredentials() {
     setPending({ serverId, action: "remove" });
     try {
       await deleteScmCredential(serverId);
+      connection.record(`scm:${serverId}`, null);
       setValues((current) => ({
         ...current,
         [serverId]: { token: "", username: "" },
@@ -167,13 +190,16 @@ export function ScmCredentials() {
           const fieldKey = scmFieldKey(server.id);
           const providerName = scmProviderLabels[server.provider];
           const needsUsername = scmRequiresUsername(server.provider);
-          const state = credentialStateText(server.credential_state);
-          const savedStatus =
-            server.credential_state === "validated"
-              ? "Verified"
-              : server.credential_state === "unvalidated"
-                ? "Saved"
-                : undefined;
+          const reconnect = server.credential_state === "reconnect_required";
+          const configured =
+            !!server.credential_state && server.credential_state !== "missing";
+          const savedStatus = configured
+            ? savedCredentialStatus(
+                `scm:${server.id}`,
+                reconnect ? null : server.credential_revision,
+                server.credential_state === "validated"
+              )
+            : undefined;
           return (
             <SavedSetting
               key={server.id}
@@ -201,13 +227,12 @@ export function ScmCredentials() {
                       {server.display_name}
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      {server.display_name !== providerName &&
-                        `${providerName} · `}
-                      {state.label}
+                      {server.display_name !== providerName && providerName}
                     </p>
-                    {state.hint && (
+                    {reconnect && (
                       <p className="text-muted-foreground text-xs">
-                        {state.hint}
+                        The server connection changed. Enter your credential
+                        again.
                       </p>
                     )}
                   </div>
@@ -279,6 +304,20 @@ export function ScmCredentials() {
                     />
                   </div>
                 </div>
+                {value.token.trim() && (
+                  <CredentialTest
+                    result={connection.results[`scm:${server.id}`]}
+                    disabled={busy || (needsUsername && !value.username.trim())}
+                    onTest={() =>
+                      void connection.test(`scm:${server.id}`, {
+                        service: "scm",
+                        server_id: server.id,
+                        secret: value.token.trim(),
+                        username: value.username.trim(),
+                      })
+                    }
+                  />
+                )}
                 <Button
                   type="submit"
                   className="min-h-touch"
