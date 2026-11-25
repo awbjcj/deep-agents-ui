@@ -150,7 +150,7 @@ test(
         browser,
         server,
         {
-          route(route, account) {
+          async route(route, account) {
             if (
               new URL(route.request().url()).pathname.endsWith(
                 "/threads/search"
@@ -158,6 +158,9 @@ test(
             ) {
               const { offset = 0, limit = 20 } = route.request().postDataJSON();
               if (offset) olderReads += 1;
+              // Hold the title re-check open so a blanked list is observable.
+              else if (olderReads)
+                await new Promise((resolve) => setTimeout(resolve, 300));
               return route.fulfill({
                 json: Array.from({ length: offset ? 5 : limit }, (_, index) => {
                   const id = offset + index;
@@ -192,7 +195,19 @@ test(
         .click();
       await page.getByText("Saved thread 24", { exact: true }).waitFor();
       assert.equal(olderReads, 1);
+      await page.evaluate(() => {
+        window.threadRowsVanished = false;
+        new MutationObserver(() => {
+          if (!document.body.textContent?.includes("Saved thread 24"))
+            window.threadRowsVanished = true;
+        }).observe(document.body, { childList: true, subtree: true });
+      });
       await page.getByText("Generated after run", { exact: true }).waitFor();
+      assert.equal(
+        await page.evaluate(() => window.threadRowsVanished),
+        false,
+        "title polling must keep loaded rows visible"
+      );
       assert.equal(
         olderReads,
         1,

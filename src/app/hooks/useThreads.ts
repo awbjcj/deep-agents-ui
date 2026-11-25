@@ -266,12 +266,17 @@ export function useThreads(props: {
   useEffect(
     () =>
       scheduleTitleRechecks(data?.[0] ?? [], titleRechecks.current, () =>
+        // populateCache: false keeps loaded pages visible during the refetch.
+        // SWR checks `revalidate` once with the aggregate (string) key and
+        // then once per page key; only page one is fetched again.
         mutate(undefined, {
+          populateCache: false,
           revalidate: (_page, key) =>
-            key !== null &&
-            typeof key === "object" &&
-            "pageIndex" in key &&
-            key.pageIndex === 0,
+            typeof key === "string" ||
+            (key !== null &&
+              typeof key === "object" &&
+              "pageIndex" in key &&
+              key.pageIndex === 0),
         })
       ),
     [data, mutate]
