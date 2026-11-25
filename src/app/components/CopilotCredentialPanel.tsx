@@ -1,8 +1,10 @@
 "use client";
 
 import { CredentialSection } from "@/app/components/settings/CredentialSection";
+import { DESTRUCTIVE_OUTLINE } from "@/app/components/settings/credentialStyles";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
+  credentialStatusLabels,
   savedCredentialStatus,
   useCredentialTests,
 } from "@/app/hooks/useCredentialTests";
@@ -228,6 +230,7 @@ export function CopilotCredentialPanel() {
         revision={status?.updated_at}
         title="Copilot credential"
         status={savedStatus}
+        missingStatus={status ? credentialStatusLabels.missing : undefined}
         updatedAt={configured ? status?.updated_at : undefined}
         expiresAt={configured ? status?.expires_at : undefined}
       >
@@ -316,10 +319,9 @@ export function CopilotCredentialPanel() {
           <div className="flex flex-col gap-2 pt-1 sm:flex-row">
             <Button
               type="button"
-              size="sm"
               disabled={!token || busy || connection.isTesting}
               onClick={() => void update(false)}
-              className="transition-[background-color,box-shadow,transform] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
+              className="min-h-touch"
             >
               {busy ? (
                 <Loader2
@@ -336,11 +338,10 @@ export function CopilotCredentialPanel() {
             </Button>
             <Button
               type="button"
-              size="sm"
               variant="outline"
               disabled={!status?.configured || busy || connection.isTesting}
               onClick={() => void update(true)}
-              className="text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              className={DESTRUCTIVE_OUTLINE}
             >
               <Trash2
                 aria-hidden="true"

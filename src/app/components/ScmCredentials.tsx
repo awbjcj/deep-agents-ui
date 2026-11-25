@@ -3,6 +3,7 @@
 import { CredentialSection } from "@/app/components/settings/CredentialSection";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
+  credentialStatusLabels,
   savedCredentialStatus,
   useCredentialTests,
 } from "@/app/hooks/useCredentialTests";
@@ -242,7 +243,10 @@ export function ScmCredentials() {
               key={server.id}
               revision={revisions[server.id]}
               title={server.display_name}
-              status={savedStatus ?? "Not set"}
+              status={
+                reconnect ? credentialStatusLabels.reconnect : savedStatus
+              }
+              missingStatus={credentialStatusLabels.missing}
               updatedAt={server.credential_updated_at}
               expiresAt={server.credential_expires_at}
               icon={
@@ -261,7 +265,7 @@ export function ScmCredentials() {
             >
               <form
                 autoComplete="off"
-                className="border-border space-y-3 border-t pt-3"
+                className="space-y-3"
                 aria-labelledby={`${fieldKey}:title`}
                 onSubmit={(event) => {
                   event.preventDefault();

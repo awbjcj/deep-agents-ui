@@ -24,6 +24,8 @@ type SavedCredential = Pick<CredentialDraft, "service" | "server_id"> & {
 };
 
 export const credentialStatusLabels = {
+  missing: "Not set",
+  reconnect: "Reconnect required",
   unverified: "Unverified",
   testing: "Testing…",
   verified: "Verified",
@@ -108,6 +110,12 @@ export function useCredentialTests() {
         data.status === "verified"
       ) {
         result = { status: "verified" };
+      } else if (res.status === 429) {
+        result = {
+          status: "failed",
+          message:
+            "Too many connection tests. Wait a few minutes, then try again.",
+        };
       } else {
         const message =
           data &&

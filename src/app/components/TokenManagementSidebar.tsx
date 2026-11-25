@@ -3,6 +3,7 @@
 import { CredentialSection } from "@/app/components/settings/CredentialSection";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
+  credentialStatusLabels,
   savedCredentialStatus,
   useCredentialTests,
 } from "@/app/hooks/useCredentialTests";
@@ -352,19 +353,14 @@ function TokenField({
       title={guide.label}
       triggerId={`${id}-edit`}
       status={savedStatus}
+      missingStatus={credentialStatusLabels.missing}
       updatedAt={saved ? (verificationRevision ?? updatedAt) : undefined}
       expiresAt={saved ? expiresAt : undefined}
     >
-      <section
-        className={
-          saved
-            ? "border-border space-y-2 border-t pt-3"
-            : "border-border space-y-2 rounded-lg border p-3"
-        }
-      >
+      <section className="space-y-2">
         <Label
           htmlFor={id}
-          className={saved ? "sr-only" : "text-sm font-medium"}
+          className="sr-only"
         >
           {guide.label}
         </Label>

@@ -364,8 +364,11 @@ test(
         const source = page.getByRole("region", {
           name: "Source-control access",
         });
-        await source.getByRole("button", { name: "Gerrit Not set" }).click();
-        await source.getByRole("button", { name: "GitLab Not set" }).click();
+        // Credentials that are not set stay open, with the same status badge.
+        assert.equal(
+          await source.getByText("Not set", { exact: true }).count(),
+          2
+        );
         const gerrit = source.getByRole("form", {
           name: "Gerrit",
           exact: true,

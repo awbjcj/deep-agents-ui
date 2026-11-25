@@ -143,9 +143,7 @@ test(
         .click();
       await page.getByRole("tab", { name: "Tokens", exact: true }).click();
       const section = page.getByRole("region", { name: "Copilot analysis" });
-      await section
-        .getByText("No personal token configured", { exact: true })
-        .waitFor();
+      await section.getByText("Not set", { exact: true }).waitFor();
       const input = section.getByLabel("Fine-grained personal access token");
       assert.equal(await input.getAttribute("type"), "password");
       assert.equal(await input.inputValue(), "");
@@ -174,7 +172,7 @@ test(
       await section.getByText("86.0% remaining", { exact: true }).waitFor();
       assert.equal(quotaRequests, 1);
       await section
-        .getByRole("button", { name: "Copilot credential Saved" })
+        .getByRole("button", { name: "Copilot credential Unverified" })
         .click();
       assert.equal(await input.inputValue(), "");
       assert.equal(

@@ -13,15 +13,17 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useCredentialDates } from "@/app/hooks/useCredentialDates";
 import { CredentialDates } from "./CredentialDates";
+import { CredentialStatusBadge } from "./CredentialStatusBadge";
 
 /**
  * Collapses an already-saved setting behind a summary row.
  *
- * A changed `revision` (for example a new `updated_at` after a save) collapses
- * the panel again. When that removes the focused control, focus returns to the
+ * Without a `status`, `missingStatus` renders an always-open card with the same
+ * header and badge, so saved and unsaved credentials look alike; otherwise the
+ * children render bare. A changed `revision` (for example a new `updated_at`
+ * after a save) collapses the panel again. When that removes the focused control, focus returns to the
  * summary trigger instead of falling back to the document body.
  */
 export function SavedSetting({
@@ -34,9 +36,11 @@ export function SavedSetting({
   updatedAt,
   expiresAt,
   icon,
+  missingStatus,
 }: {
   title: string;
   status?: string;
+  missingStatus?: string;
   revision?: string | number | null;
   children: ReactNode;
   triggerId?: string;
@@ -111,6 +115,24 @@ export function SavedSetting({
       });
     });
   }
+  if (!status && missingStatus)
+    return (
+      <div
+        ref={panel}
+        {...focusHandlers}
+        className="border-border rounded-lg border px-3 pb-3"
+      >
+        <div className="flex min-h-11 items-center gap-2 text-sm font-medium">
+          {icon}
+          <span className="min-w-0 flex-1 space-y-0.5 py-2 wrap-anywhere">
+            <span className="block">{title}</span>
+            {metadata && <span className="block">{metadata}</span>}
+          </span>
+          <CredentialStatusBadge status={missingStatus} />
+        </div>
+        <div className="border-border space-y-2 border-t pt-3">{children}</div>
+      </div>
+    );
   if (!status) return <>{trackUnsavedFocus(children)}</>;
   return (
     <div
@@ -141,22 +163,17 @@ export function SavedSetting({
             </span>
           )}
         </span>
-        <span
-          className={cn(
-            "rounded px-2 py-0.5 text-xs",
-            dates.expired
-              ? "bg-destructive/10 text-destructive"
-              : "bg-muted text-muted-foreground"
-          )}
-        >
-          {dates.expired ? "Expired" : status}
-        </span>
+        <CredentialStatusBadge status={dates.expired ? "Expired" : status} />
         <ChevronDown
           aria-hidden="true"
           className={expanded ? "size-4 rotate-180" : "size-4"}
         />
       </button>
-      {expanded && <div className="space-y-2 pb-3">{children}</div>}
+      {expanded && (
+        <div className="border-border space-y-2 border-t pt-3 pb-3">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

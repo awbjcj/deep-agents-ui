@@ -2,8 +2,10 @@
 
 import { KeyRound } from "lucide-react";
 import { CredentialSection } from "@/app/components/settings/CredentialSection";
+import { DESTRUCTIVE_OUTLINE } from "@/app/components/settings/credentialStyles";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
+  credentialStatusLabels,
   savedCredentialStatus,
   useCredentialTests,
 } from "@/app/hooks/useCredentialTests";
@@ -167,6 +169,7 @@ export function AsperaCredentials() {
             revision={revision}
             title="Aspera login"
             status={savedStatus}
+            missingStatus={credentialStatusLabels.missing}
           >
             <form
               className="@container/aspera"
@@ -266,10 +269,10 @@ export function AsperaCredentials() {
                   {credential.configured && (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       disabled={connection.isTesting}
                       onClick={() => void update("DELETE")}
-                      className="min-h-touch"
+                      className={DESTRUCTIVE_OUTLINE}
                     >
                       Remove Aspera login
                     </Button>
