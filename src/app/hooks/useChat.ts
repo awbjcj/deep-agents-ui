@@ -78,12 +78,13 @@ import type { SourceAttachmentRecord } from "@/lib/artifact-links";
 import {
   EMPTY_PENDING_FILES,
   applyPendingDelta,
+  isSubagentNamespace,
   mergePendingFiles,
   prunePendingFiles,
   restorePendingFiles,
-  subagentFileDelta,
+  streamFileDelta,
   withoutPendingFiles,
-  type PendingSubagentFiles,
+  type PendingFiles,
 } from "@/lib/pending-files";
 import {
   EMPTY_LIVE_VERIFICATION,
@@ -333,16 +334,26 @@ export function useChat({
     [ingestStreamEvent]
   );
 
-  // Files saved by a running or review-paused subagent reach the root thread
-  // state only when its `task` returns; overlay them from namespaced updates.
-  const [pendingSubagentFiles, setPendingSubagentFiles] =
-    useState<PendingSubagentFiles>(EMPTY_PENDING_FILES);
+  // Task files can precede the shared state, especially across parallel tasks.
+  const [pendingFiles, setPendingFiles] =
+    useState<PendingFiles>(EMPTY_PENDING_FILES);
   const recoveredFileSnapshots = useRef(new WeakSet<object>());
+  const serverFilesRef = useRef<Record<string, string>>({});
   const handleUpdateEvent = useCallback(
     (data: unknown, options: { namespace: string[] | undefined }) => {
-      const delta = subagentFileDelta(data, options.namespace);
+      const delta = streamFileDelta(data, options.namespace);
       if (!delta) return;
-      setPendingSubagentFiles((previous) => applyPendingDelta(previous, delta));
+      setPendingFiles((previous) =>
+        isSubagentNamespace(options.namespace)
+          ? applyPendingDelta(previous, delta)
+          : restorePendingFiles(previous, serverFilesRef.current, [
+              {
+                files: delta.files,
+                source_image_attachments: delta.records,
+                source_attachment_records: delta.documents,
+              },
+            ])
+      );
     },
     []
   );
@@ -923,20 +934,39 @@ export function useChat({
     () => stream.values.files ?? {},
     [stream.values.files]
   );
-  const serverFilesRef = useRef(serverFiles);
   serverFilesRef.current = serverFiles;
   const rootFiles = optimisticFiles ?? serverFiles;
   const filesRef = useRef(rootFiles);
   filesRef.current = rootFiles;
 
+  // Clear the old thread's overlay before recovering the new checkpoint.
   useEffect(() => {
-    setPendingSubagentFiles((previous) =>
+    recoveredFileSnapshots.current = new WeakSet();
+    setPendingFiles(EMPTY_PENDING_FILES);
+  }, [client, threadId]);
+
+  useEffect(() => {
+    setPendingFiles((previous) =>
       prunePendingFiles(previous, serverFiles, runSettled)
     );
   }, [serverFiles, runSettled]);
   useEffect(() => {
     if (runSettled || threadId !== streamThreadId) return;
     const snapshots: Record<string, unknown>[] = [];
+    // A completed parallel task's result is checkpointed before its files
+    // enter root values. Recover it even if its tool call is already complete.
+    for (const task of history.data?.[0]?.tasks ?? []) {
+      const result = task.result;
+      if (
+        !result ||
+        typeof result !== "object" ||
+        !("files" in result) ||
+        recoveredFileSnapshots.current.has(result)
+      )
+        continue;
+      recoveredFileSnapshots.current.add(result);
+      snapshots.push(result as Record<string, unknown>);
+    }
     for (let i = processedMessages.length - 1; i >= 0; i--) {
       const { message, toolCalls } = processedMessages[i];
       if (isUserTurn(message)) break;
@@ -954,20 +984,21 @@ export function useChat({
       }
     }
     if (snapshots.length)
-      setPendingSubagentFiles((previous) =>
+      setPendingFiles((previous) =>
         restorePendingFiles(previous, serverFiles, snapshots)
       );
   }, [
     serverFiles,
     runSettled,
+    history.data,
     processedMessages,
     subagents,
     threadId,
     streamThreadId,
   ]);
   const livePendingFiles = useMemo(
-    () => prunePendingFiles(pendingSubagentFiles, serverFiles, runSettled),
-    [pendingSubagentFiles, serverFiles, runSettled]
+    () => prunePendingFiles(pendingFiles, serverFiles, runSettled),
+    [pendingFiles, serverFiles, runSettled]
   );
   const files = useMemo(
     () => mergePendingFiles(rootFiles, livePendingFiles),
@@ -1101,15 +1132,12 @@ export function useChat({
     }
   }, [optimisticSourceImageAttachments, serverSourceImageAttachments]);
 
-  // Switching threads must clear the override; otherwise a write in one thread
-  // would visually persist into the next.
+  // Do not carry a file edit into another thread or account.
   useEffect(() => {
     filesOverrideBaselineRef.current = null;
     sourceOverrideBaselineRef.current = null;
-    recoveredFileSnapshots.current = new WeakSet();
     setOptimisticFiles(null);
     setOptimisticSourceImageAttachments(null);
-    setPendingSubagentFiles(EMPTY_PENDING_FILES);
   }, [client, threadId]);
 
   const removeSourceImageNow = useCallback(

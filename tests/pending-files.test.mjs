@@ -8,7 +8,7 @@ import {
   mergePendingFiles,
   prunePendingFiles,
   restorePendingFiles,
-  subagentFileDelta,
+  streamFileDelta,
   withoutPendingFiles,
 } from "../src/lib/pending-files.ts";
 
@@ -23,18 +23,21 @@ const record = {
   source: "jira",
 };
 
-test("only subagent namespaces contribute pending files", () => {
+test("root and subagent tool updates contribute pending files", () => {
   assert.equal(isSubagentNamespace(undefined), false);
   assert.equal(isSubagentNamespace([]), false);
   assert.equal(isSubagentNamespace(["model"]), false);
   assert.equal(isSubagentNamespace(["tools:01abc"]), true);
   const update = { tools: { files: { [imagePath]: image } } };
-  assert.equal(subagentFileDelta(update, undefined), null);
-  assert.equal(subagentFileDelta(update, ["model:1"]), null);
+  assert.deepEqual(streamFileDelta(update, undefined), {
+    files: { [imagePath]: image },
+    records: {},
+  });
+  assert.equal(streamFileDelta(update, ["model:1"]), null);
 });
 
 test("subagent tool updates yield file and source-record deltas", () => {
-  const delta = subagentFileDelta(
+  const delta = streamFileDelta(
     {
       tools: {
         files: { [imagePath]: image },
@@ -52,13 +55,13 @@ test("subagent tool updates yield file and source-record deltas", () => {
     records: { [record.attachment_id]: record },
   });
   assert.equal(
-    subagentFileDelta({ model: { messages: [] } }, ["tools:01abc"]),
+    streamFileDelta({ model: { messages: [] } }, ["tools:01abc"]),
     null
   );
 });
 
 test("batched node updates are merged", () => {
-  const delta = subagentFileDelta(
+  const delta = streamFileDelta(
     {
       tools: [
         { files: { [imagePath]: image } },
@@ -174,7 +177,7 @@ const documentRecord = {
 };
 
 test("subagent updates carry source-document records with tombstones", () => {
-  const delta = subagentFileDelta(
+  const delta = streamFileDelta(
     {
       tools: {
         files: { [docPath]: image, [readablePath]: "# Spec" },
@@ -184,7 +187,7 @@ test("subagent updates carry source-document records with tombstones", () => {
     ["tools:01abc"]
   );
   assert.deepEqual(delta.documents, { [docPath]: documentRecord });
-  const onlyRecords = subagentFileDelta(
+  const onlyRecords = streamFileDelta(
     { tools: { source_attachment_records: { [docPath]: null } } },
     ["tools:01abc"]
   );

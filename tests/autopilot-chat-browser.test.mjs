@@ -227,6 +227,9 @@ test(
       },
       { [reportPath]: "Requirement,Result\nTiming,Passed" },
     ];
+    const completedFiles = {
+      "/completed-plot.png": branchFiles[0]["/signal-plot.png"],
+    };
     const agents = ["Log-Analyzer-Agent", "Polarion-Agent"];
     const tools = ["summarize_log_signals", "get_polarion_work_item"];
     const messages = [
@@ -340,7 +343,12 @@ test(
           if (submissions.length) {
             checkingCheckpoint.resolve();
             await verifyCheckpoint.promise;
-            persistedFiles = Object.assign({}, rootFiles, ...branchFiles);
+            persistedFiles = Object.assign(
+              {},
+              rootFiles,
+              ...branchFiles,
+              completedFiles
+            );
             persistedMessages = [...messages, ...results];
           }
           return json({
@@ -358,6 +366,11 @@ test(
         if (url.pathname.endsWith("/threads/nested/runs/stream")) {
           submissions.push(route.request().postDataJSON());
           pending = [];
+          // The completed task's root update can arrive without its earlier
+          // subagent updates, for example after reconnecting mid-run.
+          const completedUpdate = `event: updates\ndata: ${JSON.stringify({
+            tools: { files: completedFiles },
+          })}\n\n`;
           const updates = branchFiles
             .map(
               (files, i) =>
@@ -386,7 +399,7 @@ test(
           const completed = `event: messages|tools:branch-0\ndata: ${JSON.stringify([done, { lc_subagent_tool_call_id: "task-0" }])}\n\nevent: messages\ndata: ${JSON.stringify([results[0], {}])}\n\n`;
           return route.fulfill({
             contentType: "text/event-stream",
-            body: `event: metadata\ndata: {"run_id":"resume","thread_id":"nested"}\n\n${updates}${activity}${completed}event: values\ndata: ${JSON.stringify(state().values)}\n\nevent: values\ndata: {"__interrupt__":[]}\n\nevent: end\ndata: {}\n\n`,
+            body: `event: metadata\ndata: {"run_id":"resume","thread_id":"nested"}\n\n${completedUpdate}${updates}${activity}${completed}event: values\ndata: ${JSON.stringify(state().values)}\n\nevent: values\ndata: {"__interrupt__":[]}\n\nevent: end\ndata: {}\n\n`,
           });
         }
         if (url.pathname.endsWith("/threads/nested/runs"))
@@ -411,10 +424,11 @@ test(
       await page.getByRole("combobox", { name: /^Approval mode/ }).click();
       await page.getByRole("option", { name: /^Allow reads/ }).click();
       await checkingCheckpoint.promise;
-      const files = page.getByRole("button", { name: /^Files 3$/ });
+      const files = page.getByRole("button", { name: /^Files 4$/ });
       await files.waitFor({ timeout: 5000 });
       await files.click();
       await page.getByText("signal-plot.png", { exact: true }).waitFor();
+      await page.getByText("completed-plot.png", { exact: true }).waitFor();
       await page.getByText("polarion-report.csv", { exact: true }).waitFor();
       for (const [index, name] of agents.entries()) {
         const indicator = page.getByRole("button", { name, exact: true });

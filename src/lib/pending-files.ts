@@ -2,29 +2,28 @@ import type { SourceImageRecord } from "@/lib/source-images";
 import type { SourceAttachmentRecord } from "@/lib/artifact-links";
 
 /**
- * Files a delegated subagent has saved but the root thread has not yet
- * received.
+ * Files saved during a run that the root thread has not yet received.
  *
  * Deep Agents subagents run inside the supervisor's `task` tool, so their
  * `state.files` writes (saved Jira/Polarion/Confluence images, attachments,
  * offloaded results) only reach the root thread state when the task returns.
  * While the subagent is still running, or paused on a nested approval, the
- * root `files` channel does not contain them. The chat stream does carry the
- * subagent's node updates under a `tools:<id>` namespace, so the Files panel
- * overlays those writes until the root state catches up.
+ * root `files` channel does not contain them. Parallel root tasks can also
+ * return their results before the shared state advances. The chat overlays
+ * these writes until the root state catches up.
  */
-export interface PendingSubagentFiles {
+export interface PendingFiles {
   files: Record<string, unknown>;
   records: Record<string, SourceImageRecord>;
   /** Source-document provenance keyed by original path. */
   documents: Record<string, SourceAttachmentRecord>;
 }
 
-export const EMPTY_PENDING_FILES: PendingSubagentFiles = Object.freeze({
+export const EMPTY_PENDING_FILES: PendingFiles = Object.freeze({
   files: Object.freeze({}) as Record<string, unknown>,
   records: Object.freeze({}) as Record<string, SourceImageRecord>,
   documents: Object.freeze({}) as Record<string, SourceAttachmentRecord>,
-}) as PendingSubagentFiles;
+}) as PendingFiles;
 
 type Delta = {
   files: Record<string, unknown>;
@@ -62,16 +61,15 @@ export function isSubagentNamespace(namespace: string[] | undefined): boolean {
 }
 
 /**
- * Extract `files`, `source_image_attachments` and `source_attachment_records`
- * writes from one namespaced
- * `updates` event. Root-namespace events return null: the root stream values
- * already carry those writes.
+ * Extract file and provenance writes from a root or subagent `updates` event.
+ * Ignore other subgraph namespaces, whose files are not conversation files.
  */
-export function subagentFileDelta(
+export function streamFileDelta(
   data: unknown,
   namespace: string[] | undefined
 ): Delta | null {
-  if (!isSubagentNamespace(namespace) || !isRecord(data)) return null;
+  if ((namespace?.length && !isSubagentNamespace(namespace)) || !isRecord(data))
+    return null;
   const delta: Delta = { files: {}, records: {} };
   let found = false;
   for (const nodeUpdate of Object.values(data)) {
@@ -85,9 +83,9 @@ export function subagentFileDelta(
 
 /** Merge one delta, honouring `null` tombstones like the server reducer. */
 export function applyPendingDelta(
-  pending: PendingSubagentFiles,
+  pending: PendingFiles,
   delta: Delta
-): PendingSubagentFiles {
+): PendingFiles {
   const files = { ...pending.files };
   const records = { ...pending.records };
   const documents = { ...pending.documents };
@@ -108,10 +106,10 @@ export function applyPendingDelta(
 
 /** Recover generated files after reconnecting. Root state and live edits take precedence. */
 export function restorePendingFiles(
-  pending: PendingSubagentFiles,
+  pending: PendingFiles,
   rootFiles: Record<string, unknown>,
   subagentStates: readonly unknown[]
-): PendingSubagentFiles {
+): PendingFiles {
   if (subagentStates.length === 0) return pending;
   const delta: Delta = { files: {}, records: {} };
   for (const state of subagentStates) appendFileDelta(delta, state);
@@ -133,10 +131,10 @@ export function restorePendingFiles(
  * so the whole overlay is discarded. Returns the same object when unchanged.
  */
 export function prunePendingFiles(
-  pending: PendingSubagentFiles,
+  pending: PendingFiles,
   rootFiles: Record<string, unknown>,
   settled: boolean
-): PendingSubagentFiles {
+): PendingFiles {
   const pendingPaths = Object.keys(pending.files);
   const recordIds = Object.keys(pending.records);
   const documentPaths = Object.keys(pending.documents);
@@ -179,7 +177,7 @@ export function prunePendingFiles(
 /** Show in-flight writes, including updates to existing files. */
 export function mergePendingFiles<T>(
   rootFiles: Record<string, T>,
-  pending: PendingSubagentFiles
+  pending: PendingFiles
 ): Record<string, T> {
   if (Object.keys(pending.files).length === 0) return rootFiles;
   return { ...rootFiles, ...(pending.files as Record<string, T>) };
@@ -193,7 +191,7 @@ export function mergePendingFiles<T>(
 export function withoutPendingFiles<T>(
   next: Record<string, T>,
   previousRoot: Record<string, unknown>,
-  pending: PendingSubagentFiles
+  pending: PendingFiles
 ): Record<string, T> {
   const rootNext: Record<string, T> = {};
   for (const [path, value] of Object.entries(next)) {
