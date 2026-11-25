@@ -215,6 +215,8 @@ test(
     const checkingCheckpoint = deferred();
     const verifyCheckpoint = deferred();
     const rootFiles = { "/notes.md": "Input notes" };
+    const reportPath =
+      "/_artifacts/developer-fixture/nested/polarion-report.csv";
     const branchFiles = [
       {
         "/signal-plot.png": {
@@ -223,7 +225,7 @@ test(
           encoding: "base64",
         },
       },
-      { "/polarion-report.md": "Requirements report" },
+      { [reportPath]: "Requirement,Result\nTiming,Passed" },
     ];
     const agents = ["Log-Analyzer-Agent", "Polarion-Agent"];
     const tools = ["summarize_log_signals", "get_polarion_work_item"];
@@ -240,12 +242,36 @@ test(
         })),
       },
     ];
+    const columns = Array.from(
+      { length: 8 },
+      (_, i) => `Verification evidence ${i + 1}`
+    );
+    const table = [
+      columns,
+      columns.map(() => "---"),
+      columns.map(() => "Recorded values match the documented state"),
+    ]
+      .map((cells) => `| ${cells.join(" | ")} |`)
+      .join("\n");
     const results = agents.map((name, index) => ({
       type: "tool",
       id: `result-${index}`,
       tool_call_id: `task-${index}`,
       name: "task",
-      content: `${name} finished`,
+      content:
+        index === 0
+          ? [
+              "## Signal review",
+              table,
+              `[Requirements spreadsheet](${reportPath})`,
+              ...Array.from(
+                { length: 12 },
+                (_, i) =>
+                  `In interval ${i + 1}, both timestamp sources agreed after alignment. The recorded state and the requirements trace confirm the expected transition.`
+              ),
+              "**End of signal review.**",
+            ].join("\n\n")
+          : `${name} finished`,
       status: "success",
     }));
     let persistedMessages = messages;
@@ -365,7 +391,10 @@ test(
         }
         if (url.pathname.endsWith("/threads/nested/runs"))
           return json(
-            url.searchParams.get("status") === "running" ? [] : [queued]
+            url.searchParams.get("status") === "running" ||
+              persistedMessages !== messages
+              ? []
+              : [queued]
           );
         if (url.pathname.endsWith("/threads/search")) return json([]);
         return fallback.route(route, account);
@@ -378,6 +407,7 @@ test(
         policy,
         "developer"
       );
+      await page.emulateMedia({ reducedMotion: "reduce" });
       await page.getByRole("combobox", { name: /^Approval mode/ }).click();
       await page.getByRole("option", { name: /^Allow reads/ }).click();
       await checkingCheckpoint.promise;
@@ -385,7 +415,7 @@ test(
       await files.waitFor({ timeout: 5000 });
       await files.click();
       await page.getByText("signal-plot.png", { exact: true }).waitFor();
-      await page.getByText("polarion-report.md", { exact: true }).waitFor();
+      await page.getByText("polarion-report.csv", { exact: true }).waitFor();
       for (const [index, name] of agents.entries()) {
         const indicator = page.getByRole("button", { name, exact: true });
         if ((await indicator.getAttribute("aria-expanded")) === "false")
@@ -407,11 +437,86 @@ test(
           .locator(`[data-run-status=${status}]`)
           .waitFor({ timeout: 5000 });
       }
-      if (process.env.APPROVAL_ACTIVITY_EVIDENCE)
-        await page.screenshot({ path: process.env.APPROVAL_ACTIVITY_EVIDENCE });
+      const report = page.getByRole("region", { name: agents[0], exact: true });
+      const sibling = page.getByRole("region", {
+        name: agents[1],
+        exact: true,
+      });
+      const reportBox = await report.boundingBox();
+      const siblingBox = await sibling.boundingBox();
+      assert.ok(
+        siblingBox.y >= reportBox.y + reportBox.height,
+        "subagent panels stack on desktop"
+      );
+      assert.ok(reportBox.width > 800 && reportBox.height > 400);
+      const tableViewport = report.getByRole("region", {
+        name: "Markdown table",
+      });
+      assert.ok(
+        await tableViewport.evaluate(
+          (element) => element.scrollWidth > element.clientWidth
+        )
+      );
       verifyCheckpoint.resolve();
+      const enlarge = report.getByRole("button", {
+        name: `Enlarge ${agents[0]}`,
+        exact: true,
+      });
+      await enlarge.click();
+      const viewer = page.getByRole("dialog", { name: agents[0], exact: true });
+      await viewer
+        .getByText("End of signal review.", { exact: true })
+        .waitFor();
+      assert.ok((await viewer.boundingBox()).width > reportBox.width);
+      const fullscreen = viewer.getByRole("button", {
+        name: "Full screen",
+        exact: true,
+      });
+      await fullscreen.click();
+      assert.deepEqual(await viewer.boundingBox(), {
+        x: 0,
+        y: 0,
+        width: 1440,
+        height: 1000,
+      });
+      await viewer
+        .getByRole("button", { name: "Open polarion-report.csv", exact: true })
+        .click({ timeout: 5000 });
+      const sheet = page.getByRole("dialog", { name: "polarion-report.csv" });
+      await sheet.getByRole("cell", { name: "Timing", exact: true }).waitFor();
+      await page.keyboard.press("Escape");
+      await sheet.waitFor({ state: "detached" });
+      await viewer
+        .getByRole("button", { name: "Exit full screen", exact: true })
+        .waitFor();
+      await page.keyboard.press("Escape");
+      await fullscreen.waitFor();
+      assert.ok((await viewer.boundingBox()).width < 1440);
+      await page.keyboard.press("Escape");
+      await viewer.waitFor({ state: "detached" });
+      await page.waitForFunction(
+        (name) => document.activeElement?.getAttribute("aria-label") === name,
+        `Enlarge ${agents[0]}`
+      );
       await page.reload();
       await files.waitFor({ timeout: 5000 });
+      await report
+        .getByRole("button", { name: `Full screen ${agents[0]}`, exact: true })
+        .click();
+      await viewer
+        .getByText("End of signal review.", { exact: true })
+        .waitFor();
+      if (process.env.APPROVAL_ACTIVITY_EVIDENCE)
+        await page.screenshot({ path: process.env.APPROVAL_ACTIVITY_EVIDENCE });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.deepEqual(await viewer.boundingBox(), {
+        x: 0,
+        y: 0,
+        width: 390,
+        height: 844,
+      });
+      await viewer.getByRole("button", { name: "Close", exact: true }).click();
+      await viewer.waitFor({ state: "detached" });
       assert.equal(submissions.length, 1);
       assert.deepEqual(Object.keys(submissions[0].command.resume).sort(), [
         "11111111111111111111111111111111",

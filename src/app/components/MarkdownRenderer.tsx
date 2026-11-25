@@ -541,7 +541,7 @@ const COMPONENTS: Components = {
             those back in for descendants of the table. */}
         <table
           className={
-            "my-0 w-full border-collapse text-sm " +
+            "my-0 w-max min-w-full border-collapse text-sm " +
             "[&_strong]:font-semibold [&_strong]:text-current " +
             "[&_em]:text-current [&_em]:italic " +
             "[&_code]:border-border/60 [&_code]:rounded-sm [&_code]:border " +
@@ -574,7 +574,7 @@ const COMPONENTS: Components = {
     return (
       <th
         style={style}
-        className="border-border border-b px-3 py-2 font-semibold whitespace-nowrap"
+        className="border-border max-w-[min(40rem,75vw)] border-b px-3 py-2 font-semibold wrap-anywhere"
       >
         {children}
       </th>
@@ -584,7 +584,7 @@ const COMPONENTS: Components = {
     return (
       <td
         style={style}
-        className="px-3 py-2 align-top [&_p]:mb-1 [&_p:last-child]:mb-0"
+        className="max-w-[min(40rem,75vw)] px-3 py-2 align-top wrap-anywhere [&_p]:mb-1 [&_p:last-child]:mb-0"
       >
         {children}
       </td>

@@ -468,13 +468,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {!isUser && subAgents.length > 0 && (
-            <div
-              className={cn(
-                "mt-2 grid w-full min-w-0 gap-3",
-                subAgents.length > 1 &&
-                  "grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]"
-              )}
-            >
+            <div className="mt-2 flex min-w-0 flex-col gap-3">
               {subAgents.map((subAgent) => (
                 <SubAgentRun
                   key={subAgent.id}
