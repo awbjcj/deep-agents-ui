@@ -178,7 +178,7 @@ export function ScmServersSection() {
     <div className="space-y-5">
       <SectionHeader
         title="SCM servers"
-        subtitle="Named Gerrit, GitLab, and Plastic sources available for read-only code analysis."
+        subtitle="Named Gerrit, GitLab, GitHub, and Plastic sources available for read-only code analysis."
       />
       <DisclosureSection
         title="Server configuration"

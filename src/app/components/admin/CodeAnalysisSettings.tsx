@@ -1270,7 +1270,7 @@ export function CodeAnalysisSettings({
                     className="text-muted-foreground text-xs leading-relaxed"
                   >
                     {fieldErrors["matlab-dependency-servers"] ??
-                      "Comma-separated IDs of enabled Gerrit, GitLab or Plastic SCM servers allowed for runtime dependencies."}
+                      "Comma-separated IDs of enabled Gerrit, GitLab, GitHub or Plastic SCM servers allowed for runtime dependencies."}
                   </p>
                 </div>
                 <div className="border-border/70 bg-muted/20 rounded-md border px-3 py-2.5 sm:col-span-2">

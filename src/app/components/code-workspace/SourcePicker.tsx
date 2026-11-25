@@ -45,6 +45,12 @@ const sourceFields: Record<
     hint: "Branch, tag, commit SHA, or HEAD for the default branch.",
     resources: ["branches", "tags", "commits", "reviews"],
   },
+  github: {
+    repository: "owner/repository",
+    revision: "main or HEAD",
+    hint: "Branch, tag, commit SHA, or HEAD for the default branch.",
+    resources: ["branches", "tags", "commits", "reviews"],
+  },
   plastic: {
     repository: "Project repository",
     revision: "br:/main or cs:123",

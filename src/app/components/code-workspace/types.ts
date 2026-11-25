@@ -44,6 +44,7 @@ export function sourceResourceLabel(
   provider: ScmProvider
 ) {
   if (provider === "gitlab" && resource === "reviews") return "Merge requests";
+  if (provider === "github" && resource === "reviews") return "Pull requests";
   if (provider === "plastic" && resource === "tags") return "Labels";
   if (provider === "plastic" && resource === "commits") return "Changesets";
   return resourceLabels[resource];

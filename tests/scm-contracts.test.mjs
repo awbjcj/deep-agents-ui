@@ -187,3 +187,37 @@ test("GitLab servers accept per-user credentials and source selections", async (
     "gitlab"
   );
 });
+
+test("GitHub servers require a login name and select pull requests by head", async () => {
+  const { sourceChoice } = await import("../src/lib/code-workspace.ts");
+  const { sourceResourceLabel } =
+    await import("../src/app/components/code-workspace/types.ts");
+  assert.equal(
+    scmServerSchema.parse({
+      id: "ghe",
+      provider: "github",
+      display_name: "GitHub Enterprise",
+      enabled: true,
+      generation: 1,
+    }).provider,
+    "github"
+  );
+  assert.throws(
+    () => credentialUpdate("pat", "", "github"),
+    /GitHub login name/
+  );
+  assert.deepEqual(
+    sourceChoice(
+      {
+        number: 7,
+        subject: "Fix braking",
+        current_revision: "a".repeat(40),
+        branch: "main",
+      },
+      "reviews",
+      "github"
+    ),
+    { label: "Fix braking", selector: "a".repeat(40), detail: "main" }
+  );
+  assert.equal(sourceResourceLabel("reviews", "github"), "Pull requests");
+});

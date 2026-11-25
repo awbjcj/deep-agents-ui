@@ -9,17 +9,25 @@ const operatorServerValidationSchema = z
   .record(z.string(), z.unknown())
   .default({});
 
-export const scmProviderSchema = z.enum(["gerrit", "gitlab", "plastic"]);
+export const scmProviderSchema = z.enum([
+  "gerrit",
+  "gitlab",
+  "github",
+  "plastic",
+]);
 export type ScmProvider = z.infer<typeof scmProviderSchema>;
 
 export const scmProviderLabels: Record<ScmProvider, string> = {
   gerrit: "Gerrit",
   gitlab: "GitLab",
+  github: "GitHub",
   plastic: "Plastic SCM",
 };
 
 export function scmRequiresUsername(provider?: ScmProvider): boolean {
-  return provider === "gerrit" || provider === "gitlab";
+  return (
+    provider === "gerrit" || provider === "gitlab" || provider === "github"
+  );
 }
 
 export const scmServerSchema = z.object({
