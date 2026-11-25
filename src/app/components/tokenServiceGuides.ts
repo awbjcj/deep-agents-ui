@@ -5,6 +5,8 @@ import type { UserTokens } from "@/lib/auth";
  * anywhere in the app (e.g. the "Guided setup" button in the Tokens
  * sidebar) without threading open-state props through the tree.
  */
+export const SERVICE_TOKENS_UPDATED_EVENT = "vsda:service-tokens-updated";
+
 export const OPEN_TOKEN_WIZARD_EVENT = "vsda:open-token-wizard";
 
 export type TokenServiceKey =

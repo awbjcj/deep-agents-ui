@@ -101,12 +101,15 @@ test("the credential row is locked while its submitted secret is saving", async 
     "utf8"
   );
 
-  assert.equal(source.match(/disabled=\{busy\}/g)?.length, 3);
-  assert.match(source, /disabled=\{busy \|\| !value\.token\.trim\(\)\}/);
+  assert.equal(source.match(/disabled=\{busy\}/g)?.length, 2);
+  assert.match(
+    source,
+    /disabled=\{\s*busy \|\| !canSave \|\| result\?\.status === "testing"\s*\}/
+  );
   assert.match(source, /const busy = pending !== null/);
   assert.match(
     source,
-    /server\.credential_state !== undefined &&[\s\S]*server\.credential_state !== "missing"/
+    /!!server\.credential_state && server\.credential_state !== "missing"/
   );
 });
 

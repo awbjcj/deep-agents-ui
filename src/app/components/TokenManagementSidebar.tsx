@@ -1,5 +1,6 @@
 "use client";
 
+import { CredentialSection } from "@/app/components/settings/CredentialSection";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
   savedCredentialStatus,
@@ -14,7 +15,6 @@ import { SettingsContent, SettingsFooter } from "./settings/SettingsLayout";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 import { SettingsLoading } from "@/app/components/settings/SettingsFeedback";
 
-import { formatTimestamp } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
 import { MaskedTokenInput } from "@/app/components/settings/MaskedTokenInput";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ import { canUseCodeAnalyzer } from "@/lib/agent-access";
 import {
   hasSavedToken,
   OPEN_TOKEN_WIZARD_EVENT,
+  SERVICE_TOKENS_UPDATED_EVENT,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
   type TokenServiceKey,
@@ -34,16 +35,9 @@ import { TokenSetupGuide } from "@/app/components/tokenSetupGuides";
 import { ScmCredentials } from "@/app/components/ScmCredentials";
 import { AsperaCredentials } from "@/app/components/AsperaCredentials";
 import { CopilotCredentialPanel } from "@/app/components/CopilotCredentialPanel";
-import { Loader2, Save, Wand2 } from "lucide-react";
+import { KeyRound, Loader2, Save, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-/** Whether the backend reports a meaningful timestamp for a saved token. */
-function hasUpdatedAt(value: string | null | undefined): value is string {
-  if (!value) return false;
-  const trimmed = value.trim();
-  return trimmed !== "" && trimmed !== "Unknown";
-}
 
 interface TokenManagementSidebarProps {
   /** Service key (including the legacy "polarion" alias) to focus on mount. */
@@ -91,6 +85,11 @@ export function TokenManagementSidebar({
 
   useEffect(() => {
     fetchTokens();
+    const update = (event: Event) =>
+      setTokenMeta((event as CustomEvent<UserTokens>).detail);
+    window.addEventListener(SERVICE_TOKENS_UPDATED_EVENT, update);
+    return () =>
+      window.removeEventListener(SERVICE_TOKENS_UPDATED_EVENT, update);
   }, [fetchTokens]);
 
   // When the sidebar opens via a banner action, scroll the matching token
@@ -124,7 +123,7 @@ export function TokenManagementSidebar({
   const connection = useCredentialTests();
 
   const handleSave = async () => {
-    if (!dirty) return;
+    if (!dirty || isSaving || connection.isTesting) return;
     setIsSaving(true);
     try {
       const payload: Parameters<typeof apiUpdateTokens>[0] = {};
@@ -169,7 +168,7 @@ export function TokenManagementSidebar({
     <div className="absolute inset-0 flex flex-col">
       {/* Title bar is supplied by parent WorkspacePanel. */}
       <ScrollArea className="h-0 flex-1">
-        <SettingsContent>
+        <SettingsContent className="@container/tokens">
           {isLoading ? (
             <SettingsLoading />
           ) : loadError ? (
@@ -190,67 +189,73 @@ export function TokenManagementSidebar({
             </div>
           ) : (
             <>
-              <div className="border-border bg-card flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border p-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT))
-                  }
-                  className="min-h-9"
-                >
-                  <Wand2
-                    className="size-4"
-                    aria-hidden="true"
-                  />
-                  Guided setup
-                </Button>
-                {tokenMeta && missingCount > 0 && (
-                  <span className="text-muted-foreground text-xs">
-                    {missingCount}{" "}
-                    {missingCount === 1 ? "service needs" : "services need"} a
-                    token
-                  </span>
-                )}
-              </div>
-
-              <form
-                id="token-settings-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSave();
-                }}
+              <CredentialSection
+                id="service-tokens-title"
+                title="Service tokens"
+                icon={KeyRound}
+                separated={false}
+                description={
+                  missingCount > 0
+                    ? `${missingCount} ${missingCount === 1 ? "service needs" : "services need"} a token`
+                    : "Manage the tokens you use to access connected services."
+                }
+                action={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      window.dispatchEvent(new Event(OPEN_TOKEN_WIZARD_EVENT))
+                    }
+                    className="min-h-touch"
+                    disabled={dirty || isSaving}
+                  >
+                    <Wand2 aria-hidden="true" />
+                    Guided setup
+                  </Button>
+                }
               >
-                <fieldset
-                  disabled={isSaving}
-                  className="min-w-0 space-y-5"
+                <form
+                  id="token-settings-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSave();
+                  }}
                 >
-                  {TOKEN_SERVICE_GUIDES.map((guide) => (
-                    <TokenField
-                      key={guide.key}
-                      guide={guide}
-                      username={username}
-                      value={tokenDraft[guide.key] ?? ""}
-                      preview={tokenMeta?.[guide.previewField]}
-                      updatedAt={
-                        tokenMeta?.[`${guide.payloadField}_updated_at`]
-                      }
-                      timeGap={tokenMeta?.[`${guide.payloadField}_time_gap`]}
-                      verificationRevision={
-                        tokenMeta?.credential_revisions?.[guide.payloadField]
-                      }
-                      connection={connection}
-                      onChange={(value) => {
-                        connection.clear(guide.key);
-                        setTokenDraft((draft) => ({
-                          ...draft,
-                          [guide.key]: value,
-                        }));
-                      }}
-                    />
-                  ))}
-                </fieldset>
-              </form>
+                  <fieldset
+                    disabled={isSaving}
+                    className="min-w-0 space-y-2"
+                  >
+                    {TOKEN_SERVICE_GUIDES.map((guide) => (
+                      <TokenField
+                        key={guide.key}
+                        guide={guide}
+                        username={username}
+                        value={tokenDraft[guide.key]}
+                        preview={tokenMeta?.[guide.previewField]}
+                        updatedAt={
+                          tokenMeta?.[`${guide.payloadField}_updated_at`]
+                        }
+                        expiresAt={
+                          tokenMeta?.credential_expirations?.[
+                            guide.payloadField
+                          ]
+                        }
+                        verificationRevision={
+                          tokenMeta?.credential_revisions?.[guide.payloadField]
+                        }
+                        connection={connection}
+                        onChange={(value) => {
+                          connection.clear(guide.key);
+                          setTokenDraft((draft) => ({
+                            ...draft,
+                            [guide.key]: value,
+                          }));
+                        }}
+                      />
+                    ))}
+                  </fieldset>
+                </form>
+              </CredentialSection>
               {codeAnalyzerAllowed && (
                 <>
                   <ScmCredentials />
@@ -263,7 +268,7 @@ export function TokenManagementSidebar({
         </SettingsContent>
       </ScrollArea>
       {!isLoading && !loadError && (
-        <SettingsFooter>
+        <SettingsFooter aria-label="Service token actions">
           <p
             role="status"
             className="text-muted-foreground m-0 text-xs"
@@ -289,8 +294,8 @@ export function TokenManagementSidebar({
             <Button
               type="submit"
               form="token-settings-form"
-              disabled={isSaving || !dirty}
-              className="min-h-touch flex-1"
+              disabled={isSaving || connection.isTesting || !dirty}
+              className="min-h-touch"
             >
               {isSaving ? (
                 <Loader2
@@ -318,17 +323,17 @@ function TokenField({
   value,
   preview,
   updatedAt,
-  timeGap,
+  expiresAt,
   verificationRevision,
   connection,
   onChange,
 }: {
   guide: TokenServiceGuide;
   username: string;
-  value: string;
+  value?: string;
   preview?: string | null;
   updatedAt?: string | null;
-  timeGap?: string | null;
+  expiresAt?: string | null;
   verificationRevision?: string;
   connection: ReturnType<typeof useCredentialTests>;
   onChange: (value: string) => void;
@@ -336,18 +341,27 @@ function TokenField({
   const [show, setShow] = useState(false);
   const id = `${guide.key}Token`;
   const saved = hasSavedToken(preview);
+  const secret = value?.trim() ?? "";
+  const testSaved = saved && value === undefined;
+  const savedStatus = saved
+    ? savedCredentialStatus(guide.key, verificationRevision)
+    : undefined;
   return (
     <SavedSetting
       revision={updatedAt}
       title={guide.label}
       triggerId={`${id}-edit`}
-      status={
-        saved
-          ? savedCredentialStatus(guide.key, verificationRevision)
-          : undefined
-      }
+      status={savedStatus}
+      updatedAt={saved ? (verificationRevision ?? updatedAt) : undefined}
+      expiresAt={saved ? expiresAt : undefined}
     >
-      <section className="space-y-2">
+      <section
+        className={
+          saved
+            ? "border-border space-y-2 border-t pt-3"
+            : "border-border space-y-2 rounded-lg border p-3"
+        }
+      >
         <Label
           htmlFor={id}
           className={saved ? "sr-only" : "text-sm font-medium"}
@@ -355,38 +369,41 @@ function TokenField({
           {guide.label}
         </Label>
         {saved && (
-          <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-            <code className="bg-muted text-foreground rounded px-1.5 py-0.5 break-all">
-              {preview}
-            </code>
-            {hasUpdatedAt(updatedAt) && (
-              <span>
-                Updated{" "}
-                <time dateTime={updatedAt}>{formatTimestamp(updatedAt)}</time>
-                {timeGap && <span> ({timeGap})</span>}
-              </span>
-            )}
-          </div>
+          <code className="bg-muted text-muted-foreground inline-block rounded px-1.5 py-0.5 text-xs">
+            {preview}
+          </code>
         )}
         <MaskedTokenInput
           id={id}
           tokenLabel={guide.label}
           revealed={show}
           onToggle={() => setShow((visible) => !visible)}
-          value={value}
+          value={value ?? ""}
           onChange={(event) => onChange(event.target.value)}
           placeholder={saved ? "Enter a replacement token" : "Paste a token"}
         />
-        {value.trim() && (
+        {(testSaved || secret) && (
           <CredentialTest
             result={connection.results[guide.key]}
             disabled={false}
-            onTest={() =>
-              void connection.test(guide.key, {
-                service: guide.payloadField,
-                secret: value.trim(),
-              })
+            saved={testSaved}
+            savedStatus={
+              testSaved && savedStatus === "Verified" ? "verified" : undefined
             }
+            onTest={() => {
+              if (testSaved) {
+                void connection.testSaved(
+                  guide.key,
+                  { service: guide.payloadField },
+                  verificationRevision
+                );
+              } else {
+                void connection.test(guide.key, {
+                  service: guide.payloadField,
+                  secret,
+                });
+              }
+            }}
           />
         )}
         <TokenSetupGuide

@@ -31,6 +31,8 @@ export const scmServerSchema = z.object({
   validation: publicServerValidationSchema,
   credential_state: z.string().optional(),
   credential_revision: z.string().nullish(),
+  credential_updated_at: z.string().nullish(),
+  credential_expires_at: z.string().nullish(),
   credential_generation: z.number().int().positive().nullish(),
 });
 
@@ -58,6 +60,9 @@ export const credentialViewSchema = z.object({
   configured: z.boolean(),
   masked_preview: z.string().default(""),
   validation_state: z.string(),
+  credential_revision: z.string().nullish(),
+  credential_updated_at: z.string().nullish(),
+  credential_expires_at: z.string().nullish(),
   credential_generation: z.number().int().positive().optional(),
   server_generation: z.number().int().positive().optional(),
 });

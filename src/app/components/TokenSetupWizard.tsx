@@ -24,6 +24,7 @@ import { useNotifications } from "@/app/hooks/useNotifications";
 import {
   hasSavedToken,
   OPEN_TOKEN_WIZARD_EVENT,
+  SERVICE_TOKENS_UPDATED_EVENT,
   TOKEN_SERVICE_GUIDES,
   type TokenServiceGuide,
 } from "@/app/components/tokenServiceGuides";
@@ -125,14 +126,16 @@ export function TokenSetupWizard() {
     [guides, values]
   );
 
-  const handleClose = useCallback(() => {
+  const connection = useCredentialTests();
+  const handleClose = () => {
+    for (const guide of guides) connection.clear(guide.key);
+    setValues({});
     markDismissed();
     setOpen(false);
-  }, [markDismissed]);
-
-  const connection = useCredentialTests();
+  };
 
   const handleFinish = async () => {
+    if (isSaving || connection.isTesting) return;
     const payload: Record<string, string> = {};
     for (const guide of guides) {
       const value = values[guide.key]?.trim();
@@ -154,14 +157,16 @@ export function TokenSetupWizard() {
             updated.credential_revisions?.[guide.payloadField]
           );
       }
+      window.dispatchEvent(
+        new CustomEvent(SERVICE_TOKENS_UPDATED_EVENT, { detail: updated })
+      );
       applyClearedNotifications(updated.cleared_notifications);
       toast.success(
         `Saved ${Object.keys(payload).length} token${
           Object.keys(payload).length === 1 ? "" : "s"
         }`
       );
-      markDismissed();
-      setOpen(false);
+      handleClose();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save tokens");
     } finally {
@@ -290,7 +295,7 @@ export function TokenSetupWizard() {
             <Button
               size="sm"
               onClick={goNext}
-              disabled={isSaving}
+              disabled={isSaving || (isLast && connection.isTesting)}
               className="h-8 gap-1.5 px-3 text-xs font-semibold"
             >
               {isSaving ? (

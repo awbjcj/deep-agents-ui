@@ -1,5 +1,6 @@
 "use client";
 
+import { CredentialSection } from "@/app/components/settings/CredentialSection";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
   savedCredentialStatus,
@@ -11,7 +12,7 @@ import { SavedSetting } from "@/app/components/settings/SavedSetting";
 import { useSettingsDraft } from "@/app/components/settings/useSettingsDrafts";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Loader2, Save, Trash2 } from "lucide-react";
+import { GitBranch, Loader2, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function ScmCredentials() {
   const [revisions, setRevisions] = useState<Record<string, number>>({});
   const connection = useCredentialTests();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [pending, setPending] = useState<{
     serverId: string;
     action: "save" | "remove";
@@ -46,15 +48,14 @@ export function ScmCredentials() {
   );
 
   const load = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setLoadError(false);
     try {
       const next = await listScmServers(signal);
-      setServers(next);
-      return next;
+      if (!signal?.aborted) setServers(next);
     } catch (error) {
       if ((error as DOMException | undefined)?.name !== "AbortError") {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to load SCM servers"
-        );
+        if (!signal?.aborted) setLoadError(true);
       }
     } finally {
       if (!signal?.aborted) setLoading(false);
@@ -94,7 +95,9 @@ export function ScmCredentials() {
         ...current,
         [serverId]: (current[serverId] ?? 0) + 1,
       }));
-      const next = (await load())?.find((item) => item.id === serverId);
+      const serverChanged =
+        saved.server_generation !== undefined &&
+        saved.server_generation !== server.generation;
       connection.record(
         `scm:${serverId}`,
         {
@@ -103,10 +106,22 @@ export function ScmCredentials() {
           secret: value.token.trim(),
           username: value.username.trim(),
         },
-        next?.generation === server.generation &&
-          next.credential_generation === saved.credential_generation
-          ? next.credential_revision
-          : null
+        serverChanged ? null : saved.credential_revision
+      );
+      setServers((current) =>
+        current.map((item) =>
+          item.id === serverId
+            ? {
+                ...item,
+                generation: saved.server_generation ?? item.generation,
+                credential_state: saved.validation_state,
+                credential_generation: saved.credential_generation,
+                credential_revision: saved.credential_revision,
+                credential_updated_at: saved.credential_updated_at,
+                credential_expires_at: saved.credential_expires_at,
+              }
+            : item
+        )
       );
       toast.success("SCM credential saved");
     } catch (error) {
@@ -127,7 +142,20 @@ export function ScmCredentials() {
         ...current,
         [serverId]: { token: "", username: "" },
       }));
-      await load();
+      setServers((current) =>
+        current.map((item) =>
+          item.id === serverId
+            ? {
+                ...item,
+                credential_state: "missing",
+                credential_generation: null,
+                credential_revision: null,
+                credential_updated_at: null,
+                credential_expires_at: null,
+              }
+            : item
+        )
+      );
       toast.success("SCM credential removed");
     } catch (error) {
       toast.error(
@@ -141,28 +169,12 @@ export function ScmCredentials() {
   };
 
   return (
-    <section
-      className="space-y-3"
-      aria-labelledby="scm-credentials-title"
+    <CredentialSection
+      id="scm-credentials-title"
+      title="Source-control access"
+      description="Connect the accounts you use to read repositories in Code Analyzer."
+      icon={GitBranch}
     >
-      <div className="flex items-start gap-2">
-        <KeyRound
-          className="text-primary mt-0.5 h-4 w-4"
-          aria-hidden="true"
-        />
-        <div>
-          <h3
-            id="scm-credentials-title"
-            className="text-sm font-semibold"
-          >
-            Source-control access
-          </h3>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Stored tokens are encrypted.
-          </p>
-        </div>
-      </div>
-
       {loading ? (
         <div
           role="status"
@@ -173,6 +185,23 @@ export function ScmCredentials() {
             aria-hidden="true"
           />
           Loading source servers…
+        </div>
+      ) : loadError ? (
+        <div className="border-border flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+          <p
+            role="alert"
+            className="text-sm"
+          >
+            Could not load source-control servers.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-touch"
+            onClick={() => void load()}
+          >
+            Retry
+          </Button>
         </div>
       ) : servers.length === 0 ? (
         <p className="border-border text-muted-foreground rounded-md border border-dashed p-3 text-xs">
@@ -193,9 +222,17 @@ export function ScmCredentials() {
           const reconnect = server.credential_state === "reconnect_required";
           const configured =
             !!server.credential_state && server.credential_state !== "missing";
+          const draft = Boolean(value.token.trim() || value.username.trim());
+          const canSave =
+            Boolean(value.token.trim()) &&
+            (!needsUsername || Boolean(value.username.trim()));
+          const testSaved = configured && !reconnect && !draft;
+          const result = connection.results[fieldKey];
+          const canTest =
+            server.provider !== "plastic" && (canSave || testSaved);
           const savedStatus = configured
             ? savedCredentialStatus(
-                `scm:${server.id}`,
+                fieldKey,
                 reconnect ? null : server.credential_revision,
                 server.credential_state === "validated"
               )
@@ -205,64 +242,74 @@ export function ScmCredentials() {
               key={server.id}
               revision={revisions[server.id]}
               title={server.display_name}
-              status={savedStatus}
+              status={savedStatus ?? "Not set"}
+              updatedAt={server.credential_updated_at}
+              expiresAt={server.credential_expires_at}
+              icon={
+                <GitBranch
+                  aria-hidden="true"
+                  className="text-primary size-4 shrink-0"
+                />
+              }
+              metadata={
+                server.display_name !== providerName && (
+                  <span className="text-muted-foreground block text-xs font-normal">
+                    {providerName}
+                  </span>
+                )
+              }
             >
               <form
                 autoComplete="off"
-                className="border-border bg-card space-y-2 rounded-lg border p-3"
+                className="border-border space-y-3 border-t pt-3"
                 aria-labelledby={`${fieldKey}:title`}
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (!busy && value.token.trim()) void save(server);
+                  if (!busy && canSave && result?.status !== "testing")
+                    void save(server);
                 }}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 wrap-anywhere">
-                    <p
-                      id={`${fieldKey}:title`}
-                      className={
-                        savedStatus ? "sr-only" : "text-sm font-medium"
-                      }
+                <h4
+                  id={`${fieldKey}:title`}
+                  className="sr-only"
+                >
+                  {server.display_name}
+                </h4>
+                {reconnect && (
+                  <p className="text-muted-foreground text-xs">
+                    The server connection changed. Replace the credential to
+                    reconnect.
+                  </p>
+                )}
+                {server.provider === "plastic" && (
+                  <p className="text-muted-foreground text-xs">
+                    Use Code Analyzer with a repository to test Plastic SCM
+                    access.
+                  </p>
+                )}
+                <div className="grid gap-3 @sm/tokens:grid-cols-2">
+                  <div className="min-w-0 space-y-1.5">
+                    <Label
+                      htmlFor={`${fieldKey}:username`}
+                      className="text-xs"
                     >
-                      {server.display_name}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {server.display_name !== providerName && providerName}
-                    </p>
-                    {reconnect && (
-                      <p className="text-muted-foreground text-xs">
-                        The server connection changed. Enter your credential
-                        again.
-                      </p>
-                    )}
+                      Login name{!needsUsername && " (optional)"}
+                    </Label>
+                    <Input
+                      id={`${fieldKey}:username`}
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      className="min-h-touch text-base"
+                      value={value.username}
+                      disabled={busy}
+                      required={needsUsername}
+                      onChange={(event) =>
+                        setValue(server.id, "username", event.target.value)
+                      }
+                    />
                   </div>
-                  {server.credential_state !== undefined &&
-                    server.credential_state !== "missing" && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-touch"
-                        onClick={() => void remove(server.id)}
-                        disabled={busy}
-                        aria-label={`Remove ${server.display_name} credential`}
-                      >
-                        {removing ? (
-                          <Loader2
-                            className="motion-safe:animate-spin"
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          <Trash2
-                            className="text-destructive"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </Button>
-                    )}
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="space-y-1">
+                  <div className="min-w-0 space-y-1.5">
                     <Label
                       htmlFor={`${fieldKey}:token`}
                       className="text-xs"
@@ -273,8 +320,11 @@ export function ScmCredentials() {
                       id={`${fieldKey}:token`}
                       type="password"
                       autoComplete="new-password"
-                      className="min-h-touch text-base sm:text-sm"
+                      className="min-h-touch text-base"
                       value={value.token}
+                      placeholder={
+                        configured ? "Enter a replacement token" : undefined
+                      }
                       disabled={busy}
                       required
                       onChange={(event) =>
@@ -282,57 +332,80 @@ export function ScmCredentials() {
                       }
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label
-                      htmlFor={`${fieldKey}:username`}
-                      className="text-xs"
-                    >
-                      {needsUsername
-                        ? `${providerName} login name (required)`
-                        : "Login name (if required)"}
-                    </Label>
-                    <Input
-                      id={`${fieldKey}:username`}
-                      autoComplete="off"
-                      className="min-h-touch text-base sm:text-sm"
-                      value={value.username}
-                      disabled={busy}
-                      required={needsUsername}
-                      onChange={(event) =>
-                        setValue(server.id, "username", event.target.value)
-                      }
-                    />
-                  </div>
                 </div>
-                {value.token.trim() && (
-                  <CredentialTest
-                    result={connection.results[`scm:${server.id}`]}
-                    disabled={busy || (needsUsername && !value.username.trim())}
-                    onTest={() =>
-                      void connection.test(`scm:${server.id}`, {
-                        service: "scm",
-                        server_id: server.id,
+                <CredentialTest
+                  result={result}
+                  disabled={busy || !canTest}
+                  showTest={server.provider !== "plastic"}
+                  saved={testSaved}
+                  savedStatus={
+                    testSaved && savedStatus === "Verified"
+                      ? "verified"
+                      : undefined
+                  }
+                  onTest={() => {
+                    const target = {
+                      service: "scm" as const,
+                      server_id: server.id,
+                    };
+                    if (testSaved) {
+                      void connection.testSaved(
+                        fieldKey,
+                        target,
+                        server.credential_revision
+                      );
+                    } else {
+                      void connection.test(fieldKey, {
+                        ...target,
                         secret: value.token.trim(),
                         username: value.username.trim(),
-                      })
+                      });
                     }
-                  />
-                )}
-                <Button
-                  type="submit"
-                  className="min-h-touch"
-                  disabled={busy || !value.token.trim()}
-                >
-                  {saving ? (
-                    <Loader2
-                      className="motion-safe:animate-spin"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Save aria-hidden="true" />
-                  )}
-                  {saving ? "Saving credential…" : "Save credential"}
-                </Button>
+                  }}
+                  actions={
+                    <>
+                      <Button
+                        type="submit"
+                        className="min-h-touch"
+                        disabled={
+                          busy || !canSave || result?.status === "testing"
+                        }
+                      >
+                        {saving ? (
+                          <Loader2
+                            className="motion-safe:animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Save aria-hidden="true" />
+                        )}
+                        {saving ? "Saving…" : "Save credential"}
+                      </Button>
+                      {configured && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="size-touch"
+                          onClick={() => void remove(server.id)}
+                          disabled={busy || result?.status === "testing"}
+                          aria-label={`Remove ${server.display_name} credential`}
+                        >
+                          {removing ? (
+                            <Loader2
+                              className="motion-safe:animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Trash2
+                              className="text-destructive"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </Button>
+                      )}
+                    </>
+                  }
+                />
                 <span
                   role="status"
                   className="sr-only"
@@ -345,6 +418,6 @@ export function ScmCredentials() {
           );
         })
       )}
-    </section>
+    </CredentialSection>
   );
 }

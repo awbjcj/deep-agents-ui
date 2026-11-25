@@ -6,12 +6,16 @@ import {
   Fragment,
   isValidElement,
   useEffect,
+  useId,
   useRef,
   useState,
   type HTMLAttributes,
   type ReactNode,
 } from "react";
 import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useCredentialDates } from "@/app/hooks/useCredentialDates";
+import { CredentialDates } from "./CredentialDates";
 
 /**
  * Collapses an already-saved setting behind a summary row.
@@ -26,13 +30,27 @@ export function SavedSetting({
   revision,
   children,
   triggerId,
+  metadata,
+  updatedAt,
+  expiresAt,
+  icon,
 }: {
   title: string;
   status?: string;
   revision?: string | number | null;
   children: ReactNode;
   triggerId?: string;
+  metadata?: ReactNode;
+  updatedAt?: string | null;
+  expiresAt?: string | null;
+  icon?: ReactNode;
 }) {
+  const metadataId = useId();
+  const dates = useCredentialDates(updatedAt, expiresAt);
+  const hasMetadata =
+    metadata ||
+    Number.isFinite(dates.updated) ||
+    Number.isFinite(dates.expires);
   const [expanded, setExpanded] = useState(false);
   const [seenRevision, setSeenRevision] = useState(revision);
   const [restoreFocus, setRestoreFocus] = useState(false);
@@ -105,12 +123,33 @@ export function SavedSetting({
         type="button"
         id={triggerId}
         aria-expanded={expanded}
+        aria-describedby={hasMetadata ? metadataId : undefined}
         onClick={() => setExpanded(!expanded)}
         className="focus-visible:outline-primary flex min-h-11 w-full items-center gap-2 rounded text-left text-sm font-medium"
       >
-        <span className="min-w-0 flex-1 wrap-anywhere">{title}</span>
-        <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
-          {status}
+        {icon}
+        <span className="min-w-0 flex-1 space-y-0.5 py-2 wrap-anywhere">
+          <span className="block">{title}</span>
+          {hasMetadata && (
+            <span
+              aria-hidden="true"
+              id={metadataId}
+              className="block"
+            >
+              {metadata}
+              <CredentialDates {...dates} />
+            </span>
+          )}
+        </span>
+        <span
+          className={cn(
+            "rounded px-2 py-0.5 text-xs",
+            dates.expired
+              ? "bg-destructive/10 text-destructive"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          {dates.expired ? "Expired" : status}
         </span>
         <ChevronDown
           aria-hidden="true"

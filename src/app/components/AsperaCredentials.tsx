@@ -1,5 +1,7 @@
 "use client";
 
+import { KeyRound } from "lucide-react";
+import { CredentialSection } from "@/app/components/settings/CredentialSection";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
   savedCredentialStatus,
@@ -134,7 +136,8 @@ export function AsperaCredentials() {
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!pending && username.trim() && password) void update("PUT");
+    if (!pending && !connection.isTesting && username.trim() && password)
+      void update("PUT");
   }
 
   let status = credential?.configured
@@ -142,29 +145,31 @@ export function AsperaCredentials() {
     : "Save your Aspera login to find and download logs.";
   if (pending) status = actionText[pending].pending;
 
+  const testSaved = Boolean(
+    credential?.configured &&
+    !password &&
+    username.trim() === credential.username
+  );
+  const savedStatus = credential?.configured
+    ? savedCredentialStatus("aspera", credential.revision)
+    : undefined;
+
   return (
-    <section
-      aria-labelledby="aspera-credentials-title"
-      className="border-border @container/aspera space-y-3 border-t pt-4"
+    <CredentialSection
+      id="aspera-credentials-title"
+      title="Aspera"
+      description="Use your Aspera login to access files."
+      icon={KeyRound}
     >
-      <h3
-        id="aspera-credentials-title"
-        className="text-sm font-medium"
-      >
-        Aspera
-      </h3>
       {credential ? (
         <>
           <SavedSetting
             revision={revision}
             title="Aspera login"
-            status={
-              credential.configured
-                ? savedCredentialStatus("aspera", credential.revision)
-                : undefined
-            }
+            status={savedStatus}
           >
             <form
+              className="@container/aspera"
               autoComplete="off"
               onSubmit={save}
             >
@@ -218,11 +223,25 @@ export function AsperaCredentials() {
                     />
                   </div>
                 </div>
-                {password && (
+                {(testSaved || password) && (
                   <CredentialTest
                     result={connection.results.aspera}
                     disabled={!username.trim() || pending !== null}
-                    onTest={() => void connection.test("aspera", draft)}
+                    saved={testSaved}
+                    savedStatus={
+                      testSaved && savedStatus === "Verified"
+                        ? "verified"
+                        : undefined
+                    }
+                    onTest={() => {
+                      if (testSaved)
+                        void connection.testSaved(
+                          "aspera",
+                          { service: "aspera" },
+                          credential.revision
+                        );
+                      else void connection.test("aspera", draft);
+                    }}
                   />
                 )}
                 {updateError && (
@@ -237,7 +256,9 @@ export function AsperaCredentials() {
                   <Button
                     type="submit"
                     variant="default"
-                    disabled={!username.trim() || !password}
+                    disabled={
+                      !username.trim() || !password || connection.isTesting
+                    }
                     className="min-h-touch"
                   >
                     Save Aspera login
@@ -246,6 +267,7 @@ export function AsperaCredentials() {
                     <Button
                       type="button"
                       variant="ghost"
+                      disabled={connection.isTesting}
                       onClick={() => void update("DELETE")}
                       className="min-h-touch"
                     >
@@ -289,6 +311,6 @@ export function AsperaCredentials() {
           Loading Aspera settings…
         </p>
       )}
-    </section>
+    </CredentialSection>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { CredentialSection } from "@/app/components/settings/CredentialSection";
 import { CredentialTest } from "@/app/components/settings/CredentialTest";
 import {
   savedCredentialStatus,
@@ -191,44 +192,31 @@ export function CopilotCredentialPanel() {
     status?.expires_at && new Date(status.expires_at).getTime() <= Date.now();
   const quotaAvailable = Boolean(status?.configured && !expired);
   const configured = Boolean(status?.configured);
+  const savedStatus = configured
+    ? savedCredentialStatus("copilot", status?.updated_at)
+    : undefined;
+  const testSaved = Boolean(
+    configured &&
+    !expired &&
+    !token &&
+    draft.github_host === status?.github_host &&
+    !expiry
+  );
   return (
-    <section
-      aria-labelledby="copilot-credential-title"
-      className="border-border bg-card space-y-4 overflow-hidden rounded-xl border p-4 shadow-sm"
+    <CredentialSection
+      id="copilot-credential-title"
+      title="Copilot analysis"
+      description={COPILOT_USAGE_EXPLANATION}
+      icon={GitFork}
     >
-      <div className="border-border/70 bg-muted/20 -mx-4 -mt-4 flex items-start gap-3 border-b px-4 py-3.5">
-        <span className="border-primary/20 bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
-          <GitFork
-            aria-hidden="true"
-            className="h-4 w-4"
-          />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3
-              id="copilot-credential-title"
-              className="text-sm font-semibold tracking-tight"
-            >
-              Copilot analysis
-            </h3>
-            {!configured && (
-              <p
-                role="status"
-                className="text-muted-foreground text-xs"
-              >
-                {busy && !status
-                  ? "Loading token status…"
-                  : !status
-                    ? "Token status unavailable"
-                    : "No credential added"}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        {COPILOT_USAGE_EXPLANATION}
-      </p>
+      {!configured && busy && !status && (
+        <p
+          role="status"
+          className="text-muted-foreground text-xs"
+        >
+          Loading token status…
+        </p>
+      )}
       <CopilotQuotaMeter
         quota={quotaAvailable ? quota : null}
         available={quotaAvailable}
@@ -239,13 +227,9 @@ export function CopilotCredentialPanel() {
       <SavedSetting
         revision={status?.updated_at}
         title="Copilot credential"
-        status={
-          configured
-            ? expired
-              ? "Expired"
-              : savedCredentialStatus("copilot", status?.updated_at)
-            : undefined
-        }
+        status={savedStatus}
+        updatedAt={configured ? status?.updated_at : undefined}
+        expiresAt={configured ? status?.expires_at : undefined}
       >
         <fieldset
           disabled={busy || !status}
@@ -309,24 +293,31 @@ export function CopilotCredentialPanel() {
               value={expiry}
               onChange={(event) => setExpiry(event.target.value)}
             />
-            {status?.expires_at && (
-              <p className="text-muted-foreground text-xs">
-                Current expiry: {new Date(status.expires_at).toLocaleString()}
-              </p>
-            )}
           </div>
-          {token && (
+          {(testSaved || token) && (
             <CredentialTest
               result={connection.results.copilot}
               disabled={busy || !githubHostSchema.safeParse(githubHost).success}
-              onTest={() => void connection.test("copilot", draft)}
+              saved={testSaved}
+              savedStatus={
+                testSaved && savedStatus === "Verified" ? "verified" : undefined
+              }
+              onTest={() => {
+                if (testSaved)
+                  void connection.testSaved(
+                    "copilot",
+                    { service: "copilot" },
+                    status?.updated_at
+                  );
+                else void connection.test("copilot", draft);
+              }}
             />
           )}
           <div className="flex flex-col gap-2 pt-1 sm:flex-row">
             <Button
               type="button"
               size="sm"
-              disabled={!token || busy}
+              disabled={!token || busy || connection.isTesting}
               onClick={() => void update(false)}
               className="transition-[background-color,box-shadow,transform] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
@@ -347,7 +338,7 @@ export function CopilotCredentialPanel() {
               type="button"
               size="sm"
               variant="outline"
-              disabled={!status?.configured || busy}
+              disabled={!status?.configured || busy || connection.isTesting}
               onClick={() => void update(true)}
               className="text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
             >
@@ -388,6 +379,6 @@ export function CopilotCredentialPanel() {
           </p>
         </div>
       )}
-    </section>
+    </CredentialSection>
   );
 }

@@ -19,6 +19,10 @@ type CredentialDraft = {
   server_id?: string;
 };
 
+type SavedCredential = Pick<CredentialDraft, "service" | "server_id"> & {
+  source: "saved";
+};
+
 export const credentialStatusLabels = {
   unverified: "Unverified",
   testing: "Testing…",
@@ -61,7 +65,13 @@ export function useCredentialTests() {
   const latest = useRef(
     new Map<string, { draft: string; result: CredentialTestResult }>()
   );
-  async function test(key: string, draft: CredentialDraft) {
+  async function test(
+    key: string,
+    draft: CredentialDraft | SavedCredential,
+    revision?: string | null
+  ) {
+    if (latest.current.get(key)?.result.status === "testing") return;
+    const item = storageKey(key);
     const signature = JSON.stringify(draft);
     const entry = {
       draft: signature,
@@ -78,6 +88,20 @@ export function useCredentialTests() {
       });
       const data: unknown = res.ok ? await res.json() : null;
       if (
+        "source" in draft &&
+        revision &&
+        data &&
+        typeof data === "object" &&
+        "status" in data &&
+        data.status === "verified" &&
+        (!("revision" in data) || data.revision !== revision)
+      ) {
+        result = {
+          status: "failed",
+          message:
+            "The saved credential changed. Reopen Token settings and try again.",
+        };
+      } else if (
         data &&
         typeof data === "object" &&
         "status" in data &&
@@ -100,7 +124,14 @@ export function useCredentialTests() {
         message: "Could not complete the connection test. Try again.",
       };
     }
-    if (latest.current.get(key) !== entry) return;
+    if (latest.current.get(key) !== entry || storageKey(key) !== item) return;
+    if ("source" in draft && result.status === "verified" && revision && item) {
+      try {
+        localStorage.setItem(item, revision);
+      } catch {
+        // The current result still displays if browser storage is unavailable.
+      }
+    }
     entry.result = result;
     setResults((current) => ({ ...current, [key]: result }));
   }
@@ -135,5 +166,16 @@ export function useCredentialTests() {
     }
   }
 
-  return { results, test, clear, record };
+  function testSaved(
+    key: string,
+    target: Omit<SavedCredential, "source">,
+    revision?: string | null
+  ) {
+    return test(key, { ...target, source: "saved" }, revision);
+  }
+
+  const isTesting = Object.values(results).some(
+    (result) => result.status === "testing"
+  );
+  return { results, test, testSaved, isTesting, clear, record };
 }

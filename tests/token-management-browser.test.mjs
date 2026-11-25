@@ -25,7 +25,7 @@ test(
             import { AuthProvider } from './src/providers/AuthProvider';
             import { NotificationsProvider, useNotifications } from './src/providers/NotificationsProvider';
             import { saveAuthUser } from './src/lib/auth';
-            saveAuthUser({ user_id: 'fixture-user', username: 'fixture-user', role: 'user', access_token: 'fixture.e30.fixture' });
+            saveAuthUser({ user_id: 'fixture-user', username: 'fixture-user', role: 'developer', can_use_code_analyzer: true, access_token: 'fixture.e30.fixture' });
             function App() {
               const [focus, setFocus] = useState(null);
               const { notifications } = useNotifications();
@@ -115,17 +115,77 @@ test(
         let failSave = true;
         const pending = Promise.withResolvers();
         const writes = [];
+        const scmWrites = [];
+        const checks = [];
+        const updatedAt = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + 100_000_000).toISOString();
+        const expiredAt = new Date(Date.now() - 100_000_000).toISOString();
+        tokens.credential_expirations = {
+          graph_api_token: expiresAt,
+          jira_api_token: expiredAt,
+        };
+        tokens.credential_revisions = { graph_api_token: updatedAt };
+        const scmServers = [
+          { id: "review", provider: "gerrit", display_name: "Gerrit" },
+          { id: "git", provider: "gitlab", display_name: "GitLab" },
+        ].map((item) => ({
+          ...item,
+          enabled: true,
+          generation: 1,
+          validation: {},
+          credential_state: "missing",
+        }));
         await page.route("**/api/**", async (route) => {
           const request = route.request();
           const path = new URL(request.url()).pathname;
           if (path === "/api/user/profile")
-            return route.fulfill({ json: { role: "user" } });
+            return route.fulfill({
+              json: { role: "developer", can_use_code_analyzer: true },
+            });
           if (path === "/api/user/notifications")
             return route.fulfill({ json: notifications });
           if (path === "/api/user/aspera/credentials")
             return route.fulfill({
               json: { configured: true, username: "fixture-user" },
             });
+          if (path === "/api/code-analysis/copilot/credential")
+            return route.fulfill({
+              json: {
+                configured: false,
+                github_host: "aptv.ghe.com",
+                generation: 0,
+                updated_at: null,
+                expires_at: null,
+              },
+            });
+          if (path === "/api/user/scm/servers")
+            return route.fulfill({ json: scmServers });
+          if (path === "/api/user/scm/credentials/review") {
+            assert.equal(request.method(), "PUT");
+            scmWrites.push(request.postDataJSON());
+            return route.fulfill({
+              json: {
+                server_id: "review",
+                configured: true,
+                validation_state: "unvalidated",
+                credential_revision: updatedAt,
+                credential_updated_at: updatedAt,
+                credential_expires_at: expiresAt,
+                server_generation: 1,
+                credential_generation: 1,
+              },
+            });
+          }
+          if (path === "/api/user/credential-tests") {
+            const body = request.postDataJSON();
+            checks.push(body);
+            return route.fulfill({
+              json: {
+                status: "verified",
+                revision: body.source === "saved" ? updatedAt : null,
+              },
+            });
+          }
           assert.equal(path, "/api/user/tokens");
           if (request.method() === "GET") {
             if (failLoad) {
@@ -149,7 +209,7 @@ test(
             tokens = {
               ...tokens,
               [`${field}_preview`]: value === "" ? "(not set)" : "••••new",
-              [`${field}_updated_at`]: `2026-11-23 10:00:${String(writes.length).padStart(2, "0")} UTC`,
+              [`${field}_updated_at`]: updatedAt,
               [`${field}_time_gap`]: "just now",
             };
           }
@@ -263,16 +323,18 @@ test(
           assert.equal(await field.inputValue(), "");
           assert.equal(await field.getAttribute("type"), "password");
           if (service !== "jira") {
-            const section = page.locator("section").filter({ has: field });
+            const section = field.locator("xpath=ancestor::section[1]");
             assert.equal(
               await section.locator("code").textContent(),
               "••••new"
             );
+            const summary = page.locator(`#${service}Token-edit`);
             assert.equal(
-              await section.locator("time").getAttribute("datetime"),
-              `2026-11-23 10:00:0${service === "graph" ? 2 : 3} UTC`
+              await summary
+                .getByText("Updated just now", { exact: true })
+                .getAttribute("datetime"),
+              updatedAt
             );
-            assert.ok((await section.textContent()).includes("just now"));
           }
           await field.fill(`discard-${service}`);
         }
@@ -286,6 +348,79 @@ test(
             () => document.documentElement.scrollWidth <= innerWidth
           )
         );
+        const graphSummary = page.locator("#graphToken-edit");
+        await graphSummary.getByText(/^Expires in /).waitFor();
+        const graphCard = input("graph").locator("xpath=ancestor::section[1]");
+        await graphCard
+          .getByRole("button", { name: "Test saved connection" })
+          .click();
+        await graphSummary.getByText("Verified", { exact: true }).waitFor();
+        assert.deepEqual(checks.at(-1), {
+          service: "graph_api_token",
+          source: "saved",
+        });
+        assert.equal(writes.length, 3);
+
+        const source = page.getByRole("region", {
+          name: "Source-control access",
+        });
+        await source.getByRole("button", { name: "Gerrit Not set" }).click();
+        await source.getByRole("button", { name: "GitLab Not set" }).click();
+        const gerrit = source.getByRole("form", {
+          name: "Gerrit",
+          exact: true,
+        });
+        const gitlab = source.getByRole("form", {
+          name: "GitLab",
+          exact: true,
+        });
+        for (const card of [gerrit, gitlab]) {
+          assert.equal(
+            await card
+              .getByRole("button", { name: "Save credential" })
+              .isEnabled(),
+            false
+          );
+          await card.getByLabel("Login name").waitFor();
+          await card.getByLabel("Personal access token").waitFor();
+        }
+        if (process.env.TOKEN_MANAGEMENT_EVIDENCE_DIR) {
+          await mkdir(process.env.TOKEN_MANAGEMENT_EVIDENCE_DIR, {
+            recursive: true,
+          });
+          await source.screenshot({
+            path: join(
+              process.env.TOKEN_MANAGEMENT_EVIDENCE_DIR,
+              `source-control-${width}-${theme}.png`
+            ),
+          });
+        }
+        await gerrit.getByLabel("Login name").fill("reviewer");
+        await gerrit.getByLabel("Personal access token").fill("fixture-pat");
+        await gerrit.getByRole("button", { name: "Test connection" }).click();
+        await gerrit.getByText("Verified", { exact: true }).waitFor();
+        await gerrit.getByRole("button", { name: "Save credential" }).click();
+        const gerritSummary = source.getByRole("button", {
+          name: "Gerrit Verified",
+          exact: true,
+        });
+        await gerritSummary.getByText(/^Expires in /).waitFor();
+        await gerritSummary.click();
+        await gerrit
+          .getByRole("button", { name: "Test saved connection" })
+          .click();
+        await gerrit
+          .getByRole("button", { name: "Test saved connection" })
+          .isEnabled();
+        assert.deepEqual(checks.at(-1), {
+          service: "scm",
+          server_id: "review",
+          source: "saved",
+        });
+        assert.deepEqual(scmWrites, [
+          { username: "reviewer", token: "fixture-pat" },
+        ]);
+
         assert.deepEqual(errors, []);
         if (process.env.TOKEN_MANAGEMENT_EVIDENCE_DIR) {
           for (const service of services.slice(2))

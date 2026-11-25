@@ -15,7 +15,9 @@ test(
   async () => {
     const { build } = await import("esbuild");
     const { chromium } = await loadPlaywright();
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({
+      executablePath: process.env.CHAT_CHROMIUM_PATH,
+    });
     try {
       const { outputFiles } = await build({
         absWorkingDir: join(import.meta.dirname, ".."),
@@ -35,6 +37,12 @@ test(
               return <main className="max-w-md space-y-4 p-4">
                 <button>Other settings</button>
                 <output aria-label="Revision">{revision}</output>
+                <SavedSetting title="Expired credential" status="Verified" expiresAt="2026-11-01T11:59:00Z">
+                  <p>Credential details</p>
+                </SavedSetting>
+                <SavedSetting title="Expiring credential" status="Verified" expiresAt="2026-11-01T12:00:05Z">
+                  <p>Credential details</p>
+                </SavedSetting>
                 <SavedSetting title="Review credential" status={saved ? 'Saved' : undefined} revision={revision}>
                   <fieldset disabled={busy} className="space-y-3">
                     <label>Replacement<input aria-label="Replacement" /></label>
@@ -63,6 +71,8 @@ test(
       });
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
+      await page.clock.install({ time: new Date("2026-11-01T12:00:00Z") });
+      await page.clock.pauseAt(new Date("2026-11-01T12:00:01Z"));
       await page.setContent('<div id="root"></div>');
       await page.addStyleTag({ content: css });
       await page.addScriptTag({ content: outputFiles[0].text, type: "module" });
@@ -70,6 +80,16 @@ test(
         name: "Review credential Saved",
       });
       await summary.waitFor();
+      await page
+        .getByRole("button", { name: "Expired credential Expired" })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Expiring credential Verified" })
+        .waitFor();
+      await page.clock.runFor(4_001);
+      await page
+        .getByRole("button", { name: "Expiring credential Expired" })
+        .waitFor();
       await page.evaluate(() => window.refreshSetting());
       await page
         .getByRole("status", { name: "Revision" })
