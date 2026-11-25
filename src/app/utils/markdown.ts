@@ -14,6 +14,8 @@
  *    a math expression.
  * 3. Literal emphasis — `__init__` would render as bold "init". Non-spaced
  *    double-underscore runs are escaped so identifiers survive verbatim.
+ * 4. Tables — pipes in inline code are escaped when the delimiter row makes
+ *    the intended column count clear.
  *
  * Every transform is *segment aware*: fenced code, inline code spans, display
  * math, links, images and footnotes are extracted first and restored
@@ -503,6 +505,41 @@ function normalizeOpenAiInlineMathDelimiters(
 // streamed token, so pathological lines are passed through untouched instead.
 const MAX_INLINE_LINE_LENGTH = 4096;
 
+const TABLE_DELIMITER_LINE = /^[ ]{0,3}\|(?:[ \t]*:?-+:?[ \t]*\|)+[ \t]*\r?$/;
+const BOUNDED_TABLE_ROW = /^[ ]{0,3}\|.*\|[ \t]*\r?$/;
+const UNESCAPED_PIPE = /\\[\\|]|(\|)/g;
+// Escapes apply outside code spans. Inside a span only an equally long
+// backtick run can close it.
+const TABLE_CODE_SPAN = /\\[\\`]|(`+)(?!`)(.*?)(?<!`)\1(?!`)|`+/g;
+
+function countUnescapedPipes(line: string): number {
+  let count = 0;
+  for (const match of line.matchAll(UNESCAPED_PIPE)) {
+    if (match[1]) count++;
+  }
+  return count;
+}
+
+function escapeTableCodePipes(line: string, columns: number): string {
+  if (!line.includes("`") || line.length > MAX_INLINE_LINE_LENGTH) return line;
+
+  const repaired = line.replace(
+    TABLE_CODE_SPAN,
+    (match, ticks, body: string) => {
+      if (!ticks) return match;
+      const escaped = body.replace(UNESCAPED_PIPE, (token, pipe) =>
+        pipe ? "\\|" : token
+      );
+      return ticks + escaped + ticks;
+    }
+  );
+  if (repaired === line) return line;
+
+  // Only apply the repair when the result fits the explicit delimiter row.
+  // The outer pipes enclose the cells, so N columns require N+1 separators.
+  return countUnescapedPipes(repaired) === columns + 1 ? repaired : line;
+}
+
 /** Applies every inline transform to a single line of prose. */
 function normalizeProseLine(line: string, store: string[]): string {
   if (line.length > MAX_INLINE_LINE_LENGTH) return protect(line, store);
@@ -527,8 +564,9 @@ function normalizeProseBlock(lines: string[]): string[] {
   // State for a bare `\begin{env} … \end{env}` environment.
   let environment: { indent: string; name: string; lines: string[] } | null =
     null;
+  let tableColumns = 0;
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     if (environment) {
       environment.lines.push(line);
       if (
@@ -575,6 +613,26 @@ function normalizeProseBlock(lines: string[]): string[] {
         lines: [line.trim()],
       };
       continue;
+    }
+
+    if (BOUNDED_TABLE_ROW.test(line)) {
+      const delimiter = lines[index + 1];
+      if (delimiter && TABLE_DELIMITER_LINE.test(delimiter)) {
+        const columns = delimiter.split("|").length - 2;
+        const header = escapeTableCodePipes(line, columns);
+        tableColumns =
+          countUnescapedPipes(header) === columns + 1 ? columns : 0;
+        output.push(normalizeProseLine(header, store));
+        continue;
+      }
+      if (tableColumns) {
+        output.push(
+          normalizeProseLine(escapeTableCodePipes(line, tableColumns), store)
+        );
+        continue;
+      }
+    } else {
+      tableColumns = 0;
     }
 
     const openBlockMatch = OPENAI_DISPLAY_MATH_OPEN_LINE.exec(line);

@@ -391,6 +391,44 @@ test("renders GFM tables as a labelled scrollable region", () => {
   assert.match(html, /<table/);
 });
 
+test("preserves inline code pipes and column alignment in assistant tables", () => {
+  const content = [
+    "### Conclusion",
+    "| `A | B` | Result |",
+    "| :--- | ---: |",
+    "| ``run `x` | sort`` | **Passed** |",
+    "| `a \\| b` | Done |",
+  ].join("\n");
+
+  for (const isStreaming of [true, false]) {
+    const html = renderToStaticMarkup(
+      React.createElement(MarkdownContent, { content, isStreaming })
+    );
+    assert.match(
+      html,
+      /<th[^>]*text-align:left[^>]*><code[^>]*>A \| B<\/code>/
+    );
+    assert.match(html, /<th[^>]*text-align:right[^>]*>Result<\/th>/);
+    assert.match(html, /<td[^>]*><code[^>]*>run `x` \| sort<\/code><\/td>/);
+    assert.match(
+      html,
+      /<td[^>]*text-align:right[^>]*><strong>Passed<\/strong>/
+    );
+    assert.match(html, /<code[^>]*>a \| b<\/code>/);
+  }
+});
+
+test("keeps malformed table examples verbatim in code and document previews", () => {
+  const content = "| `A | B` | Result |\n| --- | --- |\n| one | two |";
+  const code = render(`\`\`\`\n${content}\n\`\`\``);
+  assert.doesNotMatch(code, /<table/);
+  assert.ok(code.includes(content));
+  const document = renderToStaticMarkup(
+    React.createElement(MarkdownContent, { content, mode: "document" })
+  );
+  assert.doesNotMatch(document, /<table/);
+});
+
 test("preserves numbered-list starts in middleware documents", () => {
   assert.match(
     render("7. Continue investigation\n8. Verify the result"),
