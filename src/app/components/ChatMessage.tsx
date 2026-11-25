@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
-import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
+import React, { useMemo, useState } from "react";
+import { SubAgentRun } from "@/app/components/SubAgentRun";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { reasoningSummary } from "@/lib/reasoning-summary";
 import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
-import { RawToolResult, ReadableToolResult } from "./ReadableToolResult";
-import { readableToolResult } from "@/lib/tool-result";
 import { SkillReferenceText } from "./skills/SkillReferenceText";
 import { parseSkillReferences } from "@/lib/skill-references";
 import { contextSummary } from "@/lib/context-summary";
@@ -27,9 +25,9 @@ import type {
   ActionRequest,
   ReviewConfig,
 } from "@/app/types/types";
-import { Message } from "@langchain/langgraph-sdk";
+import type { Message } from "@langchain/langgraph-sdk";
+import type { SubagentStream } from "@langchain/langgraph-sdk/react";
 import {
-  extractSubAgentContent,
   extractStringFromMessageContent,
   extractImageUrlsFromMessage,
 } from "@/app/utils/utils";
@@ -54,6 +52,7 @@ interface ChatMessageProps {
   onUseEvidence?: (text: string) => void;
   message: Message;
   toolCalls: ToolCall[];
+  subagentStreams?: ReadonlyMap<string, SubagentStream>;
   isLoading?: boolean;
   isStreaming?: boolean;
   actionRequestsMap?: Map<string, ActionRequest>;
@@ -68,34 +67,12 @@ interface ChatMessageProps {
   rubricCheckNumber?: number;
 }
 
-function SubAgentOutput({
-  result,
-  files,
-}: {
-  result: string;
-  files: Record<string, string>;
-}) {
-  const readable = useMemo(() => readableToolResult("task", result), [result]);
-  if (!readable || readable.kind === "text")
-    return (
-      <MarkdownContent
-        content={result}
-        files={files}
-      />
-    );
-  return (
-    <>
-      <ReadableToolResult result={readable} />
-      <RawToolResult result={result} />
-    </>
-  );
-}
-
 export const ChatMessage = React.memo<ChatMessageProps>(
   ({
     message,
     onUseEvidence,
     toolCalls,
+    subagentStreams,
     isLoading,
     isStreaming,
     actionRequestsMap,
@@ -228,20 +205,6 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     const [viewedAttachment, setViewedAttachment] = useState<FileItem | null>(
       null
     );
-
-    const [expandedSubAgents, setExpandedSubAgents] = useState<
-      Record<string, boolean>
-    >({});
-    const isSubAgentExpanded = useCallback(
-      (id: string) => expandedSubAgents[id] ?? true,
-      [expandedSubAgents]
-    );
-    const toggleSubAgent = useCallback((id: string) => {
-      setExpandedSubAgents((prev) => ({
-        ...prev,
-        [id]: prev[id] === undefined ? false : !prev[id],
-      }));
-    }, []);
 
     if (isRubricRevision)
       return (
@@ -505,43 +468,21 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {!isUser && subAgents.length > 0 && (
-            <div className="mt-2 flex w-full max-w-full flex-col gap-3">
+            <div
+              className={cn(
+                "mt-2 grid w-full min-w-0 gap-3",
+                subAgents.length > 1 &&
+                  "grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))]"
+              )}
+            >
               {subAgents.map((subAgent) => (
-                <div
+                <SubAgentRun
                   key={subAgent.id}
-                  className="border-border bg-card/80 flex w-full flex-col overflow-hidden rounded-xl border shadow-xs"
-                >
-                  <SubAgentIndicator
-                    subAgent={subAgent}
-                    onClick={() => toggleSubAgent(subAgent.id)}
-                    isExpanded={isSubAgentExpanded(subAgent.id)}
-                  />
-                  {isSubAgentExpanded(subAgent.id) && (
-                    <div className="w-full max-w-full">
-                      <div className="border-border/70 bg-muted/30 border-t p-4">
-                        <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
-                          Input
-                        </h4>
-                        <div className="mb-4">
-                          <MarkdownContent
-                            content={extractSubAgentContent(subAgent.input)}
-                          />
-                        </div>
-                        {subAgent.output && (
-                          <>
-                            <h4 className="text-muted-foreground mb-2 text-xs font-semibold tracking-wider uppercase">
-                              Output
-                            </h4>
-                            <SubAgentOutput
-                              result={extractSubAgentContent(subAgent.output)}
-                              files={files}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  subAgent={subAgent}
+                  execution={subagentStreams?.get(subAgent.id)}
+                  files={files}
+                  onUseEvidence={onUseEvidence}
+                />
               ))}
             </div>
           )}

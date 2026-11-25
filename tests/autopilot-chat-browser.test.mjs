@@ -4,9 +4,11 @@ import { mkdir } from "node:fs/promises";
 import {
   staticServer,
   authenticatedPage,
+  deferred,
   makePolicyFixture,
 } from "./tool-permissions-browser-fixture.mjs";
 import { loadPlaywright } from "./browser-fixtures.mjs";
+import { DEFAULT_SKILL_LIMITS } from "../src/lib/skill-drafts.ts";
 
 test(
   "built chat sends authorized autopilot resumes and returns to manual approval on opt-out",
@@ -210,6 +212,44 @@ test(
     const fallback = makePolicyFixture();
     const submissions = [];
     const stateRequests = [];
+    const checkingCheckpoint = deferred();
+    const verifyCheckpoint = deferred();
+    const rootFiles = { "/notes.md": "Input notes" };
+    const branchFiles = [
+      {
+        "/signal-plot.png": {
+          content:
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+          encoding: "base64",
+        },
+      },
+      { "/polarion-report.md": "Requirements report" },
+    ];
+    const agents = ["Log-Analyzer-Agent", "Polarion-Agent"];
+    const tools = ["summarize_log_signals", "get_polarion_work_item"];
+    const messages = [
+      { type: "human", id: "human", content: "Search" },
+      {
+        type: "ai",
+        id: "delegate",
+        content: "",
+        tool_calls: agents.map((name, index) => ({
+          id: `task-${index}`,
+          name: "task",
+          args: { subagent_type: name, description: `Check source ${index}` },
+        })),
+      },
+    ];
+    const results = agents.map((name, index) => ({
+      type: "tool",
+      id: `result-${index}`,
+      tool_call_id: `task-${index}`,
+      name: "task",
+      content: `${name} finished`,
+      status: "success",
+    }));
+    let persistedMessages = messages;
+    let persistedFiles = rootFiles;
     let pending = [
       "11111111111111111111111111111111",
       "22222222222222222222222222222222",
@@ -219,8 +259,8 @@ test(
     }));
     const state = () => ({
       values: {
-        messages: [{ type: "human", id: "human", content: "Search" }],
-        files: {},
+        messages: persistedMessages,
+        files: persistedFiles,
         todos: [],
       },
       tasks: pending.map((interrupt, index) => ({
@@ -259,10 +299,24 @@ test(
             available_modes: ["interactive", "allow_read", "autopilot"],
             read_tools: ["search_jira_tickets"],
           });
+        if (url.pathname.endsWith("/code-analysis/jobs")) return json([]);
+        if (url.pathname.endsWith("/api/skills"))
+          return json({
+            entries: [],
+            library_revision: 0,
+            system_revision: "fixture",
+            limits: DEFAULT_SKILL_LIMITS,
+          });
         if (url.pathname.endsWith("/threads/nested/history"))
           return json([state()]);
         if (url.pathname.endsWith("/threads/nested/state")) {
           stateRequests.push(url.searchParams.get("subgraphs"));
+          if (submissions.length) {
+            checkingCheckpoint.resolve();
+            await verifyCheckpoint.promise;
+            persistedFiles = Object.assign({}, rootFiles, ...branchFiles);
+            persistedMessages = [...messages, ...results];
+          }
           return json({
             ...state(),
             tasks: [
@@ -278,9 +332,35 @@ test(
         if (url.pathname.endsWith("/threads/nested/runs/stream")) {
           submissions.push(route.request().postDataJSON());
           pending = [];
+          const updates = branchFiles
+            .map(
+              (files, i) =>
+                `event: updates|tools:branch-${i}\ndata: ${JSON.stringify({ tools: { files } })}\n\n`
+            )
+            .join("");
+          const activity = tools
+            .map((name, index) => {
+              const message = {
+                type: "ai",
+                id: `activity-${index}`,
+                content: `Checking source ${index}`,
+                tool_calls: [{ id: `call-${index}`, name, args: {} }],
+              };
+              const metadata = { lc_subagent_tool_call_id: `task-${index}` };
+              return `event: messages|tools:branch-${index}\ndata: ${JSON.stringify([message, metadata])}\n\n`;
+            })
+            .join("");
+          const done = {
+            type: "tool",
+            id: "summary",
+            tool_call_id: "call-0",
+            name: tools[0],
+            content: "Signal summary",
+          };
+          const completed = `event: messages|tools:branch-0\ndata: ${JSON.stringify([done, { lc_subagent_tool_call_id: "task-0" }])}\n\nevent: messages\ndata: ${JSON.stringify([results[0], {}])}\n\n`;
           return route.fulfill({
             contentType: "text/event-stream",
-            body: `event: metadata\ndata: {"run_id":"resume","thread_id":"nested"}\n\nevent: values\ndata: ${JSON.stringify({ ...state().values, __interrupt__: [] })}\n\nevent: end\ndata: {}\n\n`,
+            body: `event: metadata\ndata: {"run_id":"resume","thread_id":"nested"}\n\n${updates}${activity}${completed}event: values\ndata: ${JSON.stringify(state().values)}\n\nevent: values\ndata: {"__interrupt__":[]}\n\nevent: end\ndata: {}\n\n`,
           });
         }
         if (url.pathname.endsWith("/threads/nested/runs"))
@@ -300,10 +380,38 @@ test(
       );
       await page.getByRole("combobox", { name: /^Approval mode/ }).click();
       await page.getByRole("option", { name: /^Allow reads/ }).click();
-      await page.waitForFunction(() =>
-        document.body.textContent?.includes("Allow reads")
-      );
-      await page.waitForTimeout(1500);
+      await checkingCheckpoint.promise;
+      const files = page.getByRole("button", { name: /^Files 3$/ });
+      await files.waitFor({ timeout: 5000 });
+      await files.click();
+      await page.getByText("signal-plot.png", { exact: true }).waitFor();
+      await page.getByText("polarion-report.md", { exact: true }).waitFor();
+      for (const [index, name] of agents.entries()) {
+        const indicator = page.getByRole("button", { name, exact: true });
+        if ((await indicator.getAttribute("aria-expanded")) === "false")
+          await indicator.click();
+        const panel = page.getByRole("region", { name });
+        await panel
+          .getByText(`Checking source ${index}`, { exact: true })
+          .waitFor({ timeout: 5000 });
+        assert.equal(
+          await panel.getByRole("button", { name: tools[index] }).count(),
+          1
+        );
+        assert.equal(
+          await panel.locator("[data-run-status=interrupted]").count(),
+          0
+        );
+        const status = index === 0 ? "completed" : "waiting";
+        await indicator
+          .locator(`[data-run-status=${status}]`)
+          .waitFor({ timeout: 5000 });
+      }
+      if (process.env.APPROVAL_ACTIVITY_EVIDENCE)
+        await page.screenshot({ path: process.env.APPROVAL_ACTIVITY_EVIDENCE });
+      verifyCheckpoint.resolve();
+      await page.reload();
+      await files.waitFor({ timeout: 5000 });
       assert.equal(submissions.length, 1);
       assert.deepEqual(Object.keys(submissions[0].command.resume).sort(), [
         "11111111111111111111111111111111",
@@ -317,6 +425,7 @@ test(
       assert.deepEqual(pageErrors, []);
       await context.close();
     } finally {
+      verifyCheckpoint.resolve();
       await browser.close();
       await server.close();
     }

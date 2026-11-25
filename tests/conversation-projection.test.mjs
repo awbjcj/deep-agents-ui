@@ -73,6 +73,41 @@ test("settled unresolved calls stop spinning and do not restart in a later turn"
   assert.equal(completed[0].toolCalls[0].status, "completed");
 });
 
+test("an approval pause keeps parallel calls waiting for their results", () => {
+  const messages = [
+    {
+      type: "ai",
+      id: "previous-turn",
+      content: "",
+      tool_calls: [{ id: "stopped", name: "task", args: {} }],
+    },
+    { type: "human", id: "h", content: "Read both sources" },
+    {
+      type: "ai",
+      id: "current-turn",
+      content: "",
+      tool_calls: [
+        { id: "review", name: "search_polarion_work_items", args: {} },
+        { id: "parallel", name: "read_file", args: {} },
+        { id: "done", name: "grep", args: {} },
+      ],
+    },
+    { type: "tool", tool_call_id: "done", content: "Found" },
+  ];
+
+  const paused = reconcileConversation(null, messages, true, false);
+  assert.equal(paused[0].toolCalls[0].status, "interrupted");
+  assert.deepEqual(
+    paused[2].toolCalls.map((call) => call.status),
+    ["waiting", "waiting", "completed"]
+  );
+  const resumed = reconcileConversation(paused, messages, false, true);
+  assert.deepEqual(
+    resumed[2].toolCalls.map((call) => call.status),
+    ["pending", "pending", "completed"]
+  );
+});
+
 // The SDK re-creates the messages array and shallow-spreads each message
 // envelope every token, but keeps nested `content`/`tool_calls` references
 // stable for finished messages. `frame()` simulates that: a fresh array of
@@ -548,7 +583,7 @@ test("a landed tool result re-allocates only its own tool call (two-level)", () 
   assert.equal(p2[0].toolCalls[1].status, "pending");
 });
 
-test("interrupt flip re-allocates only pending tool calls", () => {
+test("an approval pause re-allocates only pending tool calls", () => {
   const ai = {
     type: "ai",
     id: "a1",
@@ -560,7 +595,7 @@ test("interrupt flip re-allocates only pending tool calls", () => {
   const p2 = reconcileConversation(p1, [{ ...ai }], true);
 
   assert.notEqual(p2[0].toolCalls[0], p1[0].toolCalls[0]);
-  assert.equal(p2[0].toolCalls[0].status, "interrupted");
+  assert.equal(p2[0].toolCalls[0].status, "waiting");
 });
 
 test("appending a message keeps existing references and recomputes avatars", () => {

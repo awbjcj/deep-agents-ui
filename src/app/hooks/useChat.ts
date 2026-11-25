@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { browserRunLimit, buildRunConfig } from "@/lib/runLimits";
-import { useStream } from "@langchain/langgraph-sdk/react";
+import {
+  useStream,
+  type UseDeepAgentStream,
+  type UseDeepAgentStreamOptions,
+  type UseStreamThread,
+} from "@langchain/langgraph-sdk/react";
 import {
   type Message,
   type Assistant,
@@ -12,7 +17,6 @@ import {
   type ThreadState,
 } from "@langchain/langgraph-sdk";
 import { v4 as uuidv4 } from "uuid";
-import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import {
   ApprovalReviewError,
@@ -37,7 +41,10 @@ import {
   type MessageDelivery,
 } from "@/lib/message-delivery";
 import type { ResumeInterruptValue } from "@/app/types/types";
-import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
+import {
+  isUserTurn,
+  useProcessedMessages,
+} from "@/app/hooks/internal/conversationProjection";
 import {
   ThreadUnavailableError,
   useRecoverableThread,
@@ -73,6 +80,7 @@ import {
   applyPendingDelta,
   mergePendingFiles,
   prunePendingFiles,
+  restorePendingFiles,
   subagentFileDelta,
   withoutPendingFiles,
   type PendingSubagentFiles,
@@ -329,6 +337,7 @@ export function useChat({
   // state only when its `task` returns; overlay them from namespaced updates.
   const [pendingSubagentFiles, setPendingSubagentFiles] =
     useState<PendingSubagentFiles>(EMPTY_PENDING_FILES);
+  const recoveredFileSnapshots = useRef(new WeakSet<object>());
   const handleUpdateEvent = useCallback(
     (data: unknown, options: { namespace: string[] | undefined }) => {
       const delta = subagentFileDelta(data, options.namespace);
@@ -505,14 +514,19 @@ export function useChat({
       onStop: handleStreamStopped,
       onUpdateEvent: handleUpdateEvent,
       thread: history,
+      filterSubagentMessages: true,
     },
     { onCustomEvent: handleCustomEvent }
-  );
-  const rawStream = useStream<StateType>(streamOptions);
+  ) satisfies UseDeepAgentStreamOptions<StateType>;
+  // The Python graph has no local agent type to infer the SDK's subagent API.
+  const rawStream = useStream<StateType>(
+    streamOptions
+  ) as UseDeepAgentStream<StateType>;
 
   // Render consumers need a reactive snapshot. Only event handlers use the
   // latest-value ref, keeping callbacks stable without hiding state changes.
   const stream = rawStream;
+  const subagents = stream.subagents;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
   const approvalScope = JSON.stringify([
@@ -594,7 +608,8 @@ export function useChat({
   const threadUnavailable = history.error instanceof ThreadUnavailableError;
   const historyError =
     !threadUnavailable &&
-    (Boolean(history.error) || (threadId !== null && slowThreadId === threadId));
+    (Boolean(history.error) ||
+      (threadId !== null && slowThreadId === threadId));
   const retryHistory = useCallback(() => {
     setSlowThreadId(null);
     if (threadId) reportedHistoryErrorsRef.current.delete(threadId);
@@ -852,6 +867,43 @@ export function useChat({
     [buildConfig]
   );
 
+  const runActive = stream.isLoading || messageRuns.serverRunning;
+  const approvalPending = pendingApprovals.length > 0 || isApprovalSubmitting;
+  const runSettled = !runActive && !approvalPending;
+
+  // Conversation Projection (see CONTEXT.md): the identity-stable transform
+  // from the raw stream into render-ready messages. Tool-call reconciliation
+  // (fold each tool result back into its originating call) now lives in the
+  // projection, which preserves per-message and per-tool-call references
+  // across frames.
+  const { messages: streamedMessages, getMessagesMetadata } = stream;
+  // Checkpoint messages carry accepted handoffs. Auxiliary model drafts never
+  // become cards; a root progress event supplies the single live placeholder.
+  const visibleMessages = useMemo(() => {
+    if (contextRecords.current.threadId !== threadId) {
+      contextRecords.current = { threadId, records: new Map() };
+    }
+    const visible: Message[] = [];
+    streamedMessages.forEach((message, index) => {
+      const metadata = getMessagesMetadata(message, index);
+      if (!isTaskGraderMessage(metadata)) {
+        visible.push(
+          markStreamedContextSummary(message, metadata?.streamMetadata)
+        );
+      }
+    });
+    return projectContextUpdates(
+      visible,
+      liveContextUpdate?.threadId === threadId ? liveContextUpdate : null,
+      contextRecords.current.records
+    );
+  }, [streamedMessages, getMessagesMetadata, liveContextUpdate, threadId]);
+  const processedMessages = useProcessedMessages(
+    visibleMessages,
+    approvalPending && !runActive,
+    runActive || stream.isThreadLoading
+  );
+
   // Optimistic file state.
   //
   // `client.threads.updateState` writes the new map server-side but
@@ -877,12 +929,42 @@ export function useChat({
   const filesRef = useRef(rootFiles);
   filesRef.current = rootFiles;
 
-  const runSettled = !stream.isLoading && stream.interrupts.length === 0;
   useEffect(() => {
     setPendingSubagentFiles((previous) =>
       prunePendingFiles(previous, serverFiles, runSettled)
     );
   }, [serverFiles, runSettled]);
+  useEffect(() => {
+    if (runSettled || threadId !== streamThreadId) return;
+    const snapshots: Record<string, unknown>[] = [];
+    for (let i = processedMessages.length - 1; i >= 0; i--) {
+      const { message, toolCalls } = processedMessages[i];
+      if (isUserTurn(message)) break;
+      for (const call of toolCalls) {
+        if (
+          call.name !== "task" ||
+          (call.status !== "pending" && call.status !== "waiting")
+        )
+          continue;
+        const values = subagents.get(call.id)?.values;
+        if (!values?.files || recoveredFileSnapshots.current.has(values))
+          continue;
+        recoveredFileSnapshots.current.add(values);
+        snapshots.push(values);
+      }
+    }
+    if (snapshots.length)
+      setPendingSubagentFiles((previous) =>
+        restorePendingFiles(previous, serverFiles, snapshots)
+      );
+  }, [
+    serverFiles,
+    runSettled,
+    processedMessages,
+    subagents,
+    threadId,
+    streamThreadId,
+  ]);
   const livePendingFiles = useMemo(
     () => prunePendingFiles(pendingSubagentFiles, serverFiles, runSettled),
     [pendingSubagentFiles, serverFiles, runSettled]
@@ -1024,10 +1106,11 @@ export function useChat({
   useEffect(() => {
     filesOverrideBaselineRef.current = null;
     sourceOverrideBaselineRef.current = null;
+    recoveredFileSnapshots.current = new WeakSet();
     setOptimisticFiles(null);
     setOptimisticSourceImageAttachments(null);
     setPendingSubagentFiles(EMPTY_PENDING_FILES);
-  }, [threadId]);
+  }, [client, threadId]);
 
   const removeSourceImageNow = useCallback(
     async (record: SourceImageRecord) => {
@@ -1550,41 +1633,6 @@ export function useChat({
     pauseMessageQueue,
   ]);
 
-  // Conversation Projection (see CONTEXT.md): the identity-stable transform
-  // from the raw stream into render-ready messages. Tool-call reconciliation
-  // (fold each tool result back into its originating call) now lives in the
-  // projection, which additionally preserves per-message and per-tool-call
-  // references so a streamed token re-renders only the live message instead of
-  // every artifact in the thread.
-  const isInterrupted = stream.interrupts.length > 0;
-  const { messages: streamedMessages, getMessagesMetadata } = stream;
-  // Checkpoint messages carry accepted handoffs. Auxiliary model drafts never
-  // become cards; a root progress event supplies the single live placeholder.
-  const visibleMessages = useMemo(() => {
-    if (contextRecords.current.threadId !== threadId) {
-      contextRecords.current = { threadId, records: new Map() };
-    }
-    const visible: Message[] = [];
-    streamedMessages.forEach((message, index) => {
-      const metadata = getMessagesMetadata(message, index);
-      if (!isTaskGraderMessage(metadata)) {
-        visible.push(
-          markStreamedContextSummary(message, metadata?.streamMetadata)
-        );
-      }
-    });
-    return projectContextUpdates(
-      visible,
-      liveContextUpdate?.threadId === threadId ? liveContextUpdate : null,
-      contextRecords.current.records
-    );
-  }, [streamedMessages, getMessagesMetadata, liveContextUpdate, threadId]);
-  const processedMessages = useProcessedMessages(
-    visibleMessages,
-    isInterrupted,
-    stream.isLoading || stream.isThreadLoading
-  );
-
   // Expose the current snapshot alongside stable event handlers.
   const todos = stream.values.todos ?? EMPTY_TODOS;
   const email = stream.values.email;
@@ -1627,6 +1675,7 @@ export function useChat({
       stream,
       todos,
       files,
+      subagents,
       pendingFilePaths,
       sourceImageAttachments,
       sourceAttachmentRecords,
@@ -1666,6 +1715,7 @@ export function useChat({
       stream,
       todos,
       files,
+      subagents,
       pendingFilePaths,
       sourceImageAttachments,
       sourceAttachmentRecords,

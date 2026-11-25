@@ -6,7 +6,7 @@ export interface ToolCall {
   args: Record<string, unknown>;
   result?: string;
   imageUrls?: readonly string[];
-  status: "pending" | "completed" | "error" | "interrupted";
+  status: "pending" | "waiting" | "completed" | "error" | "interrupted";
 }
 
 export interface SubAgent {

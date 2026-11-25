@@ -220,6 +220,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
 
     const {
       stream,
+      subagents,
       processedMessages,
       messages,
       todos,
@@ -418,6 +419,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                               onUseEvidence={addEvidence}
                               message={data.message}
                               toolCalls={data.toolCalls}
+                              subagentStreams={
+                                data.toolCalls.some(
+                                  (call) => call.name === "task"
+                                )
+                                  ? subagents
+                                  : undefined
+                              }
                               isLoading={isLoading}
                               isStreaming={
                                 isLoading &&

@@ -37,6 +37,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function appendFileDelta(delta: Delta, value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  const { files, source_image_attachments, source_attachment_records } = value;
+  if (isRecord(files)) Object.assign(delta.files, files);
+  if (isRecord(source_image_attachments))
+    Object.assign(delta.records, source_image_attachments);
+  if (isRecord(source_attachment_records))
+    delta.documents = Object.assign(
+      delta.documents ?? {},
+      source_attachment_records
+    );
+  return [files, source_image_attachments, source_attachment_records].some(
+    isRecord
+  );
+}
+
 /** True when a stream namespace belongs to a subagent launched by `task`. */
 export function isSubagentNamespace(namespace: string[] | undefined): boolean {
   return (
@@ -61,25 +77,7 @@ export function subagentFileDelta(
   for (const nodeUpdate of Object.values(data)) {
     const updates = Array.isArray(nodeUpdate) ? nodeUpdate : [nodeUpdate];
     for (const update of updates) {
-      if (!isRecord(update)) continue;
-      if (isRecord(update.files)) {
-        Object.assign(delta.files, update.files);
-        found = true;
-      }
-      if (isRecord(update.source_image_attachments)) {
-        Object.assign(
-          delta.records,
-          update.source_image_attachments as Delta["records"]
-        );
-        found = true;
-      }
-      if (isRecord(update.source_attachment_records)) {
-        delta.documents = Object.assign(
-          delta.documents ?? {},
-          update.source_attachment_records as NonNullable<Delta["documents"]>
-        );
-        found = true;
-      }
+      if (appendFileDelta(delta, update)) found = true;
     }
   }
   return found ? delta : null;
@@ -106,6 +104,27 @@ export function applyPendingDelta(
     else documents[path] = record;
   }
   return { files, records, documents };
+}
+
+/** Recover generated files after reconnecting. Root state and live edits take precedence. */
+export function restorePendingFiles(
+  pending: PendingSubagentFiles,
+  rootFiles: Record<string, unknown>,
+  subagentStates: readonly unknown[]
+): PendingSubagentFiles {
+  if (subagentStates.length === 0) return pending;
+  const delta: Delta = { files: {}, records: {} };
+  for (const state of subagentStates) appendFileDelta(delta, state);
+  for (const path of Object.keys(delta.files)) {
+    if (path in rootFiles || path in pending.files) delete delta.files[path];
+  }
+  const recovered = applyPendingDelta(EMPTY_PENDING_FILES, delta);
+  if (Object.keys(recovered.files).length === 0) return pending;
+  return {
+    files: { ...recovered.files, ...pending.files },
+    records: { ...recovered.records, ...pending.records },
+    documents: { ...recovered.documents, ...pending.documents },
+  };
 }
 
 /**

@@ -177,7 +177,8 @@ function toolArguments(value: unknown): Record<string, unknown> {
     : EMPTY_ARGS;
 }
 
-function isUserTurn(message: Message): boolean {
+/** Identify conversation turns without treating internal prompts as user input. */
+export function isUserTurn(message: Message): boolean {
   return (
     message.type === "human" &&
     !isRubricRevisionMessage(message) &&
@@ -188,7 +189,7 @@ function isUserTurn(message: Message): boolean {
 /** Gather all supported tool encodings, then fold results into their calls. */
 function buildRawBuckets(
   messages: Message[],
-  isInterrupted: boolean,
+  isWaiting: boolean,
   isRunning: boolean
 ): RawBucket[] {
   const messageMap = new Map<string, RawBucket>();
@@ -278,9 +279,13 @@ function buildRawBuckets(
           toolCalls.push({
             ...call,
             status:
-              isInterrupted || !isRunning || idx < latestHumanIndex
+              idx < latestHumanIndex
                 ? "interrupted"
-                : "pending",
+                : isWaiting
+                  ? "waiting"
+                  : isRunning
+                    ? "pending"
+                    : "interrupted",
           });
         }
       }
@@ -428,10 +433,10 @@ function reconcileToolCalls(
 export function reconcileConversation(
   prev: ProcessedMessage[] | null,
   messages: Message[],
-  isInterrupted: boolean,
+  isWaiting: boolean,
   isRunning = true
 ): ProcessedMessage[] {
-  const rawBuckets = buildRawBuckets(messages, isInterrupted, isRunning);
+  const rawBuckets = buildRawBuckets(messages, isWaiting, isRunning);
 
   const prevByKey = new Map<string, ProcessedMessage>();
   if (prev) for (const p of prev) prevByKey.set(p.stableKey, p);
@@ -476,7 +481,7 @@ export function reconcileConversation(
  */
 export function useProcessedMessages(
   messages: Message[],
-  isInterrupted: boolean,
+  isWaiting: boolean,
   isRunning = true
 ): ProcessedMessage[] {
   const prevRef = useRef<ProcessedMessage[] | null>(null);
@@ -484,10 +489,10 @@ export function useProcessedMessages(
     const next = reconcileConversation(
       prevRef.current,
       messages,
-      isInterrupted,
+      isWaiting,
       isRunning
     );
     prevRef.current = next;
     return next;
-  }, [messages, isInterrupted, isRunning]);
+  }, [messages, isWaiting, isRunning]);
 }

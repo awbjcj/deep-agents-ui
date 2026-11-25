@@ -7,6 +7,7 @@ import {
   isSubagentNamespace,
   mergePendingFiles,
   prunePendingFiles,
+  restorePendingFiles,
   subagentFileDelta,
   withoutPendingFiles,
 } from "../src/lib/pending-files.ts";
@@ -116,6 +117,31 @@ test("pending edits to existing files remain visible until their contents reach 
     [docPath]
   );
   assert.equal(mergePendingFiles(root, EMPTY_PENDING_FILES), root);
+});
+
+test("both subagent checkpoints restore files missing from the shared workspace", () => {
+  const root = { "/notes.md": "Latest notes" };
+  const editedReport = { content: "Latest report", encoding: "utf-8" };
+  const live = applyPendingDelta(EMPTY_PENDING_FILES, {
+    files: { [docPath]: editedReport },
+    records: {},
+  });
+  const recovered = restorePendingFiles(live, root, [
+    {
+      files: { "/notes.md": "Earlier notes", [imagePath]: image },
+      source_image_attachments: { [record.attachment_id]: record },
+    },
+    {
+      files: { [docPath]: "Earlier report", "/summary.md": "Signal summary" },
+    },
+  ]);
+  assert.deepEqual(mergePendingFiles(root, recovered), {
+    "/notes.md": "Latest notes",
+    [imagePath]: image,
+    [docPath]: editedReport,
+    "/summary.md": "Signal summary",
+  });
+  assert.deepEqual(recovered.records, { [record.attachment_id]: record });
 });
 
 test("edits derived from the displayed map never copy overlay entries to root", () => {

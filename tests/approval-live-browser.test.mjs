@@ -102,6 +102,21 @@ test(
         .getByRole("article", { name: "Approval for fixture_read" })
         .first()
         .waitFor();
+      for (const name of ["first", "second"]) {
+        const agent = page.getByRole("region", { name, exact: true });
+        await agent
+          .getByText(`Preparing evidence from ${name}`, { exact: true })
+          .waitFor();
+        await agent
+          .getByRole("button", { name: "fixture_save_file" })
+          .waitFor();
+        assert.equal(
+          await agent.locator("[data-run-status=interrupted]").count(),
+          0
+        );
+      }
+      const files = page.getByRole("button", { name: "Files 2", exact: true });
+      await files.waitFor({ timeout: 10000 });
       const manual = process.env.APPROVAL_RUNTIME_MODE === "manual";
       if (manual) {
         await page.getByRole("button", { name: "Review together" }).click();
@@ -131,6 +146,7 @@ test(
         .getByText("Both subagents completed", { exact: false })
         .first()
         .waitFor({ timeout: 20000 });
+      await files.waitFor();
       assert.equal(resumes.length, 1);
       assert.equal(Object.keys(resumes[0].command.resume).length, 2);
       assert.equal(

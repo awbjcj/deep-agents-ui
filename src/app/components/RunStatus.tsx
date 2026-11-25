@@ -1,10 +1,17 @@
-import { AlertCircle, CircleCheck, Loader2, StopCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CircleCheck,
+  Clock,
+  Loader2,
+  StopCircle,
+} from "lucide-react";
 import type { SubAgent } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 
 const STATUS = {
   pending: { label: "Running", Icon: Loader2, color: "text-muted-foreground" },
   active: { label: "Running", Icon: Loader2, color: "text-muted-foreground" },
+  waiting: { label: "Waiting", Icon: Clock, color: "text-muted-foreground" },
   completed: { label: "Completed", Icon: CircleCheck, color: "text-success" },
   error: { label: "Failed", Icon: AlertCircle, color: "text-destructive" },
   interrupted: {
