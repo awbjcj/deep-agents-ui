@@ -17,6 +17,8 @@ const PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const JIRA_URL = "https://jira.example.com/browse/VSDA-1";
 const WIKI_URL = "https://wiki.example.com/pages/viewpage.action?pageId=42";
+const LONG_CELL =
+  "A detailed inspection note records the observed transition and documents the test procedure, instrumentation settings, and expected response for the reviewer.";
 
 function workbookBase64() {
   const workbook = XLSX.utils.book_new();
@@ -32,6 +34,15 @@ function workbookBase64() {
     workbook,
     XLSX.utils.aoa_to_sheet([["Note"], ["<b>bold</b>"]]),
     "Notes"
+  );
+  const headers = Array.from(
+    { length: 14 },
+    (_, i) => `Evidence column ${i + 1}`
+  );
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([headers, [LONG_CELL, ...headers.slice(1)]]),
+    "Wide report"
   );
   return Buffer.from(
     XLSX.write(workbook, { type: "array", bookType: "xlsx" })
@@ -225,6 +236,29 @@ test(
       assert.equal(await notes.getAttribute("aria-pressed"), "true");
       await dialog.getByRole("cell", { name: "<b>bold</b>" }).waitFor();
       assert.equal(await dialog.locator("table b").count(), 0);
+      await dialog
+        .getByRole("button", { name: "Wide report", exact: true })
+        .click();
+      const wideTable = dialog.getByRole("region", {
+        name: "Wide report table",
+      });
+      const longCell = wideTable.getByRole("cell", {
+        name: LONG_CELL,
+        exact: true,
+      });
+      await longCell.waitFor();
+      assert.ok((await dialog.boundingBox()).width > 1200);
+      assert.ok((await longCell.boundingBox()).width > 500);
+      assert.equal(
+        await wideTable.evaluate(
+          (element) => element.scrollWidth > element.clientWidth
+        ),
+        true
+      );
+      await wideTable
+        .getByRole("columnheader", { name: "Evidence column 14", exact: true })
+        .scrollIntoViewIfNeeded();
+      assert.ok(await wideTable.evaluate((element) => element.scrollLeft > 0));
       const [download] = await Promise.all([
         page.waitForEvent("download"),
         dialog.getByRole("button", { name: "Download", exact: true }).click(),

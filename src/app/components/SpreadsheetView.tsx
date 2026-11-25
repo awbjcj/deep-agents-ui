@@ -196,7 +196,7 @@ export function SpreadsheetView({
                   <span
                     role={rowIndex === 0 ? "columnheader" : "cell"}
                     key={columnIndex}
-                    className="border-border table-cell max-w-56 truncate border-b px-2 py-1"
+                    className="border-border table-cell max-w-[min(28rem,75vw)] truncate border-b px-2 py-1"
                   >
                     {cell}
                   </span>
@@ -223,7 +223,7 @@ export function SpreadsheetView({
     );
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
       {sheets.length > 1 && (
         <div
           role="group"
@@ -280,7 +280,7 @@ export function SpreadsheetView({
                         onClick={() => toggleSort(column)}
                         className="hover:bg-muted focus-visible:ring-ring flex w-full items-center gap-1 px-3 py-2 text-left whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
                       >
-                        <span className="max-w-96 wrap-anywhere">
+                        <span className="max-w-[min(40rem,75vw)] wrap-anywhere">
                           {cell || `Column ${column + 1}`}
                         </span>
                         {active &&
@@ -310,7 +310,7 @@ export function SpreadsheetView({
                   {row.map((cell, column) => (
                     <td
                       key={column}
-                      className="max-w-96 px-3 py-1.5 align-top wrap-anywhere whitespace-pre-wrap"
+                      className="max-w-[min(40rem,75vw)] px-3 py-1.5 align-top wrap-anywhere whitespace-pre-wrap"
                     >
                       {cell}
                     </td>

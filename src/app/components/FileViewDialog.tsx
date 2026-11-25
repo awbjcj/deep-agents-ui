@@ -189,6 +189,7 @@ function FileViewDialogSession({
       <DialogContent
         className={cn(
           "flex h-[min(80dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-[calc(100vw-1.5rem)] max-w-5xl min-w-0 flex-col p-4 sm:min-w-[60vw] sm:p-6",
+          isSpreadsheet && showViewer && "max-w-none sm:max-w-none",
           (isImage || (isPdf && showViewer)) &&
             "h-[calc(100dvh-1.5rem)] max-w-none gap-3 transition-none sm:max-w-none"
         )}
