@@ -23,6 +23,7 @@ test(
     const refreshStarted = deferred(),
       release = deferred();
     let deleted = false;
+    const title = `Disposable thread ${"W".repeat(180)}`;
     const messages = Array.from({ length: 130 }, (_, i) => ({
       type: "human",
       id: String(i),
@@ -71,7 +72,7 @@ test(
                   : [
                       {
                         thread_id: "remove",
-                        metadata: { title: "Disposable thread" },
+                        metadata: { title },
                         extracted: {},
                         status: "idle",
                         updated_at: "2026-11-01T12:00:00Z",
@@ -95,18 +96,32 @@ test(
       await earlier.click();
       await row(0).waitFor();
       await page.getByRole("button", { name: "Threads", exact: true }).click();
-      await page.getByText("Disposable thread", { exact: true }).hover();
+      await page.getByText(title, { exact: true }).hover();
       await page
         .getByRole("button", { name: "Delete thread", exact: true })
         .click();
       const dialog = page.getByRole("dialog", { name: "Delete thread?" });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await dialog.getByText(`“${title}”`, { exact: true }).waitFor();
+      for (const viewport of [
+        { width: 375, height: 667 },
+        { width: 667, height: 375 },
+        { width: 1280, height: 720 },
+      ]) {
+        await page.setViewportSize(viewport);
+        const widths = await dialog.evaluate((element) => ({
+          content: element.scrollWidth,
+          available: element.clientWidth,
+        }));
+        assert.ok(
+          widths.content <= widths.available,
+          `The delete dialog overflows at ${viewport.width}px`
+        );
+      }
       await dialog.getByRole("button", { name: "Delete", exact: true }).click();
       await refreshStarted.promise;
       await dialog.waitFor({ state: "hidden", timeout: 3000 });
-      assert.equal(
-        await page.getByText("Disposable thread", { exact: true }).count(),
-        0
-      );
+      assert.equal(await page.getByText(title, { exact: true }).count(), 0);
       assert.deepEqual(pageErrors, []);
     } finally {
       release.resolve();

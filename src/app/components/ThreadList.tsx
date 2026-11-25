@@ -810,9 +810,9 @@ export function ThreadList({
           className="sm:max-w-sm"
           showCloseButton={false}
         >
-          <DialogHeader>
+          <DialogHeader className="min-w-0 pr-0">
             <DialogTitle>Delete thread?</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="wrap-anywhere">
               <span className="text-foreground font-medium">
                 &ldquo;{deleteTarget?.title}&rdquo;
               </span>{" "}
