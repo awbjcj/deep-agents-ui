@@ -186,32 +186,38 @@ export function AdminRequestInbox({
       )}
       {!!data?.items.length && (
         <ul className="m-0 grid list-none gap-2 p-0">
-          {data.items.map((row) => (
-            <RequestRow
-              row={row}
-              requester={row.username ?? "Removed account"}
-              key={row.id}
-            >
-              <Button
-                type="button"
-                size="sm"
-                variant={status === "pending" ? "default" : "outline"}
-                className="min-h-touch"
-                aria-label={`${status === "pending" ? "Review" : "View"} ${requestLabels[row.type]} for ${row.username ?? "removed account"}`}
-                onClick={(event) => {
-                  trigger.current = event.currentTarget;
-                  setSuccess("");
-                  setSelected(row);
-                }}
+          {data.items.map((row) => {
+            // Another administrator must decide an admin's own request.
+            const reviewable =
+              status === "pending" && row.account_id !== user?.user_id;
+            const action = reviewable ? "Review" : "View";
+            return (
+              <RequestRow
+                row={row}
+                requester={row.username ?? "Removed account"}
+                key={row.id}
               >
-                {status === "pending" ? "Review" : "View"}
-                <ArrowRight
-                  className="size-4"
-                  aria-hidden="true"
-                />
-              </Button>
-            </RequestRow>
-          ))}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={reviewable ? "default" : "outline"}
+                  className="min-h-touch"
+                  aria-label={`${action} ${requestLabels[row.type]} for ${row.username ?? "removed account"}`}
+                  onClick={(event) => {
+                    trigger.current = event.currentTarget;
+                    setSuccess("");
+                    setSelected(row);
+                  }}
+                >
+                  {action}
+                  <ArrowRight
+                    className="size-4"
+                    aria-hidden="true"
+                  />
+                </Button>
+              </RequestRow>
+            );
+          })}
         </ul>
       )}
       {(cursor || data?.next_cursor) && (
@@ -289,17 +295,25 @@ export function AdminRequestInbox({
               <ul className="m-0 list-none p-0">
                 <RequestRow row={detail.data} />
               </ul>
-              {detail.data.status === "pending" && (
-                <ReviewRequestForm
-                  key={detail.data.id}
-                  detail={detail.data}
-                  onChanged={onChanged}
-                  onRefresh={() => {
-                    void detail.mutate();
-                    void mutate();
-                  }}
-                />
-              )}
+              {detail.data.status === "pending" &&
+                detail.data.account_id === user?.user_id && (
+                  <p className="text-muted-foreground text-sm">
+                    This is your own request. Another administrator must review
+                    it.
+                  </p>
+                )}
+              {detail.data.status === "pending" &&
+                detail.data.account_id !== user?.user_id && (
+                  <ReviewRequestForm
+                    key={detail.data.id}
+                    detail={detail.data}
+                    onChanged={onChanged}
+                    onRefresh={() => {
+                      void detail.mutate();
+                      void mutate();
+                    }}
+                  />
+                )}
             </>
           )}
         </DialogContent>

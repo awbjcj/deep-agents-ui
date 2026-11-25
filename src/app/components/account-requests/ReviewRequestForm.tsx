@@ -158,7 +158,8 @@ export function ReviewRequestForm({
       {deleting && !declining && (
         <div className="border-destructive/40 bg-destructive/5 space-y-2 rounded-lg border p-3">
           <p className="text-sm wrap-anywhere">
-            Delete the app account for <strong>{detail.username}</strong> and
+            Delete the app account for{" "}
+            <strong>{detail.username ?? "this removed account"}</strong> and
             retire its saved credentials. Shared records stay with their owners.
           </p>
           <label className="min-h-touch flex cursor-pointer items-center gap-2 text-sm">

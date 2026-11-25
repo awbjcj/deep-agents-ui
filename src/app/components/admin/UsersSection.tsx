@@ -60,6 +60,9 @@ import { SETTINGS_CARD_GRID } from "@/app/components/settings/SettingsLayout";
 export function UsersSection({ revision = 0 }: { revision?: number }) {
   const { user } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
+  // The review revision of the list currently shown; usage refreshes follow
+  // it so one completed review triggers one usage reload.
+  const [usersRevision, setUsersRevision] = useState(revision);
   const [usage, setUsage] = useState<Record<string, AdminUserUsage>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [usageView, setUsageView] = useState<UsageDimension>("tokens");
@@ -69,7 +72,9 @@ export function UsersSection({ revision = 0 }: { revision?: number }) {
     const { signal } = controller;
     apiListUsers(signal)
       .then((list) => {
-        if (!signal.aborted) setUsers(list);
+        if (signal.aborted) return;
+        setUsers(list);
+        setUsersRevision(revision);
       })
       .catch(() => {
         if (!signal.aborted) toast.error("Failed to load users");
@@ -109,7 +114,7 @@ export function UsersSection({ revision = 0 }: { revision?: number }) {
       setUsage(map);
     })();
     return () => controller.abort();
-  }, [usernameKey, revision]);
+  }, [usernameKey, usersRevision]);
 
   const handleRoleChange = async (id: string, role: Role) => {
     if (id === user?.user_id && role !== "admin") {
@@ -377,18 +382,21 @@ export function UsersSection({ revision = 0 }: { revision?: number }) {
                             </div>
                           )}
                           <div className="grid gap-0.5 pt-1">
-                            <PopoverClose asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                className="min-h-touch justify-start"
-                                onClick={() =>
-                                  void handleResetPassword(account)
-                                }
-                              >
-                                <KeyRound aria-hidden="true" /> Reset password
-                              </Button>
-                            </PopoverClose>
+                            {/* Your own password changes through Profile. */}
+                            {!isSelf && (
+                              <PopoverClose asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="min-h-touch justify-start"
+                                  onClick={() =>
+                                    void handleResetPassword(account)
+                                  }
+                                >
+                                  <KeyRound aria-hidden="true" /> Reset password
+                                </Button>
+                              </PopoverClose>
+                            )}
                             <PopoverClose asChild>
                               <Button
                                 type="button"
