@@ -447,7 +447,7 @@ const COMPONENTS: Components = {
         href={safeHref}
         target={isInDocument ? undefined : "_blank"}
         rel={isInDocument ? undefined : "noopener noreferrer"}
-        className="text-primary no-underline hover:underline"
+        className={LINK_CLASS}
       >
         <MarkdownLinkContext.Provider value={true}>
           {children}
@@ -541,13 +541,12 @@ const COMPONENTS: Components = {
             those back in for descendants of the table. */}
         <table
           className={
-            "my-0 w-max min-w-full border-collapse text-sm " +
+            "my-0 w-full border-collapse text-sm " +
             "[&_strong]:font-semibold [&_strong]:text-current " +
             "[&_em]:text-current [&_em]:italic " +
             "[&_code]:border-border/60 [&_code]:rounded-sm [&_code]:border " +
             "[&_code]:bg-background [&_code]:px-1 [&_code]:py-0.5 " +
-            "[&_code]:font-mono [&_code]:text-[0.95em] [&_code]:font-medium " +
-            "[&_a]:text-primary [&_a:hover]:underline"
+            "[&_code]:font-mono [&_code]:text-[0.95em] [&_code]:font-medium"
           }
         >
           {children}
@@ -574,7 +573,7 @@ const COMPONENTS: Components = {
     return (
       <th
         style={style}
-        className="border-border max-w-[min(40rem,75vw)] border-b px-3 py-2 font-semibold wrap-anywhere"
+        className="border-border max-w-[40rem] min-w-32 border-b px-3 py-2 font-semibold wrap-anywhere"
       >
         {children}
       </th>
@@ -584,7 +583,7 @@ const COMPONENTS: Components = {
     return (
       <td
         style={style}
-        className="max-w-[min(40rem,75vw)] px-3 py-2 align-top wrap-anywhere [&_p]:mb-1 [&_p:last-child]:mb-0"
+        className="max-w-[40rem] min-w-32 px-3 py-2 align-top wrap-anywhere [&_p]:mb-1 [&_p:last-child]:mb-0"
       >
         {children}
       </td>
@@ -643,7 +642,7 @@ function ArtifactDownload({
         type="button"
         disabled={!available}
         aria-label={`Download ${filename}`}
-        className="text-primary focus-visible:ring-primary disabled:text-muted-foreground underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+        className={LINK_CLASS}
         onClick={() => {
           try {
             saveBlob(
@@ -683,8 +682,9 @@ function ArtifactDownload({
   );
 }
 
-const ARTIFACT_BUTTON_CLASS =
-  "text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground";
+// Links keep a quiet underline: the primary hue alone is too close to body text.
+const LINK_CLASS =
+  "text-primary decoration-primary/40 underline underline-offset-2 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground disabled:no-underline";
 
 /**
  * First sheet of a spreadsheet, 8 × 8, under its link. It parses only once
@@ -736,7 +736,7 @@ function InlineSpreadsheetPreview({
             type="button"
             aria-label={`Open full ${filename}`}
             onClick={() => opener.open(file.path)}
-            className={cn(ARTIFACT_BUTTON_CLASS, "text-xs")}
+            className={cn(LINK_CLASS, "text-xs")}
           >
             Open full
           </button>
@@ -787,7 +787,7 @@ function ArtifactOpen({
         type="button"
         disabled={!available}
         aria-label={`Open ${filename}`}
-        className={ARTIFACT_BUTTON_CLASS}
+        className={LINK_CLASS}
         onClick={() => opener.open(path)}
       >
         <MarkdownLinkContext.Provider value={true}>

@@ -48,17 +48,16 @@ export const SubAgentRun = memo(function SubAgentRun({
   const fullscreen = view === "fullscreen";
   const name = subAgent.subAgentName;
 
-  function openView(next: SubAgentView, button: HTMLButtonElement) {
-    opener.current = button;
-    setView(next);
-  }
-
   let status = subAgent.status;
   if (status === "pending" || status === "waiting") {
     if (execution?.status === "complete") status = "completed";
     if (execution?.status === "error") status = "error";
   }
   const running = status === "pending" || status === "active";
+  const indicatorAgent = useMemo(
+    () => (status === subAgent.status ? subAgent : { ...subAgent, status }),
+    [subAgent, status]
+  );
   const rows = useProcessedMessages(
     execution?.messages ?? EMPTY_MESSAGES,
     status === "waiting",
@@ -72,7 +71,9 @@ export const SubAgentRun = memo(function SubAgentRun({
     () => (result ? readableToolResult("task", result) : null),
     [result]
   );
-  const recentCalls = rows.findLast((row) => row.toolCalls.length)?.toolCalls;
+  const recentCalls = running
+    ? rows.findLast((row) => row.toolCalls.length)?.toolCalls
+    : undefined;
   const currentTools =
     recentCalls &&
     [...new Set(recentCalls.map((call) => call.name))].join(", ");
@@ -85,7 +86,7 @@ export const SubAgentRun = memo(function SubAgentRun({
         </h4>
         <MarkdownContent content={extractSubAgentContent(subAgent.input)} />
       </div>
-      {rows.map(({ message, toolCalls, stableKey }) => {
+      {rows.map(({ message, toolCalls, stableKey }, index) => {
         const text =
           message.type === "ai" ? extractStringFromMessageContent(message) : "";
         const progress = text.trim() !== resultText ? text : "";
@@ -99,6 +100,7 @@ export const SubAgentRun = memo(function SubAgentRun({
               <MarkdownContent
                 content={progress}
                 files={files}
+                isStreaming={running && index === rows.length - 1}
               />
             )}
             {toolCalls.map((toolCall) => (
@@ -147,7 +149,7 @@ export const SubAgentRun = memo(function SubAgentRun({
       >
         <div className="flex min-w-0 items-center pr-1">
           <SubAgentIndicator
-            subAgent={{ ...subAgent, status }}
+            subAgent={indicatorAgent}
             currentTools={currentTools}
             onClick={() => setExpanded((previous) => !previous)}
             isExpanded={expanded}
@@ -160,21 +162,12 @@ export const SubAgentRun = memo(function SubAgentRun({
             aria-label={`Enlarge ${name}`}
             aria-haspopup="dialog"
             title="Enlarge"
-            onClick={(event) => openView("enlarged", event.currentTarget)}
+            onClick={(event) => {
+              opener.current = event.currentTarget;
+              setView("enlarged");
+            }}
           >
             <Expand aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground size-touch"
-            aria-label={`Full screen ${name}`}
-            aria-haspopup="dialog"
-            title="Full screen"
-            onClick={(event) => openView("fullscreen", event.currentTarget)}
-          >
-            <Maximize aria-hidden="true" />
           </Button>
         </div>
         {expanded && view === null && (
@@ -245,7 +238,7 @@ export const SubAgentRun = memo(function SubAgentRun({
             role="region"
             aria-label="Subagent activity"
             tabIndex={0}
-            className="focus-visible:ring-ring min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
+            className="focus-visible:ring-ring min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset [&_li]:max-w-[80ch] [&_p:not(:has([role=table]))]:max-w-[80ch]"
           >
             {activity}
           </div>

@@ -514,9 +514,15 @@ test(
       );
       await page.reload();
       await files.waitFor({ timeout: 5000 });
-      await report
-        .getByRole("button", { name: `Full screen ${agents[0]}`, exact: true })
-        .click();
+      assert.equal(
+        await report
+          .getByRole("button", { name: `Full screen ${agents[0]}` })
+          .count(),
+        0,
+        "the card offers one viewer control; full screen lives in the viewer"
+      );
+      await enlarge.click();
+      await fullscreen.click();
       await viewer
         .getByText("End of signal review.", { exact: true })
         .waitFor();
