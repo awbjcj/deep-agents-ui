@@ -46,6 +46,10 @@ import {
   useProcessedMessages,
 } from "@/app/hooks/internal/conversationProjection";
 import {
+  EMPTY_STABLE_SUBAGENTS,
+  stabilizeSubagents,
+} from "@/app/hooks/internal/stableSubagents";
+import {
   ThreadUnavailableError,
   useRecoverableThread,
 } from "@/app/hooks/useRecoverableThread";
@@ -537,7 +541,12 @@ export function useChat({
   // Render consumers need a reactive snapshot. Only event handlers use the
   // latest-value ref, keeping callbacks stable without hiding state changes.
   const stream = rawStream;
-  const subagents = stream.subagents;
+  const stableSubagents = useRef(EMPTY_STABLE_SUBAGENTS);
+  stableSubagents.current = stabilizeSubagents(
+    stableSubagents.current,
+    stream.subagents
+  );
+  const subagents = stableSubagents.current.map;
   const streamRef = useRef(rawStream);
   streamRef.current = rawStream;
   const approvalScope = JSON.stringify([
