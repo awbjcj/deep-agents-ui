@@ -27,6 +27,7 @@ test("admin navigation shares the responsive settings shell", async () => {
     ["library", "Search"],
     ["scm", "Sources"],
     ["newsletters", "Newsletters"],
+    ["rl-dataset", "RL Dataset"],
   ];
   let previous = -1;
   for (const [id, label] of destinations) {

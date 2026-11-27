@@ -371,6 +371,9 @@ test(
           sources: effectivePolicies(),
         });
       }
+      if (path === "/api/admin/account-requests") {
+        return json(route, { items: [], next_cursor: null });
+      }
       if (path === "/api/admin/users") {
         return json(route, {
           users: [
@@ -600,12 +603,16 @@ test(
         "Search",
         "Sources",
         "Newsletters",
+        "RL Dataset",
       ];
       await adminTabs.waitFor();
       await adminTabs
         .getByRole("tab", { name: "People", exact: true })
         .waitFor();
-      assert.equal(await adminTabs.getByRole("tab").count(), 8);
+      assert.equal(
+        await adminTabs.getByRole("tab").count(),
+        expectedTabs.length
+      );
       for (const label of expectedTabs) {
         await adminTabs
           .getByRole("tab", { name: label, exact: true })
@@ -664,9 +671,7 @@ test(
       };
       await assertAdminTabBounds("desktop");
 
-      await page
-        .getByRole("heading", { name: "2 accounts", exact: true })
-        .waitFor();
+      await page.getByText("2 accounts", { exact: true }).waitFor();
       const registrationSummary = page
         .locator("details")
         .filter({ hasText: /Registration & invitations/ })

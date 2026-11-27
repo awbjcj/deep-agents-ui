@@ -5,6 +5,7 @@ import { SettingsContent } from "./settings/SettingsLayout";
 import { useState, type ComponentType } from "react";
 import {
   Activity,
+  Database,
   GitBranch,
   Layers,
   Mail,
@@ -29,6 +30,7 @@ import { SearchSection } from "@/app/components/admin/SearchSection";
 import { NewsletterSection } from "@/app/components/admin/NewsletterSection";
 import { SourcesSection } from "@/app/components/admin/SourcesSection";
 import { ToolPermissionsSection } from "@/app/components/admin/ToolPermissionsSection";
+import { RlDatasetSection } from "@/app/components/admin/RlDatasetSection";
 
 type AdminTab =
   | "users"
@@ -38,7 +40,8 @@ type AdminTab =
   | "runmode"
   | "tiers"
   | "tools"
-  | "scm";
+  | "scm"
+  | "rl-dataset";
 
 const TABS: readonly {
   id: AdminTab;
@@ -95,6 +98,13 @@ const TABS: readonly {
     icon: Mail,
     description: "Compose, review, and send updates to account holders.",
   },
+  {
+    id: "rl-dataset",
+    label: "RL Dataset",
+    icon: Database,
+    description:
+      "Review anonymized trajectories, curate ratings, and export JSONL.",
+  },
 ];
 
 const SECTIONS: Record<AdminTab, ComponentType> = {
@@ -106,6 +116,7 @@ const SECTIONS: Record<AdminTab, ComponentType> = {
   tiers: TiersSection,
   tools: ToolPermissionsSection,
   scm: SourcesSection,
+  "rl-dataset": RlDatasetSection,
 };
 
 interface AdminPanelProps {
