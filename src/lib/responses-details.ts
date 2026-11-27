@@ -5,6 +5,21 @@ export interface ResponseSource {
   url?: string;
 }
 
+/** Read the generated-file links shown beneath a response. */
+export function generatedResponseFiles(message: Message) {
+  const generated = message.response_metadata?.generated_files;
+  return Array.isArray(generated)
+    ? generated
+        .filter(
+          (item): item is { path: string; filename: string } =>
+            !!item &&
+            typeof item.path === "string" &&
+            typeof item.filename === "string"
+        )
+        .slice(0, 10)
+    : [];
+}
+
 /** Read displayable Responses fields without exposing opaque provider state. */
 export function responsesDetails(message: Message) {
   const sources: ResponseSource[] = [];

@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import type { Message } from "@langchain/langgraph-sdk";
-import { responsesDetails } from "@/lib/responses-details";
+import { generatedResponseFiles, responsesDetails } from "@/lib/responses-details";
 import { fileBlob, fileMetadata, saveBlob } from "@/lib/file-downloads";
 import { fileContentToText } from "@/lib/uploads";
 import { toast } from "sonner";
@@ -23,16 +23,7 @@ export function ResponseDetails({
   const { sources, refusals, activity, notice } = responsesDetails(message);
   const metadata = message.response_metadata as
     Record<string, unknown> | undefined;
-  const generated = Array.isArray(metadata?.generated_files)
-    ? metadata.generated_files
-        .filter(
-          (item): item is { path: string; filename: string } =>
-            !!item &&
-            typeof item.path === "string" &&
-            typeof item.filename === "string"
-        )
-        .slice(0, 10)
-    : [];
+  const generated = generatedResponseFiles(message);
   const errors = Array.isArray(metadata?.generated_file_errors)
     ? metadata.generated_file_errors
         .filter((item): item is string => typeof item === "string")

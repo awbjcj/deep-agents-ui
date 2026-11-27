@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useProcessedMessages } from "@/app/hooks/internal/conversationProjection";
+import type { ThreadRatings } from "@/app/hooks/useThreadRatings";
 import type { SubAgent } from "@/app/types/types";
 import {
   extractStringFromMessageContent,
@@ -21,6 +22,7 @@ import { readableToolResult } from "@/lib/tool-result";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "./MarkdownContent";
 import { RawToolResult, ReadableToolResult } from "./ReadableToolResult";
+import { ResponseRatingBar } from "./ResponseRatingBar";
 import { RunStatus } from "./RunStatus";
 import { SubAgentIndicator } from "./SubAgentIndicator";
 import { ToolCallBox } from "./ToolCallBox";
@@ -32,6 +34,7 @@ interface SubAgentRunProps {
   subAgent: SubAgent;
   execution?: SubagentStream;
   files: Record<string, string>;
+  threadRatings?: ThreadRatings | null;
   onUseEvidence?: (text: string) => void;
 }
 
@@ -40,6 +43,7 @@ export const SubAgentRun = memo(function SubAgentRun({
   subAgent,
   execution,
   files,
+  threadRatings,
   onUseEvidence,
 }: SubAgentRunProps) {
   const [expanded, setExpanded] = useState(true);
@@ -77,6 +81,21 @@ export const SubAgentRun = memo(function SubAgentRun({
   const currentTools =
     recentCalls &&
     [...new Set(recentCalls.map((call) => call.name))].join(", ");
+  const canRate = subAgent.status === "completed" || subAgent.status === "error";
+  const ratingTools = useMemo(
+    () => canRate ? rows.flatMap((row) => row.toolCalls.map((call) => call.name)) : undefined,
+    [canRate, rows]
+  );
+  const ratingFooter = canRate && threadRatings && (
+    <ResponseRatingBar
+      className="border-border/70 bg-card/80 border-t px-4 py-2 sm:px-6"
+      ratings={threadRatings}
+      targetType="subagent_run"
+      targetId={subAgent.id}
+      domain={name}
+      tools={ratingTools}
+    />
+  );
 
   const activity = (expanded || view !== null) && (
     <div className="min-w-0 space-y-4 p-4 sm:p-6">
@@ -175,6 +194,7 @@ export const SubAgentRun = memo(function SubAgentRun({
             {activity}
           </div>
         )}
+        {view === null && ratingFooter}
       </section>
       {view && (
         <DialogContent
@@ -241,6 +261,7 @@ export const SubAgentRun = memo(function SubAgentRun({
             className="focus-visible:ring-ring min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset [&_li]:max-w-[80ch] [&_p:not(:has([role=table]))]:max-w-[80ch]"
           >
             {activity}
+            {ratingFooter}
           </div>
         </DialogContent>
       )}

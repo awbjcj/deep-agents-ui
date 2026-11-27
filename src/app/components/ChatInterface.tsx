@@ -23,6 +23,7 @@ import { FileOpenerProvider } from "@/app/components/FileOpener";
 import { ChatComposer } from "@/app/components/ChatComposer";
 import type { SkillAuthoringRequest } from "@/lib/skill-authoring-request";
 import { useReducedMotion } from "@/app/hooks/useReducedMotion";
+import { useThreadRatings } from "@/app/hooks/useThreadRatings";
 import { agentActivity } from "@/lib/agent-activity";
 import { AgentActivity } from "./AgentActivity";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { CodeAnalysisJobs } from "./CodeAnalysisJobs";
 import { RepositoryWorkspace } from "./RepositoryWorkspace";
 import {
   isLatestTaskOutcome,
+  isRubricRevisionMessage,
   isTaskOutcomeNotice,
   rubricCheckNumbers,
 } from "@/lib/task-outcome";
@@ -145,6 +147,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
   }) => {
     const { threadId } = useChatContext();
     const { user } = useAuth();
+    const threadRatings = useThreadRatings(threadId, user?.user_id);
     const showRepositoryWorkspace =
       canUseCodeAnalyzer(user) &&
       assistant?.graph_id === CODE_ANALYZER_AGENT_ID;
@@ -265,6 +268,29 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
       () => rubricCheckNumbers(processedMessages),
       [processedMessages]
     );
+    const ratingToolsByMessage = useMemo(() => {
+      const contexts = new Map<string, string>();
+      if (!threadRatings) return contexts;
+      const tools = new Set<string>();
+      let context = "";
+      for (const { message, stableKey, toolCalls } of processedMessages) {
+        if (message.type === "human" && !isRubricRevisionMessage(message)) {
+          tools.clear();
+          context = "";
+        }
+        const previousCount = tools.size;
+        for (const { name, args } of toolCalls) {
+          tools.add(name);
+          if (name === "task" && typeof args.subagent_type === "string") {
+            tools.add(args.subagent_type);
+          }
+        }
+        // Use a value prop so historical rows retain memoization on stream updates.
+        if (tools.size !== previousCount) context = [...tools].join("\n");
+        if (message.type === "ai" && context) contexts.set(stableKey, context);
+      }
+      return contexts;
+    }, [processedMessages, threadRatings]);
     // Attach the current run's completion status to the answer it judges. The
     // run's own persisted notice would repeat it, so that row is skipped.
     const candidateId = taskVerification?.outcome.candidate_message_id;
@@ -435,6 +461,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(
                               stream={messageUi?.length ? stream : undefined}
                               onResumeInterrupt={resumeInterrupt}
                               graphId={assistant?.graph_id}
+                              threadRatings={threadRatings}
+                              ratingToolContext={ratingToolsByMessage.get(data.stableKey)}
                               files={files}
                               sourceImageAttachments={sourceImageAttachments}
                               rubricCheckNumber={checkNumbers.get(

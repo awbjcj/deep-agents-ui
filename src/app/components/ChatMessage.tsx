@@ -6,6 +6,9 @@ import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { reasoningSummary } from "@/lib/reasoning-summary";
 import { ReasoningSummary } from "./ReasoningSummary";
 import { ResponseDetails } from "@/app/components/ResponseDetails";
+import { ResponseRatingBar } from "@/app/components/ResponseRatingBar";
+import type { ThreadRatings } from "@/app/hooks/useThreadRatings";
+import { generatedResponseFiles, responsesDetails } from "@/lib/responses-details";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ContextSummaryCard } from "@/app/components/ContextSummaryCard";
 import { SkillReferenceText } from "./skills/SkillReferenceText";
@@ -48,6 +51,8 @@ import {
   type SourceImageRecord,
 } from "@/lib/source-images";
 
+const ACTIVE_RESPONSE_STATUSES = new Set(["in_progress", "streaming", "pending"]);
+
 interface ChatMessageProps {
   onUseEvidence?: (text: string) => void;
   message: Message;
@@ -61,6 +66,8 @@ interface ChatMessageProps {
   stream?: any;
   onResumeInterrupt?: (value: any) => void;
   graphId?: string;
+  threadRatings?: ThreadRatings | null;
+  ratingToolContext?: string;
   files: Record<string, string>;
   sourceImageAttachments: Record<string, SourceImageRecord>;
   /** 1-based grader pass number for runtime revision requests. */
@@ -81,6 +88,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     stream,
     onResumeInterrupt,
     graphId,
+    threadRatings,
+    ratingToolContext,
     files,
     sourceImageAttachments,
     rubricCheckNumber,
@@ -111,6 +120,22 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     const reasoning = useMemo(() => reasoningSummary(message), [message]);
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
+    const ratingTools = useMemo(
+      () => ratingToolContext?.split("\n"),
+      [ratingToolContext]
+    );
+    const responseStatus = message.response_metadata?.status;
+    const ratingTargetId =
+      threadRatings &&
+      message.type === "ai" &&
+      !isStreaming &&
+      !summary &&
+      !ACTIVE_RESPONSE_STATUSES.has(typeof responseStatus === "string" ? responseStatus : "") &&
+      (hasContent ||
+        generatedResponseFiles(message).length > 0 ||
+        responsesDetails(message).refusals.some((refusal) => refusal.trim()))
+        ? message.id
+        : undefined;
 
     // Human messages can carry attachments: images are embedded inline as
     // image_url content blocks (for multimodal viewing) and documents are
@@ -432,6 +457,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               files={files}
             />
           )}
+          {threadRatings && ratingTargetId && (
+            <ResponseRatingBar
+              className="mt-3"
+              ratings={threadRatings}
+              targetType="agent_message"
+              targetId={ratingTargetId}
+              domain={graphId}
+              tools={ratingTools}
+            />
+          )}
           {viewedAttachment && (
             <FileViewDialog
               file={viewedAttachment}
@@ -474,6 +509,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   key={subAgent.id}
                   subAgent={subAgent}
                   execution={subagentStreams?.get(subAgent.id)}
+                  threadRatings={threadRatings}
                   files={files}
                   onUseEvidence={onUseEvidence}
                 />
